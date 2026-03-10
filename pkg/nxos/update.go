@@ -1189,14 +1189,6 @@ func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
 func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 	logger.GetLogger().Debug("setRemoteSvcState", "ip", ip)
 
-	// Peer SVC state on the local switch is SUCCESS only when all
-	// per-peer criteria pass (ServiceOk, PolicyOk, KeepaliveOk, BulkSyncOk).
-	peerSvcOk := false
-	if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
-		peerSvcOk = peerCrit.IsOk()
-	}
-	logger.GetLogger().Debug("setRemoteSvcState", "peerCritOk", peerSvcOk)
-
 	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems{
 		HaPeerExtList: map[string]*model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{},
 	}
@@ -1204,12 +1196,26 @@ func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 	list := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{
 		IpAddr: &ip,
 	}
-	if peerSvcOk {
-		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
-		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_fw_config
-	} else {
-		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
+
+	// Determine three-way peer SVC state based on adjacency and criteria.
+	adj, adjExists := n.Ha.Adjacencies[ip]
+	adjUp := adjExists && adj.Connected
+	if !adjUp {
+		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
 		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
+	} else {
+		peerSvcOk := false
+		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
+			peerSvcOk = peerCrit.IsOk()
+		}
+		logger.GetLogger().Debug("setRemoteSvcState", "peerCritOk", peerSvcOk)
+		if peerSvcOk {
+			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
+			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_fw_config
+		} else {
+			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
+			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
+		}
 	}
 
 	items.HaPeerExtList[ip] = &list
@@ -1241,7 +1247,7 @@ func (n *Nxos) setRemoteStatesAdjDown(ctx context.Context, ip string) error {
 	list := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{
 		IpAddr: &ip,
 	}
-	list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
+	list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
 	list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
 
 	items.HaPeerExtList[ip] = &list

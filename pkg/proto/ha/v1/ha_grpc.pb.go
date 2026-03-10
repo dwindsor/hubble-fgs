@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v5.26.1
-// source: ha.proto
+// source: pkg/proto/ha/v1/ha.proto
 
 package v1
 
@@ -101,5 +101,5 @@ var Ha_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ha.proto",
+	Metadata: "pkg/proto/ha/v1/ha.proto",
 }

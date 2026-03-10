@@ -97,9 +97,13 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 		if mbr, ok := n.Ha.Members[ip]; ok && mbr.Info.HaInfo != nil {
 			peerHa = fmt.Sprintf("%v", mbr.Info.HaInfo.Ha)
 		}
-		peerSvc := "SVC_FAILURE"
-		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok && peerCrit.IsOk() {
-			peerSvc = "SVC_SUCCESS"
+		peerSvc := "SVC_UNKNOWN"
+		if adj, ok := n.Ha.Adjacencies[ip]; ok && adj.Connected {
+			if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok && peerCrit.IsOk() {
+				peerSvc = "SVC_SUCCESS"
+			} else {
+				peerSvc = "SVC_FAILURE"
+			}
 		}
 		status += fmt.Sprintf("\n  Peer %v HA: %v  Svc: %v",
 			ip, peerHa, peerSvc)

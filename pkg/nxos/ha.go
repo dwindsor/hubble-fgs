@@ -168,14 +168,14 @@ func (n *Nxos) updateHaConfig() {
 	}
 }
 
-func (n *Nxos) HaSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo) {
+func (n *Nxos) HaSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo) MbrValidationResult {
 	n.Lock()
 	defer n.Unlock()
 
-	n.haSetMbrInfo(ctx, peer, info)
+	return n.haSetMbrInfo(ctx, peer, info)
 }
 
-func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo) {
+func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo) MbrValidationResult {
 	logger.GetLogger().Debug("haSetMbrInfo:", "peer", peer, "mbrInfo", info)
 
 	// Always compute and update the policy peer criterion regardless of
@@ -185,7 +185,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 
 	if !n.haIsEnabled(ctx, false) {
 		logger.GetLogger().Debug("skip setting peer mbr info")
-		return
+		return MbrValidationResult{}
 	}
 
 	// Check if peer is signaling intentional HA removal via NO_HA state.
@@ -203,6 +203,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 		if haPeer, ok := n.GetHaPeer(peer); ok {
 			haPeer.State = hav1.MBR_STATE_HA_NA
 			haPeer.StateReason = "peer removed HA configuration"
+			haPeer.IsRequiredCritFail = false
 			n.SetHaPeer(peer, haPeer)
 			n.setRemoteMbrState(ctx, peer)
 		}
@@ -215,7 +216,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 		case n.WaitHa.In() <- WakeHa:
 		default:
 		}
-		return
+		return MbrValidationResult{}
 	}
 
 	now := time.Now().Unix()
@@ -247,6 +248,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	// skip vlan/vrf checking for now
 	var isDel bool
 	var haStateReason string
+	var isRequiredCritFail bool
 	if info.SysInfo == nil || info.HaInfo == nil ||
 		info.PolInfo == nil {
 		logger.GetLogger().Debug("Empty info")
@@ -255,14 +257,17 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	} else if info.SysInfo.Model != n.Model {
 		logger.GetLogger().Debug("Model mismatch:", "info", info.SysInfo.Model, "n", n.Model)
 		isDel = true
+		isRequiredCritFail = true
 		haStateReason = fmt.Sprintf("model mismatch: peer=%s local=%s", info.SysInfo.Model, n.Model)
 	} else if info.SysInfo.SwVer != n.SwVer {
 		logger.GetLogger().Debug("NxOS version mismatch:", "version", info.SysInfo.SwVer, "n", n.SwVer)
 		isDel = true
+		isRequiredCritFail = true
 		haStateReason = fmt.Sprintf("NxOS version mismatch: peer=%s local=%s", info.SysInfo.SwVer, n.SwVer)
 	} else if info.SysInfo.Cpa != n.CpaVer {
 		logger.GetLogger().Debug("CPA version mismatch:", "cpa", info.SysInfo.Cpa, "n", n.CpaVer)
 		isDel = true
+		isRequiredCritFail = true
 		haStateReason = fmt.Sprintf("CPA version mismatch: peer=%s local=%s", info.SysInfo.Cpa, n.CpaVer)
 	} else if info.HaInfo.Service == hav1.SERVICE_STATE_SVC_FAILURE {
 		logger.GetLogger().Debug("Peer cannot provide service")
@@ -275,6 +280,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	} else if len(info.SysInfo.Dpus) != len(n.Dpus) {
 		logger.GetLogger().Debug("DPU number mismatch:", "DPUs", len(info.SysInfo.Dpus), "n", len(n.Dpus))
 		isDel = true
+		isRequiredCritFail = true
 		haStateReason = fmt.Sprintf("DPU count mismatch: peer=%d local=%d", len(info.SysInfo.Dpus), len(n.Dpus))
 	} else {
 		for _, dpu := range info.SysInfo.Dpus {
@@ -282,24 +288,28 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 			if !ok {
 				logger.GetLogger().Debug("DPU not found", "name", dpu.Name)
 				isDel = true
+				isRequiredCritFail = true
 				haStateReason = fmt.Sprintf("DPU not found: %s", dpu.Name)
 				break
 			}
 			if d.Version != dpu.Version {
 				logger.GetLogger().Debug("DPU version mismatch", dpu.Version, d.Version)
 				isDel = true
+				isRequiredCritFail = true
 				haStateReason = fmt.Sprintf("DPU version mismatch: peer=%s local=%s for %s", dpu.Version, d.Version, dpu.Name)
 				break
 			}
 		}
 	}
 
-	// Store reason on HaPeer before updating partner state
+	// Store reason and required criteria failure flag on HaPeer before updating partner state
 	if haPeer, ok := n.GetHaPeer(peer); ok {
 		if isDel {
 			haPeer.StateReason = haStateReason
+			haPeer.IsRequiredCritFail = isRequiredCritFail
 		} else {
 			haPeer.StateReason = ""
+			haPeer.IsRequiredCritFail = false
 		}
 		n.SetHaPeer(peer, haPeer)
 	}
@@ -313,6 +323,8 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	if notify {
 		n.setRemoteSvcState(ctx, peer)
 	}
+
+	return MbrValidationResult{IsDel: isDel, Reason: haStateReason, IsRequiredCritFail: isRequiredCritFail}
 }
 
 func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.MbrInfo {
@@ -606,13 +618,9 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	rsp, err := grpcClient.Adjacency(ctx, req)
 	if err != nil || rsp.Status == hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE {
 		logger.GetLogger().Error("Adjacency fails", logfields.Error, err)
-		// Check if the peer signaled intentional HA removal via NO_HA
-		// in the failure response. This lets us transition to HA_NOTREADY
-		// immediately instead of waiting for adjacency timeout.
-		if err == nil && rsp.MbrInfo != nil &&
-			rsp.MbrInfo.HaInfo != nil &&
-			rsp.MbrInfo.HaInfo.Ha == hav1.HA_STATE_NO_HA {
-			logger.GetLogger().Info("Peer signaled HA removal in adjacency response", "peer", peer)
+		// Always process MbrInfo from any failure response to detect criteria
+		// failures fast (NO_HA removal, required criteria mismatch, etc.).
+		if err == nil && rsp.MbrInfo != nil {
 			n.HaSetMbrInfo(ctx, peer, *rsp.MbrInfo)
 		}
 		return
@@ -673,6 +681,17 @@ func (n *Nxos) anyPeerCriteriaOk() bool {
 	return false
 }
 
+// anyPeerRequiredCritFail returns true if any peer has a required criteria failure
+// (model/version mismatch) that means HA can never work with that peer.
+func (n *Nxos) anyPeerRequiredCritFail() bool {
+	for _, peer := range n.GetHaPeers() {
+		if peer.State == hav1.MBR_STATE_HA_FAIL && peer.IsRequiredCritFail {
+			return true
+		}
+	}
+	return false
+}
+
 // anyPeerInHaReady returns true if at least one peer member has reported HA_READY state.
 // This indicates the local switch still has an active-active partner.
 func (n *Nxos) anyPeerInHaReady() bool {
@@ -691,26 +710,41 @@ func (n *Nxos) haUpdateNxState(_ context.Context) {
 	var svcState hav1.SERVICE_STATE
 	var haState hav1.HA_STATE
 	if n.stableIsFunc() {
-		svcState = hav1.SERVICE_STATE_SVC_SUCCESS
-		if len(n.Ha.Partners) > 0 && n.anyPeerCriteriaOk() {
-			haState = hav1.HA_STATE_HA_READY
-			if !n.Ha.EverReady {
-				n.Ha.EverReady = true
-				logger.GetLogger().Info("HA_READY reached for the first time")
-			}
-		} else if n.Ha.EverReady {
-			if n.anyPeerInHaReady() {
-				// At least one peer is still HA_READY — stay in active-active mode
-				haState = hav1.HA_STATE_HA_READY
-				logger.GetLogger().Debug("Staying in HA_READY (at least one peer still HA_READY)")
+		if n.anyPeerRequiredCritFail() {
+			// Required criteria failure (model/version mismatch): HA can never work.
+			// Leader: handle all traffic (SWITCHOVER + SVC_SUCCESS).
+			// Follower: yield all traffic (NOTREADY + SVC_FAILURE).
+			if n.Ha.IsLeader {
+				svcState = hav1.SERVICE_STATE_SVC_SUCCESS
+				haState = hav1.HA_STATE_HA_SWITCHOVER
+				logger.GetLogger().Info("Required criteria failure: leader switching over")
 			} else {
-				// No peer is HA_READY — no longer in active-active mode
+				svcState = hav1.SERVICE_STATE_SVC_FAILURE
 				haState = hav1.HA_STATE_HA_NOTREADY
-				n.Ha.EverReady = false
-				logger.GetLogger().Info("Transitioning to HA_NOTREADY (no peer in HA_READY)")
+				logger.GetLogger().Info("Required criteria failure: follower going not-ready")
 			}
 		} else {
-			haState = hav1.HA_STATE_HA_NOTREADY
+			svcState = hav1.SERVICE_STATE_SVC_SUCCESS
+			if len(n.Ha.Partners) > 0 && n.anyPeerCriteriaOk() {
+				haState = hav1.HA_STATE_HA_READY
+				if !n.Ha.EverReady {
+					n.Ha.EverReady = true
+					logger.GetLogger().Info("HA_READY reached for the first time")
+				}
+			} else if n.Ha.EverReady {
+				if n.anyPeerInHaReady() {
+					// At least one peer is still HA_READY — stay in active-active mode
+					haState = hav1.HA_STATE_HA_READY
+					logger.GetLogger().Debug("Staying in HA_READY (at least one peer still HA_READY)")
+				} else {
+					// No peer is HA_READY — no longer in active-active mode
+					haState = hav1.HA_STATE_HA_NOTREADY
+					n.Ha.EverReady = false
+					logger.GetLogger().Info("Transitioning to HA_NOTREADY (no peer in HA_READY)")
+				}
+			} else {
+				haState = hav1.HA_STATE_HA_NOTREADY
+			}
 		}
 	} else {
 		svcState = hav1.SERVICE_STATE_SVC_FAILURE

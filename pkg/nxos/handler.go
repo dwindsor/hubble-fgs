@@ -1241,6 +1241,8 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(ctx context.Context, items *mo
 				BulkSyncOk:  n.aggregateDpuBulkSync(),
 			}
 		}
+		// Push initial svc_unknown: adj not yet established for new peer.
+		n.setRemoteSvcState(ctx, pip)
 	}
 
 	select {

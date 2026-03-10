@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.28.1
 // 	protoc        v5.26.1
-// source: ha.proto
+// source: pkg/proto/ha/v1/ha.proto
 
 package v1
 
@@ -50,11 +50,11 @@ func (x ADJ_RESPONSE_STATUS) String() string {
 }
 
 func (ADJ_RESPONSE_STATUS) Descriptor() protoreflect.EnumDescriptor {
-	return file_ha_proto_enumTypes[0].Descriptor()
+	return file_pkg_proto_ha_v1_ha_proto_enumTypes[0].Descriptor()
 }
 
 func (ADJ_RESPONSE_STATUS) Type() protoreflect.EnumType {
-	return &file_ha_proto_enumTypes[0]
+	return &file_pkg_proto_ha_v1_ha_proto_enumTypes[0]
 }
 
 func (x ADJ_RESPONSE_STATUS) Number() protoreflect.EnumNumber {
@@ -63,7 +63,7 @@ func (x ADJ_RESPONSE_STATUS) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ADJ_RESPONSE_STATUS.Descriptor instead.
 func (ADJ_RESPONSE_STATUS) EnumDescriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{0}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{0}
 }
 
 type SERVICE_STATE int32
@@ -71,6 +71,7 @@ type SERVICE_STATE int32
 const (
 	SERVICE_STATE_SVC_SUCCESS SERVICE_STATE = 0
 	SERVICE_STATE_SVC_FAILURE SERVICE_STATE = 1
+	SERVICE_STATE_SVC_UNKNOWN SERVICE_STATE = 2
 )
 
 // Enum value maps for SERVICE_STATE.
@@ -78,10 +79,12 @@ var (
 	SERVICE_STATE_name = map[int32]string{
 		0: "SVC_SUCCESS",
 		1: "SVC_FAILURE",
+		2: "SVC_UNKNOWN",
 	}
 	SERVICE_STATE_value = map[string]int32{
 		"SVC_SUCCESS": 0,
 		"SVC_FAILURE": 1,
+		"SVC_UNKNOWN": 2,
 	}
 )
 
@@ -96,11 +99,11 @@ func (x SERVICE_STATE) String() string {
 }
 
 func (SERVICE_STATE) Descriptor() protoreflect.EnumDescriptor {
-	return file_ha_proto_enumTypes[1].Descriptor()
+	return file_pkg_proto_ha_v1_ha_proto_enumTypes[1].Descriptor()
 }
 
 func (SERVICE_STATE) Type() protoreflect.EnumType {
-	return &file_ha_proto_enumTypes[1]
+	return &file_pkg_proto_ha_v1_ha_proto_enumTypes[1]
 }
 
 func (x SERVICE_STATE) Number() protoreflect.EnumNumber {
@@ -109,7 +112,7 @@ func (x SERVICE_STATE) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SERVICE_STATE.Descriptor instead.
 func (SERVICE_STATE) EnumDescriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{1}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{1}
 }
 
 type HA_STATE int32
@@ -148,11 +151,11 @@ func (x HA_STATE) String() string {
 }
 
 func (HA_STATE) Descriptor() protoreflect.EnumDescriptor {
-	return file_ha_proto_enumTypes[2].Descriptor()
+	return file_pkg_proto_ha_v1_ha_proto_enumTypes[2].Descriptor()
 }
 
 func (HA_STATE) Type() protoreflect.EnumType {
-	return &file_ha_proto_enumTypes[2]
+	return &file_pkg_proto_ha_v1_ha_proto_enumTypes[2]
 }
 
 func (x HA_STATE) Number() protoreflect.EnumNumber {
@@ -161,7 +164,7 @@ func (x HA_STATE) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use HA_STATE.Descriptor instead.
 func (HA_STATE) EnumDescriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{2}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{2}
 }
 
 type MBR_STATE int32
@@ -197,11 +200,11 @@ func (x MBR_STATE) String() string {
 }
 
 func (MBR_STATE) Descriptor() protoreflect.EnumDescriptor {
-	return file_ha_proto_enumTypes[3].Descriptor()
+	return file_pkg_proto_ha_v1_ha_proto_enumTypes[3].Descriptor()
 }
 
 func (MBR_STATE) Type() protoreflect.EnumType {
-	return &file_ha_proto_enumTypes[3]
+	return &file_pkg_proto_ha_v1_ha_proto_enumTypes[3]
 }
 
 func (x MBR_STATE) Number() protoreflect.EnumNumber {
@@ -210,7 +213,7 @@ func (x MBR_STATE) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MBR_STATE.Descriptor instead.
 func (MBR_STATE) EnumDescriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{3}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{3}
 }
 
 type VrfInfo struct {
@@ -226,7 +229,7 @@ type VrfInfo struct {
 func (x *VrfInfo) Reset() {
 	*x = VrfInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[0]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -239,7 +242,7 @@ func (x *VrfInfo) String() string {
 func (*VrfInfo) ProtoMessage() {}
 
 func (x *VrfInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[0]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -252,7 +255,7 @@ func (x *VrfInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VrfInfo.ProtoReflect.Descriptor instead.
 func (*VrfInfo) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{0}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *VrfInfo) GetName() string {
@@ -288,7 +291,7 @@ type VlanInfo struct {
 func (x *VlanInfo) Reset() {
 	*x = VlanInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[1]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -301,7 +304,7 @@ func (x *VlanInfo) String() string {
 func (*VlanInfo) ProtoMessage() {}
 
 func (x *VlanInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[1]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -314,7 +317,7 @@ func (x *VlanInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VlanInfo.ProtoReflect.Descriptor instead.
 func (*VlanInfo) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{1}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *VlanInfo) GetId() uint32 {
@@ -343,7 +346,7 @@ type HaInfo struct {
 func (x *HaInfo) Reset() {
 	*x = HaInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[2]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -356,7 +359,7 @@ func (x *HaInfo) String() string {
 func (*HaInfo) ProtoMessage() {}
 
 func (x *HaInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[2]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -369,7 +372,7 @@ func (x *HaInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HaInfo.ProtoReflect.Descriptor instead.
 func (*HaInfo) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{2}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *HaInfo) GetService() SERVICE_STATE {
@@ -398,7 +401,7 @@ type DpuVer struct {
 func (x *DpuVer) Reset() {
 	*x = DpuVer{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[3]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -411,7 +414,7 @@ func (x *DpuVer) String() string {
 func (*DpuVer) ProtoMessage() {}
 
 func (x *DpuVer) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[3]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +427,7 @@ func (x *DpuVer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DpuVer.ProtoReflect.Descriptor instead.
 func (*DpuVer) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{3}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *DpuVer) GetName() string {
@@ -456,7 +459,7 @@ type SysInfo struct {
 func (x *SysInfo) Reset() {
 	*x = SysInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[4]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -469,7 +472,7 @@ func (x *SysInfo) String() string {
 func (*SysInfo) ProtoMessage() {}
 
 func (x *SysInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[4]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +485,7 @@ func (x *SysInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SysInfo.ProtoReflect.Descriptor instead.
 func (*SysInfo) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{4}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SysInfo) GetSerNum() string {
@@ -533,7 +536,7 @@ type PolInfo struct {
 func (x *PolInfo) Reset() {
 	*x = PolInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[5]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -546,7 +549,7 @@ func (x *PolInfo) String() string {
 func (*PolInfo) ProtoMessage() {}
 
 func (x *PolInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[5]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -559,7 +562,7 @@ func (x *PolInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolInfo.ProtoReflect.Descriptor instead.
 func (*PolInfo) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{5}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PolInfo) GetWatching() bool {
@@ -598,7 +601,7 @@ type MbrInfo struct {
 func (x *MbrInfo) Reset() {
 	*x = MbrInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[6]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -611,7 +614,7 @@ func (x *MbrInfo) String() string {
 func (*MbrInfo) ProtoMessage() {}
 
 func (x *MbrInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[6]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -624,7 +627,7 @@ func (x *MbrInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MbrInfo.ProtoReflect.Descriptor instead.
 func (*MbrInfo) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{6}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *MbrInfo) GetSysInfo() *SysInfo {
@@ -675,7 +678,7 @@ type AdjRequest struct {
 func (x *AdjRequest) Reset() {
 	*x = AdjRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[7]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -688,7 +691,7 @@ func (x *AdjRequest) String() string {
 func (*AdjRequest) ProtoMessage() {}
 
 func (x *AdjRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[7]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -701,7 +704,7 @@ func (x *AdjRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjRequest.ProtoReflect.Descriptor instead.
 func (*AdjRequest) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{7}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AdjRequest) GetTraceId() string {
@@ -739,7 +742,7 @@ type AdjResponse struct {
 func (x *AdjResponse) Reset() {
 	*x = AdjResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ha_proto_msgTypes[8]
+		mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -752,7 +755,7 @@ func (x *AdjResponse) String() string {
 func (*AdjResponse) ProtoMessage() {}
 
 func (x *AdjResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_ha_proto_msgTypes[8]
+	mi := &file_pkg_proto_ha_v1_ha_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -765,7 +768,7 @@ func (x *AdjResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjResponse.ProtoReflect.Descriptor instead.
 func (*AdjResponse) Descriptor() ([]byte, []int) {
-	return file_ha_proto_rawDescGZIP(), []int{8}
+	return file_pkg_proto_ha_v1_ha_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AdjResponse) GetStatus() ADJ_RESPONSE_STATUS {
@@ -796,10 +799,11 @@ func (x *AdjResponse) GetMbrInfo() *MbrInfo {
 	return nil
 }
 
-var File_ha_proto protoreflect.FileDescriptor
+var File_pkg_proto_ha_v1_ha_proto protoreflect.FileDescriptor
 
-var file_ha_proto_rawDesc = []byte{
-	0x0a, 0x08, 0x68, 0x61, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0b, 0x70, 0x72, 0x6f, 0x74,
+var file_pkg_proto_ha_v1_ha_proto_rawDesc = []byte{
+	0x0a, 0x18, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x68, 0x61, 0x2f, 0x76,
+	0x31, 0x2f, 0x68, 0x61, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0b, 0x70, 0x72, 0x6f, 0x74,
 	0x6f, 0x2e, 0x68, 0x61, 0x2e, 0x76, 0x31, 0x22, 0x3f, 0x0a, 0x07, 0x56, 0x72, 0x66, 0x49, 0x6e,
 	0x66, 0x6f, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
 	0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
@@ -869,43 +873,44 @@ var file_ha_proto_rawDesc = []byte{
 	0x5f, 0x52, 0x45, 0x53, 0x50, 0x4f, 0x4e, 0x53, 0x45, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53,
 	0x12, 0x0f, 0x0a, 0x0b, 0x41, 0x44, 0x4a, 0x5f, 0x53, 0x55, 0x43, 0x43, 0x45, 0x53, 0x53, 0x10,
 	0x00, 0x12, 0x0f, 0x0a, 0x0b, 0x41, 0x44, 0x4a, 0x5f, 0x46, 0x41, 0x49, 0x4c, 0x55, 0x52, 0x45,
-	0x10, 0x01, 0x2a, 0x31, 0x0a, 0x0d, 0x53, 0x45, 0x52, 0x56, 0x49, 0x43, 0x45, 0x5f, 0x53, 0x54,
+	0x10, 0x01, 0x2a, 0x42, 0x0a, 0x0d, 0x53, 0x45, 0x52, 0x56, 0x49, 0x43, 0x45, 0x5f, 0x53, 0x54,
 	0x41, 0x54, 0x45, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x56, 0x43, 0x5f, 0x53, 0x55, 0x43, 0x43, 0x45,
 	0x53, 0x53, 0x10, 0x00, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x56, 0x43, 0x5f, 0x46, 0x41, 0x49, 0x4c,
-	0x55, 0x52, 0x45, 0x10, 0x01, 0x2a, 0x47, 0x0a, 0x08, 0x48, 0x41, 0x5f, 0x53, 0x54, 0x41, 0x54,
-	0x45, 0x12, 0x09, 0x0a, 0x05, 0x4e, 0x4f, 0x5f, 0x48, 0x41, 0x10, 0x00, 0x12, 0x0c, 0x0a, 0x08,
-	0x48, 0x41, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x59, 0x10, 0x01, 0x12, 0x0f, 0x0a, 0x0b, 0x48, 0x41,
-	0x5f, 0x4e, 0x4f, 0x54, 0x52, 0x45, 0x41, 0x44, 0x59, 0x10, 0x02, 0x12, 0x11, 0x0a, 0x0d, 0x48,
-	0x41, 0x5f, 0x53, 0x57, 0x49, 0x54, 0x43, 0x48, 0x4f, 0x56, 0x45, 0x52, 0x10, 0x03, 0x2a, 0x2e,
-	0x0a, 0x09, 0x4d, 0x42, 0x52, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x45, 0x12, 0x09, 0x0a, 0x05, 0x48,
-	0x41, 0x5f, 0x4e, 0x41, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x48, 0x41, 0x5f, 0x4f, 0x4b, 0x10,
-	0x01, 0x12, 0x0b, 0x0a, 0x07, 0x48, 0x41, 0x5f, 0x46, 0x41, 0x49, 0x4c, 0x10, 0x02, 0x32, 0x46,
-	0x0a, 0x02, 0x48, 0x61, 0x12, 0x40, 0x0a, 0x09, 0x41, 0x64, 0x6a, 0x61, 0x63, 0x65, 0x6e, 0x63,
-	0x79, 0x12, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x68, 0x61, 0x2e, 0x76, 0x31, 0x2e,
-	0x41, 0x64, 0x6a, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x18, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2e, 0x68, 0x61, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x64, 0x6a, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x31, 0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x69, 0x73, 0x6f, 0x76, 0x61, 0x6c, 0x65, 0x6e, 0x74, 0x2f, 0x68,
-	0x75, 0x62, 0x62, 0x6c, 0x65, 0x2d, 0x66, 0x67, 0x73, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x2f, 0x68, 0x61, 0x2f, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x55, 0x52, 0x45, 0x10, 0x01, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x56, 0x43, 0x5f, 0x55, 0x4e, 0x4b,
+	0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x02, 0x2a, 0x47, 0x0a, 0x08, 0x48, 0x41, 0x5f, 0x53, 0x54, 0x41,
+	0x54, 0x45, 0x12, 0x09, 0x0a, 0x05, 0x4e, 0x4f, 0x5f, 0x48, 0x41, 0x10, 0x00, 0x12, 0x0c, 0x0a,
+	0x08, 0x48, 0x41, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x59, 0x10, 0x01, 0x12, 0x0f, 0x0a, 0x0b, 0x48,
+	0x41, 0x5f, 0x4e, 0x4f, 0x54, 0x52, 0x45, 0x41, 0x44, 0x59, 0x10, 0x02, 0x12, 0x11, 0x0a, 0x0d,
+	0x48, 0x41, 0x5f, 0x53, 0x57, 0x49, 0x54, 0x43, 0x48, 0x4f, 0x56, 0x45, 0x52, 0x10, 0x03, 0x2a,
+	0x2e, 0x0a, 0x09, 0x4d, 0x42, 0x52, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x45, 0x12, 0x09, 0x0a, 0x05,
+	0x48, 0x41, 0x5f, 0x4e, 0x41, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x48, 0x41, 0x5f, 0x4f, 0x4b,
+	0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x48, 0x41, 0x5f, 0x46, 0x41, 0x49, 0x4c, 0x10, 0x02, 0x32,
+	0x46, 0x0a, 0x02, 0x48, 0x61, 0x12, 0x40, 0x0a, 0x09, 0x41, 0x64, 0x6a, 0x61, 0x63, 0x65, 0x6e,
+	0x63, 0x79, 0x12, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x68, 0x61, 0x2e, 0x76, 0x31,
+	0x2e, 0x41, 0x64, 0x6a, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x18, 0x2e, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x2e, 0x68, 0x61, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x64, 0x6a, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x31, 0x5a, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x69, 0x73, 0x6f, 0x76, 0x61, 0x6c, 0x65, 0x6e, 0x74, 0x2f,
+	0x68, 0x75, 0x62, 0x62, 0x6c, 0x65, 0x2d, 0x66, 0x67, 0x73, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x68, 0x61, 0x2f, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
-	file_ha_proto_rawDescOnce sync.Once
-	file_ha_proto_rawDescData = file_ha_proto_rawDesc
+	file_pkg_proto_ha_v1_ha_proto_rawDescOnce sync.Once
+	file_pkg_proto_ha_v1_ha_proto_rawDescData = file_pkg_proto_ha_v1_ha_proto_rawDesc
 )
 
-func file_ha_proto_rawDescGZIP() []byte {
-	file_ha_proto_rawDescOnce.Do(func() {
-		file_ha_proto_rawDescData = protoimpl.X.CompressGZIP(file_ha_proto_rawDescData)
+func file_pkg_proto_ha_v1_ha_proto_rawDescGZIP() []byte {
+	file_pkg_proto_ha_v1_ha_proto_rawDescOnce.Do(func() {
+		file_pkg_proto_ha_v1_ha_proto_rawDescData = protoimpl.X.CompressGZIP(file_pkg_proto_ha_v1_ha_proto_rawDescData)
 	})
-	return file_ha_proto_rawDescData
+	return file_pkg_proto_ha_v1_ha_proto_rawDescData
 }
 
-var file_ha_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_ha_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_ha_proto_goTypes = []interface{}{
+var file_pkg_proto_ha_v1_ha_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_pkg_proto_ha_v1_ha_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_pkg_proto_ha_v1_ha_proto_goTypes = []interface{}{
 	(ADJ_RESPONSE_STATUS)(0), // 0: proto.ha.v1.ADJ_RESPONSE_STATUS
 	(SERVICE_STATE)(0),       // 1: proto.ha.v1.SERVICE_STATE
 	(HA_STATE)(0),            // 2: proto.ha.v1.HA_STATE
@@ -920,7 +925,7 @@ var file_ha_proto_goTypes = []interface{}{
 	(*AdjRequest)(nil),       // 11: proto.ha.v1.AdjRequest
 	(*AdjResponse)(nil),      // 12: proto.ha.v1.AdjResponse
 }
-var file_ha_proto_depIdxs = []int32{
+var file_pkg_proto_ha_v1_ha_proto_depIdxs = []int32{
 	1,  // 0: proto.ha.v1.HaInfo.service:type_name -> proto.ha.v1.SERVICE_STATE
 	2,  // 1: proto.ha.v1.HaInfo.ha:type_name -> proto.ha.v1.HA_STATE
 	7,  // 2: proto.ha.v1.SysInfo.dpus:type_name -> proto.ha.v1.DpuVer
@@ -941,13 +946,13 @@ var file_ha_proto_depIdxs = []int32{
 	0,  // [0:11] is the sub-list for field type_name
 }
 
-func init() { file_ha_proto_init() }
-func file_ha_proto_init() {
-	if File_ha_proto != nil {
+func init() { file_pkg_proto_ha_v1_ha_proto_init() }
+func file_pkg_proto_ha_v1_ha_proto_init() {
+	if File_pkg_proto_ha_v1_ha_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_ha_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*VrfInfo); i {
 			case 0:
 				return &v.state
@@ -959,7 +964,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*VlanInfo); i {
 			case 0:
 				return &v.state
@@ -971,7 +976,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*HaInfo); i {
 			case 0:
 				return &v.state
@@ -983,7 +988,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DpuVer); i {
 			case 0:
 				return &v.state
@@ -995,7 +1000,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*SysInfo); i {
 			case 0:
 				return &v.state
@@ -1007,7 +1012,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PolInfo); i {
 			case 0:
 				return &v.state
@@ -1019,7 +1024,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*MbrInfo); i {
 			case 0:
 				return &v.state
@@ -1031,7 +1036,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AdjRequest); i {
 			case 0:
 				return &v.state
@@ -1043,7 +1048,7 @@ func file_ha_proto_init() {
 				return nil
 			}
 		}
-		file_ha_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+		file_pkg_proto_ha_v1_ha_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AdjResponse); i {
 			case 0:
 				return &v.state
@@ -1060,19 +1065,19 @@ func file_ha_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_ha_proto_rawDesc,
+			RawDescriptor: file_pkg_proto_ha_v1_ha_proto_rawDesc,
 			NumEnums:      4,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_ha_proto_goTypes,
-		DependencyIndexes: file_ha_proto_depIdxs,
-		EnumInfos:         file_ha_proto_enumTypes,
-		MessageInfos:      file_ha_proto_msgTypes,
+		GoTypes:           file_pkg_proto_ha_v1_ha_proto_goTypes,
+		DependencyIndexes: file_pkg_proto_ha_v1_ha_proto_depIdxs,
+		EnumInfos:         file_pkg_proto_ha_v1_ha_proto_enumTypes,
+		MessageInfos:      file_pkg_proto_ha_v1_ha_proto_msgTypes,
 	}.Build()
-	File_ha_proto = out.File
-	file_ha_proto_rawDesc = nil
-	file_ha_proto_goTypes = nil
-	file_ha_proto_depIdxs = nil
+	File_pkg_proto_ha_v1_ha_proto = out.File
+	file_pkg_proto_ha_v1_ha_proto_rawDesc = nil
+	file_pkg_proto_ha_v1_ha_proto_goTypes = nil
+	file_pkg_proto_ha_v1_ha_proto_depIdxs = nil
 }

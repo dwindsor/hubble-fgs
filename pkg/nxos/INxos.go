@@ -70,10 +70,18 @@ type Alloc struct {
 }
 
 type HaPeer struct {
-	SkipAuth    bool
-	IpConfigOk  bool
-	State       hav1.MBR_STATE
-	StateReason string // reason for HA_FAIL state
+	SkipAuth           bool
+	IpConfigOk         bool
+	State              hav1.MBR_STATE
+	StateReason        string // reason for HA_FAIL state
+	IsRequiredCritFail bool   // model/version mismatch: HA can never work
+}
+
+// MbrValidationResult holds the outcome of peer MbrInfo validation.
+type MbrValidationResult struct {
+	IsDel              bool   // true if peer failed validation
+	Reason             string // human-readable failure reason
+	IsRequiredCritFail bool   // true for hard failures (model/version mismatch)
 }
 
 type HaAdj struct {

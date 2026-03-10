@@ -85,9 +85,17 @@ func (s *haServer) Adjacency(_ context.Context, req *hav1.AdjRequest) (*hav1.Adj
 		}, nil
 	}
 
-	nxos.Nexus.HaSetMbrInfo(s.Ctx, req.HaIp, *req.MbrInfo)
+	result := nxos.Nexus.HaSetMbrInfo(s.Ctx, req.HaIp, *req.MbrInfo)
 	nxos.Nexus.HaReconcile(s.Ctx, req.HaIp, *req.MbrInfo)
 	info := nxos.Nexus.HaGetMbrInfo(s.Ctx, req.HaIp, true)
+
+	if result.IsRequiredCritFail {
+		return &hav1.AdjResponse{
+			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
+			Details: result.Reason,
+			MbrInfo: &info,
+		}, nil
+	}
 
 	return &hav1.AdjResponse{
 		Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS,

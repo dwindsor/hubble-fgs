@@ -267,6 +267,9 @@ func (n *Nxos) getLocalSvcState(ctx context.Context) {
 
 			case model.Cisco_NX_OSDevice_SasSvcStateE_not_ready:
 
+			case model.Cisco_NX_OSDevice_SasSvcStateE_unknown:
+				n.Ha.NxStates.SvcState = hav1.SERVICE_STATE_SVC_UNKNOWN
+
 			default:
 				logger.GetLogger().Debug("unexpected LocalSvcState")
 			}

@@ -17,6 +17,7 @@ enum ADJ_RESPONSE_STATUS {
 enum SERVICE_STATE {
     SVC_SUCCESS = 0;
     SVC_FAILURE = 1;
+    SVC_UNKNOWN = 2;
 }
 
 enum HA_STATE {
