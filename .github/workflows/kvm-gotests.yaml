@@ -29,31 +29,31 @@ jobs:
             runner_labels: ${{ vars.KVM_GH_RUNNER_ARM64 }}
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "rhel8.10-20260302.013533"
+          - "rhel8.10-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "bpf-next-20260302.013533"
+          - "bpf-next-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.18-20260302.013533"
+          - "6.18-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.12-20260302.013533"
+          - "6.12-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20260302.013533"
+          - "6.6-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20260302.013533"
+          - "6.1-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20260302.013533"
+          - "5.15-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20260302.013533"
+          - "5.10-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.4-20260302.013533"
+          - "5.4-20260310.110651"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20260302.013533"
+          - "4.19-20260310.110651"
         # TODO: temporarily disable testing for 4.19 and 5.4 kernels
         # The excluded kernels require more test failure investigation
         exclude:
           - arch: arm64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "rhel8.10-20260302.013533" # currently not supported on ARM64
+            kernel: "rhel8.10-20260310.110651" # currently not supported on ARM64
     runs-on: ${{ matrix.runner_labels }}
     permissions:
       contents: read
@@ -94,12 +94,6 @@ jobs:
             systemd-detect-virt
             systemd-detect-virt | grep -Eiq 'kvm|qemu' || { echo 'No KVM or QEMU support detected! Bailing out...'; exit 1; }
 
-            # latest systemd-resolved is broken (at least on some kernels). Save the DNS server in a
-            # static resolv.conf (see also below)
-            resolvectl dns
-            srv=\$(resolvectl dns | sed -ne 's/^[^:]\+: //p' | head -1)
-            echo "nameserver \$srv" | tee > /etc/resolv.conf.static
-
             # copy btf file
             mkdir -p bpf/objs
             ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
@@ -126,11 +120,6 @@ jobs:
             if [[ "${{ matrix.kernel }}" == rhel* ]]; then
               service ssh restart
             fi
-
-            # latest systemd-resolved is broken (at least on some kernels).
-            # use the static resolve.conf if we cannot resolve and also create a file so that we can
-            # skip tests that depend on DNS.
-            host cilium.io > /dev/null || cp /etc/resolv.conf.static /etc/resolv.conf && touch /etc/DNS_IS_BROKEN
 
       - name: Run Tests
         uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
