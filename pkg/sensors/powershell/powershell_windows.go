@@ -19,6 +19,7 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/cilium/tetragon/pkg/observer"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
@@ -248,10 +249,8 @@ func tailPSEventsCallback() (cancel func(), err error) {
 		for {
 			select {
 			case xml := <-psEventXMLCh:
-				//fmt.Printf("  XML:: \n****************\n%s\n****************\n", xml)
 				eid := firstMatch(reEventID, xml)
 
-				//fmt.Printf("\nEventID=%s\n", eid)
 				if eid == "4103" {
 					event, err := parseEvent(xml)
 					if err != nil {
@@ -259,24 +258,13 @@ func tailPSEventsCallback() (cancel func(), err error) {
 						return
 					}
 
-					psEvent, err := toPowerShellEvent(event)
+					pwshEvent, err := toPowerShellEvent(event)
 					if err != nil {
 						fmt.Println("Conversion error:", err)
 						continue
 					}
+					observer.AllListeners(pwshEvent)
 
-					fmt.Printf("EventID:        %d\n", psEvent.windowsEvent.EventID)
-					fmt.Printf("Pid:            %d\n", psEvent.windowsEvent.Pid)
-					fmt.Printf("Tid:            %d\n", psEvent.windowsEvent.Tid)
-					fmt.Printf("Uid:            %d\n", psEvent.windowsEvent.Uid)
-					fmt.Printf("Ktime:          %d\n", psEvent.windowsEvent.Ktime)
-					fmt.Printf("PowerShellPath: %s\n", psEvent.PowerShellPath)
-					fmt.Printf("EngineVersion:  %s\n", psEvent.EngineVersion)
-					fmt.Printf("CommandName:    %s\n", psEvent.CommandName)
-					fmt.Printf("ScriptPath:     %s\n", psEvent.ScriptPath)
-					fmt.Printf("Payload:        %s\n", psEvent.Payload)
-					fmt.Printf("ScriptBlockText:%s\n", psEvent.ScriptBlockText)
-					fmt.Printf("CommandLine:    %s\n", psEvent.CommandLine)
 				}
 				if eid == "4104" {
 					event, err := parseEvent(xml)
@@ -285,18 +273,13 @@ func tailPSEventsCallback() (cancel func(), err error) {
 						return
 					}
 
-					psEvent, err := toPowerShellCmdEvent(event)
+					pwshEvent, err := toPowerShellCmdEvent(event)
 					if err != nil {
 						fmt.Println("Conversion error:", err)
 						continue
 					}
+					observer.AllListeners(pwshEvent)
 
-					fmt.Printf("EventID:        %d\n", psEvent.windowsEvent.EventID)
-					fmt.Printf("Pid:            %d\n", psEvent.windowsEvent.Pid)
-					fmt.Printf("Tid:            %d\n", psEvent.windowsEvent.Tid)
-					fmt.Printf("Uid:            %d\n", psEvent.windowsEvent.Uid)
-					fmt.Printf("Ktime:          %d\n", psEvent.windowsEvent.Ktime)
-					fmt.Printf("ScriptBlockText:%s\n", psEvent.ScriptBlockText)
 				}
 
 			case <-done:

@@ -22,6 +22,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/powershellapi"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/pwshproto"
 )
 
 type System struct {
@@ -66,31 +68,6 @@ type Event struct {
 	EventData EventData `xml:"EventData"`
 }
 
-type WindowsEvent struct {
-	EventID int
-	Pid     uint64
-	Tid     uint64
-	Uid     uint32
-}
-
-type PowerShellEvent struct {
-	Common          processapi.MsgCommon
-	WinEvent        WindowsEvent
-	ScriptBlockText string
-	CommandLine     string
-	ScriptPath      string
-	PowerShellPath  string
-	EngineVersion   string
-	CommandName     string
-	Payload         string
-}
-
-type PowerShellCmdEvent struct {
-	Common          processapi.MsgCommon
-	WinEvent        WindowsEvent
-	ScriptBlockText string
-}
-
 func parseEvent(xmlData string) (*Event, error) {
 	var event Event
 	if err := xml.Unmarshal([]byte(xmlData), &event); err != nil {
@@ -109,11 +86,17 @@ func parseContextInfo(raw string) map[string]string {
 
 	// Known keys in order — used to split the flat string into segments.
 	knownKeys := []string{
+		"Host Application",
 		"Engine Version",
+		"Runspace ID",
 		"Command Name",
 		"Command Type",
 		"Script Name",
 		"Command Path",
+		"Sequence Number",
+		"User",
+		"Connected User",
+		"Shell ID",
 	}
 
 	// Build a regex that matches any known key followed by " = "
@@ -175,7 +158,7 @@ func uidFromSID(sid string) uint32 {
 	return uint32(rid)
 }
 
-func toPowerShellEvent(e *Event) (*PowerShellEvent, error) {
+func toPowerShellEvent(e *Event) (*pwshproto.MsgPowerShellEvent, error) {
 	// Index EventData by Name for easy lookup
 	dataMap := make(map[string]string)
 	for _, d := range e.EventData.Data {
@@ -184,14 +167,17 @@ func toPowerShellEvent(e *Event) (*PowerShellEvent, error) {
 
 	ctx := parseContextInfo(dataMap["ContextInfo"])
 
-	psEvent := &PowerShellEvent{
+	psEvent := powershellapi.MsgPowerShellEvent{
 		Common: processapi.MsgCommon{
-			Op:    ops.MSG_OP_POWERSHELL,
+			Op:    ops.MSG_OP_POWERSHELL_BLOCK,
 			Ktime: timeToKernelNs(e.System.TimeCreated.SystemTime)},
-		WinEvent: WindowsEvent{
+		ProcessKey: processapi.MsgExecveKey{
+			Pid:   uint32(e.System.Execution.ProcessID),
+			Ktime: timeToKernelNs(e.System.TimeCreated.SystemTime),
+		},
+		WinEvent: powershellapi.WindowsEvent{
 			EventID: e.System.EventID,
-			Pid:     uint64(e.System.Execution.ProcessID),
-			Tid:     uint64(e.System.Execution.ThreadID),
+			Tid:     uint32(e.System.Execution.ThreadID),
 			Uid:     uidFromSID(e.System.Security.UserID),
 		},
 		ScriptBlockText: dataMap["ScriptBlockText"],
@@ -201,30 +187,35 @@ func toPowerShellEvent(e *Event) (*PowerShellEvent, error) {
 		CommandName:     ctx["Command Name"],
 		ScriptPath:      ctx["Script Name"],
 	}
+	pwshEvent := &pwshproto.MsgPowerShellEvent{Msg: &psEvent}
 
-	return psEvent, nil
+	return pwshEvent, nil
 }
 
-func toPowerShellCmdEvent(e *Event) (*PowerShellCmdEvent, error) {
+func toPowerShellCmdEvent(e *Event) (*pwshproto.MsgPowerShellEvent, error) {
 	// Index EventData by Name for easy lookup
 	dataMap := make(map[string]string)
 	for _, d := range e.EventData.Data {
 		dataMap[d.Name] = strings.TrimSpace(d.Value)
 	}
 
-	psEvent := &PowerShellCmdEvent{
+	psEvent := powershellapi.MsgPowerShellEvent{
 		Common: processapi.MsgCommon{
-			Op:    ops.MSG_OP_POWERSHELL,
+			Op:    ops.MSG_OP_POWERSHELL_BLOCK,
 			Ktime: timeToKernelNs(e.System.TimeCreated.SystemTime)},
-		WinEvent: WindowsEvent{
+		ProcessKey: processapi.MsgExecveKey{
+			Pid:   uint32(e.System.Execution.ProcessID),
+			Ktime: timeToKernelNs(e.System.TimeCreated.SystemTime),
+		},
+		WinEvent: powershellapi.WindowsEvent{
 			EventID: e.System.EventID,
-			Pid:     uint64(e.System.Execution.ProcessID),
-			Tid:     uint64(e.System.Execution.ThreadID),
+			Tid:     uint32(e.System.Execution.ThreadID),
 			Uid:     uidFromSID(e.System.Security.UserID),
 		},
-
-		ScriptBlockText: dataMap["ScriptBlockText"],
+		Payload: dataMap["ScriptBlockText"],
 	}
 
-	return psEvent, nil
+	pwshEvent := &pwshproto.MsgPowerShellEvent{Msg: &psEvent}
+
+	return pwshEvent, nil
 }
