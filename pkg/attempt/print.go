@@ -28,7 +28,8 @@ var (
 )
 
 type PrintCfg struct {
-	PrintAll bool // do not try and detect repeats
+	PrintAll     bool // do not try and detect repeats
+	PrintEntries bool // by default we print attempt entries only if there was an error. Setting this option means that entries are always printed.
 }
 
 func resultString(r *api.AttemptResult) (mark, errmsg string) {
@@ -61,6 +62,7 @@ func infoString(errmsg string, res *api.Attempt) string {
 	return msg
 }
 
+// Print prints the attempt log
 func Print(o io.Writer, res *api.AttemptLog, cfg PrintCfg) {
 
 	if res.Failures == 0 {
@@ -95,7 +97,7 @@ func Print(o io.Writer, res *api.AttemptLog, cfg PrintCfg) {
 		}
 		fmt.Fprintf(o, "[+%-5s] %s %-16s %s\n", timeFn(e), mark, e.Op, msg)
 
-		if !e.Res.Success {
+		if !e.Res.Success || cfg.PrintEntries {
 			for _, se := range e.Entries {
 				smark, serrmsg := resultString(se.Res)
 				smsg := infoString(serrmsg, se)

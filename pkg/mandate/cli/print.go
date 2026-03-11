@@ -24,8 +24,9 @@ import (
 )
 
 type PrintConfig struct {
-	AttemptsLog bool
-	PrintAll    bool
+	AttemptsLog  bool
+	PrintAll     bool
+	PrintEntries bool
 }
 
 func Print(o io.Writer, res *api.GetMandateStatusRes, cfg PrintConfig) {
@@ -50,8 +51,10 @@ func Print(o io.Writer, res *api.GetMandateStatusRes, cfg PrintConfig) {
 	if log == nil {
 		return
 	}
+
 	if cfg.AttemptsLog {
-		attempt.Print(o, res.Log, attempt.PrintCfg{PrintAll: cfg.PrintAll})
+		// if user ask to primpt all attempts, do so
+		attempt.Print(o, res.Log, attempt.PrintCfg{PrintAll: cfg.PrintAll, PrintEntries: cfg.PrintEntries})
 	} else if len(log.Entries) > 0 {
 		// by default, just print the latest entry if there was an error
 		e0 := log.Entries[len(log.Entries)-1]
@@ -62,7 +65,7 @@ func Print(o io.Writer, res *api.GetMandateStatusRes, cfg PrintConfig) {
 				Failures: log.Failures,
 				Entries:  log.Entries[len(log.Entries)-1:],
 			}
-			attempt.Print(o, minLog, attempt.PrintCfg{PrintAll: false})
+			attempt.Print(o, minLog, attempt.PrintCfg{PrintAll: false, PrintEntries: cfg.PrintEntries})
 		}
 	}
 }

@@ -33,6 +33,7 @@ func statusCmd() *cobra.Command {
 	var output string
 	var attemptsLog bool
 	var printAll bool
+	var printEntries bool
 	ret := &cobra.Command{
 		Use:          "status",
 		Short:        "mandate status",
@@ -68,8 +69,9 @@ func statusCmd() *cobra.Command {
 
 			case "text":
 				cnf := cli.PrintConfig{
-					AttemptsLog: attemptsLog,
-					PrintAll:    printAll,
+					AttemptsLog:  attemptsLog,
+					PrintAll:     printAll,
+					PrintEntries: printEntries,
 				}
 				cli.Print(os.Stdout, res, cnf)
 			}
@@ -92,7 +94,8 @@ func statusCmd() *cobra.Command {
 	flags := ret.Flags()
 	flags.StringVarP(&output, "output", "o", "text", "Specify the output format: text|json")
 	flags.BoolVar(&attemptsLog, "attempts-log", false, "Print attempts log")
-	flags.BoolVar(&printAll, "print-all", false, "Print all entries in the attempts log")
+	flags.BoolVar(&printAll, "print-all", false, "Print all attempts (do not attempt to detect repeats)")
+	flags.BoolVar(&printEntries, "print-entries", false, "Print all entries in attempts (not only on failed attempts)")
 	return ret
 
 }
