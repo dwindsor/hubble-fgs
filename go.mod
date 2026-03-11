@@ -4,10 +4,10 @@ go 1.26.0
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
-	github.com/aws/aws-sdk-go-v2 v1.41.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.6
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.16
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.0
+	github.com/aws/aws-sdk-go-v2 v1.41.3
+	github.com/aws/aws-sdk-go-v2/config v1.32.11
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.19
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.2
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.18.4
 	github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
@@ -16,15 +16,15 @@ require (
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
-	github.com/containerd/containerd/v2 v2.2.1
+	github.com/containerd/containerd/v2 v2.2.2
 	github.com/containernetworking/plugins v1.9.0
-	github.com/cri-o/cri-o v1.34.3
+	github.com/cri-o/cri-o v1.34.6
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/go-logr/logr v1.4.3
-	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v1.0.0
 	github.com/google/cel-go v0.26.1
@@ -37,20 +37,20 @@ require (
 	github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260212220503-f8352aa1affd
 	github.com/joho/godotenv v1.5.1
 	github.com/mennanov/fieldmask-utils v1.1.4
-	github.com/miekg/dns v1.1.69
+	github.com/miekg/dns v1.1.72
 	github.com/moby/go-archive v0.1.0
 	github.com/openconfig/gnmi v0.14.1
-	github.com/openconfig/gnmic/pkg/api v0.1.9
+	github.com/openconfig/gnmic/pkg/api v0.1.11
 	github.com/openconfig/goyang v1.6.3
 	github.com/openconfig/ygot v0.34.0
 	github.com/operator-framework/api v0.36.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.87.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.87.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/prometheus v0.309.1
 	github.com/rivo/tview v0.42.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -67,7 +67,7 @@ require (
 	golang.org/x/sys v0.40.0
 	golang.org/x/time v0.14.0
 	google.golang.org/api v0.257.0
-	google.golang.org/grpc v1.79.1
+	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.35.2
@@ -78,7 +78,7 @@ require (
 	k8s.io/code-generator v0.35.2
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
-	sigs.k8s.io/controller-runtime v0.23.1
+	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/controller-tools v0.20.1
 	sigs.k8s.io/e2e-framework v0.6.0
 	sigs.k8s.io/yaml v1.6.0
@@ -94,22 +94,22 @@ require (
 	github.com/Microsoft/hcsshim v0.14.0-rc.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.6 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.16 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.16 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.0.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.12 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5 // indirect
-	github.com/aws/smithy-go v1.24.0 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.11 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.19 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.19 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.5 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.0.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.41.8 // indirect
+	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/bufbuild/protocompile v0.13.0 // indirect
+	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/cilium/hive v0.0.0-20250611195437-5a5dacdfb354 // indirect
 	github.com/containerd/cgroups/v3 v3.1.3 // indirect
 	github.com/containerd/containerd/api v1.10.0 // indirect
@@ -154,7 +154,7 @@ require (
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/isovalent/metricstool v0.1.4 // indirect
-	github.com/jhump/protoreflect v1.16.0 // indirect
+	github.com/jhump/protoreflect v1.17.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect

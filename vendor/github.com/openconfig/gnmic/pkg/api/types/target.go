@@ -12,7 +12,10 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -118,45 +121,51 @@ var defaultCipherSuitesTLS13 = []uint16{
 
 // TargetConfig //
 type TargetConfig struct {
-	Name          string            `mapstructure:"name,omitempty" yaml:"name,omitempty" json:"name,omitempty"`
-	Address       string            `mapstructure:"address,omitempty" yaml:"address,omitempty" json:"address,omitempty"`
-	Username      *string           `mapstructure:"username,omitempty" yaml:"username,omitempty" json:"username,omitempty"`
-	Password      *string           `mapstructure:"password,omitempty" yaml:"password,omitempty" json:"password,omitempty"`
-	AuthScheme    string            `mapstructure:"auth-scheme,omitempty" yaml:"auth-scheme,omitempty" json:"auth-scheme,omitempty"`
-	Timeout       time.Duration     `mapstructure:"timeout,omitempty" yaml:"timeout,omitempty" json:"timeout,omitempty"`
-	Insecure      *bool             `mapstructure:"insecure,omitempty" yaml:"insecure,omitempty" json:"insecure,omitempty"`
-	TLSCA         *string           `mapstructure:"tls-ca,omitempty" yaml:"tls-ca,omitempty" json:"tls-ca,omitempty"`
-	TLSCert       *string           `mapstructure:"tls-cert,omitempty" yaml:"tls-cert,omitempty" json:"tls-cert,omitempty"`
-	TLSKey        *string           `mapstructure:"tls-key,omitempty" yaml:"tls-key,omitempty" json:"tls-key,omitempty"`
-	SkipVerify    *bool             `mapstructure:"skip-verify,omitempty" yaml:"skip-verify,omitempty" json:"skip-verify,omitempty"`
-	TLSServerName string            `mapstructure:"tls-server-name,omitempty" yaml:"tls-server-name,omitempty" json:"tls-server-name,omitempty"`
-	Subscriptions []string          `mapstructure:"subscriptions,omitempty" yaml:"subscriptions,omitempty" json:"subscriptions,omitempty"`
-	Outputs       []string          `mapstructure:"outputs,omitempty" yaml:"outputs,omitempty" json:"outputs,omitempty"`
-	BufferSize    uint              `mapstructure:"buffer-size,omitempty" yaml:"buffer-size,omitempty" json:"buffer-size,omitempty"`
-	RetryTimer    time.Duration     `mapstructure:"retry,omitempty" yaml:"retry-timer,omitempty" json:"retry-timer,omitempty"`
-	TLSMinVersion string            `mapstructure:"tls-min-version,omitempty" yaml:"tls-min-version,omitempty" json:"tls-min-version,omitempty"`
-	TLSMaxVersion string            `mapstructure:"tls-max-version,omitempty" yaml:"tls-max-version,omitempty" json:"tls-max-version,omitempty"`
-	TLSVersion    string            `mapstructure:"tls-version,omitempty" yaml:"tls-version,omitempty" json:"tls-version,omitempty"`
-	LogTLSSecret  *bool             `mapstructure:"log-tls-secret,omitempty" yaml:"log-tls-secret,omitempty" json:"log-tls-secret,omitempty"`
-	ProtoFiles    []string          `mapstructure:"proto-files,omitempty" yaml:"proto-files,omitempty" json:"proto-files,omitempty"`
-	ProtoDirs     []string          `mapstructure:"proto-dirs,omitempty" yaml:"proto-dirs,omitempty" json:"proto-dirs,omitempty"`
-	Tags          []string          `mapstructure:"tags,omitempty" yaml:"tags,omitempty" json:"tags,omitempty"`
-	EventTags     map[string]string `mapstructure:"event-tags,omitempty" yaml:"event-tags,omitempty" json:"event-tags,omitempty"`
-	Gzip          *bool             `mapstructure:"gzip,omitempty" yaml:"gzip,omitempty" json:"gzip,omitempty"`
-	Token         *string           `mapstructure:"token,omitempty" yaml:"token,omitempty" json:"token,omitempty"`
-	Proxy         string            `mapstructure:"proxy,omitempty" yaml:"proxy,omitempty" json:"proxy,omitempty"`
+	Name                       string            `mapstructure:"name,omitempty" yaml:"name,omitempty" json:"name,omitempty"`
+	Address                    string            `mapstructure:"address,omitempty" yaml:"address,omitempty" json:"address,omitempty"`
+	Username                   *string           `mapstructure:"username,omitempty" yaml:"username,omitempty" json:"username,omitempty"`
+	Password                   *string           `mapstructure:"password,omitempty" yaml:"password,omitempty" json:"password,omitempty"`
+	AuthScheme                 string            `mapstructure:"auth-scheme,omitempty" yaml:"auth-scheme,omitempty" json:"auth-scheme,omitempty"`
+	Timeout                    time.Duration     `mapstructure:"timeout,omitempty" yaml:"timeout,omitempty" json:"timeout,omitempty"`
+	Insecure                   *bool             `mapstructure:"insecure,omitempty" yaml:"insecure,omitempty" json:"insecure,omitempty"`
+	TLSCA                      *string           `mapstructure:"tls-ca,omitempty" yaml:"tls-ca,omitempty" json:"tls-ca,omitempty"`
+	TLSCert                    *string           `mapstructure:"tls-cert,omitempty" yaml:"tls-cert,omitempty" json:"tls-cert,omitempty"`
+	TLSKey                     *string           `mapstructure:"tls-key,omitempty" yaml:"tls-key,omitempty" json:"tls-key,omitempty"`
+	SkipVerify                 *bool             `mapstructure:"skip-verify,omitempty" yaml:"skip-verify,omitempty" json:"skip-verify,omitempty"`
+	TLSServerName              string            `mapstructure:"tls-server-name,omitempty" yaml:"tls-server-name,omitempty" json:"tls-server-name,omitempty"`
+	Subscriptions              []string          `mapstructure:"subscriptions,omitempty" yaml:"subscriptions,omitempty" json:"subscriptions,omitempty"`
+	Outputs                    []string          `mapstructure:"outputs,omitempty" yaml:"outputs,omitempty" json:"outputs,omitempty"`
+	BufferSize                 uint              `mapstructure:"buffer-size,omitempty" yaml:"buffer-size,omitempty" json:"buffer-size,omitempty"`
+	GRPCReadBufferSize         *int              `mapstructure:"grpc-read-buffer-size,omitempty" yaml:"grpc-read-buffer-size,omitempty" json:"grpc-read-buffer-size,omitempty"`
+	GRPCWriteBufferSize        *int              `mapstructure:"grpc-write-buffer-size,omitempty" yaml:"grpc-write-buffer-size,omitempty" json:"grpc-write-buffer-size,omitempty"`
+	GRPCConnWindowSize         *int              `mapstructure:"grpc-conn-window-size,omitempty" yaml:"grpc-conn-window-size,omitempty" json:"grpc-conn-window-size,omitempty"`
+	GRPCWindowSize             *int              `mapstructure:"grpc-window-size,omitempty" yaml:"grpc-window-size,omitempty" json:"grpc-window-size,omitempty"`
+	GRPCStaticConnWindowSize   *int              `mapstructure:"grpc-static-conn-window-size,omitempty" yaml:"grpc-static-conn-window-size,omitempty" json:"grpc-static-conn-window-size,omitempty"`
+	GRPCStaticStreamWindowSize *int              `mapstructure:"grpc-static-stream-window-size,omitempty" yaml:"grpc-static-stream-window-size,omitempty" json:"grpc-static-stream-window-size,omitempty"`
+	RetryTimer                 time.Duration     `mapstructure:"retry-timer,omitempty" yaml:"retry-timer,omitempty" json:"retry-timer,omitempty"`
+	TLSMinVersion              string            `mapstructure:"tls-min-version,omitempty" yaml:"tls-min-version,omitempty" json:"tls-min-version,omitempty"`
+	TLSMaxVersion              string            `mapstructure:"tls-max-version,omitempty" yaml:"tls-max-version,omitempty" json:"tls-max-version,omitempty"`
+	TLSVersion                 string            `mapstructure:"tls-version,omitempty" yaml:"tls-version,omitempty" json:"tls-version,omitempty"`
+	LogTLSSecret               *bool             `mapstructure:"log-tls-secret,omitempty" yaml:"log-tls-secret,omitempty" json:"log-tls-secret,omitempty"`
+	ProtoFiles                 []string          `mapstructure:"proto-files,omitempty" yaml:"proto-files,omitempty" json:"proto-files,omitempty"`
+	ProtoDirs                  []string          `mapstructure:"proto-dirs,omitempty" yaml:"proto-dirs,omitempty" json:"proto-dirs,omitempty"`
+	Tags                       []string          `mapstructure:"tags,omitempty" yaml:"tags,omitempty" json:"tags,omitempty"`
+	EventTags                  map[string]string `mapstructure:"event-tags,omitempty" yaml:"event-tags,omitempty" json:"event-tags,omitempty"`
+	Gzip                       *bool             `mapstructure:"gzip,omitempty" yaml:"gzip,omitempty" json:"gzip,omitempty"`
+	Token                      *string           `mapstructure:"token,omitempty" yaml:"token,omitempty" json:"token,omitempty"`
+	Proxy                      string            `mapstructure:"proxy,omitempty" yaml:"proxy,omitempty" json:"proxy,omitempty"`
 	//
 	TunnelTargetType string            `mapstructure:"-" yaml:"tunnel-target-type,omitempty" json:"tunnel-target-type,omitempty"`
 	Encoding         *string           `mapstructure:"encoding,omitempty" yaml:"encoding,omitempty" json:"encoding,omitempty"`
 	Metadata         map[string]string `mapstructure:"metadata,omitempty" yaml:"metadata,omitempty" json:"metadata,omitempty"`
 	CipherSuites     []string          `mapstructure:"cipher-suites,omitempty" yaml:"cipher-suites,omitempty" json:"cipher-suites,omitempty"`
 	TCPKeepalive     time.Duration     `mapstructure:"tcp-keepalive,omitempty" yaml:"tcp-keepalive,omitempty" json:"tcp-keepalive,omitempty"`
-	GRPCKeepalive    *clientKeepalive  `mapstructure:"grpc-keepalive,omitempty" yaml:"grpc-keepalive,omitempty" json:"grpc-keepalive,omitempty"`
+	GRPCKeepalive    *ClientKeepalive  `mapstructure:"grpc-keepalive,omitempty" yaml:"grpc-keepalive,omitempty" json:"grpc-keepalive,omitempty"`
 
 	tlsConfig *tls.Config
 }
 
-type clientKeepalive struct {
+type ClientKeepalive struct {
 	Time                time.Duration `mapstructure:"time,omitempty"`
 	Timeout             time.Duration `mapstructure:"timeout,omitempty"`
 	PermitWithoutStream bool          `mapstructure:"permit-without-stream,omitempty"`
@@ -176,65 +185,57 @@ func (tc TargetConfig) String() string {
 	return string(b)
 }
 
+func clonePtr[T any](p *T) *T {
+	if p == nil {
+		return nil
+	}
+	v := *p
+	return &v
+}
+
 func (tc *TargetConfig) DeepCopy() *TargetConfig {
 	if tc == nil {
 		return nil
 	}
 	ntc := &TargetConfig{
-		Name:             tc.Name,
-		Address:          tc.Address,
-		AuthScheme:       tc.AuthScheme,
-		Timeout:          tc.Timeout,
-		TLSServerName:    tc.TLSServerName,
-		Subscriptions:    make([]string, 0, len(tc.Subscriptions)),
-		Outputs:          make([]string, 0, len(tc.Outputs)),
-		BufferSize:       tc.BufferSize,
-		RetryTimer:       tc.RetryTimer,
-		TLSMinVersion:    tc.TLSMinVersion,
-		TLSMaxVersion:    tc.TLSMaxVersion,
-		TLSVersion:       tc.TLSVersion,
-		ProtoFiles:       make([]string, 0, len(tc.ProtoFiles)),
-		ProtoDirs:        make([]string, 0, len(tc.ProtoDirs)),
-		Tags:             make([]string, 0, len(tc.Tags)),
-		EventTags:        make(map[string]string, len(tc.EventTags)),
-		Proxy:            tc.Proxy,
-		TunnelTargetType: tc.TunnelTargetType,
-		Metadata:         make(map[string]string, len(tc.Metadata)),
-		CipherSuites:     make([]string, 0, len(tc.CipherSuites)),
-		TCPKeepalive:     tc.TCPKeepalive,
-	}
-	if tc.Username != nil {
-		ntc.Username = tc.Username
-	}
-	if tc.Password != nil {
-		ntc.Password = tc.Password
-	}
-	if tc.Insecure != nil {
-		ntc.Insecure = tc.Insecure
-	}
-	if tc.TLSCA != nil {
-		ntc.TLSCA = tc.TLSCA
-	}
-	if tc.TLSCert != nil {
-		ntc.TLSCert = tc.TLSCert
-	}
-	if tc.TLSKey != nil {
-		ntc.TLSKey = tc.TLSKey
-	}
-	if tc.SkipVerify != nil {
-		ntc.SkipVerify = tc.SkipVerify
-	}
-	if tc.LogTLSSecret != nil {
-		ntc.LogTLSSecret = tc.LogTLSSecret
-	}
-	if tc.Gzip != nil {
-		ntc.Gzip = tc.Gzip
-	}
-	if tc.Token != nil {
-		ntc.Token = tc.Token
-	}
-	if tc.Encoding != nil {
-		ntc.Encoding = tc.Encoding
+		Name:                       tc.Name,
+		Address:                    tc.Address,
+		Username:                   clonePtr(tc.Username),
+		Password:                   clonePtr(tc.Password),
+		AuthScheme:                 tc.AuthScheme,
+		Timeout:                    tc.Timeout,
+		Insecure:                   clonePtr(tc.Insecure),
+		TLSCA:                      clonePtr(tc.TLSCA),
+		TLSCert:                    clonePtr(tc.TLSCert),
+		TLSKey:                     clonePtr(tc.TLSKey),
+		SkipVerify:                 clonePtr(tc.SkipVerify),
+		TLSServerName:              tc.TLSServerName,
+		Subscriptions:              make([]string, 0, len(tc.Subscriptions)),
+		Outputs:                    make([]string, 0, len(tc.Outputs)),
+		BufferSize:                 tc.BufferSize,
+		GRPCReadBufferSize:         clonePtr(tc.GRPCReadBufferSize),
+		GRPCWriteBufferSize:        clonePtr(tc.GRPCWriteBufferSize),
+		GRPCConnWindowSize:         clonePtr(tc.GRPCConnWindowSize),
+		GRPCWindowSize:             clonePtr(tc.GRPCWindowSize),
+		GRPCStaticConnWindowSize:   clonePtr(tc.GRPCStaticConnWindowSize),
+		GRPCStaticStreamWindowSize: clonePtr(tc.GRPCStaticStreamWindowSize),
+		RetryTimer:                 tc.RetryTimer,
+		TLSMinVersion:              tc.TLSMinVersion,
+		TLSMaxVersion:              tc.TLSMaxVersion,
+		TLSVersion:                 tc.TLSVersion,
+		LogTLSSecret:               clonePtr(tc.LogTLSSecret),
+		ProtoFiles:                 make([]string, 0, len(tc.ProtoFiles)),
+		ProtoDirs:                  make([]string, 0, len(tc.ProtoDirs)),
+		Tags:                       make([]string, 0, len(tc.Tags)),
+		EventTags:                  make(map[string]string, len(tc.EventTags)),
+		Gzip:                       clonePtr(tc.Gzip),
+		Token:                      clonePtr(tc.Token),
+		Proxy:                      tc.Proxy,
+		TunnelTargetType:           tc.TunnelTargetType,
+		Encoding:                   clonePtr(tc.Encoding),
+		Metadata:                   make(map[string]string, len(tc.Metadata)),
+		CipherSuites:               make([]string, 0, len(tc.CipherSuites)),
+		TCPKeepalive:               tc.TCPKeepalive,
 	}
 	ntc.Subscriptions = append(ntc.Subscriptions, tc.Subscriptions...)
 	ntc.Outputs = append(ntc.Outputs, tc.Outputs...)
@@ -243,14 +244,11 @@ func (tc *TargetConfig) DeepCopy() *TargetConfig {
 	ntc.Tags = append(ntc.Tags, tc.Tags...)
 	ntc.CipherSuites = append(ntc.CipherSuites, tc.CipherSuites...)
 
-	for k, v := range tc.EventTags {
-		tc.EventTags[k] = v
-	}
-	for k, v := range tc.Metadata {
-		tc.Metadata[k] = v
-	}
+	maps.Copy(ntc.EventTags, tc.EventTags)
+	maps.Copy(ntc.Metadata, tc.Metadata)
+
 	if tc.GRPCKeepalive != nil {
-		ntc.GRPCKeepalive = &clientKeepalive{
+		ntc.GRPCKeepalive = &ClientKeepalive{
 			Time:                tc.GRPCKeepalive.Time,
 			Timeout:             tc.GRPCKeepalive.Timeout,
 			PermitWithoutStream: tc.GRPCKeepalive.PermitWithoutStream,
@@ -278,7 +276,11 @@ func (tc *TargetConfig) NewTLSConfig() (*tls.Config, error) {
 	if tc.TLSKey != nil {
 		key = *tc.TLSKey
 	}
-	tlsConfig, err := utils.NewTLSConfig(ca, cert, key, "", *tc.SkipVerify, false)
+	var skipVerify bool
+	if tc.SkipVerify != nil {
+		skipVerify = *tc.SkipVerify
+	}
+	tlsConfig, err := utils.NewTLSConfig(ca, cert, key, "", skipVerify, false)
 	if err != nil {
 		return nil, err
 	}
@@ -300,11 +302,12 @@ func (tc *TargetConfig) NewTLSConfig() (*tls.Config, error) {
 
 	// tc.cipher-suites is not set
 	if len(tlsConfig.CipherSuites) == 0 && len(tc.CipherSuites) == 0 {
-		tlsConfig.CipherSuites = defaultCipherSuites
-		// add tls1.3 ciphers if it's supported
+		cs := make([]uint16, len(defaultCipherSuites), len(defaultCipherSuites)+len(defaultCipherSuitesTLS13))
+		copy(cs, defaultCipherSuites)
 		if tlsConfig.MaxVersion == tls.VersionTLS13 || tlsConfig.MaxVersion == 0 {
-			tlsConfig.CipherSuites = append(tlsConfig.CipherSuites, defaultCipherSuitesTLS13...)
+			cs = append(cs, defaultCipherSuitesTLS13...)
 		}
+		tlsConfig.CipherSuites = cs
 	}
 	// tc.cipher-suites is set
 	if len(tlsConfig.CipherSuites) == 0 && len(tc.CipherSuites) != 0 {
@@ -335,6 +338,37 @@ func (tc *TargetConfig) GrpcDialOptions() ([]grpc.DialOption, error) {
 			PermitWithoutStream: tc.GRPCKeepalive.PermitWithoutStream,
 		}))
 	}
+
+	if tc.GRPCReadBufferSize != nil {
+		tOpts = append(tOpts,
+			grpc.WithReadBufferSize(*tc.GRPCReadBufferSize))
+	}
+
+	if tc.GRPCWriteBufferSize != nil {
+		tOpts = append(tOpts,
+			grpc.WithWriteBufferSize(*tc.GRPCWriteBufferSize))
+	}
+
+	if tc.GRPCConnWindowSize != nil {
+		tOpts = append(tOpts,
+			grpc.WithInitialConnWindowSize(int32(*tc.GRPCConnWindowSize)))
+	}
+
+	if tc.GRPCWindowSize != nil {
+		tOpts = append(tOpts,
+			grpc.WithInitialWindowSize(int32(*tc.GRPCWindowSize)))
+	}
+
+	if tc.GRPCStaticConnWindowSize != nil {
+		tOpts = append(tOpts,
+			grpc.WithStaticConnWindowSize(int32(*tc.GRPCStaticConnWindowSize)))
+	}
+
+	if tc.GRPCStaticStreamWindowSize != nil {
+		tOpts = append(tOpts,
+			grpc.WithStaticStreamWindowSize(int32(*tc.GRPCStaticStreamWindowSize)))
+	}
+
 	// insecure
 	if tc.Insecure != nil && *tc.Insecure {
 		tOpts = append(tOpts,
@@ -456,4 +490,63 @@ func tlsVersionStringToUint(v string) uint16 {
 	case "1.0", "1":
 		return tls.VersionTLS10
 	}
+}
+
+func (tc *TargetConfig) Equal(other *TargetConfig) bool {
+	if tc == other {
+		return true
+	}
+	if tc == nil || other == nil {
+		return false
+	}
+
+	ptrEq := func(a, b any) bool {
+		if a == nil && b == nil {
+			return true
+		}
+		if a == nil || b == nil {
+			return false
+		}
+		return reflect.DeepEqual(a, b)
+	}
+
+	return tc.Name == other.Name &&
+		tc.Address == other.Address &&
+		ptrEq(tc.Username, other.Username) &&
+		ptrEq(tc.Password, other.Password) &&
+		tc.AuthScheme == other.AuthScheme &&
+		tc.Timeout == other.Timeout &&
+		ptrEq(tc.Insecure, other.Insecure) &&
+		ptrEq(tc.TLSCA, other.TLSCA) &&
+		ptrEq(tc.TLSCert, other.TLSCert) &&
+		ptrEq(tc.TLSKey, other.TLSKey) &&
+		ptrEq(tc.SkipVerify, other.SkipVerify) &&
+		tc.TLSServerName == other.TLSServerName &&
+		slices.Equal(tc.Subscriptions, other.Subscriptions) &&
+		slices.Equal(tc.Outputs, other.Outputs) &&
+		tc.BufferSize == other.BufferSize &&
+		tc.RetryTimer == other.RetryTimer &&
+		tc.TLSMinVersion == other.TLSMinVersion &&
+		tc.TLSMaxVersion == other.TLSMaxVersion &&
+		tc.TLSVersion == other.TLSVersion &&
+		ptrEq(tc.LogTLSSecret, other.LogTLSSecret) &&
+		slices.Equal(tc.ProtoFiles, other.ProtoFiles) &&
+		slices.Equal(tc.ProtoDirs, other.ProtoDirs) &&
+		slices.Equal(tc.Tags, other.Tags) &&
+		maps.Equal(tc.EventTags, other.EventTags) &&
+		ptrEq(tc.Gzip, other.Gzip) &&
+		ptrEq(tc.Token, other.Token) &&
+		tc.Proxy == other.Proxy &&
+		tc.TunnelTargetType == other.TunnelTargetType &&
+		ptrEq(tc.Encoding, other.Encoding) &&
+		maps.Equal(tc.Metadata, other.Metadata) &&
+		slices.Equal(tc.CipherSuites, other.CipherSuites) &&
+		tc.TCPKeepalive == other.TCPKeepalive &&
+		reflect.DeepEqual(tc.GRPCKeepalive, other.GRPCKeepalive) &&
+		tc.GRPCReadBufferSize == other.GRPCReadBufferSize &&
+		tc.GRPCWriteBufferSize == other.GRPCWriteBufferSize &&
+		tc.GRPCConnWindowSize == other.GRPCConnWindowSize &&
+		tc.GRPCWindowSize == other.GRPCWindowSize &&
+		tc.GRPCStaticConnWindowSize == other.GRPCStaticConnWindowSize &&
+		tc.GRPCStaticStreamWindowSize == other.GRPCStaticStreamWindowSize
 }

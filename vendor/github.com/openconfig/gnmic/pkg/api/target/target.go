@@ -23,6 +23,7 @@ import (
 	"golang.org/x/net/proxy"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
 )
@@ -44,18 +45,20 @@ type Target struct {
 	Config        *types.TargetConfig                  `json:"config,omitempty"`
 	Subscriptions map[string]*types.SubscriptionConfig `json:"subscriptions,omitempty"`
 
-	m                  *sync.Mutex
-	conn               *grpc.ClientConn
-	Client             gnmi.GNMIClient                      `json:"-"`
-	SubscribeClients   map[string]gnmi.GNMI_SubscribeClient `json:"-"` // subscription name to subscribeClient
-	subscribeCancelFn  map[string]context.CancelFunc
+	m                 *sync.Mutex
+	conn              *grpc.ClientConn
+	Client            gnmi.GNMIClient                      `json:"-"`
+	SubscribeClients  map[string]gnmi.GNMI_SubscribeClient `json:"-"` // subscription name to subscribeClient
+	subscribeCancelFn map[string]context.CancelFunc
+
 	pollChan           chan string // subscription name to be polled
 	subscribeResponses chan *SubscribeResponse
 	errors             chan *TargetError
-	stopped            bool
-	StopChan           chan struct{}      `json:"-"`
-	Cfn                context.CancelFunc `json:"-"`
-	RootDesc           desc.Descriptor    `json:"-"`
+
+	stopped  bool
+	StopChan chan struct{}      `json:"-"`
+	Cfn      context.CancelFunc `json:"-"`
+	RootDesc desc.Descriptor    `json:"-"`
 }
 
 // NewTarget //
@@ -91,14 +94,17 @@ func (t *Target) CreateGNMIClient(ctx context.Context, opts ...grpc.DialOption) 
 	defer cancel()
 	for _, addr := range addrs {
 		go func(addr string) {
+			// copy opts
+			optsCopy := make([]grpc.DialOption, len(opts))
+			copy(optsCopy, opts)
 			timeoutCtx, cancel := context.WithTimeout(ctx, t.Config.Timeout)
 			defer cancel()
 
 			// add the local custom dialer only if the target is a not tunneled.
 			if t.Config.TunnelTargetType == "" {
-				opts = append(opts, grpc.WithContextDialer(t.createDialer(addr)))
+				optsCopy = append(optsCopy, grpc.WithContextDialer(t.createDialer(addr)))
 			}
-			conn, err := grpc.DialContext(timeoutCtx, addr, opts...)
+			conn, err := grpc.DialContext(timeoutCtx, addr, optsCopy...)
 			if err != nil {
 				errC <- fmt.Errorf("%s: %v", addr, err)
 				return
@@ -145,7 +151,7 @@ func (t *Target) createDialer(addr string) func(context.Context, string) (net.Co
 }
 
 func (t *Target) createProxyDialer(addr string) func(context.Context, string) (net.Conn, error) {
-	return func(context.Context, string) (net.Conn, error) {
+	return func(_ context.Context, targetAddr string) (net.Conn, error) {
 		dialer, err := proxy.SOCKS5("tcp", addr, nil,
 			&net.Dialer{
 				Timeout:   t.Config.Timeout,
@@ -155,7 +161,7 @@ func (t *Target) createProxyDialer(addr string) func(context.Context, string) (n
 		if err != nil {
 			return nil, err
 		}
-		return dialer.Dial("tcp", addr)
+		return dialer.Dial("tcp", targetAddr)
 	}
 }
 
@@ -280,4 +286,23 @@ func (t *Target) ConnState() string {
 		return ""
 	}
 	return t.conn.GetState().String()
+}
+
+// WaitForConnStateChange blocks until the gRPC connection state changes from
+// sourceState or ctx is done. Returns true if the state changed, false if
+// ctx expired. Returns false immediately if conn is nil.
+func (t *Target) WaitForConnStateChange(ctx context.Context, sourceState connectivity.State) bool {
+	if t.conn == nil {
+		return false
+	}
+	return t.conn.WaitForStateChange(ctx, sourceState)
+}
+
+// ConnectivityState returns the current gRPC connectivity state.
+// Returns connectivity.Shutdown if the connection is nil.
+func (t *Target) ConnectivityState() connectivity.State {
+	if t.conn == nil {
+		return connectivity.Shutdown
+	}
+	return t.conn.GetState()
 }
