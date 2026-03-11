@@ -99,6 +99,7 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
 		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml
+		// skipping 1.yaml
 		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
 
 		// change the mandate file to a new file with mode config
@@ -118,8 +119,11 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Failures, oldFailures)
 		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml
 		require.NoError(t, handler.MatchLines([]string{
+			// skipping 1.yaml
 			"skipping already loaded policy",
+			// skipping monitor.yaml
 			"skipping already loaded policy",
+			// enforcing "monitor" mode on 1.yaml
 			"enforcing new mode for loaded policy",
 		}))
 
@@ -139,6 +143,7 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures+1)
 		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml (everything has been rolled back to working version)
+		// skipping 1.yaml (mandate-failure.yaml loads 1.yaml, 2.yaml and then fails loading fail.yaml)
 		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
 
 		// change the mandate file to a new file that works
@@ -157,7 +162,16 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
 		require.Len(t, mgr.loadedPolicies, 3) // 1.yaml, 2.yaml, 3.yaml
-		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
+		require.NoError(t, handler.MatchLines([]string{
+			// skipping 1.yaml
+			"skipping already loaded policy",
+			// enforcing "enforce" mode on 1.yaml since neither:
+			// * mandate conf.mode
+			// * mandate policies[].mode
+			// * policy
+			// specify a mode, therefore we default at "enforce".
+			"enforcing new mode for loaded policy",
+		}))
 	})
 }
 
