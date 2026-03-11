@@ -70,8 +70,14 @@ func (h *LogCheckerHandler) MatchLines(lines []string) error {
 }
 
 func (h *LogCheckerHandler) matchNLastLine(line string, idx int) error {
-	if strings.Contains(h.logs[len(h.logs)-idx].Message, line) {
+	lidx := len(h.logs) - idx
+	if lidx < 0 || lidx >= len(h.logs) {
+		return fmt.Errorf("log line not matching; requested last line %d from %d lines", idx, len(h.logs))
+	}
+
+	message := h.logs[lidx].Message
+	if strings.Contains(message, line) {
 		return nil
 	}
-	return fmt.Errorf("log line not matching; requested %q, seen %q", line, h.logs[len(h.logs)-1].Message)
+	return fmt.Errorf("log line not matching; requested %q, seen %q", line, message)
 }
