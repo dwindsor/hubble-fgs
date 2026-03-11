@@ -361,9 +361,13 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	// before loading them, check that no existing loaded policy
 	// share same sha256sum; in case, skip the load of the policy.
 
-	// Policies whose load has been skipped
-	skippedPolicies := make([]policy, 0)
-	// Policies loaded right now
+	// Policies whose load has been skipped.
+	// Create as big as possible to avoid reallocations,
+	// since we will keep pointers to element in the slice
+	// during mode updates.
+	skippedPolicies := make([]policy, 0, len(m.loadedPolicies))
+	// Policies loaded right now.
+	// Create as big as possible to avoid reallocations.
 	loadedPolicies := make([]policy, 0, len(obj.Mandate.Policies))
 	// We keep the unloadedPolicies as a full copy of m.loadedPolicies,
 	// because in case of error, we shall not change m.loadedPolicies.
