@@ -15,6 +15,8 @@ package mandate
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -23,8 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/stretchr/testify/require"
 
-	testutils2 "github.com/isovalent/hubble-fgs/pkg/testutils"
-
+	"github.com/isovalent/hubble-fgs/pkg/attempt"
 	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
@@ -40,9 +41,6 @@ func TestManager(t *testing.T) {
 		URL:           filepath.Join(tmpDir, "mandate.yaml"),
 		RefreshPeriod: 1 * time.Second,
 	}
-
-	handler, cleanup := testutils2.SetupLogCheckerHandler()
-	t.Cleanup(cleanup)
 
 	synctest.Test(t, func(t *testing.T) {
 		mgr, err := NewManager(cnf, tsm, nil)
@@ -100,7 +98,15 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Failures, oldFailures)
 		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml
 		// skipping 1.yaml
-		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
+		require.True(t, slices.ContainsFunc(
+			status.Log.LastEntry().Attempts,
+			func(a attempt.Attempt) bool {
+				return a.Op == "skip policy" &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "url" && strings.HasSuffix(ie.Val, "1.yaml")
+					})
+			},
+		))
 
 		// change the mandate file to a new file with mode config
 		oldFailures = status.Log.Failures
@@ -118,14 +124,36 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
 		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml
-		require.NoError(t, handler.MatchLines([]string{
-			// skipping 1.yaml
-			"skipping already loaded policy",
-			// skipping monitor.yaml
-			"skipping already loaded policy",
-			// enforcing "monitor" mode on 1.yaml
-			"enforcing new mode for loaded policy",
-		}))
+		require.True(t, slices.ContainsFunc(
+			status.Log.LastEntry().Attempts,
+			func(a attempt.Attempt) bool {
+				return a.Op == "skip policy" &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "url" && strings.HasSuffix(ie.Val, "1.yaml")
+					})
+			},
+		), "expecting skipped 1.yaml")
+		require.True(t, slices.ContainsFunc(
+			status.Log.LastEntry().Attempts,
+			func(a attempt.Attempt) bool {
+				return a.Op == "skip policy" &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "url" && strings.HasSuffix(ie.Val, "monitor.yaml")
+					})
+			},
+		), "execting scipped monitor.yaml")
+		require.True(t, slices.ContainsFunc(
+			status.Log.LastEntry().Attempts,
+			func(a attempt.Attempt) bool {
+				return a.Op == "update mode" &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "policy-url" && strings.HasSuffix(ie.Val, "1.yaml")
+					}) &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "new-mode" && ie.Val == "TP_MODE_MONITOR"
+					})
+			},
+		), "expecting setting monitor mode on 1.yaml")
 
 		// change the mandate file to be a version that includes a broken policy
 		oldFailures = status.Log.Failures
@@ -143,8 +171,15 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures+1)
 		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml (everything has been rolled back to working version)
-		// skipping 1.yaml (mandate-failure.yaml loads 1.yaml, 2.yaml and then fails loading fail.yaml)
-		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
+		require.True(t, slices.ContainsFunc(
+			status.Log.LastEntry().Attempts,
+			func(a attempt.Attempt) bool {
+				return a.Op == "skip policy" &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "url" && strings.HasSuffix(ie.Val, "1.yaml")
+					})
+			},
+		), "expecting skipped 1.yaml")
 
 		// change the mandate file to a new file that works
 		oldFailures = status.Log.Failures
@@ -162,16 +197,32 @@ func TestManager(t *testing.T) {
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
 		require.Len(t, mgr.loadedPolicies, 3) // 1.yaml, 2.yaml, 3.yaml
-		require.NoError(t, handler.MatchLines([]string{
-			// skipping 1.yaml
-			"skipping already loaded policy",
-			// enforcing "enforce" mode on 1.yaml since neither:
-			// * mandate conf.mode
-			// * mandate policies[].mode
-			// * policy
-			// specify a mode, therefore we default at "enforce".
-			"enforcing new mode for loaded policy",
-		}))
+		require.True(t, slices.ContainsFunc(
+			status.Log.LastEntry().Attempts,
+			func(a attempt.Attempt) bool {
+				return a.Op == "skip policy" &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "url" && strings.HasSuffix(ie.Val, "1.yaml")
+					})
+			},
+		), "expecting skipped 1.yaml")
+		// expect setting "enforce" mode on 1.yaml since neither:
+		// * mandate conf.mode
+		// * mandate policies[].mode
+		// * policy
+		// specify a mode, therefore we default at "enforce".
+		require.True(t, slices.ContainsFunc(
+			status.Log.LastEntry().Attempts,
+			func(a attempt.Attempt) bool {
+				return a.Op == "update mode" &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "policy-url" && strings.HasSuffix(ie.Val, "1.yaml")
+					}) &&
+					slices.ContainsFunc(a.Info, func(ie attempt.InfoEntry) bool {
+						return ie.Key == "new-mode" && ie.Val == "TP_MODE_ENFORCE"
+					})
+			},
+		), "expecting setting enforce mode on 1.yaml")
 	})
 }
 

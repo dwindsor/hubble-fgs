@@ -49,6 +49,15 @@ type Attempts struct {
 	Entries  []Attempt `json:"entries"`
 }
 
+func (as *Attempts) LastEntry() *Attempt {
+	if len(as.Entries) == 0 {
+		return nil
+	}
+
+	ret := as.Entries[len(as.Entries)-1]
+	return &ret
+}
+
 type Logger interface {
 	NewAttempt(op string) *InprAttempt
 
