@@ -730,15 +730,15 @@ jobs:
   update-agw-version-dpu-pensando:
     needs: [init, create-hubble-agw-releases-repo-release]
     # Currently disabled due to hs-dpu-pensando pulling the latest version automatically
-    if: ${{ false
-      && needs.init.result == 'success'
-      && needs.create-hubble-agw-releases-repo-release.result == 'success'
-      && ((github.event_name == 'workflow_dispatch'
-      && github.ref == 'refs/heads/master')
-      || (github.event_name == 'schedule'
-      && github.ref == 'refs/heads/master')
-      || (github.event_name == 'push'
-      && github.ref == 'refs/heads/master')) }}
+    if: ${{ false &&
+      needs.init.result == 'success' &&
+      needs.create-hubble-agw-releases-repo-release.result == 'success' &&
+      ((github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/master') ||
+      (github.event_name == 'schedule' &&
+      github.ref == 'refs/heads/master') ||
+      (github.event_name == 'push' &&
+      github.ref == 'refs/heads/master')) }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
