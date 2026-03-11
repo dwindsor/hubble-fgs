@@ -82,6 +82,19 @@ const (
 	alertPolTy
 )
 
+func (ty polTy) String() string {
+	switch ty {
+	case tracingPolTy:
+		return "TracingPolicy"
+	case alertPolTy:
+		return "AlertRule"
+	case invalidPolTy:
+		return "(invalid policy type)"
+	default:
+		return "(unknown)"
+	}
+}
+
 type policy struct {
 	namespace string
 	name      string
@@ -207,7 +220,7 @@ func (m *manager) refresh(ctx context.Context) {
 	}
 
 	if m.obj != nil && m.obj.SameVersion(obj) {
-		refrAtt = refrAtt.WithInfo("skipped", "true")
+		refrAtt = refrAtt.WithInfo("skip mandate", "true").WithInfo("reason", "same version with existing mandate")
 		return
 	}
 
@@ -394,7 +407,11 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 		skipLoad := idx != -1
 		if skipLoad {
 			loadedPol := unloadedPolicies[idx]
-			logger.GetLogger().Info("mandate: skipping already loaded policy", "url", pol.url_.String())
+			refrAtt.NewAttempt("skip policy").
+				WithInfo("reason", "already exists").
+				WithInfo("url", pol.url_.String()).
+				WithInfo("type", loadedPol.ty.String()).
+				WithInfo("checksum", fmt.Sprintf("%x", checksum)).Complete(nil)
 			// Update policy url in case it changed
 			loadedPol.url = pol.url_.String()
 			// Remove this policy from the to-be-unloaded set and add it to the skipped set
