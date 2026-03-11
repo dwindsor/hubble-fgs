@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -407,11 +408,11 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 		skipLoad := idx != -1
 		if skipLoad {
 			loadedPol := unloadedPolicies[idx]
-			refrAtt.NewAttempt("skip policy").
+			skipAtt := refrAtt.NewAttempt("skip policy").
 				WithInfo("reason", "already exists").
 				WithInfo("url", pol.url_.String()).
 				WithInfo("type", loadedPol.ty.String()).
-				WithInfo("checksum", fmt.Sprintf("%x", checksum)).Complete(nil)
+				WithInfo("checksum", fmt.Sprintf("%x", checksum))
 			// Update policy url in case it changed
 			loadedPol.url = pol.url_.String()
 			// Remove this policy from the to-be-unloaded set and add it to the skipped set
@@ -422,7 +423,12 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 			// In that case, store a callback to update the policy mode and skip the load of the policy.
 			// Mode updates are applied once all new policies have been loaded.
 			if loadedPol.ty == tracingPolTy {
-				if needsUpdate, newMode, oldMode := modeUpdateNeeded(pol.mode_, loadedPol.mode, data); needsUpdate {
+				needsUpdate, newMode, oldMode := modeUpdateNeeded(pol.mode_, loadedPol.mode, data)
+				skipAtt = skipAtt.
+					WithInfo("needs-mode-update", strconv.FormatBool(needsUpdate)).
+					WithInfo("new-mode", newMode.String()).
+					WithInfo("old-mode", oldMode.String())
+				if needsUpdate {
 					toBeUpdatedModes = append(toBeUpdatedModes, updateMode{
 						newMode: newMode,
 						oldMode: oldMode,
@@ -433,6 +439,7 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 					})
 				}
 			}
+			skipAtt.Complete(nil)
 		} else {
 			loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", pol.url_.String())
 			loadedPol, err := m.attemptLoadPolicy(ctx, loadAtt, pol, data)
