@@ -165,7 +165,7 @@ func TestManager(t *testing.T) {
 func TestManagerConf(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
 	t.Cleanup(func() {
-		// os.RemoveAll(tmpDir)
+		os.RemoveAll(tmpDir)
 	})
 	require.NoError(t, err)
 	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
@@ -213,6 +213,67 @@ func TestManagerConf(t *testing.T) {
 		require.Equal(t, policyconf.EnforceMode, tsm.policyMode(t, "monitor"))
 		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-1"))
 
+	})
+}
+
+// tests the "conf: mode:" sections in mandate files
+func TestManagerMode(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	require.NoError(t, err)
+	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	require.NoError(t, err)
+	tmpPath := func(s string) string {
+		return filepath.Join(tmpDir, s)
+	}
+
+	tsm := NewTestSensorManager()
+	myMandate := tmpPath("mymandate.yaml")
+	require.NoError(t, err)
+	cnf := mandateconf.ManagerConf{
+		URL:           myMandate,
+		RefreshPeriod: 1 * time.Second,
+	}
+
+	synctest.Test(t, func(t *testing.T) {
+		mgr, err := NewManager(cnf, tsm, nil)
+		require.NoError(t, err)
+		mgr.Start()
+		defer mgr.stop()
+
+		// mandate-001 enforces monitor mode
+		err = testutils.CopyFile(myMandate, tmpPath("mandate-001.yaml"), 0644)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-1"))
+
+		// mandate-002 enforces enforce mode from within policy-1.conf.mode,
+		// while enforcing monitor mode from conf.mode.
+		err = testutils.CopyFile(myMandate, tmpPath("mandate-002.yaml"), 0644)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		require.Equal(t, policyconf.EnforceMode, tsm.policyMode(t, "policy-1"))
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-2"))
+
+		// mandate-003 enforces back monitor mode from within policy-1.conf.mode
+		err = testutils.CopyFile(myMandate, tmpPath("mandate-003.yaml"), 0644)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-1"))
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-2"))
+
+		// mandate-002 enforces again enforce mode from within policy-1.conf.mode
+		err = testutils.CopyFile(myMandate, tmpPath("mandate-002.yaml"), 0644)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		require.Equal(t, policyconf.EnforceMode, tsm.policyMode(t, "policy-1"))
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-2"))
 	})
 }
 

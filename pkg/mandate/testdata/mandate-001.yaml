@@ -1,0 +1,7 @@
+tetragonMandate:
+  conf:
+    mode: monitor
+  info:
+    version: v0.0.1
+  policies:
+    - url: policies/1.yaml
