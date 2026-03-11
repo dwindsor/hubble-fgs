@@ -103,14 +103,10 @@ func (t *testPolicyLoad) OnAlertRule(_ context.Context, _ string, _ []byte) erro
 // The test checks that LoadFromDir correctly supports
 // loading for all policies kinds.
 func TestLoadFromDir(t *testing.T) {
-	policyDir, err := os.MkdirTemp("", "test_policies")
-	assert.NoError(t, err)
-	t.Cleanup(func() {
-		os.RemoveAll(policyDir)
-	})
+	policyDir := t.TempDir()
 
 	// Generate tetragon policies
-	err = os.WriteFile(filepath.Join(policyDir, "alert_rule.yaml"), []byte(testAlertRule), 0644)
+	err := os.WriteFile(filepath.Join(policyDir, "alert_rule.yaml"), []byte(testAlertRule), 0644)
 	assert.NoError(t, err)
 
 	os.WriteFile(filepath.Join(policyDir, "networkpolicy.yaml"), []byte(testNetworkPolicy), 0644)

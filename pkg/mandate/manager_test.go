@@ -30,12 +30,7 @@ import (
 )
 
 func TestManager(t *testing.T) {
-
-	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
-	require.NoError(t, err)
+	tmpDir := t.TempDir()
 	tsm := NewTestSensorManager()
 	cnf := mandateconf.ManagerConf{
 		URL:           filepath.Join(tmpDir, "mandate.yaml"),
@@ -228,12 +223,8 @@ func TestManager(t *testing.T) {
 
 // tests the "conf:" sections in mandate files
 func TestManagerConf(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
-	require.NoError(t, err)
-	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	tmpDir := t.TempDir()
+	err := os.CopyFS(tmpDir, os.DirFS("testdata"))
 	require.NoError(t, err)
 	tmpPath := func(s string) string {
 		return filepath.Join(tmpDir, s)
@@ -283,12 +274,8 @@ func TestManagerConf(t *testing.T) {
 
 // tests the "conf: mode:" sections in mandate files
 func TestManagerMode(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
-	require.NoError(t, err)
-	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	tmpDir := t.TempDir()
+	err := os.CopyFS(tmpDir, os.DirFS("testdata"))
 	require.NoError(t, err)
 	tmpPath := func(s string) string {
 		return filepath.Join(tmpDir, s)
@@ -409,17 +396,13 @@ func TestManagerConfigure(t *testing.T) {
 }
 
 func TestManagerNoAlerts(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
-	require.NoError(t, err)
+	tmpDir := t.TempDir()
 	tsm := NewTestSensorManager()
 	cnf := mandateconf.ManagerConf{
 		URL:           filepath.Join(tmpDir, "mandate-alerts.yaml"),
 		RefreshPeriod: 1 * time.Second,
 	}
-	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	err := os.CopyFS(tmpDir, os.DirFS("testdata"))
 	require.NoError(t, err)
 
 	synctest.Test(t, func(t *testing.T) {
@@ -436,18 +419,14 @@ func TestManagerNoAlerts(t *testing.T) {
 }
 
 func TestManagerAlerts(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
-	require.NoError(t, err)
+	tmpDir := t.TempDir()
 	tsm := NewTestSensorManager()
 	tam := NewTestAlertManager()
 	cnf := mandateconf.ManagerConf{
 		URL:           filepath.Join(tmpDir, "mandate-alerts.yaml"),
 		RefreshPeriod: 1 * time.Second,
 	}
-	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	err := os.CopyFS(tmpDir, os.DirFS("testdata"))
 	require.NoError(t, err)
 
 	synctest.Test(t, func(t *testing.T) {
