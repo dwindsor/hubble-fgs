@@ -257,7 +257,7 @@ func (m *manager) refresh(ctx context.Context) {
 		attempt.RunAttempt(
 			refrAtt.NewAttempt("revert policy mode").WithInfo("policy", revertModeUpdate.loadedPol.origName).WithInfo("mandate", unloadMandateID),
 			func() error {
-				return revertModeUpdate.revert(ctx)
+				return revertModeUpdate.revert(ctx, refrAtt)
 			})
 	}
 
@@ -292,7 +292,6 @@ type updateMode struct {
 }
 
 func (u *updateMode) update(ctx context.Context, mode tetragon.TracingPolicyMode) error {
-	logger.GetLogger().Info("mandate: enforcing new mode for loaded policy", "url", u.loadedPol.url, "mode", mode)
 	err := u.sensorMgr.ConfigureTracingPolicy(ctx, &tetragon.ConfigureTracingPolicyRequest{
 		Name:      u.loadedPol.name,
 		Namespace: u.loadedPol.namespace,
@@ -304,12 +303,22 @@ func (u *updateMode) update(ctx context.Context, mode tetragon.TracingPolicyMode
 	return err
 }
 
-func (u *updateMode) apply(ctx context.Context) error {
-	return u.update(ctx, u.newMode)
+func (u *updateMode) apply(ctx context.Context, refrAtt *attempt.InprAttempt) error {
+	ret := u.update(ctx, u.newMode)
+	refrAtt.NewAttempt("update mode").
+		WithInfo("policy-url", u.loadedPol.url).
+		WithInfo("new-mode", u.newMode.String()).
+		Complete(ret)
+	return ret
 }
 
-func (u *updateMode) revert(ctx context.Context) error {
-	return u.update(ctx, u.oldMode)
+func (u *updateMode) revert(ctx context.Context, refrAtt *attempt.InprAttempt) error {
+	ret := u.update(ctx, u.oldMode)
+	refrAtt.NewAttempt("revert mode").
+		WithInfo("policy-url", u.loadedPol.url).
+		WithInfo("old-mode", u.oldMode.String()).
+		Complete(ret)
+	return ret
 }
 
 func modeUpdateNeeded(newPolMode, loadedPolMode string, data []byte) (bool, tetragon.TracingPolicyMode, tetragon.TracingPolicyMode) {
@@ -456,7 +465,7 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 
 	// Finally, update policies modes as requested
 	for idx, update := range toBeUpdatedModes {
-		if err := update.apply(ctx); err != nil {
+		if err := update.apply(ctx, refrAtt); err != nil {
 			// In case of error, revert the whole change set (but only modes until the failing one!)
 			res.unloadPolicies = loadedPolicies
 			res.modeUpdates = toBeUpdatedModes[:idx]
