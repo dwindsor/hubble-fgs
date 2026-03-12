@@ -21,9 +21,9 @@ import (
 
 	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
+	"github.com/isovalent/hubble-fgs/pkg/netpolstate"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
@@ -140,7 +140,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 		CRDNSPolicy: crdNS,
 		IrPolicy:    newPolicy,
 	})
-	err = dns.AddPolicies(newPolicy)
+	err = netpolstate.AddPolicies(newPolicy)
 	if err != nil {
 		logger.GetLogger().Warn("updateNetworkPolicy: failed to create new state in an update to Tetragon network policy command",
 			"new title", newName, "old title", oldName, "network rules", len(newPolicy))
@@ -194,7 +194,7 @@ func deleteNetworkPolicy(name string) error {
 	if story == nil {
 		return fmt.Errorf("policy %q does not exist", name)
 	}
-	if err := dns.RemovePolicies(story.IrPolicy); err != nil {
+	if err := netpolstate.RemovePolicies(story.IrPolicy); err != nil {
 		return fmt.Errorf("removing policy %q failed: %w", name, err)
 	}
 	library.GetRepository().Delete(name)
@@ -232,7 +232,7 @@ func loadPolicy(policyStory *library.PolicyStory) error {
 
 	library.GetRepository().Add(policyStory)
 
-	err := dns.AddPolicies(policyStory.IrPolicy)
+	err := netpolstate.AddPolicies(policyStory.IrPolicy)
 	if err != nil {
 		return fmt.Errorf("failed create match label from policy set %s: %w", policyStory.Title, err)
 	}

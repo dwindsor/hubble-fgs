@@ -20,8 +20,8 @@ import (
 	v1 "github.com/isovalent/ipa/k8s/slim/k8s/apis/meta/v1"
 	"github.com/stretchr/testify/require"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpolstate"
 )
 
 func TestToTetragonNetworkPolicies(t *testing.T) {
@@ -145,7 +145,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 				{
 					RuleDescription: rule.Description,
 					Subject: types.TetragonNetworkSubject{
-						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{dns.InternalLabelKey: dns.InternalHostName}},
+						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{netpolstate.InternalLabelKey: netpolstate.InternalHostName}},
 						InProcessName: []string{"/usr/bin/curl"},
 					},
 					Destination: types.TetragonNetworkDestination{

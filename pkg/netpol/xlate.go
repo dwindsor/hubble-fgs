@@ -17,8 +17,8 @@ import (
 
 	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpolstate"
 )
 
 func toSubject(np *v1alpha1.TetragonNetworkPolicy) (types.TetragonNetworkSubject, error) {
@@ -33,7 +33,7 @@ func toSubject(np *v1alpha1.TetragonNetworkPolicy) (types.TetragonNetworkSubject
 		// If there's no PodSelector and no NamespaceSelector in a policy,
 		// assume the user intended to target the host of the agent itself
 		subj.Labels = types.TetragonNetworkLabels{
-			Equal: map[string]string{dns.InternalLabelKey: dns.InternalHostName},
+			Equal: map[string]string{netpolstate.InternalLabelKey: netpolstate.InternalHostName},
 		}
 	} else if np.Spec.PodSelector != nil && np.Spec.PodSelector.MatchLabels != nil {
 		subj.Labels = types.TetragonNetworkLabels{

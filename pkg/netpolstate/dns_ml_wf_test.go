@@ -10,7 +10,7 @@
 
 //go:build sudo_tests
 
-package dns
+package netpolstate
 
 import (
 	"strings"

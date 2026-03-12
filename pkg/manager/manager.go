@@ -30,8 +30,8 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint/controllers"
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/servicemap"
+	"github.com/isovalent/hubble-fgs/pkg/netpolstate"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
@@ -79,7 +79,7 @@ func New(ctx context.Context) (KubernetesManager, error) {
 	ossManager.Start(ctx)
 
 	// Set the k8s reader for namespace label lookups used by namespaceSelector
-	dns.SetK8sReader(ossManager.Manager.GetCache())
+	netpolstate.SetK8sReader(ossManager.Manager.GetCache())
 
 	// Ensure Namespace objects are cached for namespace label lookups
 	// This is needed for namespaceSelector matching in TetragonNetworkPolicy
@@ -122,7 +122,7 @@ func New(ctx context.Context) (KubernetesManager, error) {
 			return nil, err
 		}
 		// Set the ServiceMap on the realized state for policy lookups
-		dns.GetRealizedState().SetServiceMap(sm)
+		netpolstate.GetRealizedState().SetServiceMap(sm)
 	}
 	return &EnterpriseManager{ossManager}, nil
 }
@@ -202,7 +202,7 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 			case *v1alpha1.PodInfo:
 				logger.GetLogger().Debug(fmt.Sprintf("Add Pod: %v", t))
 				c.AddIpPodMap(t)
-				dns.PodAdd(t)
+				netpolstate.PodAdd(t)
 			}
 		},
 		UpdateFunc: func(old interface{}, _ interface{}) {
@@ -215,7 +215,7 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 			switch t := old.(type) {
 			case *v1alpha1.PodInfo:
 				logger.GetLogger().Debug(fmt.Sprintf("Delete Pod: %v", t))
-				dns.PodRemove(t)
+				netpolstate.PodRemove(t)
 			}
 		},
 	})

@@ -19,8 +19,8 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
+	"github.com/isovalent/hubble-fgs/pkg/netpolstate"
 )
 
 type NetworkPolicyManager struct {
@@ -69,7 +69,7 @@ func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetra
 		return nil, fmt.Errorf("policy does not exist")
 	}
 
-	if err := dns.RemovePolicies(story.IrPolicy); err != nil {
+	if err := netpolstate.RemovePolicies(story.IrPolicy); err != nil {
 		return nil, fmt.Errorf("abort removing policy failed")
 	}
 
