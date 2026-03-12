@@ -364,8 +364,8 @@ type fetchLoadPoliciesResult struct {
 // It returns an error if something went wrong, plus a structure that holds
 // the list of policies to be unloaded and eventually, the list of policy mode changes to be reverted.
 // If everything goes well, it returns list of loaded policies, and the list of policies to be unloaded.
-func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) (*fetchLoadPoliciesResult, error) {
-	res := &fetchLoadPoliciesResult{}
+func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) (fetchLoadPoliciesResult, error) {
+	res := fetchLoadPoliciesResult{}
 	policyData := make([]policyData, len(obj.Mandate.Policies))
 
 	// first pass, attempt to fetch all the policies
