@@ -987,10 +987,14 @@ func TestSetL3Networks_GIDChange(t *testing.T) {
 	require.NoError(t, s.SetL3Networks(l3New))
 
 	delta := s.GetDeltaToApply()
-	require.Len(t, delta, 1, "GID change should produce one UPSERT")
+	// GID change emits: UPSERT(new GID) then stale DELETE(old GID)
+	require.Len(t, delta, 2, "GID change should produce UPSERT then stale DELETE")
 	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, delta[0].Oper)
-	require.Equal(t, uint32(200), delta[0].Policy.Source.VrfId, "Source VrfId should reflect new GID")
-	require.Equal(t, uint32(200), delta[0].Policy.Destination.VrfId, "Destination VrfId should reflect new GID")
+	require.Equal(t, uint32(200), delta[0].Policy.Source.VrfId, "UPSERT Source VrfId should reflect new GID")
+	require.Equal(t, uint32(200), delta[0].Policy.Destination.VrfId, "UPSERT Destination VrfId should reflect new GID")
+	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, delta[1].Oper)
+	require.Equal(t, uint32(100), delta[1].Policy.Source.VrfId, "stale DELETE Source VrfId should be old GID")
+	require.Equal(t, uint32(100), delta[1].Policy.Destination.VrfId, "stale DELETE Destination VrfId should be old GID")
 }
 
 func TestSetL3Networks_GIDChange_InterVRF(t *testing.T) {
@@ -1022,10 +1026,14 @@ func TestSetL3Networks_GIDChange_InterVRF(t *testing.T) {
 	require.NoError(t, s.SetL3Networks(l3New))
 
 	delta := s.GetDeltaToApply()
-	require.Len(t, delta, 1, "GID change on source VRF should produce one UPSERT")
+	// GID change emits: UPSERT(new GID) then stale DELETE(old GID)
+	require.Len(t, delta, 2, "GID change on source VRF should produce UPSERT then stale DELETE")
 	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, delta[0].Oper)
-	require.Equal(t, uint32(300), delta[0].Policy.Source.VrfId, "Source VrfId should reflect new GID")
-	require.Equal(t, uint32(200), delta[0].Policy.Destination.VrfId, "Destination VrfId should be unchanged")
+	require.Equal(t, uint32(300), delta[0].Policy.Source.VrfId, "UPSERT Source VrfId should reflect new GID")
+	require.Equal(t, uint32(200), delta[0].Policy.Destination.VrfId, "UPSERT Destination VrfId should be unchanged")
+	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, delta[1].Oper)
+	require.Equal(t, uint32(100), delta[1].Policy.Source.VrfId, "stale DELETE Source VrfId should be old GID")
+	require.Equal(t, uint32(200), delta[1].Policy.Destination.VrfId, "stale DELETE Destination VrfId should be unchanged")
 }
 
 func TestSetL3Networks_GIDSwap(t *testing.T) {
@@ -1069,14 +1077,34 @@ func TestSetL3Networks_GIDSwap(t *testing.T) {
 	require.NoError(t, s.SetL3Networks(l3New))
 
 	delta := s.GetDeltaToApply()
-	require.Len(t, delta, 2, "GID swap should produce two UPSERTs")
-	vrfIds := make(map[string]uint32)
+	// GID swap emits: 2 UPSERTs (new GIDs) then 2 stale DELETEs (old GIDs)
+	require.Len(t, delta, 4, "GID swap should produce two UPSERTs and two stale DELETEs")
+
+	upsertVrfIds := make(map[string]uint32)
+	deleteVrfIds := make(map[string]uint32)
 	for _, d := range delta {
-		require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, d.Oper)
-		vrfIds[d.Policy.Source.Vrf] = d.Policy.Source.VrfId
+		switch d.Oper {
+		case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
+			upsertVrfIds[d.Policy.Source.Vrf] = d.Policy.Source.VrfId
+		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
+			deleteVrfIds[d.Policy.Source.Vrf] = d.Policy.Source.VrfId
+		}
 	}
-	require.Equal(t, uint32(200), vrfIds["red"], "red should have new GID 200")
-	require.Equal(t, uint32(100), vrfIds["blue"], "blue should have new GID 100")
+	require.Equal(t, uint32(200), upsertVrfIds["red"], "UPSERT red should have new GID 200")
+	require.Equal(t, uint32(100), upsertVrfIds["blue"], "UPSERT blue should have new GID 100")
+	require.Equal(t, uint32(100), deleteVrfIds["red"], "stale DELETE red should have old GID 100")
+	require.Equal(t, uint32(200), deleteVrfIds["blue"], "stale DELETE blue should have old GID 200")
+
+	// Verify ordering: all UPSERTs precede all stale DELETEs
+	lastUpsertIdx, firstDeleteIdx := -1, len(delta)
+	for i, d := range delta {
+		if d.Oper == v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT {
+			lastUpsertIdx = i
+		} else if d.Oper == v1alpha.PolicyOperation_POLICY_OPERATION_DELETE && i < firstDeleteIdx {
+			firstDeleteIdx = i
+		}
+	}
+	require.Less(t, lastUpsertIdx, firstDeleteIdx, "all UPSERTs must precede all stale DELETEs")
 }
 
 func TestSetL3Networks_GIDChange_NoPolicy(t *testing.T) {

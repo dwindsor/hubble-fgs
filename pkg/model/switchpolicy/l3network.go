@@ -61,20 +61,40 @@ func (l3 *L3Networks) HasVRF(name VrfName) bool {
 	return ok
 }
 
-// UpdateGIDs atomically updates GID mappings for VRFs that already exist.
-// Uses two passes to handle GID swaps correctly (e.g., red:100↔blue:200).
-func (l3 *L3Networks) UpdateGIDs(updates map[VrfName]VrfGID) {
-	// Pass 1: Remove old GID reverse-mappings for all changing VRFs.
-	for name, newGID := range updates {
-		if oldGID, ok := l3.byName[name]; ok && oldGID != newGID {
-			delete(l3.byGID, oldGID)
+// GIDChange records an in-place VRF GID update.
+type GIDChange struct {
+	OldGID VrfGID
+	NewGID VrfGID
+}
+
+// Diff computes the changes needed to transition from the current state to incoming.
+// added: VRFs in incoming but not in current.
+// removed: VRFs in current but not in incoming.
+// changed: VRFs in both with different GIDs.
+func (l3 *L3Networks) Diff(incoming *L3Networks) (
+	added map[VrfName]VrfGID,
+	removed map[VrfName]VrfGID,
+	changed map[VrfName]GIDChange,
+) {
+	added = make(map[VrfName]VrfGID)
+	removed = make(map[VrfName]VrfGID)
+	changed = make(map[VrfName]GIDChange)
+
+	for name, inGID := range incoming.byName {
+		if curGID, ok := l3.byName[name]; ok {
+			if curGID != inGID {
+				changed[name] = GIDChange{OldGID: curGID, NewGID: inGID}
+			}
+		} else {
+			added[name] = inGID
 		}
 	}
-	// Pass 2: Set new GID mappings.
-	for name, newGID := range updates {
-		l3.byName[name] = newGID
-		l3.byGID[newGID] = name
+	for name, curGID := range l3.byName {
+		if _, ok := incoming.byName[name]; !ok {
+			removed[name] = curGID
+		}
 	}
+	return added, removed, changed
 }
 
 // Copy creates a deep copy of the L3Networks

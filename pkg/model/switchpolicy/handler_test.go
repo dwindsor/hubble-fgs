@@ -450,10 +450,14 @@ func TestPolicyHandlerGIDChange(t *testing.T) {
 	err = newPolicyHandler.SetL3Networks(l3New)
 	require.NoError(t, err)
 
-	require.Len(t, fakeDPU.rules, 1, "GID change should produce one UPSERT via the handler")
+	// GID change emits UPSERT(new GID) first, then stale DELETE(old GID)
+	require.Len(t, fakeDPU.rules, 2, "GID change should produce UPSERT then stale DELETE")
 	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, fakeDPU.rules[0].Oper)
-	require.Equal(t, uint32(200), fakeDPU.rules[0].Policy.Source.VrfId, "VrfId should reflect updated GID")
-	require.Equal(t, uint32(200), fakeDPU.rules[0].Policy.Destination.VrfId, "Destination VrfId should reflect updated GID")
+	require.Equal(t, uint32(200), fakeDPU.rules[0].Policy.Source.VrfId, "UPSERT VrfId should reflect updated GID")
+	require.Equal(t, uint32(200), fakeDPU.rules[0].Policy.Destination.VrfId, "UPSERT Destination VrfId should reflect updated GID")
+	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, fakeDPU.rules[1].Oper)
+	require.Equal(t, uint32(100), fakeDPU.rules[1].Policy.Source.VrfId, "stale DELETE VrfId should be old GID")
+	require.Equal(t, uint32(100), fakeDPU.rules[1].Policy.Destination.VrfId, "stale DELETE Destination VrfId should be old GID")
 }
 
 func TestPolicyHandlerResourceVersion(t *testing.T) {

@@ -517,10 +517,22 @@ func (dpu *DPUAgent) deletePolicyRule(rule *switchpolicy.DPUPolicyRule) error {
 	defer dpu.ruleSetLock.Unlock()
 
 	uid := policy.RuleToID(rule.Policy)
-	if _, ok := dpu.ruleSet[uid]; !ok {
-		return fmt.Errorf("policy does not exists")
+	existing, ok := dpu.ruleSet[uid]
+	if !ok {
+		return fmt.Errorf("policy does not exist")
 	}
-	delete(dpu.ruleSet, uid)
+
+	// Only remove the ruleSet entry if the checksum matches the current version.
+	// A mismatch means the policy was already updated (e.g., VRF GID change) and
+	// this DELETE is only cleaning up the old hardware entry — the ruleSet entry
+	// for the current version must be preserved.
+	csum, err := switchpolicy.HashRule(rule.Policy)
+	if err != nil {
+		return fmt.Errorf("failed policy rule checksum: %w", err)
+	}
+	if _, checksumExists := existing.shaMap[csum]; checksumExists {
+		delete(dpu.ruleSet, uid)
+	}
 	return nil
 }
 

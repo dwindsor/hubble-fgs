@@ -16,40 +16,80 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpdateGIDs(t *testing.T) {
-	t.Run("single GID change", func(t *testing.T) {
-		l3 := NewL3Networks()
-		require.NoError(t, l3.Add("red", 100))
+func TestDiff(t *testing.T) {
+	t.Run("added VRF", func(t *testing.T) {
+		current := NewL3Networks()
+		require.NoError(t, current.Add("red", 100))
 
-		l3.UpdateGIDs(map[VrfName]VrfGID{"red": 200})
+		incoming := NewL3Networks()
+		require.NoError(t, incoming.Add("red", 100))
+		require.NoError(t, incoming.Add("blue", 200))
 
-		require.Equal(t, VrfGID(200), l3.byName["red"])
-		require.Equal(t, VrfName("red"), l3.byGID[200])
-		_, oldExists := l3.byGID[100]
-		require.False(t, oldExists, "old GID should be removed from byGID")
+		added, removed, changed := current.Diff(incoming)
+
+		require.Equal(t, map[VrfName]VrfGID{"blue": 200}, added)
+		require.Empty(t, removed)
+		require.Empty(t, changed)
+	})
+
+	t.Run("removed VRF", func(t *testing.T) {
+		current := NewL3Networks()
+		require.NoError(t, current.Add("red", 100))
+		require.NoError(t, current.Add("blue", 200))
+
+		incoming := NewL3Networks()
+		require.NoError(t, incoming.Add("red", 100))
+
+		added, removed, changed := current.Diff(incoming)
+
+		require.Empty(t, added)
+		require.Equal(t, map[VrfName]VrfGID{"blue": 200}, removed)
+		require.Empty(t, changed)
+	})
+
+	t.Run("changed GID", func(t *testing.T) {
+		current := NewL3Networks()
+		require.NoError(t, current.Add("red", 100))
+
+		incoming := NewL3Networks()
+		require.NoError(t, incoming.Add("red", 200))
+
+		added, removed, changed := current.Diff(incoming)
+
+		require.Empty(t, added)
+		require.Empty(t, removed)
+		require.Equal(t, map[VrfName]GIDChange{"red": {OldGID: 100, NewGID: 200}}, changed)
 	})
 
 	t.Run("GID swap", func(t *testing.T) {
-		l3 := NewL3Networks()
-		require.NoError(t, l3.Add("red", 100))
-		require.NoError(t, l3.Add("blue", 200))
+		current := NewL3Networks()
+		require.NoError(t, current.Add("red", 100))
+		require.NoError(t, current.Add("blue", 200))
 
-		l3.UpdateGIDs(map[VrfName]VrfGID{"red": 200, "blue": 100})
+		incoming := NewL3Networks()
+		require.NoError(t, incoming.Add("red", 200))
+		require.NoError(t, incoming.Add("blue", 100))
 
-		require.Equal(t, VrfGID(200), l3.byName["red"])
-		require.Equal(t, VrfGID(100), l3.byName["blue"])
-		require.Equal(t, VrfName("red"), l3.byGID[200])
-		require.Equal(t, VrfName("blue"), l3.byGID[100])
+		added, removed, changed := current.Diff(incoming)
+
+		require.Empty(t, added)
+		require.Empty(t, removed)
+		require.Equal(t, GIDChange{OldGID: 100, NewGID: 200}, changed["red"])
+		require.Equal(t, GIDChange{OldGID: 200, NewGID: 100}, changed["blue"])
 	})
 
-	t.Run("no-op when GID unchanged", func(t *testing.T) {
-		l3 := NewL3Networks()
-		require.NoError(t, l3.Add("red", 100))
+	t.Run("no changes", func(t *testing.T) {
+		current := NewL3Networks()
+		require.NoError(t, current.Add("red", 100))
 
-		l3.UpdateGIDs(map[VrfName]VrfGID{"red": 100})
+		incoming := NewL3Networks()
+		require.NoError(t, incoming.Add("red", 100))
 
-		require.Equal(t, VrfGID(100), l3.byName["red"])
-		require.Equal(t, VrfName("red"), l3.byGID[100])
+		added, removed, changed := current.Diff(incoming)
+
+		require.Empty(t, added)
+		require.Empty(t, removed)
+		require.Empty(t, changed)
 	})
 }
 
