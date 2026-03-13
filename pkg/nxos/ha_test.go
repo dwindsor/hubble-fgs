@@ -163,6 +163,94 @@ func TestReconBatches_GidSwapOrdering(t *testing.T) {
 	}
 }
 
+// TestUpdateHaConfig_BatchSuppressesIntermediatePushes verifies that
+// updateHaConfig calls made inside a batch are deferred (haConfigPending set)
+// and a single flush occurs when the batch ends.
+func TestUpdateHaConfig_BatchSuppressesIntermediatePushes(t *testing.T) {
+	n := newTestNxos()
+
+	n.beginHaConfigBatch()
+
+	if n.haConfigDeferDepth != 1 {
+		t.Fatalf("haConfigDeferDepth = %d, want 1 after beginHaConfigBatch", n.haConfigDeferDepth)
+	}
+
+	// Simulate the setters calling updateHaConfig inside the batch.
+	n.updateHaConfig()
+	n.updateHaConfig()
+
+	if !n.haConfigPending {
+		t.Error("haConfigPending should be true after updateHaConfig calls while batching")
+	}
+	if n.haConfigDeferDepth != 1 {
+		t.Errorf("haConfigDeferDepth = %d, want 1 (no change from updateHaConfig calls)", n.haConfigDeferDepth)
+	}
+
+	// End the batch: pending should be cleared and a single flush fires.
+	n.endHaConfigBatch()
+
+	if n.haConfigDeferDepth != 0 {
+		t.Errorf("haConfigDeferDepth = %d, want 0 after endHaConfigBatch", n.haConfigDeferDepth)
+	}
+	if n.haConfigPending {
+		t.Error("haConfigPending should be false after endHaConfigBatch flushed the deferred update")
+	}
+}
+
+// TestUpdateHaConfig_NestedBatch verifies that nested begin/end pairs only
+// flush when the outermost batch ends (depth reaches 0).
+func TestUpdateHaConfig_NestedBatch(t *testing.T) {
+	n := newTestNxos()
+
+	n.beginHaConfigBatch() // depth = 1
+	if n.haConfigDeferDepth != 1 {
+		t.Fatalf("depth = %d after outer begin, want 1", n.haConfigDeferDepth)
+	}
+
+	n.beginHaConfigBatch() // depth = 2
+	if n.haConfigDeferDepth != 2 {
+		t.Fatalf("depth = %d after inner begin, want 2", n.haConfigDeferDepth)
+	}
+
+	n.updateHaConfig() // deferred, sets pending
+	if !n.haConfigPending {
+		t.Error("haConfigPending should be true after updateHaConfig at depth 2")
+	}
+
+	n.endHaConfigBatch() // depth = 1, no flush
+	if n.haConfigDeferDepth != 1 {
+		t.Fatalf("depth = %d after inner end, want 1 (no flush yet)", n.haConfigDeferDepth)
+	}
+	if !n.haConfigPending {
+		t.Error("haConfigPending should still be true after inner endHaConfigBatch")
+	}
+
+	n.endHaConfigBatch() // depth = 0, flush fires
+	if n.haConfigDeferDepth != 0 {
+		t.Fatalf("depth = %d after outer end, want 0", n.haConfigDeferDepth)
+	}
+	if n.haConfigPending {
+		t.Error("haConfigPending should be false after outer endHaConfigBatch flushed")
+	}
+}
+
+// TestUpdateHaConfig_NoBatchPassesThrough verifies that without an active
+// batch, updateHaConfig calls doUpdateHaConfig directly and never sets
+// haConfigPending.
+func TestUpdateHaConfig_NoBatchPassesThrough(t *testing.T) {
+	n := newTestNxos()
+
+	// No batch started: depth == 0.
+	n.updateHaConfig()
+
+	if n.haConfigPending {
+		t.Error("haConfigPending should remain false when no batch is active")
+	}
+	if n.haConfigDeferDepth != 0 {
+		t.Errorf("haConfigDeferDepth = %d, want 0", n.haConfigDeferDepth)
+	}
+}
+
 // TestReconBatches_NoContest verifies that when no GID is contested all
 // entries land in batch 2 and batch 1 is empty.
 func TestReconBatches_NoContest(t *testing.T) {

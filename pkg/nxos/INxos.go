@@ -313,14 +313,18 @@ type Nxos struct {
 	Vrfs       map[string]VrfBd
 	Bds        map[string]VrfBd
 	Ha         Ha
-	Update     Update
-	LbMode     model.E_Cisco_NX_OSDevice_Sas_LbModeType
-	DpuVersion string
-	serviceIp  string
-	Model      string
-	SwVer      string
-	CpaVer     string
-	SerNum     string
+	// haConfigDeferDepth > 0 means updateHaConfig calls are deferred.
+	// haConfigPending is set true when a call is deferred.
+	haConfigDeferDepth int
+	haConfigPending    bool
+	Update             Update
+	LbMode             model.E_Cisco_NX_OSDevice_Sas_LbModeType
+	DpuVersion         string
+	serviceIp          string
+	Model              string
+	SwVer              string
+	CpaVer             string
+	SerNum             string
 
 	// smartswitch management
 	policyHandler switchpolicy.PolicyHandler

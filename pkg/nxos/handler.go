@@ -447,6 +447,9 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 func (n *Nxos) updtSas(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems) error {
 	logger.GetLogger().Debug("updtSas")
 
+	n.beginHaConfigBatch()
+	defer n.endHaConfigBatch()
+
 	if items.DpuItems != nil {
 		err := n.updtSasDpu(ctx, items.DpuItems)
 		if err != nil {
@@ -1059,6 +1062,9 @@ func (n *Nxos) updtSasDpuInstInstExt(_ context.Context, items *model.Cisco_NX_OS
 
 func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems) error {
 	logger.GetLogger().Debug("updtSasSvcSvcinstSvcInstanceHa", "item", *items)
+
+	n.beginHaConfigBatch()
+	defer n.endHaConfigBatch()
 
 	n.SetHaConfigured(true)
 	// hard coded enabled. ignore mo for now

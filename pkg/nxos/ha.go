@@ -133,6 +133,14 @@ func (n *Nxos) SetHaPeer(ip string, peer HaPeer) {
 }
 
 func (n *Nxos) updateHaConfig() {
+	if n.haConfigDeferDepth > 0 {
+		n.haConfigPending = true
+		return
+	}
+	n.doUpdateHaConfig()
+}
+
+func (n *Nxos) doUpdateHaConfig() {
 	var peers []*v1alpha.HaPeer
 	for ip := range n.Ha.peers {
 		peers = append(peers, &v1alpha.HaPeer{
@@ -165,6 +173,18 @@ func (n *Nxos) updateHaConfig() {
 	})
 	if err != nil {
 		logger.GetLogger().Error("Failed to update HA config", "error", err)
+	}
+}
+
+func (n *Nxos) beginHaConfigBatch() {
+	n.haConfigDeferDepth++
+}
+
+func (n *Nxos) endHaConfigBatch() {
+	n.haConfigDeferDepth--
+	if n.haConfigDeferDepth == 0 && n.haConfigPending {
+		n.haConfigPending = false
+		n.doUpdateHaConfig()
 	}
 }
 
