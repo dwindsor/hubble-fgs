@@ -154,8 +154,8 @@ func (h *systemConnectionHandler) monitoringLoop(ctx context.Context) {
 func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context.Context) {
 	logger.GetLogger().Debug("timescape: sending system connection status update to timescape")
 
-	if h.client == nil {
-		logger.GetLogger().Debug("timescape: client not initialized, skipping status update")
+	if h.client == nil || !h.running {
+		logger.GetLogger().Debug("timescape: client not available or handler stopped, skipping status update")
 		return
 	}
 
@@ -187,6 +187,9 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 		select {
 		case <-ctx.Done():
 			logger.GetLogger().Debug("timescape: context cancelled while waiting to retry queue full")
+			return
+		case <-h.stopCh:
+			logger.GetLogger().Debug("timescape: handler stopped while waiting to retry queue full")
 			return
 		case <-time.After(5 * time.Second):
 			// Retry after waiting
@@ -340,16 +343,34 @@ func (h *systemConnectionHandler) writeSystemMetadataUpdate() *v1alpha.SystemSta
 func (h *systemConnectionHandler) sendSystemMetadataUpdate(ctx context.Context) {
 	logger.GetLogger().Debug("timescape: sending system metadata update")
 
-	if h.client == nil {
-		logger.GetLogger().Warn("timescape: client not initialized, skipping metadata update")
+	if h.client == nil || !h.running {
+		logger.GetLogger().Warn("timescape: client not available or handler stopped, skipping metadata update")
 		return
 	}
 
 	// Create system metadata update event
 	event := h.writeSystemMetadataUpdate()
 
-	// Keep retrying until successful send or context cancelled
+	// Keep retrying until successful send, handler stopped, or context cancelled
 	for {
+		// Check for stop signal before attempting to send to avoid unnecessary work and ensure we exit promptly when stopped
+		select {
+		case <-h.stopCh:
+			logger.GetLogger().Debug("timescape: handler stopped while retrying metadata update")
+			return
+		case <-ctx.Done():
+			logger.GetLogger().Debug("timescape: context cancelled while retrying metadata update")
+			return
+		default:
+			// Continue with the send attempt
+		}
+
+		// Get current client reference (in case it changed, but use original stopCh)
+		if h.client == nil || !h.running {
+			logger.GetLogger().Debug("timescape: handler stopped during metadata retry, stopping")
+			return
+		}
+
 		errCode := h.client.Send(ctx, event, types.PriorityHigh)
 
 		switch errCode {
@@ -369,8 +390,11 @@ func (h *systemConnectionHandler) sendSystemMetadataUpdate(ctx context.Context) 
 
 			// Wait before retrying
 			select {
+			case <-h.stopCh:
+				logger.GetLogger().Debug("timescape: handler stopped while waiting to retry metadata update")
+				return
 			case <-ctx.Done():
-				logger.GetLogger().Debug("timescape: context cancelled while retrying metadata update")
+				logger.GetLogger().Debug("timescape: context cancelled while waiting to retry metadata update")
 				return
 			case <-time.After(2 * time.Second):
 				// Continue the retry loop

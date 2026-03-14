@@ -202,6 +202,17 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigTimescape", target)
+	case v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE:
+		timescapeConfig := obj.GetConfigTimescape()
+		if timescapeConfig == nil {
+			return fmt.Errorf("config is nil")
+		}
+		targetPtr, ok := target.(*v1alpha.TimescapeConfig)
+		if ok {
+			proto.Merge(targetPtr, timescapeConfig)
+			return nil
+		}
+		return fmt.Errorf("unable to cast target of type %T to *v1alpha.TimescapeConfig", target)
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
 		logConfig := obj.GetConfigLogSplunk()
 		if logConfig == nil {

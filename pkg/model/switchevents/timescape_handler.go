@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/policystatus"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/systemstatus"
+
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	"github.com/isovalent/hubble-fgs/pkg/timescape"
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
@@ -53,9 +54,31 @@ type TimescapeHandlerConfig struct {
 // NewTimescapeHandler creates a new timescape handler
 func NewTimescapeHandler(config TimescapeHandlerConfig) ITimescape {
 	systemHandler := systemstatus.NewSystemConnectionHandler(config.SystemStatusDataProvider)
+	logger.GetLogger().Info("Setting client on system handler", "clientPtr", fmt.Sprintf("%p", config.Client))
 	systemHandler.SetClient(config.Client)
 
-	policyHandler := policystatus.NewPolicyStatusHandler(config.PolicyStatusDataProvider)
+	// Get timescape configuration for policy aggregator settings
+	timescapeConfig := CurrentTimescapeConfig()
+	var aggregationTimeout time.Duration
+	var maxBatchSize int
+
+	if timescapeConfig != nil && timescapeConfig.BatchTimeoutMs > 0 {
+		aggregationTimeout = time.Duration(timescapeConfig.BatchTimeoutMs) * time.Millisecond
+	} else {
+		aggregationTimeout = policystatus.DefaultAggregationTimeout
+	}
+
+	if timescapeConfig != nil && timescapeConfig.MaxBatchSize > 0 {
+		maxBatchSize = int(timescapeConfig.MaxBatchSize)
+	} else {
+		maxBatchSize = policystatus.DefaultMaxBatchSize
+	}
+
+	policyHandler := policystatus.NewPolicyStatusHandlerWithConfig(
+		config.PolicyStatusDataProvider,
+		aggregationTimeout,
+		maxBatchSize,
+	)
 	policyHandler.SetClient(config.Client)
 
 	return &TimescapeHandler{
@@ -145,37 +168,74 @@ func (h *TimescapeHandler) ReportPolicyStatus(ctx context.Context) error {
 //   - ctx: Context for controlling the lifecycle of the Timescape client
 //   - agw: AgentGateway instance providing system information like startup time, serial number, and version
 //   - enableNxos: Flag to enable NX-OS specific functionality for controller connection status
-//   - timescapePassword: Password for authenticating with the Timescape service
-//   - timescapeEndpoint: URL endpoint for the Timescape service
 //
 // Returns:
-//   - error: Returns an error if client creation fails or handler startup fails.
+//   - error: Returns an error if validation fails, client creation fails, or handler startup fails.
 //
-// The function will log warnings if timescapePassword or timescapeEndpoint are empty strings.
 // It blocks until the context is cancelled, at which point it gracefully shuts down the handler
 // and closes the client connection.
-func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, timescapePassword, timescapeEndpoint string) error {
-	if timescapePassword == "" {
-		logger.GetLogger().Warn("Timescape password not provided, return")
+func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
+	// Get configuration from the config manager
+	config := CurrentTimescapeConfig()
+	if config == nil {
+		logger.GetLogger().Error("Timescape configuration not available")
+		return fmt.Errorf("timescape configuration not available")
 	}
 
-	if timescapeEndpoint == "" {
+	// Validate authentication for BasicAuth
+	if config.UseBasicAuth && config.Password == "" {
+		logger.GetLogger().Warn("Timescape password not provided for basic auth, return")
+		return fmt.Errorf("timescape password required for BasicAuth")
+	}
+
+	if config.Endpoint == "" {
 		logger.GetLogger().Warn("Timescape endpoint not provided, return")
+		return fmt.Errorf("timescape endpoint is required")
 	}
 
+	// Build timescape config with all the new fields
 	timescapeConfig := types.HTTPTransportConfig{
-		// Add configuration fields as needed
-		Username:    TIMESCAPE_USERNAME,
-		Password:    timescapePassword,
-		EndpointURL: timescapeEndpoint,
+		Username:    config.Username,
+		Password:    config.Password,
+		EndpointURL: config.Endpoint,
 
-		UseProtobuf:        false,            // Use Protobuf instead of JSON
-		InsecureSkipVerify: true,             // Skip TLS verification for development
-		Timeout:            60 * time.Second, // Much longer timeout for network issues
-		Compression:        true,             // Enable compression
+		UseProtobuf:        false,                                                 // Use JSON for now, can be made configurable later
+		InsecureSkipVerify: true,                                                  // Skip TLS verification for development
+		Timeout:            time.Duration(config.RequestTimeoutSec) * time.Second, // Use config value or default
+
+		ConnectionTimeout: time.Duration(config.ConnectionTimeoutSec) * time.Second, // Connection timeout
+		MaxRetries:        int(config.MaxRetries),                                   // Retry configurations
+		Compression:       true,                                                     // Enable compression
 	}
-	// Build the timescape client
-	client, err := timescape.NewTimescapeClient(ctx, timescapeConfig)
+
+	// Apply timeout defaults if not configured
+	if timescapeConfig.Timeout == 0 {
+		timescapeConfig.Timeout = types.DefaultHTTPRequestTimeout // Default timeout
+	}
+	if timescapeConfig.ConnectionTimeout == 0 {
+		timescapeConfig.ConnectionTimeout = types.DefaultHTTPConnectionTimeout // Default connection timeout
+	}
+	if timescapeConfig.MaxRetries == 0 {
+		timescapeConfig.MaxRetries = types.DefaultMaxRetries // Default max retries
+	}
+	if config.MaxBatchSize == 0 {
+		config.MaxBatchSize = types.DefaultMaxBatchSize // Default max batch size
+	}
+	if config.BatchTimeoutMs == 0 {
+		config.BatchTimeoutMs = uint32(types.DefaultBatchTimeout.Milliseconds()) // Default batch timeout in ms
+	}
+
+	logger.GetLogger().Info("Setting up timescape client",
+		"endpoint", config.Endpoint,
+		"auth_type", getAuthTypeString(config),
+		"max_retries", config.MaxRetries,
+		"connection_timeout_sec", timescapeConfig.ConnectionTimeout.Seconds(),
+		"request_timeout_sec", timescapeConfig.Timeout.Seconds(),
+		"max_batch_size", config.MaxBatchSize,
+		"batch_timeout_ms", config.BatchTimeoutMs)
+
+	// Build the timescape client with isolated context
+	client, err := timescape.NewTimescapeClient(ctx, timescapeConfig, int(config.MaxBatchSize), config.BatchTimeoutMs)
 	if err != nil {
 		logger.GetLogger().Error("failed to create timescape client", logfields.Error, err)
 		return fmt.Errorf("timescape client setup failed: %w", err)
@@ -247,7 +307,6 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, timescap
 			dpuListener := agw.GetDPUListener()
 			if dpuListener != nil {
 				dpuListener.SetPolicyStatusHandler(policyStatusHandler)
-				logger.GetLogger().Debug("Policy status handler set on DPU listener")
 			} else {
 				logger.GetLogger().Warn("DPU listener not available to set policy status handler")
 			}
@@ -257,8 +316,35 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, timescap
 	}()
 
 	// Keep client running until context is cancelled
-	<-ctx.Done()
-	logger.GetLogger().Info("shutting down timescape client")
-	handler.Stop(ctx)
-	return client.Close()
+	go func() {
+		<-ctx.Done()
+		logger.GetLogger().Debug("shutting down timescape client")
+		handler.Stop(ctx)
+
+		// Ensure client is closed with a timeout to prevent hanging indefinitely
+		done := make(chan error, 1)
+		go func() {
+			done <- client.Close()
+		}()
+
+		select {
+		case err := <-done:
+			if err != nil {
+				logger.GetLogger().Error("Error closing timescape client", "error", err)
+			}
+		case <-time.After(2 * time.Second):
+			logger.GetLogger().Warn("timescape client close timed out after 2 seconds, forcing exit")
+		}
+	}()
+	return nil
+}
+
+// getAuthTypeString returns a human-readable authentication type for logging
+func getAuthTypeString(config *TimescapeConfig) string {
+	if config.UseBasicAuth {
+		return "basic_auth"
+	} else if config.UseMTLS {
+		return "mtls"
+	}
+	return "none"
 }

@@ -150,7 +150,7 @@ func (p *peer) String() string {
 }
 
 func (p *peer) SendPolicy(rule *DPUPolicyRule) error {
-	logger.GetLogger().Info("Agw server: Sending policy rule to peer", "peerID", p.uid, "policyName", rule.Policy.PolicyName, "ruleName", rule.Policy.RuleName)
+	logger.GetLogger().Debug("Agw server: Sending policy rule to peer", "peerID", p.uid, "policyName", rule.Policy.PolicyName, "ruleName", rule.Policy.RuleName)
 
 	// Check channel availability before sending
 	if p.polCh == nil {

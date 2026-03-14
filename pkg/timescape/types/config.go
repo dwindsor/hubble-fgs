@@ -18,8 +18,13 @@ import (
 )
 
 const (
-	// DefaultHTTPTimeout is the default HTTP timeout for timescape client
-	DefaultHTTPTimeout = 30 * time.Second
+	// DefaultHTTPRequestTimeout is the default HTTP timeout for timescape client
+	DefaultHTTPRequestTimeout    = 60 * time.Second
+	DefaultHTTPConnectionTimeout = 30 * time.Second
+	DefaultMaxRetries            = 3
+	DefaultBaseBackoff           = 100 * time.Millisecond
+	DefaultMaxBatchSize          = 3
+	DefaultBatchTimeout          = 30000 * time.Millisecond
 )
 
 // Transport defines the interface for sending messages to timescape
@@ -67,6 +72,12 @@ type HTTPTransportConfig struct {
 	Compression bool
 	UseProtobuf bool // if false, use JSON
 
+	// Connection timeout settings
+	ConnectionTimeout time.Duration // TCP connection timeout
+
+	// Retry configurations
+	MaxRetries int // Maximum number of retry attempts
+
 	// TLS settings
 	InsecureSkipVerify bool   // For development/testing only
 	ServerName         string // For SNI when using custom certificates
@@ -75,10 +86,10 @@ type HTTPTransportConfig struct {
 // DefaultConfig returns a sensible default configuration
 func DefaultConfig() Config {
 	return Config{
-		MaxBatchSize: 10,
-		BatchTimeout: 1 * time.Second,
-		SendTimeout:  30 * time.Second,
-		MaxRetries:   3,
-		BaseBackoff:  100 * time.Millisecond,
+		MaxBatchSize: DefaultMaxBatchSize,
+		BatchTimeout: DefaultBatchTimeout,
+		SendTimeout:  DefaultHTTPRequestTimeout,
+		MaxRetries:   DefaultMaxRetries,
+		BaseBackoff:  DefaultBaseBackoff,
 	}
 }

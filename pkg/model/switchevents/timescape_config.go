@@ -19,11 +19,36 @@ const (
 )
 
 // TimescapeConfig holds the timescape client configuration
+// This struct supports both CLI and ConfigMap sources with all necessary fields
 type TimescapeConfig struct {
+	// Core configuration
 	ClientEnabled bool   `json:"client_enabled"`
 	Endpoint      string `json:"endpoint"`
 	Username      string `json:"username"`
 	Password      string `json:"-"` // Don't serialize password in JSON
+
+	// Authentication method selection (oneOf pattern from protobuf)
+	UseBasicAuth bool `json:"use_basic_auth"`
+	UseMTLS      bool `json:"use_mtls"`
+
+	// Connection settings from protobuf TimescapeConfig
+	Host        string `json:"host"`
+	Port        string `json:"port"`
+	Protocol    string `json:"protocol"`
+	TlsEnabled  bool   `json:"tls_enabled"`
+	EndpointApi string `json:"endpoint_api"`
+
+	// Transport configuration
+	MaxRetries           uint32 `json:"max_retries"`
+	ConnectionTimeoutSec uint32 `json:"connection_timeout_sec"`
+	RequestTimeoutSec    uint32 `json:"request_timeout_sec"`
+
+	// Batching configuration
+	MaxBatchSize   uint32 `json:"max_batch_size"`
+	BatchTimeoutMs uint32 `json:"batch_timeout_ms"`
+
+	// Internal fields for ConfigMap vs CLI source tracking
+	ConfigSource string `json:"config_source"` // "cli", "configmap", or "merged"
 }
 
 // TimescapeConfigManager manages the timescape configuration with thread safety
@@ -58,10 +83,23 @@ func (tcm *TimescapeConfigManager) GetTimescapeConfig() *TimescapeConfig {
 
 	// Return a copy to prevent external modifications
 	return &TimescapeConfig{
-		ClientEnabled: tcm.config.ClientEnabled,
-		Endpoint:      tcm.config.Endpoint,
-		Username:      tcm.config.Username,
-		Password:      tcm.config.Password,
+		ClientEnabled:        tcm.config.ClientEnabled,
+		Endpoint:             tcm.config.Endpoint,
+		Username:             tcm.config.Username,
+		Password:             tcm.config.Password,
+		UseBasicAuth:         tcm.config.UseBasicAuth,
+		UseMTLS:              tcm.config.UseMTLS,
+		Host:                 tcm.config.Host,
+		Port:                 tcm.config.Port,
+		Protocol:             tcm.config.Protocol,
+		TlsEnabled:           tcm.config.TlsEnabled,
+		EndpointApi:          tcm.config.EndpointApi,
+		MaxRetries:           tcm.config.MaxRetries,
+		ConnectionTimeoutSec: tcm.config.ConnectionTimeoutSec,
+		RequestTimeoutSec:    tcm.config.RequestTimeoutSec,
+		MaxBatchSize:         tcm.config.MaxBatchSize,
+		BatchTimeoutMs:       tcm.config.BatchTimeoutMs,
+		ConfigSource:         tcm.config.ConfigSource,
 	}
 }
 
@@ -76,10 +114,23 @@ func (tcm *TimescapeConfigManager) SetTimescapeConfig(config *TimescapeConfig) {
 	}
 
 	tcm.config = &TimescapeConfig{
-		ClientEnabled: config.ClientEnabled,
-		Endpoint:      config.Endpoint,
-		Username:      TIMESCAPE_USERNAME,
-		Password:      config.Password,
+		ClientEnabled:        config.ClientEnabled,
+		Endpoint:             config.Endpoint,
+		Username:             config.Username,
+		Password:             config.Password,
+		UseBasicAuth:         config.UseBasicAuth,
+		UseMTLS:              config.UseMTLS,
+		Host:                 config.Host,
+		Port:                 config.Port,
+		Protocol:             config.Protocol,
+		TlsEnabled:           config.TlsEnabled,
+		EndpointApi:          config.EndpointApi,
+		MaxRetries:           config.MaxRetries,
+		ConnectionTimeoutSec: config.ConnectionTimeoutSec,
+		RequestTimeoutSec:    config.RequestTimeoutSec,
+		MaxBatchSize:         config.MaxBatchSize,
+		BatchTimeoutMs:       config.BatchTimeoutMs,
+		ConfigSource:         config.ConfigSource,
 	}
 }
 
@@ -219,13 +270,21 @@ func (tcm *TimescapeConfigManager) IsConfigured() bool {
 // These functions use the singleton instance
 
 // InitializeTimescapeConfig initializes the singleton with configuration values
-func InitializeTimescapeConfig(clientEnabled bool, endpoint, password string) {
+// Username should be provided by the caller (from ConfigMap) or will use default for CLI-only setup
+func InitializeTimescapeConfig(clientEnabled bool, endpoint, username, password string) {
 	configManager := GetTimescapeConfigManager()
+
+	// Use default username for CLI-only setup if none provided
+	if username == "" {
+		username = TIMESCAPE_USERNAME
+	}
+
 	config := &TimescapeConfig{
 		ClientEnabled: clientEnabled,
 		Endpoint:      endpoint,
-		Username:      TIMESCAPE_USERNAME,
+		Username:      username,
 		Password:      password,
+		ConfigSource:  "cli", // Default to CLI source
 	}
 	configManager.SetTimescapeConfig(config)
 }

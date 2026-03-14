@@ -24,6 +24,7 @@ package timescape
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/timescape/client"
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
@@ -37,12 +38,15 @@ var (
 )
 
 // GetTimescapeClient creates a singleton timescape client with default HTTP transport
-func NewTimescapeClient(ctx context.Context, config types.HTTPTransportConfig) (types.Client, error) {
+func NewTimescapeClient(ctx context.Context, config types.HTTPTransportConfig, maxBatchSize int, batchTimeoutMs uint32) (types.Client, error) {
 	clientOnce.Do(func() {
 		builder := client.NewClientBuilder().
 			WithEndpoint(config.EndpointURL).
 			WithAuth(config.Username, config.Password).
-			WithTimeout(config.Timeout).
+			WithRequestTimeout(config.Timeout).
+			WithConnectionTimeout(config.ConnectionTimeout).
+			WithRetryConfig(config.MaxRetries, types.DefaultBaseBackoff).
+			WithBatchConfig(maxBatchSize, time.Duration(batchTimeoutMs)*time.Millisecond).
 			WithCompression(config.Compression)
 
 		// Set Protobuf or JSON serialization

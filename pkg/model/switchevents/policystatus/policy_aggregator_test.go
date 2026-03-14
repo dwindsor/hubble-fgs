@@ -26,7 +26,7 @@ func TestNewPolicyAggregator(t *testing.T) {
 	expectedAgentCount := 2
 	timeout := 30 * time.Second
 
-	pa := NewPolicyAggregator(expectedAgentCount, timeout)
+	pa := NewPolicyAggregator(expectedAgentCount, timeout, DefaultMaxBatchSize)
 
 	assert.NotNil(t, pa)
 	assert.Equal(t, expectedAgentCount, pa.expectedAgentCount)
@@ -40,7 +40,7 @@ func TestNewPolicyAggregator(t *testing.T) {
 }
 
 func TestPolicyAggregator_StartStop(t *testing.T) {
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -62,7 +62,7 @@ func TestPolicyAggregator_StartStop(t *testing.T) {
 }
 
 func TestPolicyAggregator_SetBatchCallback(t *testing.T) {
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 	called := false
 
 	callback := func([]*PolicyAggregationResult) {
@@ -78,7 +78,7 @@ func TestPolicyAggregator_SetBatchCallback(t *testing.T) {
 }
 
 func TestPolicyAggregator_normalizeRuleName(t *testing.T) {
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 
 	tests := []struct {
 		input    string
@@ -99,7 +99,7 @@ func TestPolicyAggregator_normalizeRuleName(t *testing.T) {
 
 func TestPolicyAggregator_ProcessRuleEvent(t *testing.T) {
 	shortTimeout := 100 * time.Millisecond
-	pa := NewPolicyAggregator(2, shortTimeout)
+	pa := NewPolicyAggregator(2, shortTimeout, DefaultMaxBatchSize)
 
 	// Create test rule event
 	ruleEvent := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
@@ -154,7 +154,7 @@ func TestPolicyAggregator_ProcessRuleEvent(t *testing.T) {
 }
 
 func TestPolicyAggregator_isPolicyComplete(t *testing.T) {
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 
 	// Create policy with incomplete rules
 	policy := &PolicyAggregationResult{
@@ -182,7 +182,7 @@ func TestPolicyAggregator_isPolicyComplete(t *testing.T) {
 
 func TestPolicyAggregator_BatchingBehavior(t *testing.T) {
 	shortTimeout := 100 * time.Millisecond
-	pa := NewPolicyAggregator(1, shortTimeout) // Single agent for quick completion
+	pa := NewPolicyAggregator(1, shortTimeout, DefaultMaxBatchSize) // Single agent for quick completion
 
 	var batchedResults []*PolicyAggregationResult
 	var mu sync.Mutex
@@ -233,7 +233,7 @@ func TestPolicyAggregator_BatchingBehavior(t *testing.T) {
 
 func TestPolicyAggregator_TimeoutHandling(t *testing.T) {
 	shortTimeout := 100 * time.Millisecond
-	pa := NewPolicyAggregator(2, shortTimeout)
+	pa := NewPolicyAggregator(2, shortTimeout, DefaultMaxBatchSize)
 
 	var batchedResults []*PolicyAggregationResult
 	var mu sync.Mutex
@@ -275,7 +275,7 @@ func TestPolicyAggregator_TimeoutHandling(t *testing.T) {
 }
 
 func TestPolicyAggregator_Cleanup(t *testing.T) {
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 
 	// Create old policy entry
 	oldTime := time.Now().Add(-5 * time.Minute) // Older than CleanupCutoffAge
@@ -303,7 +303,7 @@ func TestPolicyAggregator_Cleanup(t *testing.T) {
 }
 
 func TestPolicyAggregator_shouldFlushBatch(t *testing.T) {
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 
 	// Empty batch should not flush
 	assert.False(t, pa.shouldFlushBatch())
@@ -324,7 +324,7 @@ func TestPolicyAggregator_shouldFlushBatch(t *testing.T) {
 }
 
 func TestPolicyAggregator_countIncompleteRules(t *testing.T) {
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 
 	policy := &PolicyAggregationResult{
 		RuleResults: map[string]*RuleAggregationResult{
@@ -348,7 +348,7 @@ func TestPolicyAggregator_countIncompleteRules(t *testing.T) {
 
 func TestPolicyAggregator_CleanupLoop(t *testing.T) {
 	// Use shorter cleanup interval and cutoff for testing
-	pa := NewPolicyAggregator(2, 30*time.Second)
+	pa := NewPolicyAggregator(2, 30*time.Second, DefaultMaxBatchSize)
 	pa.cleanupInterval = 20 * time.Millisecond // Short cleanup interval
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -394,7 +394,7 @@ func TestPolicyAggregator_CleanupLoop(t *testing.T) {
 
 func TestPolicyAggregator_MultipleRulesPerPolicy(t *testing.T) {
 	shortTimeout := 300 * time.Millisecond
-	pa := NewPolicyAggregator(2, shortTimeout)
+	pa := NewPolicyAggregator(2, shortTimeout, DefaultMaxBatchSize)
 	pa.maxBatchSize = 1 // Force immediate batch send
 
 	var batchedResults []*PolicyAggregationResult
@@ -511,8 +511,8 @@ Verification: Both rules have responses from all 3 agents
 */
 func TestPolicyAggregator_MultipleRulesCircularAgents(t *testing.T) {
 	shortTimeout := 300 * time.Millisecond
-	pa := NewPolicyAggregator(3, shortTimeout) // 3 agents expected
-	pa.maxBatchSize = 1                        // Force immediate batch send
+	pa := NewPolicyAggregator(3, shortTimeout, DefaultMaxBatchSize) // 3 agents expected
+	pa.maxBatchSize = 1                                             // Force immediate batch send
 
 	var batchedResults []*PolicyAggregationResult
 	var mu sync.Mutex

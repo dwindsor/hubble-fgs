@@ -15,6 +15,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/logger"
+
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 )
 
@@ -28,7 +30,7 @@ type ClientBuilder struct {
 func NewClientBuilder() *ClientBuilder {
 	return &ClientBuilder{
 		config: types.HTTPTransportConfig{
-			Timeout: types.DefaultHTTPTimeout,
+			Timeout: types.DefaultHTTPRequestTimeout,
 		},
 		queueConfig: types.DefaultConfig(),
 	}
@@ -54,9 +56,18 @@ func (b *ClientBuilder) WithAuthFromEnv() *ClientBuilder {
 	return b
 }
 
-// WithTimeout sets the HTTP timeout
-func (b *ClientBuilder) WithTimeout(timeout time.Duration) *ClientBuilder {
-	b.config.Timeout = timeout
+// WithRequestTimeout sets the HTTP Request timeout in seconds
+func (b *ClientBuilder) WithRequestTimeout(timeout time.Duration) *ClientBuilder {
+	// Convert to seconds and back to ensure we store in second precision
+	seconds := timeout.Seconds()
+	b.queueConfig.SendTimeout = time.Duration(seconds) * time.Second
+	return b
+}
+
+// WithConnectionTimeout sets the connection timeout in seconds for the HTTP transport
+func (b *ClientBuilder) WithConnectionTimeout(timeout time.Duration) *ClientBuilder {
+	seconds := timeout.Seconds()
+	b.config.ConnectionTimeout = time.Duration(seconds) * time.Second
 	return b
 }
 
@@ -66,7 +77,7 @@ func (b *ClientBuilder) WithProtobuf() *ClientBuilder {
 	return b
 }
 
-// WithProtobuf enables json serialization
+// WithJson enables json serialization
 func (b *ClientBuilder) WithJson() *ClientBuilder {
 	b.config.UseProtobuf = false
 	return b
@@ -97,6 +108,13 @@ func (b *ClientBuilder) WithRetryConfig(maxRetries int, baseBackoff time.Duratio
 	return b
 }
 
+// WithBatchConfig sets batching configuration
+func (b *ClientBuilder) WithBatchConfig(maxBatchSize int, batchTimeout time.Duration) *ClientBuilder {
+	b.queueConfig.MaxBatchSize = maxBatchSize
+	b.queueConfig.BatchTimeout = batchTimeout
+	return b
+}
+
 // WithCompression enables or disables compression for the client connection.
 func (b *ClientBuilder) WithCompression(enabled bool) *ClientBuilder {
 	b.config.Compression = enabled
@@ -112,5 +130,16 @@ func (b *ClientBuilder) Build(ctx context.Context) (types.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	logger.GetLogger().Debug("timescape client created successfully",
+		"endpoint", b.config.EndpointURL,
+		"useProtobuf", b.config.UseProtobuf,
+		"insecureSkipVerify", b.config.InsecureSkipVerify,
+		"requestTimeout", b.queueConfig.SendTimeout,
+		"connectionTimeout", b.config.ConnectionTimeout,
+		"maxRetries", b.queueConfig.MaxRetries,
+		"batchSize", b.queueConfig.MaxBatchSize,
+		"batchTimeout", b.queueConfig.BatchTimeout,
+	)
 	return client, nil
 }

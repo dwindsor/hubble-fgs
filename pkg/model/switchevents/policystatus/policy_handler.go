@@ -72,8 +72,13 @@ type policyStatusHandler struct {
 	policyAggregator *PolicyAggregator
 }
 
-// NewPolicyStatusHandler creates a new policy status handler
+// NewPolicyStatusHandler creates a new policy status handler with default configuration
 func NewPolicyStatusHandler(dataProvider PolicyStatusDataProvider) PolicyStatusHandler {
+	return NewPolicyStatusHandlerWithConfig(dataProvider, DefaultAggregationTimeout, DefaultMaxBatchSize)
+}
+
+// NewPolicyStatusHandlerWithConfig creates a new policy status handler with custom configuration
+func NewPolicyStatusHandlerWithConfig(dataProvider PolicyStatusDataProvider, aggregationTimeout time.Duration, maxBatchSize int) PolicyStatusHandler {
 	handler := &policyStatusHandler{
 		running:      false,
 		stopCh:       make(chan struct{}),
@@ -81,7 +86,7 @@ func NewPolicyStatusHandler(dataProvider PolicyStatusDataProvider) PolicyStatusH
 		dataProvider: dataProvider,
 
 		// Default to 4 FWA agents, 1 minute timeout
-		policyAggregator: NewPolicyAggregator(DefaultExpectedAgentCount, DefaultAggregationTimeout),
+		policyAggregator: NewPolicyAggregator(DefaultExpectedAgentCount, aggregationTimeout, maxBatchSize),
 	}
 
 	// Set policy batch callback
@@ -179,7 +184,13 @@ func (h *policyStatusHandler) Start(ctx context.Context) error {
 	defer h.mu.Unlock()
 
 	if h.running {
+		logger.GetLogger().Info("PolicyHandler: Already running, ignoring start request")
 		return nil // Already running
+	}
+
+	if h.client == nil {
+		logger.GetLogger().Error("PolicyHandler: Cannot start - client is nil")
+		return fmt.Errorf("client is nil")
 	}
 
 	h.running = true
@@ -204,6 +215,7 @@ func (h *policyStatusHandler) Stop(_ context.Context) {
 	h.running = false
 	h.policyAggregator.Stop()
 	close(h.stopCh) // Signal goroutines to stop
+
 	logger.GetLogger().Info("timescape: policy status handler stopped")
 }
 
@@ -220,6 +232,11 @@ func (h *policyStatusHandler) writePolicyStatusUpdate(ctx context.Context, event
 		return fmt.Errorf("timescape client not set")
 	}
 
+	if !h.running {
+		logger.GetLogger().Error("timescape: policy handler not running, cannot send policy status update")
+		return fmt.Errorf("timescape: policy handler not running")
+	}
+
 	errCode := h.client.Send(ctx, event, types.PriorityLow)
 	if errCode == types.ErrCodeQueueBusy {
 		logger.GetLogger().Debug("timescape: queue full, waiting before retry for policy event")
@@ -229,15 +246,17 @@ func (h *policyStatusHandler) writePolicyStatusUpdate(ctx context.Context, event
 		case <-ctx.Done():
 			logger.GetLogger().Debug("timescape: context cancelled while waiting to retry policy event")
 			return ctx.Err()
+		case <-h.stopCh:
+			logger.GetLogger().Debug("timescape: policy handler stopped while waiting to retry policy event")
+			return fmt.Errorf("timescape: policy handler stopped")
 		case <-time.After(3 * time.Second):
 			errCode = h.client.Send(ctx, event, types.PriorityLow)
 		}
 	}
 	if errCode != types.ErrCodeSuccess {
 		logger.GetLogger().Error("timescape: failed to send policy status update", "error", errCode)
-		return fmt.Errorf("failed to send policy status update")
+		return fmt.Errorf("timescape: failed to send policy status update")
 	}
-
 	logger.GetLogger().Debug("timescape: policy status update sent to timescape")
 	return nil
 }
@@ -249,7 +268,7 @@ func (h *policyStatusHandler) ProcessPolicyRuleEvent(_ context.Context, agentUID
 			"agentUID", agentUID,
 			"policyName", ruleEvent.PolicyName,
 			"ruleName", ruleEvent.RuleName)
-		return fmt.Errorf("policy status handler not running")
+		return fmt.Errorf("timescape: policy status handler not running")
 	}
 
 	logger.GetLogger().Debug("timescape: processing policy rule event",
@@ -264,7 +283,7 @@ func (h *policyStatusHandler) ProcessPolicyRuleEvent(_ context.Context, agentUID
 }
 
 func (h *policyStatusHandler) handleAggregatedPolicyBatch(policies []*PolicyAggregationResult) {
-	logger.GetLogger().Info("handling aggregated policy batch",
+	logger.GetLogger().Debug("handling aggregated policy batch",
 		"policyCount", len(policies))
 
 	// Convert batch of policies to PolicyStatusUpdate

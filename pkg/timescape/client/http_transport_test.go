@@ -54,7 +54,7 @@ func TestNewHTTPTransport(t *testing.T) {
 			},
 			expectedName: ENDPOINTURL,
 			validateClient: func(t *testing.T, transport *HTTPTransport) {
-				assert.Equal(t, types.DefaultHTTPTimeout, transport.client.Timeout)
+				assert.Equal(t, types.DefaultHTTPRequestTimeout, transport.client.Timeout)
 				assert.Equal(t, ENDPOINTURL, transport.config.EndpointURL)
 			},
 		},

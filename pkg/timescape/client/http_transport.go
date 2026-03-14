@@ -36,7 +36,7 @@ type HTTPTransport struct {
 // NewHTTPTransport creates a new HTTP transport with the given configuration
 func NewHTTPTransport(config types.HTTPTransportConfig) *HTTPTransport {
 	if config.Timeout == 0 {
-		config.Timeout = types.DefaultHTTPTimeout
+		config.Timeout = types.DefaultHTTPRequestTimeout
 	}
 
 	// Create HTTP transport with connection pooling and keep-alive
@@ -72,7 +72,7 @@ func (h *HTTPTransport) newTracedClient() *http.Client {
 		MaxIdleConns:          100,
 	}
 	return &http.Client{
-		Timeout:   types.DefaultHTTPTimeout,
+		Timeout:   types.DefaultHTTPRequestTimeout,
 		Transport: tr,
 	}
 }
@@ -214,7 +214,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	}
 
 	// Log successful HTTP response
-	logger.GetLogger().Debug("HTTP transport push successful",
+	logger.GetLogger().Debug("transport push successful",
 		"status_code", resp.StatusCode,
 		"status", resp.Status,
 		"count", len(msgs),

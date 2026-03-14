@@ -99,17 +99,22 @@ type PolicyAggregator struct {
 	partialPolicySendCount int64                               // Count of partial policy sends due to timeouts
 	stopCh                 chan struct{}
 	running                bool
+	wg                     sync.WaitGroup // Wait for cleanup goroutine to finish
 }
 
 // NewPolicyAggregator creates a new policy aggregator
-func NewPolicyAggregator(expectedAgentCount int, aggregationTimeout time.Duration) *PolicyAggregator {
+func NewPolicyAggregator(expectedAgentCount int, aggregationTimeout time.Duration, maxBatchSize int) *PolicyAggregator {
+	if maxBatchSize <= 0 {
+		maxBatchSize = DefaultMaxBatchSize
+	}
+
 	return &PolicyAggregator{
 		pendingPolicies:    make(map[string]*PolicyAggregationResult),
-		pendingBatch:       make([]*PolicyAggregationResult, 0, DefaultMaxBatchSize),
+		pendingBatch:       make([]*PolicyAggregationResult, 0, maxBatchSize),
 		expectedAgentCount: expectedAgentCount,
 		aggregationTimeout: aggregationTimeout,
 		cleanupInterval:    CleanupInterval,
-		maxBatchSize:       DefaultMaxBatchSize,
+		maxBatchSize:       maxBatchSize,
 		stopCh:             make(chan struct{}),
 		running:            false,
 	}
@@ -126,7 +131,11 @@ func (pa *PolicyAggregator) Start(ctx context.Context) {
 	pa.mu.Unlock()
 
 	// Start cleanup goroutine
-	go pa.cleanupLoop(ctx)
+	pa.wg.Add(1)
+	go func() {
+		defer pa.wg.Done()
+		pa.cleanupLoop(ctx)
+	}()
 
 	logger.GetLogger().Info("policy aggregator started",
 		"expectedAgentCount", pa.expectedAgentCount,
@@ -151,6 +160,8 @@ func (pa *PolicyAggregator) Stop() {
 	pa.mu.Unlock()
 
 	close(pa.stopCh)
+	// Wait for cleanup goroutine to finish
+	pa.wg.Wait()
 	logger.GetLogger().Info("policy aggregator stopped")
 }
 

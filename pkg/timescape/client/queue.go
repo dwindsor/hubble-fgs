@@ -46,6 +46,9 @@ type Queue struct {
 
 // NewQueue creates a new timescape client with the given configuration
 func NewQueue(ctx context.Context, cfg types.Config) (*Queue, error) {
+	if cfg.Transport == nil {
+		logger.GetLogger().Info("transport is required in config")
+	}
 	queueCtx, cancel := context.WithCancel(ctx)
 	q := &Queue{
 		cfg:       cfg,
@@ -153,6 +156,7 @@ func (q *Queue) lowPriorityWorker() {
 	timer := time.NewTimer(q.cfg.BatchTimeout)
 	defer timer.Stop()
 
+	logger.GetLogger().Debug("timescape low priority worker started with batch timeout", "batchsize", q.cfg.MaxBatchSize, "batchTimeout", q.cfg.BatchTimeout)
 	for {
 		select {
 		case <-q.ctx.Done():
@@ -206,31 +210,50 @@ func (q *Queue) flushBatch(ctx context.Context, p types.Priority, batch []types.
 	}
 
 	ctx = context.WithValue(ctx, priorityKey, p)
-	ctx, cancel := context.WithTimeout(ctx, q.cfg.SendTimeout)
+	retryTime := time.Duration(q.cfg.MaxRetries) * q.cfg.BaseBackoff * 15
+	requestTimeout := 2 * q.cfg.SendTimeout
+	if requestTimeout < types.DefaultHTTPRequestTimeout {
+		requestTimeout = types.DefaultHTTPRequestTimeout
+	}
+	totalCtxTimeout := requestTimeout*time.Duration(q.cfg.MaxRetries+1) + retryTime
+	ctx, cancel := context.WithTimeout(ctx, totalCtxTimeout)
 	defer cancel()
 
 	// Implement exponential backoff retry
 	retries := 0
 	for {
+		start := time.Now()
 		err := q.transport.PushBatch(ctx, batch)
+		elapsed := time.Since(start)
 		if err == nil {
-			logger.GetLogger().Debug("timescape: batch sent successfully", "priority", p)
+			logger.GetLogger().Debug("timescape: batch sent successfully", "priority", p, "elapsed_time", elapsed)
 			return
 		}
 
 		if retries+1 > q.cfg.MaxRetries {
-			logger.GetLogger().Error("timescape: failed to send batch after max retries. Drop", "error", err, "priority", p, "retries", retries)
+			logger.GetLogger().Error("timescape: failed to send batch after max retries. Drop", "error", err, "priority", p, "retries", retries, "elapsed_time", elapsed)
 			return
 		}
 		retries++
 
 		// Exponential backoff: 2^retries * baseDelay (100ms, 200ms, 400ms, 800ms...)
 		backoff := time.Duration(1<<(retries-1)) * q.cfg.BaseBackoff
-		logger.GetLogger().Warn("timescape: retrying batch send", "error", err, "priority", p, "retry", retries, "backoff", backoff)
+		// Check remaining context time
+		deadline, hasDeadline := ctx.Deadline()
+		if hasDeadline {
+			timeLeft := time.Until(deadline)
+			if timeLeft < backoff+requestTimeout {
+				logger.GetLogger().Debug("timescape: insufficient time left for retry",
+					"timeLeft", timeLeft,
+					"backoff", backoff,
+					"priority", p)
+			}
+			logger.GetLogger().Warn("timescape: retrying batch send", "error", err, "priority", p, "retry", retries, "backoff", backoff)
+		}
 
 		select {
 		case <-ctx.Done():
-			logger.GetLogger().Error("timescape: Context cancelled during retry backoff", "priority", p)
+			logger.GetLogger().Info("timescape: Context cancelled during retry backoff", "priority", p)
 			return
 		case <-time.After(backoff):
 			// Continue to next retry

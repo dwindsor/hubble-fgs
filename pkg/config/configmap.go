@@ -13,6 +13,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +31,7 @@ type IConnectionMonitor interface {
 	CreateEventHandlers(ctx context.Context) cache.ResourceEventHandlerFuncs
 }
 
-func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, configmapName string, connMonitor IConnectionMonitor) error {
+func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, configmapNames []string, connMonitor IConnectionMonitor) error {
 	// This watches all ConfigMaps, not just the specific smartswitch
 	// TODO: Narrow down this watcher to only get updates on smartswitch configmap
 	informer, err := m.Manager.GetCache().GetInformer(ctx, &v1.ConfigMap{})
@@ -51,24 +52,30 @@ func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, con
 	// monitoring logic is invoked.
 	wrappedHandlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			// Process ConfigMap first
-			addConfigMap(obj, configmapName)
+			// Process ConfigMap first for all watched ConfigMaps
+			for _, configmapName := range configmapNames {
+				addConfigMap(obj, configmapName)
+			}
 			// Then call connection monitor
 			if eventHandlers.AddFunc != nil {
 				eventHandlers.AddFunc(obj)
 			}
 		},
 		UpdateFunc: func(oldObj, newObj any) {
-			// Process ConfigMap first
-			updateConfigMap(oldObj, newObj, configmapName)
+			// Process ConfigMap first for all watched ConfigMaps
+			for _, configmapName := range configmapNames {
+				updateConfigMap(oldObj, newObj, configmapName)
+			}
 			// Then call connection monitor
 			if eventHandlers.UpdateFunc != nil {
 				eventHandlers.UpdateFunc(oldObj, newObj)
 			}
 		},
 		DeleteFunc: func(obj any) {
-			// Process ConfigMap first
-			deleteConfigMap(obj, configmapName)
+			// Process ConfigMap first for all watched ConfigMaps
+			for _, configmapName := range configmapNames {
+				deleteConfigMap(obj, configmapName)
+			}
 			// Then call connection monitor
 			if eventHandlers.DeleteFunc != nil {
 				eventHandlers.DeleteFunc(obj)
@@ -115,10 +122,12 @@ func addConfigMap(obj any, name string) {
 func updateConfigMap(oldObj any, newObj any, name string) {
 	oldCm, ok := oldObj.(*v1.ConfigMap)
 	if !ok {
+		logger.GetLogger().Debug("updateConfigMap: oldObj is not ConfigMap", "type", fmt.Sprintf("%T", oldObj))
 		return
 	}
 	newCm, ok := newObj.(*v1.ConfigMap)
 	if !ok {
+		logger.GetLogger().Debug("updateConfigMap: newObj is not ConfigMap", "type", fmt.Sprintf("%T", newObj))
 		return
 	}
 	if oldCm.Name != name || newCm.Name != name || oldCm.Name != newCm.Name {
@@ -199,6 +208,15 @@ func ParseConfigMap(cm *v1.ConfigMap) map[v1alpha.ConfigType]*v1alpha.ConfigObje
 				continue
 			}
 			configObj.Config = &v1alpha.ConfigObject_ConfigLogSplunk{ConfigLogSplunk: &splunkCfg}
+		case "timescape_config":
+			configObj.Type = v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE
+			var timescapeConfig v1alpha.TimescapeConfig
+			err := json.Unmarshal([]byte(jsonData), &timescapeConfig)
+			if err != nil {
+				logger.GetLogger().Error("Failed to parse Timescape config", "type", cType, "json", jsonData)
+				continue
+			}
+			configObj.Config = &v1alpha.ConfigObject_ConfigTimescape{ConfigTimescape: &timescapeConfig}
 		default:
 			logger.GetLogger().Error("Unknown config type", "type", cType)
 			continue
