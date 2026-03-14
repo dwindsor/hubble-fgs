@@ -219,6 +219,15 @@ func (agw *AgentGateway) KeepAliveInterval() int {
 	return agw.Cfg.Agent.KeepAliveInterval
 }
 
+// GetPort returns a port within the CPA port range for the specified service type
+func (agw *AgentGateway) GetPort(serviceType ServicePortType) uint16 {
+	offset := GetServicePortOffset(serviceType)
+	if (agw.cpaPortLow + offset) > agw.cpaPortHigh {
+		logger.GetLogger().Warn("Requested port for service exceeds HSA port range", "service_type", serviceType)
+	}
+	return agw.cpaPortLow + offset
+}
+
 // Get preferred outbound ip of this machine
 func getOutboundIP() (string, error) {
 	conn, err := net.Dial("udp", "8.8.8.8:80")

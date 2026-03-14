@@ -33,10 +33,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 )
 
-const (
-	haServerPort = 8883
-)
-
 func startGopsServer() error {
 	if Config.GopsAddr == "" {
 		return nil
@@ -87,9 +83,10 @@ func executeAGW() {
 	}
 
 	// HA is always enabled - it will only connect to peers when configured
-	logger.GetLogger().Info("Starting HA service...")
 	waitGroup.Go(func() error {
-		err := hasvr.RunServer(ctx, haServerPort)
+		haPort := agwAgent.GetPort(agw.HAService)
+		logger.GetLogger().Info("Starting HA service at port", "port", haPort)
+		err := hasvr.RunServer(ctx, haPort)
 		if err != nil {
 			return fmt.Errorf("starting HA server failed: %w", err)
 		}
