@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+# save the contents of a docker image into a directory
+set -euo pipefail
+
+if [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: $0 <image> <odir> [<idir>]"
+  exit 1
+fi
+
+CONTAINER_ENGINE=${CONTAINER_ENGINE:-docker}
+# image to extract
+image=$1
+# output directory
+odir=$2
+# image directory to extract
+idir=${3:-/}
+
+id=$("$CONTAINER_ENGINE" create "$image" cmddoesnotmatter)
+trap "$CONTAINER_ENGINE rm $id" EXIT
+"$CONTAINER_ENGINE" cp "$id":$idir $odir
