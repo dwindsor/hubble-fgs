@@ -290,6 +290,11 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 		isDel = true
 		isRequiredCritFail = true
 		haStateReason = fmt.Sprintf("CPA version mismatch: peer=%s local=%s", info.SysInfo.Cpa, n.CpaVer)
+	} else if info.SysInfo.LbMode != n.LbMode.String() {
+		logger.GetLogger().Debug("LB mode mismatch:", "lb_mode", info.SysInfo.LbMode, "n", n.LbMode.String())
+		isDel = true
+		isRequiredCritFail = true
+		haStateReason = fmt.Sprintf("LB mode mismatch: peer=%s local=%s", info.SysInfo.LbMode, n.LbMode.String())
 	} else if info.HaInfo.Service == hav1.SERVICE_STATE_SVC_FAILURE {
 		logger.GetLogger().Debug("Peer cannot provide service")
 		isDel = true
@@ -381,6 +386,7 @@ func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.
 		SwVer:  n.SwVer,
 		Cpa:    n.CpaVer,
 		Dpus:   dpus,
+		LbMode: n.LbMode.String(),
 	}
 
 	var ss hav1.SERVICE_STATE

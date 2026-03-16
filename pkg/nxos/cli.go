@@ -113,8 +113,8 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 	status += "\n\n=== Local State ==="
 	status += fmt.Sprintf("\n  IP: %v  Leader: %v  Enabled: %v  Oper Ready: %v",
 		n.Ha.HaIp, n.Ha.IsLeader, n.GetHaEnabled(), n.GetHaOperUp())
-	status += fmt.Sprintf("\n  Model: %v  SerNum: %v  SwVer: %v  CpaVer: %v  DPUs: %v",
-		n.Model, n.SerNum, n.SwVer, n.CpaVer, len(n.Dpus))
+	status += fmt.Sprintf("\n  Model: %v  SerNum: %v  SwVer: %v  CpaVer: %v  LbMode: %v  DPUs: %v",
+		n.Model, n.SerNum, n.SwVer, n.CpaVer, n.LbMode, len(n.Dpus))
 	if n.Ha.Watching {
 		status += fmt.Sprintf("\n  Policy Revision: %v", n.Ha.PolRev)
 	} else {

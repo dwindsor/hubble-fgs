@@ -60,6 +60,7 @@ message SysInfo {
     string sw_ver = 3;
     string cpa = 4;
     repeated DpuVer dpus = 5;
+    string lb_mode = 6;
 }
 
 message PolInfo {

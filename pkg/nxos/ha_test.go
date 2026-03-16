@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
+	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
 
@@ -47,6 +48,8 @@ func newTestNxos() *Nxos {
 	n.Alloc.Next = 10
 	n.Ha.Alloc = make(map[string]HaAlloc)
 	n.Ha.peers = make(map[string]HaPeer)
+	n.Ha.Members = make(map[string]HaMbr)
+	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Vrfs = make(map[string]VrfBd)
 	n.Bds = make(map[string]VrfBd)
 	return n
@@ -248,6 +251,50 @@ func TestUpdateHaConfig_NoBatchPassesThrough(t *testing.T) {
 	}
 	if n.haConfigDeferDepth != 0 {
 		t.Errorf("haConfigDeferDepth = %d, want 0", n.haConfigDeferDepth)
+	}
+}
+
+// TestHaSetMbrInfo_LbModeMismatch verifies that a peer reporting a different
+// LB mode is rejected with IsRequiredCritFail = true.
+func TestHaSetMbrInfo_LbModeMismatch(t *testing.T) {
+	n := newTestNxos()
+	n.Ha.enabled = true
+	n.Ha.operUp = true
+	n.Ha.IsLeader = true
+	n.Model = "Nexus9000"
+	n.SwVer = "10.3.1"
+	n.CpaVer = "2.0.0"
+	// Local switch uses pinning; peer reports symmetric-hash.
+	n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_pinning
+
+	peer := "192.168.1.2"
+	n.SetHaPeer(peer, HaPeer{})
+	n.Ha.Adjacencies = map[string]HaAdj{peer: {Connected: true}}
+
+	info := hav1.MbrInfo{
+		SysInfo: &hav1.SysInfo{
+			Model:  n.Model,
+			SwVer:  n.SwVer,
+			Cpa:    n.CpaVer,
+			LbMode: model.Cisco_NX_OSDevice_Sas_LbModeType_symmetric_hash.String(),
+		},
+		HaInfo: &hav1.HaInfo{
+			Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+			Ha:      hav1.HA_STATE_HA_READY,
+		},
+		PolInfo: &hav1.PolInfo{},
+	}
+
+	result := n.HaSetMbrInfo(context.Background(), peer, info)
+
+	if !result.IsDel {
+		t.Error("IsDel should be true on LB mode mismatch")
+	}
+	if !result.IsRequiredCritFail {
+		t.Error("IsRequiredCritFail should be true on LB mode mismatch")
+	}
+	if result.Reason == "" {
+		t.Error("Reason should be non-empty on LB mode mismatch")
 	}
 }
 
