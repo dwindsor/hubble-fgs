@@ -35,6 +35,7 @@ var (
 	ErrMissingDNSInfo     = errors.New("dns field is not set")
 	ErrMissingStatsInfo   = errors.New("stats field is not set")
 	ErrMissingHTTPInfo    = errors.New("http field is not set")
+	ErrMissingPayloadInfo = errors.New("payload field is not set")
 )
 
 // CompactEncoder encodes tetragon.GetEventsResponse in a short format with emojis and colors.
@@ -380,6 +381,19 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		rxBytes := humanize.Bytes(stats.BytesReceived)
 		event := p.colorer.Blue.Sprintf("📒 %-7s", "netstat")
 		return fmt.Sprintf("%s %s tx %s rx %s", event, interfaceInfo, txBytes, rxBytes), nil
+
+	case *tetragon.GetEventsResponse_PowershellScriptBlock:
+		pwshScriptBlock := response.GetPowershellScriptBlock()
+		if pwshScriptBlock.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		if pwshScriptBlock.Payload == "" {
+			return "", ErrMissingPayloadInfo
+		}
+		event := p.colorer.Blue.Sprintf("🌐 %-7s", "powershell")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, pwshScriptBlock.Process)
+		path := p.colorer.Red.Sprint(pwshScriptBlock.ScriptPath)
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s path %s ", event, processInfo, path), caps), nil
 	}
 	return "", fmt.Errorf("%w: %s", ErrUnknownEventType, response.EventType())
 }
