@@ -435,6 +435,53 @@ export declare type ApplicationModelEvent = Message<"application_model.v1alpha.A
 export declare const ApplicationModelEventSchema: GenMessage<ApplicationModelEvent>;
 
 /**
+ * @generated from message application_model.v1alpha.ApplicationModelFragment
+ */
+export declare type ApplicationModelFragment = Message<"application_model.v1alpha.ApplicationModelFragment"> & {
+  /**
+   * @generated from field: string cluster_name = 1;
+   */
+  clusterName: string;
+
+  /**
+   * @generated from field: string node_name = 2;
+   */
+  nodeName: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp time = 3;
+   */
+  time?: Timestamp;
+
+  /**
+   * @generated from field: application_model.v1alpha.ApplicationModel application_model_fragment = 4;
+   */
+  applicationModelFragment?: ApplicationModel;
+
+  /**
+   * The number of fragments that that comprise the application model.
+   * All fragments will have the same application_model.id value.
+   *
+   * @generated from field: uint64 fragment_total = 5;
+   */
+  fragmentTotal: bigint;
+
+  /**
+   * The index into the the total number of fragments. The
+   * first value has fragment_index = 1.
+   *
+   * @generated from field: uint64 fragment_index = 6;
+   */
+  fragmentIndex: bigint;
+};
+
+/**
+ * Describes the message application_model.v1alpha.ApplicationModelFragment.
+ * Use `create(ApplicationModelFragmentSchema)` to create a new message.
+ */
+export declare const ApplicationModelFragmentSchema: GenMessage<ApplicationModelFragment>;
+
+/**
  * @generated from message application_model.v1alpha.ApplicationModel
  */
 export declare type ApplicationModel = Message<"application_model.v1alpha.ApplicationModel"> & {
@@ -1010,6 +1057,47 @@ export declare type StreamModelResponse = Message<"application_model.v1alpha.Str
 export declare const StreamModelResponseSchema: GenMessage<StreamModelResponse>;
 
 /**
+ * @generated from message application_model.v1alpha.StreamModelFragmentsRequest
+ */
+export declare type StreamModelFragmentsRequest = Message<"application_model.v1alpha.StreamModelFragmentsRequest"> & {
+  /**
+   * Namespaces to collect model for.
+   *
+   * @generated from field: repeated string namespaces = 1;
+   */
+  namespaces: string[];
+
+  /**
+   * Include model request information for the host
+   *
+   * @generated from field: bool host = 2;
+   */
+  host: boolean;
+};
+
+/**
+ * Describes the message application_model.v1alpha.StreamModelFragmentsRequest.
+ * Use `create(StreamModelFragmentsRequestSchema)` to create a new message.
+ */
+export declare const StreamModelFragmentsRequestSchema: GenMessage<StreamModelFragmentsRequest>;
+
+/**
+ * @generated from message application_model.v1alpha.StreamModelFragmentsResponse
+ */
+export declare type StreamModelFragmentsResponse = Message<"application_model.v1alpha.StreamModelFragmentsResponse"> & {
+  /**
+   * @generated from field: application_model.v1alpha.ApplicationModelFragment model_fragment = 1;
+   */
+  modelFragment?: ApplicationModelFragment;
+};
+
+/**
+ * Describes the message application_model.v1alpha.StreamModelFragmentsResponse.
+ * Use `create(StreamModelFragmentsResponseSchema)` to create a new message.
+ */
+export declare const StreamModelFragmentsResponseSchema: GenMessage<StreamModelFragmentsResponse>;
+
+/**
  * @generated from message application_model.v1alpha.StreamTelemetryRequest
  */
 export declare type StreamTelemetryRequest = Message<"application_model.v1alpha.StreamTelemetryRequest"> & {
@@ -1170,6 +1258,16 @@ export declare const ApplicationModelService: GenService<{
     methodKind: "server_streaming";
     input: typeof StreamModelRequestSchema;
     output: typeof StreamModelResponseSchema;
+  },
+  /**
+   * This will replace StreamModel once the corresponding hubble-fgs PR is merged.
+   *
+   * @generated from rpc application_model.v1alpha.ApplicationModelService.StreamModelFragments
+   */
+  streamModelFragments: {
+    methodKind: "server_streaming";
+    input: typeof StreamModelFragmentsRequestSchema;
+    output: typeof StreamModelFragmentsResponseSchema;
   },
   /**
    * @generated from rpc application_model.v1alpha.ApplicationModelService.StreamTelemetry

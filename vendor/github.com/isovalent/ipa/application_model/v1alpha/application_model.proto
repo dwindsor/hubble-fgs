@@ -176,6 +176,19 @@ message ApplicationModelEvent {
   ApplicationModel application_model = 4;
 }
 
+message ApplicationModelFragment {
+  string cluster_name = 1;
+  string node_name = 2;
+  google.protobuf.Timestamp time = 3;
+  ApplicationModel application_model_fragment = 4;
+  // The number of fragments that that comprise the application model.
+  // All fragments will have the same application_model.id value.
+  uint64 fragment_total = 5;
+  // The index into the the total number of fragments. The
+  // first value has fragment_index = 1.
+  uint64 fragment_index = 6;
+}
+
 message ApplicationModel {
   repeated ApplicationNamespace namespaces = 1;
   ApplicationHost host = 2;
@@ -341,6 +354,17 @@ message StreamModelResponse {
   ApplicationModelEvent model = 1;
 }
 
+message StreamModelFragmentsRequest {
+  // Namespaces to collect model for.
+  repeated string namespaces = 1;
+  // Include model request information for the host
+  bool host = 2;
+}
+
+message StreamModelFragmentsResponse {
+  ApplicationModelFragment model_fragment = 1;
+}
+
 message StreamTelemetryRequest {
   // Namespaces to collect model for.
   repeated string namespaces = 1;
@@ -366,5 +390,7 @@ service ApplicationModelService {
   // the partial messages, merging as needed, to obtain the entire
   // Application Model.
   rpc StreamModel(StreamModelRequest) returns (stream StreamModelResponse) {}
+  // This will replace StreamModel once the corresponding hubble-fgs PR is merged.
+  rpc StreamModelFragments(StreamModelFragmentsRequest) returns (stream StreamModelFragmentsResponse) {}
   rpc StreamTelemetry(StreamTelemetryRequest) returns (stream StreamTelemetryResponse) {}
 }

@@ -13,6 +13,7 @@
     - [ApplicationHost](#application_model-v1alpha-ApplicationHost)
     - [ApplicationModel](#application_model-v1alpha-ApplicationModel)
     - [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent)
+    - [ApplicationModelFragment](#application_model-v1alpha-ApplicationModelFragment)
     - [ApplicationNamespace](#application_model-v1alpha-ApplicationNamespace)
     - [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup)
     - [ApplicationSyscalls](#application_model-v1alpha-ApplicationSyscalls)
@@ -29,6 +30,8 @@
     - [NetworkPolicy](#application_model-v1alpha-NetworkPolicy)
     - [ProcessTelemetry](#application_model-v1alpha-ProcessTelemetry)
     - [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry)
+    - [StreamModelFragmentsRequest](#application_model-v1alpha-StreamModelFragmentsRequest)
+    - [StreamModelFragmentsResponse](#application_model-v1alpha-StreamModelFragmentsResponse)
     - [StreamModelRequest](#application_model-v1alpha-StreamModelRequest)
     - [StreamModelResponse](#application_model-v1alpha-StreamModelResponse)
     - [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest)
@@ -650,6 +653,26 @@ WARNING for consumers: numbers are arbitrary.
 
 
 
+<a name="application_model-v1alpha-ApplicationModelFragment"></a>
+
+### ApplicationModelFragment
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cluster_name | [string](#string) |  |  |
+| node_name | [string](#string) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| application_model_fragment | [ApplicationModel](#application_model-v1alpha-ApplicationModel) |  |  |
+| fragment_total | [uint64](#uint64) |  | The number of fragments that that comprise the application model. All fragments will have the same application_model.id value. |
+| fragment_index | [uint64](#uint64) |  | The index into the the total number of fragments. The first value has fragment_index = 1. |
+
+
+
+
+
+
 <a name="application_model-v1alpha-ApplicationNamespace"></a>
 
 ### ApplicationNamespace
@@ -978,6 +1001,37 @@ the following criteria:
 
 
 
+<a name="application_model-v1alpha-StreamModelFragmentsRequest"></a>
+
+### StreamModelFragmentsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| namespaces | [string](#string) | repeated | Namespaces to collect model for. |
+| host | [bool](#bool) |  | Include model request information for the host |
+
+
+
+
+
+
+<a name="application_model-v1alpha-StreamModelFragmentsResponse"></a>
+
+### StreamModelFragmentsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| model_fragment | [ApplicationModelFragment](#application_model-v1alpha-ApplicationModelFragment) |  |  |
+
+
+
+
+
+
 <a name="application_model-v1alpha-StreamModelRequest"></a>
 
 ### StreamModelRequest
@@ -1096,6 +1150,7 @@ the following criteria:
 | ----------- | ------------ | ------------- | ------------|
 | GetModel | [GetModelRequest](#application_model-v1alpha-GetModelRequest) | [GetModelResponse](#application_model-v1alpha-GetModelResponse) |  |
 | StreamModel | [StreamModelRequest](#application_model-v1alpha-StreamModelRequest) | [StreamModelResponse](#application_model-v1alpha-StreamModelResponse) stream | This returns the same information as GetModel, but split into smaller partial messages. Each partial message will contain a sub-tree from the root, but only for a selected application host, namespace, and/or workload. The client should combine the partial messages, merging as needed, to obtain the entire Application Model. |
+| StreamModelFragments | [StreamModelFragmentsRequest](#application_model-v1alpha-StreamModelFragmentsRequest) | [StreamModelFragmentsResponse](#application_model-v1alpha-StreamModelFragmentsResponse) stream | This will replace StreamModel once the corresponding hubble-fgs PR is merged. |
 | StreamTelemetry | [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest) | [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse) stream |  |
 
  
