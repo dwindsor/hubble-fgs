@@ -71,8 +71,10 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0, msg_id);
 
-	// if we need to block *or* this is a script we need to send a message
-	// because the next hook (i.e. bprm_creds_from_file) will not be executed
+	// If we need to block *or* this is a script we need to send a message
+	// because the next hook (i.e. bprm_creds_from_file) will not be executed.
+	// Check if this a script in a simimilar way to what kernel does
+	// https://elixir.bootlin.com/linux/v6.19.8/source/fs/binfmt_script.c#L40
 	probe_read_kernel(header, 2 * sizeof(char), _(&bprm->buf[0]));
 	if ((operation & FILE_OP_BLOCK) || ((header[0] == '#') && (header[1] == '!'))) {
 		// Getting a file digest requires a sleepable LSM program.

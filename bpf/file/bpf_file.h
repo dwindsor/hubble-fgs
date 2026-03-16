@@ -1192,13 +1192,15 @@ static inline __attribute__((always_inline)) int check_match_binary_properties(_
 	if (action != action_exec)
 		return 1;
 
-	// exec event but secureexec is not set
-	if (secureexec == INVALID_SECUREEXEC)
-		return 1;
-
 	val = map_lookup_elem(&file_binprop_map, &sel);
 	if (!val) // no matchBinaryProperties for this selector -- match
 		return 1;
+
+	// FILE_EXEC event but secureexec is not set.
+	// We should not match if matchBinaryProperties exists but is not set.
+	// This should be done after the check if we have matchBinaryProperties selector.
+	if (secureexec == INVALID_SECUREEXEC)
+		return 0;
 
 	if (val->has_secureexec) {
 		if (val->secureexec_op == op_filter_in) {

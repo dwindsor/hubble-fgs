@@ -43,5 +43,6 @@ int BPF_PROG(security_bprm_committing_creds_lsm, struct linux_binprm *bprm, stru
 out:
 	map_delete_elem(&exec_cred_map, &key);
 
-	return 0;
+	// if FILE_OP_BLOCK is not defined in operation it just returns 0
+	return handle_enforcement(operation);
 }
