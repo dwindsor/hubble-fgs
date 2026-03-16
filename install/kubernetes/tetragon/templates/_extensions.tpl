@@ -26,6 +26,7 @@ enable-application-model: "false"
 {{- end }}
 application-model-cache-size: {{ .Values.tetragon.applicationModelCacheSize | quote }}
 application-model-export-interval: {{ .Values.tetragon.applicationModelExportInterval | quote }}
+application-model-export-fragments: {{ .Values.tetragon.applicationModelExportFragments | quote }}
 {{- if .Values.tetragon.applicationModelExportFilename }}
 application-model-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.applicationModelExportFilename }}
 {{- end }}

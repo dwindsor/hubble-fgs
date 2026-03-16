@@ -96,6 +96,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.alerts.exportFilename | string | `""` | Global filename for alert JSON export (instead of retrieving it from alert rule names). |
 | tetragon.applicationModelCacheSize | int | `65536` | Cache size for application model. |
 | tetragon.applicationModelExportFilename | string | `""` | Export filename for application model (e.g "application-model.log"). Set to empty to disable exporting the application model. |
+| tetragon.applicationModelExportFragments | bool | `false` | Whether to export complete application model objects or "fragments" that can be reassembled into a complete application model. Using fragments is desirable when there is a maximum message size limit when collecting application model objects from tetragon agents and saving to a central data store. Complete application model objects might hit this limit but fragments would not. |
 | tetragon.applicationModelExportInterval | string | `"60s"` | Interval at which to export application model. |
 | tetragon.argsOverride | list | `[]` | Override the arguments. For advanced users only. |
 | tetragon.bpfDNSParser.enabled | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
