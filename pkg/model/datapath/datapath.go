@@ -45,8 +45,9 @@ type recordBackend interface {
 type BPFProgrammer struct {
 	recordBackend
 
-	initProgrammerOnce sync.Once
-	binaryMap          ebpfmap.InterfaceTyped[processTreeBinaryUIDKey, processTreeID]
+	initMu      sync.Mutex
+	initialized bool
+	binaryMap   ebpfmap.InterfaceTyped[processTreeBinaryUIDKey, processTreeID]
 
 	recordsMu sync.Mutex
 	records   map[record.RecordKey]record.DatapathRecord

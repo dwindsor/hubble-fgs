@@ -202,7 +202,9 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 			case *v1alpha1.PodInfo:
 				logger.GetLogger().Debug(fmt.Sprintf("Add Pod: %v", t))
 				c.AddIpPodMap(t)
-				netpolstate.PodAdd(t)
+				if polErr := netpolstate.PodAdd(t); polErr != nil {
+					logger.GetLogger().Error(fmt.Sprintf("Pod add error: %v", polErr))
+				}
 			}
 		},
 		UpdateFunc: func(old interface{}, _ interface{}) {
@@ -215,7 +217,9 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 			switch t := old.(type) {
 			case *v1alpha1.PodInfo:
 				logger.GetLogger().Debug(fmt.Sprintf("Delete Pod: %v", t))
-				netpolstate.PodRemove(t)
+				if err := netpolstate.PodRemove(t); err != nil {
+					logger.GetLogger().Error(fmt.Sprintf("Pod remove error: %v", err))
+				}
 			}
 		},
 	})

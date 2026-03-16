@@ -74,7 +74,7 @@ func getNewFakeBPFProgrammer(fakePolicyRepo *FakePolicyRepositoryIDReader) *BPFP
 		endpointAdder:            &FakeEndpointAdder{},
 		policyRepositoryIDReader: repo,
 	}
-	ret.initProgrammerOnce.Do(func() {})
+	ret.initialized = true
 	return ret
 }
 
@@ -386,7 +386,7 @@ func newMockBpfProgrammer() (*BPFProgrammer, *mockRecordBackend) {
 		recordBackend: mock,
 		records:       map[record.RecordKey]record.DatapathRecord{},
 	}
-	p.initProgrammerOnce.Do(func() {})
+	p.initialized = true
 	return p, mock
 }
 

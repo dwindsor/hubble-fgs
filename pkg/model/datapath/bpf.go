@@ -52,19 +52,31 @@ var (
 	quotasDNSMappingsMu sync.Mutex
 )
 
-func (p *BPFProgrammer) initMaybe() {
-	p.initProgrammerOnce.Do(func() {
-		p.initMap()
-		if backend, ok := p.recordBackend.(*bpfRecordBackend); ok {
-			backend.endpointAdder = endpoint.MustGet()
-			backend.policyRepositoryIDReader = library.GetRepository()
-		}
-		p.records = map[record.RecordKey]record.DatapathRecord{}
-	})
+func (p *BPFProgrammer) initMaybe() error {
+	p.initMu.Lock()
+	defer p.initMu.Unlock()
+
+	if p.initialized {
+		return nil
+	}
+
+	if err := p.initMap(); err != nil {
+		return fmt.Errorf("BPF map initialization failed: %w", err)
+	}
+
+	if backend, ok := p.recordBackend.(*bpfRecordBackend); ok {
+		backend.endpointAdder = endpoint.MustGet()
+		backend.policyRepositoryIDReader = library.GetRepository()
+	}
+	p.records = map[record.RecordKey]record.DatapathRecord{}
+	p.initialized = true
+	return nil
 }
 
 func (p *BPFProgrammer) AddRecords(records []record.DatapathRecord, force bool) error {
-	p.initMaybe()
+	if err := p.initMaybe(); err != nil {
+		return err
+	}
 
 	p.recordsMu.Lock()
 	defer p.recordsMu.Unlock()
@@ -348,7 +360,9 @@ func (p *bpfRecordBackend) removeRecord(r record.DatapathRecord) error {
 }
 
 func (p *BPFProgrammer) RemoveRecords(records []record.DatapathRecord) error {
-	p.initMaybe()
+	if err := p.initMaybe(); err != nil {
+		return err
+	}
 
 	p.recordsMu.Lock()
 	defer p.recordsMu.Unlock()
@@ -382,7 +396,9 @@ func (p *BPFProgrammer) RemoveRecords(records []record.DatapathRecord) error {
 // cached entries (map_lookup_elem returns NULL for deleted keys), so subsequent
 // passes converge quickly.
 func (p *BPFProgrammer) FlushCachedEntries() error {
-	p.initMaybe()
+	if err := p.initMaybe(); err != nil {
+		return err
+	}
 
 	p.recordsMu.Lock()
 	defer p.recordsMu.Unlock()
@@ -493,7 +509,9 @@ func (p *BPFProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64,
 
 	copy(process[:], binaryName)
 
-	p.initMaybe()
+	if err := p.initMaybe(); err != nil {
+		return 0, err
+	}
 
 	uidKey := processTreeBinaryUIDKey{
 		binary: process,

@@ -14,8 +14,6 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/isovalent/hubble-fgs/pkg/ebpfmap"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -24,32 +22,35 @@ import (
 
 const PATH_SIZE = 1024
 
-func (p *BPFProgrammer) initMap() {
-	var err error
+func (p *BPFProgrammer) initMap() error {
 	coll, err := bpf.GetCollection("tcp_connect4")
+	if err != nil {
+		return fmt.Errorf("failed to get tcp_connect4 collection: %w", err)
+	}
 	if coll == nil {
-		logger.GetLogger().Error(fmt.Sprintf("tcp preload collection is nil"))
+		return fmt.Errorf("tcp preload collection is nil")
 	}
 	dstMap := coll.Maps[destinationEndpointMap]
 	if dstMap == nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to load destination endpoint map from collection"))
+		return fmt.Errorf("failed to load destination endpoint map from collection")
 	}
 
 	binaryMap := coll.Maps[processTreeBinaryUUIDMap]
 	if binaryMap == nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to load process tree binary UID map from collection"))
+		return fmt.Errorf("failed to load process tree binary UID map from collection")
 	}
 	p.binaryMap = ebpfmap.NewTyped[processTreeBinaryUIDKey, processTreeID](binaryMap)
 
 	lpmMap, err := lpm.NewLPM()
 	if err != nil {
-		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
+		return fmt.Errorf("failed to create LPM programmer: %w", err)
 	}
 
 	p.recordBackend = &bpfRecordBackend{
 		dstMap: ebpfmap.NewTyped[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap),
 		lpmMap: lpmMap,
 	}
+	return nil
 }
 
 func scheduleDomainMapFlush() {
