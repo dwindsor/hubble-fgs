@@ -35,6 +35,8 @@ func newDiffToApply() diffToApply {
 }
 
 func (d *diffToApply) getDiff() []*DPUPolicyRule {
+	// Processing adds, then changes, then deletes in order to make sure we catch
+	// any VRFs that are changing IDs with staleDeletes
 	diff := make([]*DPUPolicyRule, 0, len(d.toAdd)+len(d.staleDeletes)+len(d.toDel))
 	for _, rule := range d.toAdd {
 		diff = append(diff, rule)
@@ -163,8 +165,11 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 	// Phase 2: Apply all L3Networks changes atomically.
 	// Remove changed VRFs first to free their old GIDs (handles GID swaps).
 	for vrfName := range changed {
-		//nolint:errcheck // vrfName comes from Diff(), guaranteed to exist
-		s.networkL3Objects.Remove(vrfName)
+		// vrfName comes from Diff(), guaranteed to exist
+		err := s.networkL3Objects.Remove(vrfName)
+		if err != nil {
+			return err
+		}
 	}
 	// Remove deleted VRFs and generate regular DELETEs.
 	for vrfName := range removed {
@@ -174,13 +179,19 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 				s.diff.Del(ruleId, del)
 			}
 		}
-		//nolint:errcheck // vrfName comes from Diff(), guaranteed to exist
-		s.networkL3Objects.Remove(vrfName)
+		// vrfName comes from Diff(), guaranteed to exist
+		err := s.networkL3Objects.Remove(vrfName)
+		if err != nil {
+			return err
+		}
 	}
 	// Add changed VRFs with their new GIDs.
 	for vrfName, change := range changed {
-		//nolint:errcheck // newGID uniqueness guaranteed by incoming L3Networks
-		s.networkL3Objects.Add(vrfName, change.NewGID)
+		// newGID uniqueness guaranteed by incoming L3Networks
+		err := s.networkL3Objects.Add(vrfName, change.NewGID)
+		if err != nil {
+			return err
+		}
 	}
 	// Add new VRFs.
 	for vrfName, gid := range added {

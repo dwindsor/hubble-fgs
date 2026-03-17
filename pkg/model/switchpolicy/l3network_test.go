@@ -78,6 +78,27 @@ func TestDiff(t *testing.T) {
 		require.Equal(t, GIDChange{OldGID: 200, NewGID: 100}, changed["blue"])
 	})
 
+	t.Run("GID 3-way swap", func(t *testing.T) {
+		// A->B, B->C, C->A (red:100->200, blue:200->300, green:300->100)
+		current := NewL3Networks()
+		require.NoError(t, current.Add("red", 100))
+		require.NoError(t, current.Add("blue", 200))
+		require.NoError(t, current.Add("green", 300))
+
+		incoming := NewL3Networks()
+		require.NoError(t, incoming.Add("red", 200))
+		require.NoError(t, incoming.Add("blue", 300))
+		require.NoError(t, incoming.Add("green", 100))
+
+		added, removed, changed := current.Diff(incoming)
+
+		require.Empty(t, added)
+		require.Empty(t, removed)
+		require.Equal(t, GIDChange{OldGID: 100, NewGID: 200}, changed["red"])
+		require.Equal(t, GIDChange{OldGID: 200, NewGID: 300}, changed["blue"])
+		require.Equal(t, GIDChange{OldGID: 300, NewGID: 100}, changed["green"])
+	})
+
 	t.Run("no changes", func(t *testing.T) {
 		current := NewL3Networks()
 		require.NoError(t, current.Add("red", 100))
