@@ -55,7 +55,8 @@ enum {
 	action_unix_socket_delete = 17,
 };
 
-// this should match the map in pkg/grpc/file/file.go
+// This should match the maps in pkg/grpc/file/file.go and in pkg/api/fileapi/client_file.go.
+// Any updates here should also be reflected in pkg/metrics/filemetrics/ebpferrors.go.
 enum {
 	hook_undef = 0,
 	hook_vfs_fallocate = 1,
@@ -107,7 +108,8 @@ enum {
 	hook_security_inode_mknod = 47,
 	hook_vfs_mknod = 48,
 	hook_security_path_mknod = 49,
-	hook_max = 50,
+	hook_security_bprm_creds_from_file = 50,
+	hook_max = 51,
 };
 
 enum {

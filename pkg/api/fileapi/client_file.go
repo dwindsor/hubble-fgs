@@ -396,7 +396,8 @@ const (
 	FileHookSecurityInodeMknod        = 47
 	FileHookVfsMknod                  = 48
 	FileHookSecurityMknod             = 49
-	FileHookMax                       = 50
+	FileHookSecurityBprmCredsFromFile = 50
+	FileHookMax                       = 51
 )
 
 type FileErrors struct {

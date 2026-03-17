@@ -36,7 +36,7 @@ int BPF_PROG(security_bprm_committing_creds_lsm, struct linux_binprm *bprm, stru
 	if (!(operation & FILE_OP_POST))
 		goto out;
 
-	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0, msg_id);
+	complete_msg(msg, action_exec, hook_security_bprm_creds_from_file, operation, rule_id, 0, msg_id);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

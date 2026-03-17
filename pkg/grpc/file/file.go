@@ -88,6 +88,11 @@ var (
 		43: "hook_sys_open",
 		44: "hook_sys_openat",
 		45: "hook_sys_openat2",
+		46: "hook_security_unix_stream_connect",
+		47: "hook_security_inode_mknod",
+		48: "hook_vfs_mknod",
+		49: "hook_security_path_mknod",
+		50: "hook_security_bprm_creds_from_file",
 	}
 
 	renameFlagsString = map[uint32]string{

@@ -73,6 +73,7 @@ var (
 		fileapi.FileHookSecurityInodeMknod:        "security_inode_mknod",
 		fileapi.FileHookVfsMknod:                  "vfs_mknod",
 		fileapi.FileHookSecurityMknod:             "security_path_mknod",
+		fileapi.FileHookSecurityBprmCredsFromFile: "security_bprm_creds_from_file",
 	}
 
 	fileErrorReasonMap = map[int]string{
