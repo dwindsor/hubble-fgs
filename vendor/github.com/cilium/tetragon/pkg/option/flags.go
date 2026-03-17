@@ -39,6 +39,7 @@ const (
 
 	KeyLogLevel  = "log-level"
 	KeyLogFormat = "log-format"
+	KeyLogFile   = "log-file"
 
 	KeyEnableK8sAPI         = "enable-k8s-api"
 	KeyK8sKubeConfigPath    = "k8s-kubeconfig-path"
@@ -133,8 +134,6 @@ const (
 	KeyEventCacheRetries    = "event-cache-retries"
 	KeyEventCacheRetryDelay = "event-cache-retry-delay"
 
-	KeyCompatibilitySyscall64SizeType = "enable-compatibility-syscall64-size-type"
-
 	KeyExecveMapEntries = "execve-map-entries"
 	KeyExecveMapSize    = "execve-map-size"
 
@@ -221,7 +220,8 @@ func ReadAndSetFlags() error {
 
 	logLevel := viper.GetString(KeyLogLevel)
 	logFormat := viper.GetString(KeyLogFormat)
-	logger.PopulateLogOpts(Config.LogOpts, logLevel, logFormat)
+	logFile := viper.GetString(KeyLogFile)
+	logger.PopulateLogOpts(Config.LogOpts, logLevel, logFormat, logFile)
 
 	Config.ProcessCacheSize = viper.GetInt(KeyProcessCacheSize)
 	Config.DataCacheSize = viper.GetInt(KeyDataCacheSize)
@@ -302,8 +302,6 @@ func ReadAndSetFlags() error {
 
 	Config.EventCacheNumRetries = viper.GetInt(KeyEventCacheRetries)
 	Config.EventCacheRetryDelay = viper.GetInt(KeyEventCacheRetryDelay)
-
-	Config.CompatibilitySyscall64SizeType = viper.GetBool(KeyCompatibilitySyscall64SizeType)
 
 	Config.ExecveMapEntries = viper.GetInt(KeyExecveMapEntries)
 	Config.ExecveMapSize = viper.GetString(KeyExecveMapSize)
@@ -401,6 +399,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyExportRateLimit, -1, "Rate limit (per minute) for event export. Set to -1 to disable")
 	flags.String(KeyLogLevel, "info", "Set log level")
 	flags.String(KeyLogFormat, "text", "Set log format")
+	flags.String(KeyLogFile, "", "Set log file where tetragon agent logs will be written (in addition to stdout or stderr)")
 	flags.Bool(KeyEnableK8sAPI, false, "Access Kubernetes API to associate Tetragon events with Kubernetes pods")
 	flags.String(KeyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")
 	flags.Int(KeyK8sControlPlaneRetry, 1, "Number of attempts for Kubernetes control plane connection (negative for infinite, zero is invalid, positive for max attempts)")
@@ -505,8 +504,6 @@ func AddFlags(flags *pflag.FlagSet) {
 
 	flags.Int(KeyEventCacheRetries, defaults.DefaultEventCacheNumRetries, "Number of retries for event cache")
 	flags.Int(KeyEventCacheRetryDelay, defaults.DefaultEventCacheRetryDelay, "Delay in seconds between event cache retries")
-
-	flags.Bool(KeyCompatibilitySyscall64SizeType, false, "syscall64 type will produce output of type size (compatibility flag, will be removed in v1.4)")
 
 	flags.Int(KeyExecveMapEntries, 0, "Set entries for execve_map table (default 32768)")
 	flags.String(KeyExecveMapSize, "", "Set size for execve_map table (allows K/M/G suffix)")

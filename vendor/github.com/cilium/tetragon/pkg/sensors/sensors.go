@@ -108,7 +108,7 @@ type SensorIface interface {
 	IsLoaded() bool
 	Load(bpfDir string) error
 	Unload(unpin bool) error
-	Destroy(unpin bool)
+	Destroy(unpin bool) error
 	// TotalMemlock is the total amount of memlock bytes for BPF maps used by
 	// the sensor's programs.
 	TotalMemlock() int
@@ -235,24 +235,6 @@ type LoadProbeArgs struct {
 	Load             *program.Program
 	Maps             []*program.Map
 	Version, Verbose int
-}
-
-func GetMergedSensorFromParserPolicy(tp tracingpolicy.TracingPolicy) (SensorIface, error) {
-	// NB: use a filter id of 0, so no filtering will happen
-	sis, err := SensorsFromPolicy(tp, policyfilter.NoFilterID)
-	if err != nil {
-		return nil, err
-	}
-	sensors := make([]*Sensor, 0, len(sis))
-	for _, si := range sis {
-		s, ok := si.(*Sensor)
-		if !ok {
-			return nil, fmt.Errorf("cannot merge sensor of type %T", si)
-		}
-		sensors = append(sensors, s)
-	}
-
-	return SensorCombine(tp, tp.TpName(), sensors...), nil
 }
 
 func addProgsAndMaps(progs []*program.Program, maps []*program.Map) {

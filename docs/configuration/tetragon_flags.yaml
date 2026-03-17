@@ -126,10 +126,6 @@ options:
       default_value: "false"
       usage: |
         Associate IP addresses in Tetragon's networking events with Kubernetes pods using Cilium's IP cache
-    - name: enable-compatibility-syscall64-size-type
-      default_value: "false"
-      usage: |
-        syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)
     - name: enable-cri
       default_value: "false"
       usage: enable CRI client for tetragon
@@ -351,6 +347,9 @@ options:
       usage: Do not unload sensors on exit
     - name: kernel
       usage: Kernel version
+    - name: log-file
+      usage: |
+        Set log file where tetragon agent logs will be written (in addition to stdout or stderr)
     - name: log-format
       default_value: text
       usage: Set log format

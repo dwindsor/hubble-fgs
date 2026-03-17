@@ -306,7 +306,7 @@ github.com/cilium/hive/script/internal/diff
 # github.com/cilium/lumberjack/v2 v2.4.2
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20260307124406-ad420b139311 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20260317125910-be08db6f361e => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -320,7 +320,6 @@ github.com/cilium/tetragon/cmd/tetra/policytest
 github.com/cilium/tetragon/cmd/tetra/probe
 github.com/cilium/tetragon/cmd/tetra/rthooks
 github.com/cilium/tetragon/cmd/tetra/sensors
-github.com/cilium/tetragon/cmd/tetra/stacktracetree
 github.com/cilium/tetragon/cmd/tetra/status
 github.com/cilium/tetragon/cmd/tetra/tracingpolicy
 github.com/cilium/tetragon/cmd/tetra/tracingpolicy/generate
@@ -453,6 +452,7 @@ github.com/cilium/tetragon/pkg/sensors/test
 github.com/cilium/tetragon/pkg/sensors/tracing
 github.com/cilium/tetragon/pkg/sensors/unloader
 github.com/cilium/tetragon/pkg/server
+github.com/cilium/tetragon/pkg/server/eventlog
 github.com/cilium/tetragon/pkg/strutils
 github.com/cilium/tetragon/pkg/syscallinfo
 github.com/cilium/tetragon/pkg/syscallinfo/arm32

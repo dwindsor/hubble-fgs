@@ -44,6 +44,7 @@ var (
 	debug           = flag.Bool("debug", false, "Enable debug messages. Equivalent to '--log-level=debug'")
 	logLevel        = flag.String("logLevel", "info", "Set log level")
 	logFormat       = flag.String("logFormat", "text", "Set log format")
+	logFile         = flag.String("LogFile", "", "Set log file where tetragon agent logs will be written (in addition to stdout or stderr)")
 	help            = flag.Bool("help", false, "Show help")
 )
 
@@ -782,14 +783,19 @@ func Main() {
 		logL = *logLevel
 	}
 
-	logF := ""
+	logFo := ""
 	if isFlagPassed("logFormat") {
-		logF = *logFormat
+		logFo = *logFormat
+	}
+
+	logFi := ""
+	if isFlagPassed("logFile") {
+		logFi = *logFile
 	}
 
 	// setup logging
 	o := make(map[string]string)
-	logger.PopulateLogOpts(o, logL, logF)
+	logger.PopulateLogOpts(o, logL, logFo, logFi)
 	if err := logger.SetupLogging(o, *debug); err != nil {
 		log.Fatal(err)
 	}

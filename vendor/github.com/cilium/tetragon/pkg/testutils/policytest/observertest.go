@@ -17,9 +17,20 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/testutils"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/cilium/tetragon/pkg/tetragoninfo"
 )
 
-func (rpt *RegisteredPolicyTests) DoObserverTest(t *testing.T, testpolicyName string) {
+var getSkipInfo = sync.OnceValue(func() *SkipInfo {
+	res := tetragoninfo.Gather()
+	info := tetragoninfo.Decode(res)
+	return &SkipInfo{info}
+})
+
+func (rpt *RegisteredPolicyTests) DoObserverTest(
+	t *testing.T,
+	testpolicyName string,
+	params map[string]any,
+) {
 	t.Helper()
 	pts := rpt.GetByName(testpolicyName)
 	if len(pts) == 0 {
@@ -29,6 +40,12 @@ func (rpt *RegisteredPolicyTests) DoObserverTest(t *testing.T, testpolicyName st
 	}
 	pt := pts[0]
 
+	if pt.ShouldSkip != nil {
+		if skipReason := pt.ShouldSkip(getSkipInfo()); skipReason != "" {
+			t.Skip(skipReason)
+		}
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -37,6 +54,9 @@ func (rpt *RegisteredPolicyTests) DoObserverTest(t *testing.T, testpolicyName st
 
 	conf := &Conf{
 		BinsDir: testutils.RepoRootPath("contrib/tester-progs"),
+		TestConf: &TestConf{
+			ParamValues: params,
+		},
 	}
 	policyStr, err := pt.Policy(conf)
 	if err != nil {

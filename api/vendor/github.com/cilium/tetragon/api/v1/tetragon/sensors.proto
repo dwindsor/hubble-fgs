@@ -8,7 +8,6 @@ package tetragon;
 import "google/protobuf/any.proto";
 import "google/protobuf/wrappers.proto";
 import "tetragon/events.proto";
-import "tetragon/stack.proto";
 import "tetragon/tetragon.proto";
 
 option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
@@ -72,6 +71,10 @@ message TracingPolicyActionCounters {
   uint64 notify_enforcer = 6;
   // number of enforcer notifications that did not occur because the policy was in monitor mode
   uint64 monitor_notify_enforcer = 7;
+  // number of set actions triggered from the policy
+  uint64 set = 8;
+  // number of set actions that did not occur because the policy was in monitor mode
+  uint64 monitor_set = 9;
 }
 
 message TracingPolicyStats {
@@ -158,14 +161,6 @@ message DisableSensorRequest {
 }
 
 message DisableSensorResponse {}
-
-message GetStackTraceTreeRequest {
-  string name = 1;
-}
-
-message GetStackTraceTreeResponse {
-  StackTraceNode root = 1;
-}
 
 message GetVersionRequest {}
 message GetVersionResponse {
@@ -309,8 +304,6 @@ service FineGuidanceSensors {
   rpc RemoveSensor(RemoveSensorRequest) returns (RemoveSensorResponse) {
     option deprecated = true;
   }
-
-  rpc GetStackTraceTree(GetStackTraceTreeRequest) returns (GetStackTraceTreeResponse) {}
 
   rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {}
   rpc GetInfo(GetInfoRequest) returns (GetInfoResponse) {}

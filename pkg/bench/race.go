@@ -35,6 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -167,7 +168,10 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	//encoder := &raceEncoder{0, json.NewEncoder(os.Stdout)}
 
 	req := tetragon.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil, nil)
+	exporter, err := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create a new exporter: %w", err)
+	}
 
 	if err := base.LoadDefault(
 		option.Config.BpfDir); err != nil {
@@ -259,14 +263,16 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.Fatal(logger.GetLogger(), "ReadConfig failed", logfields.Error, err)
 	}
 
-	startSensors, err := sensors.GetMergedSensorFromParserPolicy(tp)
+	startSensors, err := sensors.SensorsFromPolicy(tp, policyfilter.NoFilterID)
 	if err != nil {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
 
-	if err := startSensors.Load(
-		option.Config.BpfDir); err != nil {
-		log.Fatalf("Load Start Sensors failed: %v", err)
+	for _, s := range startSensors {
+		if err := s.Load(
+			option.Config.BpfDir); err != nil {
+			log.Fatalf("Load Start Sensors failed: %v", err)
+		}
 	}
 
 	if err := obs.Start(ctx); err != nil {

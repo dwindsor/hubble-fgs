@@ -126,9 +126,6 @@ func RedactedSettings() map[string]any {
 }
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
-	flags.Lookup(option.KeyCompatibilitySyscall64SizeType).Usage =
-		"syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)"
-
 	flags.Lookup(option.KeyEnableTracingPolicyCRD).Hidden = true
 }
 

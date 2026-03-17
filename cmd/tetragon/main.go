@@ -791,7 +791,10 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions, FieldFilters: fieldFilters}
 	log.Info("Configured field filters", "fieldFilters", fieldFilters)
 	log.Info("Starting JSON exporter", "logger", writer)
-	exporter := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
+	exporter, err := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
+	if err != nil {
+		return fmt.Errorf("failed to create a new exporter: %w", err)
+	}
 	exporter.Start()
 
 	return nil

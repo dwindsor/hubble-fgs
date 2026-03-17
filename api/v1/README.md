@@ -182,6 +182,14 @@
     - [AttemptLog](#tetragon-AttemptLog)
     - [AttemptResult](#tetragon-AttemptResult)
   
+- [tetragon/eventlogservice.proto](#tetragon_eventlogservice-proto)
+    - [GetEventLogParamsRequest](#tetragon-GetEventLogParamsRequest)
+    - [GetEventLogParamsResponse](#tetragon-GetEventLogParamsResponse)
+    - [SetEventLogParamsRequest](#tetragon-SetEventLogParamsRequest)
+    - [SetEventLogParamsResponse](#tetragon-SetEventLogParamsResponse)
+  
+    - [EventLogService](#tetragon-EventLogService)
+  
 - [tetragon/mandate.proto](#tetragon_mandate-proto)
     - [GetMandateStatusReq](#tetragon-GetMandateStatusReq)
     - [GetMandateStatusRes](#tetragon-GetMandateStatusRes)
@@ -243,12 +251,6 @@
   
     - [RuleService](#tetragon-RuleService)
   
-- [tetragon/stack.proto](#tetragon_stack-proto)
-    - [StackAddress](#tetragon-StackAddress)
-    - [StackTrace](#tetragon-StackTrace)
-    - [StackTraceLabel](#tetragon-StackTraceLabel)
-    - [StackTraceNode](#tetragon-StackTraceNode)
-  
 - [tetragon/sensors.proto](#tetragon_sensors-proto)
     - [AddTracingPolicyRequest](#tetragon-AddTracingPolicyRequest)
     - [AddTracingPolicyResponse](#tetragon-AddTracingPolicyResponse)
@@ -273,8 +275,6 @@
     - [GetInfoResponse.BuildInfo](#tetragon-GetInfoResponse-BuildInfo)
     - [GetInfoResponse.ConfVal](#tetragon-GetInfoResponse-ConfVal)
     - [GetInfoResponse.Probe](#tetragon-GetInfoResponse-Probe)
-    - [GetStackTraceTreeRequest](#tetragon-GetStackTraceTreeRequest)
-    - [GetStackTraceTreeResponse](#tetragon-GetStackTraceTreeResponse)
     - [GetVersionRequest](#tetragon-GetVersionRequest)
     - [GetVersionResponse](#tetragon-GetVersionResponse)
     - [ListSensorsRequest](#tetragon-ListSensorsRequest)
@@ -3602,6 +3602,87 @@ Determins the behaviour of a field filter
 
 
 
+<a name="tetragon_eventlogservice-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/eventlogservice.proto
+
+
+
+<a name="tetragon-GetEventLogParamsRequest"></a>
+
+### GetEventLogParamsRequest
+
+
+
+
+
+
+
+<a name="tetragon-GetEventLogParamsResponse"></a>
+
+### GetEventLogParamsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| max_size | [int32](#int32) |  |  |
+| rotation_interval | [string](#string) |  |  |
+| max_backups | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="tetragon-SetEventLogParamsRequest"></a>
+
+### SetEventLogParamsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| max_size | [int32](#int32) | optional |  |
+| rotation_interval | [string](#string) | optional |  |
+| max_backups | [int32](#int32) | optional |  |
+
+
+
+
+
+
+<a name="tetragon-SetEventLogParamsResponse"></a>
+
+### SetEventLogParamsResponse
+
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="tetragon-EventLogService"></a>
+
+### EventLogService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| SetEventLogParams | [SetEventLogParamsRequest](#tetragon-SetEventLogParamsRequest) | [SetEventLogParamsResponse](#tetragon-SetEventLogParamsResponse) |  |
+| GetEventLogParams | [GetEventLogParamsRequest](#tetragon-GetEventLogParamsRequest) | [GetEventLogParamsResponse](#tetragon-GetEventLogParamsResponse) |  |
+
+ 
+
+
+
 <a name="tetragon_mandate-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -4363,87 +4444,6 @@ active ruleset
 
 
 
-<a name="tetragon_stack-proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## tetragon/stack.proto
-
-
-
-<a name="tetragon-StackAddress"></a>
-
-### StackAddress
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [uint64](#uint64) |  |  |
-| symbol | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon-StackTrace"></a>
-
-### StackTrace
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| addresses | [StackAddress](#tetragon-StackAddress) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon-StackTraceLabel"></a>
-
-### StackTraceLabel
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| count | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="tetragon-StackTraceNode"></a>
-
-### StackTraceNode
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [StackAddress](#tetragon-StackAddress) |  |  |
-| count | [uint64](#uint64) |  |  |
-| labels | [StackTraceLabel](#tetragon-StackTraceLabel) | repeated |  |
-| children | [StackTraceNode](#tetragon-StackTraceNode) | repeated |  |
-
-
-
-
-
- 
-
- 
-
- 
-
- 
-
-
-
 <a name="tetragon_sensors-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -4775,36 +4775,6 @@ active ruleset
 
 
 
-<a name="tetragon-GetStackTraceTreeRequest"></a>
-
-### GetStackTraceTreeRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon-GetStackTraceTreeResponse"></a>
-
-### GetStackTraceTreeResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| root | [StackTraceNode](#tetragon-StackTraceNode) |  |  |
-
-
-
-
-
-
 <a name="tetragon-GetVersionRequest"></a>
 
 ### GetVersionRequest
@@ -5003,6 +4973,8 @@ active ruleset
 | monitor_override | [uint64](#uint64) |  | number of return overrides that did not occur because the policy was in monitor mode |
 | notify_enforcer | [uint64](#uint64) |  | number of enforcer notifications triggered from the policy |
 | monitor_notify_enforcer | [uint64](#uint64) |  | number of enforcer notifications that did not occur because the policy was in monitor mode |
+| set | [uint64](#uint64) |  | number of set actions triggered from the policy |
+| monitor_set | [uint64](#uint64) |  | number of set actions that did not occur because the policy was in monitor mode |
 
 
 
@@ -5135,7 +5107,6 @@ For now, we only want to support debug-related config flags to be configurable.
 | EnableSensor | [EnableSensorRequest](#tetragon-EnableSensorRequest) | [EnableSensorResponse](#tetragon-EnableSensorResponse) |  |
 | DisableSensor | [DisableSensorRequest](#tetragon-DisableSensorRequest) | [DisableSensorResponse](#tetragon-DisableSensorResponse) |  |
 | RemoveSensor | [RemoveSensorRequest](#tetragon-RemoveSensorRequest) | [RemoveSensorResponse](#tetragon-RemoveSensorResponse) |  |
-| GetStackTraceTree | [GetStackTraceTreeRequest](#tetragon-GetStackTraceTreeRequest) | [GetStackTraceTreeResponse](#tetragon-GetStackTraceTreeResponse) |  |
 | GetVersion | [GetVersionRequest](#tetragon-GetVersionRequest) | [GetVersionResponse](#tetragon-GetVersionResponse) |  |
 | GetInfo | [GetInfoRequest](#tetragon-GetInfoRequest) | [GetInfoResponse](#tetragon-GetInfoResponse) |  |
 | RuntimeHook | [RuntimeHookRequest](#tetragon-RuntimeHookRequest) | [RuntimeHookResponse](#tetragon-RuntimeHookResponse) |  |
