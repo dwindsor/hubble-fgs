@@ -23,7 +23,7 @@ const (
 	DefaultHTTPConnectionTimeout = 30 * time.Second
 	DefaultMaxRetries            = 3
 	DefaultBaseBackoff           = 100 * time.Millisecond
-	DefaultMaxBatchSize          = 3
+	DefaultMaxBatchSize          = 2
 	DefaultBatchTimeout          = 30000 * time.Millisecond
 )
 

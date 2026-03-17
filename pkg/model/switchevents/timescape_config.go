@@ -46,9 +46,6 @@ type TimescapeConfig struct {
 	// Batching configuration
 	MaxBatchSize   uint32 `json:"max_batch_size"`
 	BatchTimeoutMs uint32 `json:"batch_timeout_ms"`
-
-	// Internal fields for ConfigMap vs CLI source tracking
-	ConfigSource string `json:"config_source"` // "cli", "configmap", or "merged"
 }
 
 // TimescapeConfigManager manages the timescape configuration with thread safety
@@ -99,7 +96,6 @@ func (tcm *TimescapeConfigManager) GetTimescapeConfig() *TimescapeConfig {
 		RequestTimeoutSec:    tcm.config.RequestTimeoutSec,
 		MaxBatchSize:         tcm.config.MaxBatchSize,
 		BatchTimeoutMs:       tcm.config.BatchTimeoutMs,
-		ConfigSource:         tcm.config.ConfigSource,
 	}
 }
 
@@ -130,7 +126,6 @@ func (tcm *TimescapeConfigManager) SetTimescapeConfig(config *TimescapeConfig) {
 		RequestTimeoutSec:    config.RequestTimeoutSec,
 		MaxBatchSize:         config.MaxBatchSize,
 		BatchTimeoutMs:       config.BatchTimeoutMs,
-		ConfigSource:         config.ConfigSource,
 	}
 }
 
@@ -269,26 +264,6 @@ func (tcm *TimescapeConfigManager) IsConfigured() bool {
 // Package-level convenience functions for easier access
 // These functions use the singleton instance
 
-// InitializeTimescapeConfig initializes the singleton with configuration values
-// Username should be provided by the caller (from ConfigMap) or will use default for CLI-only setup
-func InitializeTimescapeConfig(clientEnabled bool, endpoint, username, password string) {
-	configManager := GetTimescapeConfigManager()
-
-	// Use default username for CLI-only setup if none provided
-	if username == "" {
-		username = TIMESCAPE_USERNAME
-	}
-
-	config := &TimescapeConfig{
-		ClientEnabled: clientEnabled,
-		Endpoint:      endpoint,
-		Username:      username,
-		Password:      password,
-		ConfigSource:  "cli", // Default to CLI source
-	}
-	configManager.SetTimescapeConfig(config)
-}
-
 // CurrentTimescapeConfig returns the current configuration from singleton
 func CurrentTimescapeConfig() *TimescapeConfig {
 	return GetTimescapeConfigManager().GetTimescapeConfig()
@@ -319,9 +294,14 @@ func GetConfigForDisplay() map[string]interface{} {
 	config := map[string]interface{}{
 		"client_status": "Disabled",
 		"server_info": map[string]interface{}{
-			"endpoint_url": "N/A",
-			"username":     "N/A",
-			"password":     "N/A",
+			"endpoint_url":           "N/A",
+			"username":               "N/A",
+			"password":               "N/A",
+			"connection_timeout_sec": "N/A",
+			"request_timeout_sec":    "N/A",
+			"max_retries":            "N/A",
+			"max_batch_size":         "N/A",
+			"batch_timeout_ms":       "N/A",
 		},
 	}
 
@@ -357,6 +337,12 @@ func GetConfigForDisplay() map[string]interface{} {
 		if tcm.config.Password != "" {
 			serverInfo["password"] = "[redacted]"
 		}
+
+		serverInfo["connection_timeout_sec"] = tcm.config.ConnectionTimeoutSec
+		serverInfo["request_timeout_sec"] = tcm.config.RequestTimeoutSec
+		serverInfo["max_retries"] = tcm.config.MaxRetries
+		serverInfo["max_batch_size"] = tcm.config.MaxBatchSize
+		serverInfo["batch_timeout_ms"] = tcm.config.BatchTimeoutMs
 	}
 
 	return config

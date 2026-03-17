@@ -18,6 +18,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
+	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 
 	v1alpha "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
@@ -67,7 +68,7 @@ func SubscribeTimescapeConfig(oldConfig, newConfig *v1alpha.ConfigObject) error 
 		}
 
 		isNewConfig := oldConfig == nil
-		logger.GetLogger().Debug("Processing Timescape ConfigMap",
+		logger.GetLogger().Debug("Processing Timescape Config",
 			"id", timescapeConfig.GetId(),
 			"host", timescapeConfig.GetHost(),
 			"port", timescapeConfig.GetPort(),
@@ -91,10 +92,10 @@ func SubscribeTimescapeConfig(oldConfig, newConfig *v1alpha.ConfigObject) error 
 
 		// Call Setup to start or restart the timescape client
 		if setupContext != nil && setupAgw != nil {
-			logger.GetLogger().Info("Starting Timescape client from ConfigMap")
+			logger.GetLogger().Debug("Starting Timescape client...")
 			err := Setup(setupContext, setupAgw, setupEnableNxos)
 			if err != nil {
-				logger.GetLogger().Error("Failed to setup Timescape client from ConfigMap", "error", err)
+				logger.GetLogger().Error("Failed to setup Timescape client from Config", "error", err)
 				return fmt.Errorf("timescape client setup failed: %w", err)
 			}
 		} else {
@@ -137,7 +138,6 @@ func checkForConfigMapName(oldConfig, newConfig *v1alpha.ConfigObject) bool {
 func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig) *TimescapeConfig {
 	config := &TimescapeConfig{
 		ClientEnabled:        true, // Enable client when ConfigMap is present
-		ConfigSource:         "configmap",
 		Host:                 pbConfig.GetHost(),
 		Port:                 pbConfig.GetPort(),
 		Protocol:             pbConfig.GetProtocol(),
@@ -148,6 +148,23 @@ func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig) *Timesca
 		RequestTimeoutSec:    pbConfig.GetRequestTimeoutSec(),
 		MaxBatchSize:         pbConfig.GetMaxBatchSize(),
 		BatchTimeoutMs:       pbConfig.GetBatchTimeoutMs(),
+	}
+
+	// Apply production defaults if values are still 0
+	if config.MaxRetries <= 0 {
+		config.MaxRetries = uint32(types.DefaultMaxRetries)
+	}
+	if config.ConnectionTimeoutSec <= 0 {
+		config.ConnectionTimeoutSec = uint32(types.DefaultHTTPConnectionTimeout.Seconds())
+	}
+	if config.RequestTimeoutSec <= 0 {
+		config.RequestTimeoutSec = uint32(types.DefaultHTTPRequestTimeout.Seconds())
+	}
+	if config.MaxBatchSize <= 0 {
+		config.MaxBatchSize = uint32(types.DefaultMaxBatchSize)
+	}
+	if config.BatchTimeoutMs <= 0 {
+		config.BatchTimeoutMs = uint32(types.DefaultBatchTimeout.Milliseconds())
 	}
 
 	// Build endpoint URL from host, port, protocol, and TLS settings
@@ -179,7 +196,7 @@ func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig) *Timesca
 		config.Password = ""
 		logger.GetLogger().Debug("timescape: configured mTLS authentication", "enabled", mtls.GetEnabled())
 	} else {
-		logger.GetLogger().Warn("timescape: no authentication method configured in ConfigMap")
+		logger.GetLogger().Warn("timescape: no authentication method configured")
 	}
 
 	return config

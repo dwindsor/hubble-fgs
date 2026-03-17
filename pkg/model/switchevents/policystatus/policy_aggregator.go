@@ -108,6 +108,10 @@ func NewPolicyAggregator(expectedAgentCount int, aggregationTimeout time.Duratio
 		maxBatchSize = DefaultMaxBatchSize
 	}
 
+	if aggregationTimeout <= 0 {
+		aggregationTimeout = DefaultAggregationTimeout
+	}
+
 	return &PolicyAggregator{
 		pendingPolicies:    make(map[string]*PolicyAggregationResult),
 		pendingBatch:       make([]*PolicyAggregationResult, 0, maxBatchSize),

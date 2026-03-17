@@ -224,7 +224,7 @@ func ParseConfigMap(cm *v1.ConfigMap) map[v1alpha.ConfigType]*v1alpha.ConfigObje
 
 		// Add the config object to the map
 		configObjMap[configObj.Type] = configObj
-		logger.GetLogger().Info("Parsed config object", "type", configObj.Type, "config", configObj)
+		logger.GetLogger().Debug("Parsed config object", "type", configObj.Type, "config", configObj)
 	}
 
 	return configObjMap

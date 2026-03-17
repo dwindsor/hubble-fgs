@@ -143,9 +143,6 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		}
 	}
 
-	// Initialize timescape configuration
-	setTimescapeConfig()
-
 	// Setup metrics collector
 	metricsCollector := setupMetricsCollector(ctx)
 
@@ -231,16 +228,18 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		ConfigMaps := []string{Config.ConfigMap}
 
 		// Only add Timescape ConfigMap if CLI timescape is disabled (precedence logic)
+		// Register the timescape config callback
+		library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE, switchevents.SubscribeTimescapeConfig)
 		if !Config.TimescapeClientEnable {
 			logger.GetLogger().Info("Adding Timescape ConfigMap to informer")
 			ConfigMaps = append(ConfigMaps, TimescapeConfigMapName)
-			// Register the timescape config callback
-			library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE, switchevents.SubscribeTimescapeConfig)
 			// Set parameters needed for Setup calls from ConfigMap callbacks
 			switchevents.SetTimescapeSetupParams(ctx, agwAgent, Config.EnableNXOS)
 		} else {
-			// Start Timescape client in waitGroup using CLI configuration
-			if err := setupTimescapeClient(ctx, waitGroup, agwAgent); err != nil {
+			// Start Timescape client using CLI configuration
+			if err := switchevents.SetupTimescapeFromCLI(ctx, agwAgent, Config.EnableNXOS,
+				Config.TimescapeClientEnable, Config.TimescapePassword, Config.TimescapeEndpoint); err != nil {
+				library.GetRepository().DeleteConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE)
 				return err
 			}
 		}
@@ -366,66 +365,6 @@ func cliServer(ctx context.Context, agwAgent *agw.AgentGateway) error {
 	}
 
 	return nil
-}
-
-// setupTimescapeClient validates timescape configuration and starts the timescape client
-func setupTimescapeClient(ctx context.Context, waitGroup *errgroup.Group, agwAgent *agw.AgentGateway) error {
-	if Config.TimescapeClientEnable {
-		// Validate CLI configuration
-		trimmedPassword := strings.TrimSpace(Config.TimescapePassword)
-		trimmedEndpoint := strings.TrimSpace(Config.TimescapeEndpoint)
-
-		if trimmedPassword == "" {
-			logger.GetLogger().Error("CLI timescape client enabled but password not configured", "flag", "--timescape-password")
-			return nil
-		}
-
-		if trimmedEndpoint == "" {
-			logger.GetLogger().Error("CLI timescape client enabled but endpoint not configured", "flag", "--timescape-endpoint")
-			return nil
-		}
-
-		// Initialize configuration from CLI values with precedence
-		switchevents.InitializeTimescapeConfig(
-			Config.TimescapeClientEnable,
-			trimmedEndpoint,
-			"",
-			trimmedPassword,
-		)
-
-		// Set CLI source and auth method
-		config := switchevents.CurrentTimescapeConfig()
-		config.ConfigSource = "cli"
-		config.UseBasicAuth = true
-		config.UseMTLS = false
-		switchevents.GetTimescapeConfigManager().SetTimescapeConfig(config)
-
-		logger.GetLogger().Info("Starting timescape client from CLI configuration", "endpoint", trimmedEndpoint)
-		waitGroup.Go(func() error {
-			err := switchevents.Setup(ctx, agwAgent, Config.EnableNXOS)
-			if err != nil {
-				logger.GetLogger().Error("timescape client setup failed", logfields.Error, err)
-				return err
-			}
-			return nil
-		})
-
-		return nil
-	}
-
-	// Initialize with disabled state - ConfigMap callback will enable if config is found
-	switchevents.InitializeTimescapeConfig(false, "", "", "")
-
-	return nil
-}
-
-func setTimescapeConfig() {
-	switchevents.InitializeTimescapeConfig(
-		Config.TimescapeClientEnable,
-		Config.TimescapeEndpoint,
-		"",
-		Config.TimescapePassword,
-	)
 }
 
 // setupMetricsCollector initializes the metrics collector and starts any enabled metrics integrations

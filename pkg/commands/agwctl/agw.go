@@ -448,6 +448,46 @@ func printTimescapeConfigTable(response string) {
 			result.WriteString(password)
 			result.WriteString("\n")
 		}
+		if protocol, ok := serverInfo["protocol"].(string); ok {
+			result.WriteString("  Protocol:      ")
+			result.WriteString(protocol)
+			result.WriteString("\n")
+		}
+		if tlsEnabled, ok := serverInfo["tls_enabled"].(bool); ok {
+			result.WriteString("  TLS Enabled:   ")
+			fmt.Fprintf(&result, "%t", tlsEnabled)
+			result.WriteString("\n")
+		}
+		if connectionTimeoutFloat, ok := serverInfo["connection_timeout_sec"].(float64); ok {
+			connectionTimeout := uint32(connectionTimeoutFloat)
+			result.WriteString("  Connection Timeout (sec):      ")
+			fmt.Fprintf(&result, "%d", connectionTimeout)
+			result.WriteString("\n")
+		}
+		if requestTimeoutFloat, ok := serverInfo["request_timeout_sec"].(float64); ok {
+			requestTimeout := uint32(requestTimeoutFloat)
+			result.WriteString("  Request Timeout (sec):      ")
+			fmt.Fprintf(&result, "%d", requestTimeout)
+			result.WriteString("\n")
+		}
+		if maxRetriesFloat, ok := serverInfo["max_retries"].(float64); ok {
+			maxRetries := uint32(maxRetriesFloat)
+			result.WriteString("  Max Retries:      ")
+			fmt.Fprintf(&result, "%d", maxRetries)
+			result.WriteString("\n")
+		}
+		if batchTimeoutFloat, ok := serverInfo["batch_timeout_ms"].(float64); ok {
+			batchTimeout := uint32(batchTimeoutFloat)
+			result.WriteString("  Batch Timeout (ms):      ")
+			fmt.Fprintf(&result, "%d", batchTimeout)
+			result.WriteString("\n")
+		}
+		if maxBatchSizeFloat, ok := serverInfo["max_batch_size"].(float64); ok {
+			maxBatchSize := uint32(maxBatchSizeFloat)
+			result.WriteString("  Max Batch Size:      ")
+			fmt.Fprintf(&result, "%d", maxBatchSize)
+			result.WriteString("\n")
+		}
 	}
 
 	fmt.Print(result.String())

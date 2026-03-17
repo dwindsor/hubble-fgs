@@ -54,7 +54,7 @@ type TimescapeHandlerConfig struct {
 // NewTimescapeHandler creates a new timescape handler
 func NewTimescapeHandler(config TimescapeHandlerConfig) ITimescape {
 	systemHandler := systemstatus.NewSystemConnectionHandler(config.SystemStatusDataProvider)
-	logger.GetLogger().Info("Setting client on system handler", "clientPtr", fmt.Sprintf("%p", config.Client))
+	logger.GetLogger().Debug("Setting client on system handler", "clientPtr", fmt.Sprintf("%p", config.Client))
 	systemHandler.SetClient(config.Client)
 
 	// Get timescape configuration for policy aggregator settings
@@ -228,7 +228,7 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 	logger.GetLogger().Info("Setting up timescape client",
 		"endpoint", config.Endpoint,
 		"auth_type", getAuthTypeString(config),
-		"max_retries", config.MaxRetries,
+		"max_retries", timescapeConfig.MaxRetries,
 		"connection_timeout_sec", timescapeConfig.ConnectionTimeout.Seconds(),
 		"request_timeout_sec", timescapeConfig.Timeout.Seconds(),
 		"max_batch_size", config.MaxBatchSize,
