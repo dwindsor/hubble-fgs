@@ -139,6 +139,10 @@ const (
 	MSG_OP_NETNS_EXIT = 144
 
 	MSG_OP_POWERSHELL_BLOCK = 145
+
+	MSG_OP_IGMP_JOIN   = 146
+	MSG_OP_IGMP_LEAVE  = 147
+	MSG_OP_IGMP_REPORT = 148
 )
 
 var OpCodeStrings = map[OpCode]string{
@@ -184,6 +188,9 @@ var OpCodeStrings = map[OpCode]string{
 	MSG_OP_FILE_SYMLINK:              "FileSymlink",
 	MSG_OP_FILE_OPENRAW:              "FileOpenraw",
 	MSG_OP_POWERSHELL_BLOCK:          "PowershellScriptBlock",
+	MSG_OP_IGMP_JOIN:                 "IGMPJoin",
+	MSG_OP_IGMP_LEAVE:                "IGMPLeave",
+	MSG_OP_IGMP_REPORT:               "IGMPMembershipReport",
 }
 
 func (op OpCode) String() string {
