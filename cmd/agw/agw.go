@@ -84,7 +84,7 @@ func executeAGW() {
 
 	// HA is always enabled - it will only connect to peers when configured
 	waitGroup.Go(func() error {
-		haPort := agwAgent.GetPort(agw.HAService)
+		haPort := agwAgent.GetPort(nxos.HAService)
 		logger.GetLogger().Info("Starting HA service at port", "port", haPort)
 		err := hasvr.RunServer(ctx, haPort)
 		if err != nil {

@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package agw
+package nxos
 
 import "github.com/cilium/tetragon/pkg/logger"
 

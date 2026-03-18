@@ -220,10 +220,10 @@ func (agw *AgentGateway) KeepAliveInterval() int {
 }
 
 // GetPort returns a port within the CPA port range for the specified service type
-func (agw *AgentGateway) GetPort(serviceType ServicePortType) uint16 {
-	offset := GetServicePortOffset(serviceType)
+func (agw *AgentGateway) GetPort(serviceType nxos.ServicePortType) uint16 {
+	offset := nxos.GetServicePortOffset(serviceType)
 	if (agw.cpaPortLow + offset) > agw.cpaPortHigh {
-		logger.GetLogger().Warn("Requested port for service exceeds HSA port range", "service_type", serviceType)
+		logger.GetLogger().Warn("Requested port for service exceeds CPA port range", "service_type", serviceType)
 	}
 	return agw.cpaPortLow + offset
 }
@@ -311,7 +311,7 @@ func (agw *AgentGateway) Setup(ctx context.Context) error {
 	switchpolicy.SetHaEventHandler(&nxosHaEventAdapter{})
 	logger.GetLogger().Debug("HA event handler configured for nxos")
 
-	err := nxos.Nexus.Setup(ctx, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener, agw.PolicyHandler)
+	err := nxos.Nexus.Setup(ctx, agw.dpuPortLow, agw.dpuPortHigh, agw.cpaPortLow, agw.cpaPortHigh, agw.dpuListener, agw.PolicyHandler)
 	if err != nil {
 		// Removed GetLogger().Fatal to avoid immediate termination, use shutdown manager.
 		logger.GetLogger().Error("NXOS setup failed", "error", err)

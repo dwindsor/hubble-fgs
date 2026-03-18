@@ -29,12 +29,18 @@ import (
 
 const (
 	haTimeout       = 10 // in second
-	haPort          = "8883"
 	nxUpdateTimeout = 30 // in sec
 	adjTimeout      = 30 // in sec
 	mbrTimeout      = 30 // in sec
 	isFuncHoldDown  = 30 // in sec, anti-flapping hold-down for IsFunc recovery
 )
+
+// getHAPort returns the HA service port as a string, computed from the CPA port range.
+func (n *Nxos) getHAPort() string {
+	offset := GetServicePortOffset(HAService)
+	port := n.CpaPortLow + offset
+	return strconv.FormatUint(uint64(port), 10)
+}
 
 func (n *Nxos) haIsEnabled(_ context.Context, isLock bool) bool {
 	if isLock {
@@ -476,7 +482,7 @@ func (n *Nxos) haConnect(_ context.Context, peer string) {
 		adj = HaAdj{}
 	}
 
-	addr := peer + ":" + haPort
+	addr := peer + ":" + n.getHAPort()
 	logger.GetLogger().Debug("haConnect: connecting peer addr", "ip", addr)
 	err := adj.GrpcClient.Connect(addr, n.Ha.ClientCa, n.Ha.ClientCert, n.Ha.ClientKey /*p.SkipAuth*/, true)
 	if err != nil {

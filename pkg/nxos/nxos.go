@@ -594,10 +594,12 @@ func (n *Nxos) setServiceRedirAll(ctx context.Context, isLock bool) error {
 	return nil
 }
 
-func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) error {
+func (n *Nxos) Setup(ctx context.Context, dpuPortLow, dpuPortHigh, cpaPortLow, cpaPortHigh uint16, dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) error {
 
-	n.DpuPortLow = low
-	n.DpuPortHigh = high
+	n.DpuPortLow = dpuPortLow
+	n.DpuPortHigh = dpuPortHigh
+	n.CpaPortLow = cpaPortLow
+	n.CpaPortHigh = cpaPortHigh
 	n.dpuListener = dpuListener
 	n.policyHandler = policyHandler
 
