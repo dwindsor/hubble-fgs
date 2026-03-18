@@ -13,6 +13,7 @@ package datapath
 import (
 	"sync"
 
+	"github.com/isovalent/hubble-fgs/pkg/ebpfmap"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -45,14 +46,14 @@ type BPFProgrammer struct {
 	recordBackend
 
 	initProgrammerOnce sync.Once
-	binaryMap          mapInterfaceTyped[processTreeBinaryUIDKey, processTreeID]
+	binaryMap          ebpfmap.InterfaceTyped[processTreeBinaryUIDKey, processTreeID]
 
 	recordsMu sync.Mutex
 	records   map[record.RecordKey]record.DatapathRecord
 }
 
 type bpfRecordBackend struct {
-	dstMap mapInterfaceTyped[types.DestinationEndpointKey, types.DestinationEndpointValue]
+	dstMap ebpfmap.InterfaceTyped[types.DestinationEndpointKey, types.DestinationEndpointValue]
 	lpmMap lpm.LPMMap
 
 	endpointAdder            endpoint.EndpointAdder

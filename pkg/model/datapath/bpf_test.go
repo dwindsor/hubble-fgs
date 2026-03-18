@@ -15,47 +15,14 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/cilium/ebpf"
 	"github.com/stretchr/testify/require"
 
+	"github.com/isovalent/hubble-fgs/pkg/ebpfmap"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
-
-	"github.com/cilium/cilium/pkg/lock"
 )
-
-type kvpair[K any, V any] struct {
-	a K
-	b V
-}
-type fakeBPFMap[K fmt.Stringer, V any] struct {
-	lock.Map[string, kvpair[K, V]]
-}
-
-func (fm *fakeBPFMap[K, V]) Lookup(key K, result *V) error {
-	v, exists := fm.Load(key.String())
-	if !exists {
-		return ebpf.ErrKeyNotExist
-	}
-	*result = v.b
-	return nil
-}
-
-func (fm *fakeBPFMap[K, V]) Update(key K, value V, _ ebpf.MapUpdateFlags) error {
-	fm.Store(key.String(), kvpair[K, V]{a: key, b: value})
-	return nil
-}
-
-func (fm *fakeBPFMap[K, V]) Delete(key K) error {
-	fm.Map.Delete(key.String())
-	return nil
-}
-
-func (fm *fakeBPFMap[K, V]) Iterate() *ebpf.MapIterator {
-	return nil
-}
 
 type fakeLPMMap struct {
 }
@@ -98,11 +65,11 @@ func getNewFakeBPFProgrammer(fakePolicyRepo *FakePolicyRepositoryIDReader) *BPFP
 		repo = fakePolicyRepo
 	}
 	ret := &BPFProgrammer{
-		binaryMap: &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
+		binaryMap: &ebpfmap.Fake[processTreeBinaryUIDKey, processTreeID]{},
 		records:   map[record.RecordKey]record.DatapathRecord{},
 	}
 	ret.recordBackend = &bpfRecordBackend{
-		dstMap:                   &fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
+		dstMap:                   &ebpfmap.Fake[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
 		lpmMap:                   &fakeLPMMap{},
 		endpointAdder:            &FakeEndpointAdder{},
 		policyRepositoryIDReader: repo,
@@ -119,14 +86,14 @@ type expectedEntry struct {
 func verifyDstMap(t *testing.T, bpfProgrammer *BPFProgrammer, expectedEntries []expectedEntry) {
 	length := 0
 	backend := bpfProgrammer.recordBackend.(*bpfRecordBackend)
-	fakeDstMap := backend.dstMap.(*fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue])
+	fakeDstMap := backend.dstMap.(*ebpfmap.Fake[types.DestinationEndpointKey, types.DestinationEndpointValue])
 	for i, expected := range expectedEntries {
 		var actualValue types.DestinationEndpointValue
 		err := fakeDstMap.Lookup(expected.key, &actualValue)
 		require.NoError(t, err)
 		require.Equal(t, expected.value, actualValue, "index %d expected value for key %+v", i, expected.key)
 	}
-	fakeDstMap.Range(func(_ string, _ kvpair[types.DestinationEndpointKey, types.DestinationEndpointValue]) bool {
+	fakeDstMap.Range(func(_ string, _ ebpfmap.KVPair[types.DestinationEndpointKey, types.DestinationEndpointValue]) bool {
 		length++
 		return true
 	})

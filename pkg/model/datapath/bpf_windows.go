@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
+	"github.com/isovalent/hubble-fgs/pkg/ebpfmap"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
@@ -38,7 +39,7 @@ func (p *BPFProgrammer) initMap() {
 	if binaryMap == nil {
 		logger.GetLogger().Error(fmt.Sprintf("failed to load process tree binary UID map from collection"))
 	}
-	p.binaryMap = NewTypedMap[processTreeBinaryUIDKey, processTreeID](binaryMap)
+	p.binaryMap = ebpfmap.NewTyped[processTreeBinaryUIDKey, processTreeID](binaryMap)
 
 	lpmMap, err := lpm.NewLPM()
 	if err != nil {
@@ -46,7 +47,7 @@ func (p *BPFProgrammer) initMap() {
 	}
 
 	p.recordBackend = &bpfRecordBackend{
-		dstMap: NewTypedMap[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap),
+		dstMap: ebpfmap.NewTyped[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap),
 		lpmMap: lpmMap,
 	}
 }

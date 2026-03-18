@@ -8,13 +8,13 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package datapath
+package ebpfmap
 
 import (
 	"github.com/cilium/ebpf"
 )
 
-type mapInterfaceTyped[K any, V any] interface {
+type InterfaceTyped[K any, V any] interface {
 	Lookup(key K, result *V) error
 	Update(key K, value V, flags ebpf.MapUpdateFlags) error
 	Iterate() *ebpf.MapIterator
@@ -22,7 +22,7 @@ type mapInterfaceTyped[K any, V any] interface {
 }
 
 // Function that take two types and wraps *Map to a typed interface
-func NewTypedMap[K any, V any](m *ebpf.Map) mapInterfaceTyped[K, V] {
+func NewTyped[K any, V any](m *ebpf.Map) InterfaceTyped[K, V] {
 	return &ebpfMapTyped[K, V]{m: m}
 }
 
