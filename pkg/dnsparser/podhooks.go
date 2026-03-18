@@ -20,14 +20,13 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/cgroups"
-	"github.com/cilium/tetragon/pkg/cgroups/fsscan"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/isovalent/hubble-fgs/pkg/fscgroupid"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
@@ -36,10 +35,6 @@ import (
 const requeueTiming = 1 * time.Minute
 
 type allocID = uint32
-
-type fsPodScanner interface {
-	FindPodPath(podID types.UID) (string, error)
-}
 
 type PodStore struct {
 	// Can't use the UUID as key because of how deletion works in reconciliation
@@ -85,7 +80,7 @@ type PodReconciler struct {
 	// The fsscaner and the cgroup ID to alloc ID map are used to make the
 	// link between the Pod UUID from the API, the cgroup path, thus cgroup
 	// ID and thus the allocation ID.
-	fsScaner         fsPodScanner
+	cgroupIDResolver fscgroupid.Resolver
 	cgidToAllocIDMap CgroupIDToAllocIDMap
 
 	// ipToIDMaps is the state the controller will manage, adding or
@@ -119,7 +114,7 @@ func NewPodReconciler(client client.Client, ipToIDMaps ipToIDMapsInterface) (Pod
 			mutex: sync.RWMutex{},
 		},
 
-		fsScaner:         fsscan.New(),
+		cgroupIDResolver: fscgroupid.New(),
 		cgidToAllocIDMap: NewCgroupIDToAllocIDMap(cgidToAllocIDRaw),
 
 		ipToIDMaps:      ipToIDMaps,
@@ -147,23 +142,6 @@ func AllocateMapsIfNeeded(ipToIDMaps ipToIDMapsInterface, allocID uint32) error 
 		}
 	}
 	return nil
-}
-
-func GetCgroupIDFromPodUID(uid types.UID, fsScaner fsPodScanner) (uint64, error) {
-	podDir, err := fsScaner.FindPodPath(uid)
-	if err != nil {
-		return 0, fmt.Errorf("failed to find the Pod %s cgroup path: %w", uid, err)
-	}
-	if podDir == "" {
-		// Pods from which we can't find the cgroup path might be static pods, let's ignore them
-		return 0, nil
-	}
-	// From that we get the cgroup ID
-	cgroupID, err := cgroups.GetCgroupIdFromPath(podDir)
-	if err != nil {
-		return 0, fmt.Errorf("failed getting the cgroup ID from the cgroup directory %s: %w", podDir, err)
-	}
-	return cgroupID, nil
 }
 
 // The Reconcile loop is divided into two steps with separate goals managing the
@@ -215,7 +193,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// New Pod, let's find the cgroup ID to see if we have an associated alloc ID
-	cgroupID, err := GetCgroupIDFromPodUID(pod.GetUID(), r.fsScaner)
+	cgroupID, err := r.cgroupIDResolver.GetCgroupIDFromPodUID(pod.GetUID())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get cgroup ID from Pod UID: %w", err)
 	}
