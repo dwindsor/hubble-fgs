@@ -47,6 +47,7 @@ enable-tcp-rtt: {{ .Values.tetragon.layer3.tcp.rtt.enabled | quote }}
 enable-udp: {{ .Values.tetragon.layer3.udp.enabled | quote }}
 enable-latency: {{ .Values.tetragon.layer3.latency.enabled | quote }}
 enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
+enable-igmp: {{ .Values.tetragon.layer3.igmp.enabled | quote }}
 enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
 enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}

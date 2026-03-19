@@ -147,6 +147,9 @@ options:
     - name: enable-icmp-tracking
       default_value: "false"
       usage: Enable additional socket tracking for ICMP
+    - name: enable-igmp
+      default_value: "false"
+      usage: Enable IGMP observability
     - name: enable-k8s-api
       default_value: "false"
       usage: |

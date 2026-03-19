@@ -106,6 +106,7 @@ type config struct {
 	EnableUDP       bool
 	EnableLatency   bool
 	EnableICMP      bool
+	EnableIGMP      bool
 	EnableRawsock   bool
 	EnableDNS       bool
 	Layer3CLIEnable bool

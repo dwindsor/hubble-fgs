@@ -88,6 +88,7 @@ const (
 	keyEnableUDP                         = "enable-udp"
 	keyEnableLatency                     = "enable-latency"
 	keyEnableICMP                        = "enable-icmp"
+	keyEnableIGMP                        = "enable-igmp"
 	keyEnableRawsock                     = "enable-rawsock"
 	keyEnableDNS                         = "enable-dns"
 	keyUDPIdleSocketTimeout              = "udp-idle-socket-timeout"
@@ -221,6 +222,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableUDP, false, "Enable UDP observability")
 	flags.Bool(keyEnableLatency, false, fmt.Sprintf("Enable TCP and/or UDP latency observability (requires --%s and/or --%s)", KeyEnableTCP, keyEnableUDP))
 	flags.Bool(keyEnableICMP, false, "Enable ICMP observability")
+	flags.Bool(keyEnableIGMP, false, "Enable IGMP observability")
 	flags.Bool(keyEnableRawsock, false, "Enable raw socket observability")
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
 	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
@@ -311,6 +313,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableUDP = viper.GetBool(keyEnableUDP)
 	Config.EnableLatency = viper.GetBool(keyEnableLatency)
 	Config.EnableICMP = viper.GetBool(keyEnableICMP)
+	Config.EnableIGMP = viper.GetBool(keyEnableIGMP)
 	Config.EnableRawsock = viper.GetBool(keyEnableRawsock)
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
 	Config.UDPIdleSocketTimeout = viper.GetDuration(keyUDPIdleSocketTimeout)
@@ -324,7 +327,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
 	// then we ignore enable/disable in policies.
-	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableRawsock || Config.EnableDNS {
+	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableIGMP || Config.EnableRawsock || Config.EnableDNS {
 		Config.Layer3CLIEnable = true
 	}
 
