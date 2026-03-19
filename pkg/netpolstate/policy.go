@@ -121,11 +121,11 @@ func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) erro
 
 	// Necessary order to ensure any updates to records are in place before we
 	// remove stale records.
-	err = prog.AddRecords(updateSet, true)
+	err = state.prog.AddRecords(updateSet, true)
 	if err != nil {
 		return fmt.Errorf("failed to add records: %w", err)
 	}
-	err = prog.RemoveRecords(zombieSet)
+	err = state.prog.RemoveRecords(zombieSet)
 	if err != nil {
 		return fmt.Errorf("failed to remove records: %w", err)
 	}
@@ -550,11 +550,12 @@ func AddPolicies(policies []*types.TetragonNetworkPolicy) error {
 
 	// Order matters lets add the new set of records. Then second remove any
 	// old records that are no longer valid.
-	err = prog.AddRecords(addSet, false)
+	state := GetRealizedState()
+	err = state.prog.AddRecords(addSet, false)
 	if err != nil {
 		return fmt.Errorf("failed to add records: %w", err)
 	}
-	err = prog.RemoveRecords(removeSet)
+	err = state.prog.RemoveRecords(removeSet)
 	if err != nil {
 		return fmt.Errorf("failed to remove records: %w", err)
 	}
@@ -639,10 +640,10 @@ func applyServiceSelectorEndpointCIDRDelta(namespace, name string, ipsToAdd, ips
 	}
 
 	if len(addRecords) > 0 {
-		prog.AddRecords(addRecords, false)
+		state.prog.AddRecords(addRecords, false)
 	}
 	if len(removeRecords) > 0 {
-		prog.RemoveRecords(removeRecords)
+		state.prog.RemoveRecords(removeRecords)
 	}
 
 	log.Debug("serviceSelector endpoint CIDR delta applied", "added", len(addRecords), "removed", len(removeRecords))

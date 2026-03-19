@@ -40,7 +40,7 @@ func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.
 	// the entire pod.
 	if len(policy.Subject.InProcessName) > 0 {
 		for _, process := range policy.Subject.InProcessName {
-			self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
+			self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 			if err != nil {
 				logger.GetLogger().Warn("Failed to create record", logfields.Error, err, "uid", policy.PolicyUID, "process", process)
 				return records, err

@@ -73,10 +73,11 @@ func addDestCIDRRecords(
 	podSubject *types.ProcessTreeKey,
 	action *record.DatapathAction,
 ) ([]record.DatapathRecord, error) {
+	state := GetRealizedState()
 	records := []record.DatapathRecord{}
 
 	for _, process := range subject.InProcessName {
-		self, err := prog.GetBinaryId(process, true) // CIDR policies do not include args for now
+		self, err := state.prog.GetBinaryId(process, true) // CIDR policies do not include args for now
 		if err != nil {
 			logger.GetLogger().Warn("add cidr binary id error", logfields.Error, err)
 			continue

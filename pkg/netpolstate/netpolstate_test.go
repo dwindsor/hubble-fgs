@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 	option.Config.EnablePolicyFilter = true
 	option.Config.EnablePolicyFilter = true
 	option.Config.EnablePolicyFilterCgroupMap = true
-	prog = &datapath.DummyBpfProgrammer{}
+	SetDatapath(&datapath.DummyBpfProgrammer{})
 	ec := runner.TestSensorsRun(m, "ModelDns")
 	os.Exit(ec)
 }

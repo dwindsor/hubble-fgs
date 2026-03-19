@@ -18,10 +18,11 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/record"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/record"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 func SanitizeWindowsPath(path string) string {
@@ -69,7 +70,7 @@ func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.
 	if len(policy.Subject.InProcessName) > 0 {
 		for _, process := range policy.Subject.InProcessName {
 			process = SanitizeWindowsPath(process)
-			self, err := prog.GetBinaryId(process, true)
+			self, err := state.prog.GetBinaryId(process, true)
 			if err != nil {
 				logger.GetLogger().Warn("Failed to create record", logfields.Error, err, "uid", policy.PolicyUID, "process", process)
 				return records, err

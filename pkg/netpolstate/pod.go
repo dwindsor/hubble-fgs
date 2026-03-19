@@ -43,8 +43,6 @@ const (
 
 var (
 	RealizedState *PolicyState
-	// Programmer for dataplane default to BPF
-	prog datapath.Interface = &datapath.BPFProgrammer{}
 	// k8sReader is used to read namespace labels from Kubernetes
 	k8sReader client.Reader
 )
@@ -65,7 +63,9 @@ func init() {
 }
 
 func SetDatapath(dp datapath.Interface) {
-	prog = dp
+	if RealizedState != nil {
+		RealizedState.prog = dp
+	}
 }
 
 func createObjectEndpoint(object metav1.Object) *endpoint.Endpoint {
@@ -136,6 +136,9 @@ type PolicyState struct {
 	Reader sync.RWMutex
 
 	workloadID *workloadid.State
+
+	// Programmer for dataplane default to BPF
+	prog datapath.Interface
 }
 
 func NewPolicyState() *PolicyState {
@@ -168,6 +171,7 @@ func NewPolicyState() *PolicyState {
 	s.Reader = sync.RWMutex{}
 
 	s.workloadID = workloadid.GetState()
+	s.prog = &datapath.BPFProgrammer{}
 
 	return s
 }
@@ -228,7 +232,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 
 			for _, subject := range s.Subjects {
 				for _, process := range s.Policy.Subject.InProcessName {
-					self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
+					self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 					if err != nil {
 						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue
@@ -318,7 +322,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 				})
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
-				self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
+				self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 				if err != nil {
 					logger.GetLogger().Warn("pod remove endpoint binary id error", logfields.Error, err)
 					continue
@@ -389,7 +393,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 				Port: 0,
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
-				self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
+				self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 				if err != nil {
 					logger.GetLogger().Warn("pod remove FQDN binary id error", logfields.Error, err)
 					continue
@@ -432,7 +436,7 @@ func PodRemove(pod *v1alpha1.PodInfo) error {
 	if err != nil {
 		return err
 	}
-	return prog.RemoveRecords(records)
+	return state.prog.RemoveRecords(records)
 }
 
 func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet, newEP bool) []record.DatapathRecord {
@@ -460,7 +464,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 
 			if len(policyList.Policy.Subject.InProcessName) > 0 {
 				for _, process := range policyList.Policy.Subject.InProcessName {
-					self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
+					self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 					if err != nil {
 						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue
@@ -630,5 +634,5 @@ func PodAdd(epPod *v1alpha1.PodInfo) error {
 	}
 	records = append(records, svcSelRecords...)
 
-	return prog.AddRecords(records, false)
+	return state.prog.AddRecords(records, false)
 }
