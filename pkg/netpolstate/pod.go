@@ -43,13 +43,13 @@ const (
 
 var (
 	RealizedState *PolicyState
-	// k8sReader is used to read namespace labels from Kubernetes
-	k8sReader client.Reader
 )
 
 // SetK8sReader sets the Kubernetes client reader for namespace lookups
 func SetK8sReader(reader client.Reader) {
-	k8sReader = reader
+	if RealizedState != nil {
+		RealizedState.k8sReader = reader
+	}
 }
 
 // At init we build an empty realized state and register endpoint change handler
@@ -139,6 +139,8 @@ type PolicyState struct {
 
 	// Programmer for dataplane default to BPF
 	prog datapath.Interface
+	// k8sReader is used to read namespace labels from Kubernetes
+	k8sReader client.Reader
 }
 
 func NewPolicyState() *PolicyState {
@@ -542,7 +544,7 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 	return records
 }
 
-func getNamespaceLabels(ns string) map[string]string {
+func (state *PolicyState) getNamespaceLabels(ns string) map[string]string {
 	l := make(map[string]string)
 
 	// Skip namespace label lookup for empty namespace (host-level processes)
@@ -554,9 +556,9 @@ func getNamespaceLabels(ns string) map[string]string {
 	l["kubernetes.io/metadata.name"] = ns
 
 	// If we have a k8s client, fetch all other namespace labels
-	if k8sReader != nil {
+	if state.k8sReader != nil {
 		namespace := &corev1.Namespace{}
-		err := k8sReader.Get(context.Background(), client.ObjectKey{Name: ns}, namespace)
+		err := state.k8sReader.Get(context.Background(), client.ObjectKey{Name: ns}, namespace)
 		if err != nil {
 			logger.GetLogger().Warn("failed to get namespace labels for namespaceSelector matching",
 				"namespace", ns, logfields.Error, err)
@@ -575,9 +577,9 @@ func getNamespaceLabels(ns string) map[string]string {
 	return l
 }
 
-func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) error {
+func (state *PolicyState) addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) error {
 	ns := endpointObject.GetNamespace()
-	labels := getNamespaceLabels(ns)
+	labels := state.getNamespaceLabels(ns)
 	for k, v := range labels {
 		tnpKey := fmt.Sprintf("_tnp_%s", k)
 		ml.Labels[tnpKey] = v
@@ -593,7 +595,7 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 		ml.Labels = endpointObject.GetLabels()
 	}
 
-	addNamespaceLabels(endpointObject, ml)
+	state.addNamespaceLabels(endpointObject, ml)
 
 	ep := createObjectEndpoint(endpointObject)
 
