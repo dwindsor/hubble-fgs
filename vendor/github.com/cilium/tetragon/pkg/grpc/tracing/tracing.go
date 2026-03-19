@@ -421,6 +421,11 @@ func kernelStack(event *MsgGenericKprobeUnix) []*tetragon.StackTraceEntry {
 	}
 
 	var stackTrace []*tetragon.StackTraceEntry
+	kernelSymbols, err := ksyms.KernelSymbols()
+	if err != nil {
+		logger.GetLogger().Warn("stacktrace: failed to read kernel symbols", logfields.Error, err)
+		return stackTrace
+	}
 
 	for _, addr := range event.KernelStackTrace {
 		if addr == 0 {
@@ -430,15 +435,10 @@ func kernelStack(event *MsgGenericKprobeUnix) []*tetragon.StackTraceEntry {
 			// be less than PERF_MAX_STACK_DEPTH most of the time.
 			continue
 		}
-		kernelSymbols, err := ksyms.KernelSymbols()
-		if err != nil {
-			logger.GetLogger().Warn("stacktrace: failed to read kernel symbols", logfields.Error, err)
-			continue
-		}
 		fnOffset, err := kernelSymbols.GetFnOffset(addr)
 		if err != nil {
 			// maybe group those errors as they might come in pack
-			logger.GetLogger().Warn("stacktrace: failed to retrieve symbol and offset", "address", fmt.Sprintf("0x%x", addr))
+			logger.GetLogger().Warn("stacktrace: failed to retrieve symbol and offset", "address", fmt.Sprintf("0x%x", addr), "err", err.Error())
 			continue
 		}
 		entry := &tetragon.StackTraceEntry{
