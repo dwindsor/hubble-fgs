@@ -35,6 +35,10 @@ else
 fi
 VER=${VER:-v1}
 TIMEOUT=${TIMEOUT:-120}
+SKIP_UPLINK_MOVE=${SKIP_UPLINK_MOVE:-0}
+UPLINK_PREFIX=${UPLINK_PREFIX:-}
+DSC_HOST_IP=${DSC_HOST_IP:-192.168.1.101/24}
+INT_MNIC0_IP=${INT_MNIC0_IP:-}
 
 setup_docker_env () {
     
@@ -156,6 +160,25 @@ run_docker () {
     echo ; echo "DSC $DSC_INSTANCE started" ; echo
 }
 
+configure_dpu_mgmt_alias () {
+    if [ -z "$INT_MNIC0_IP" ]; then
+        return 0
+    fi
+
+    echo "Configuring $DSC_INSTANCE int_mnic0 to $INT_MNIC0_IP"
+    # Retry while container services settle.
+    for attempt in $(seq 1 30); do
+        if $DOCKER_CMD exec "$DSC_INSTANCE" sh -c "ip link show int_mnic0 >/dev/null 2>&1 || ip link add int_mnic0 type dummy; ip addr flush dev int_mnic0; ip addr add $INT_MNIC0_IP dev int_mnic0; ip link set int_mnic0 up"; then
+            echo "Configured int_mnic0 on attempt $attempt"
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "Failed to configure int_mnic0 for $DSC_INSTANCE"
+    return 1
+}
+
 connect_to_docker () {
     # wait for container to start
     sleep 30
@@ -201,15 +224,30 @@ move_naples_uplink_interfaces () {
     ip netns exec $DSC_INSTANCE_NETNS ip link set dev $UPLINK_INTF1 netns 1
     ip netns exec $DSC_INSTANCE_NETNS ip link set dev $UPLINK_INTF2 netns 1
     ip netns exec $DSC_INSTANCE_NETNS ip link set dev $UPLINK_INTF3 netns 1
-    ip link set $UPLINK_INTF1 up
-    ip link set mtu 9440 dev $UPLINK_INTF1
-    ip link set $UPLINK_INTF2 up
-    ip link set mtu 9440 dev $UPLINK_INTF2
-    ip link set $UPLINK_INTF3 up
-    ip link set mtu 9440 dev $UPLINK_INTF3
-    ip addr add 192.168.1.101/24 dev dsc0
+
+    HOST_UPLINK_INTF1=$UPLINK_INTF1
+    HOST_UPLINK_INTF2=$UPLINK_INTF2
+    HOST_UPLINK_INTF3=$UPLINK_INTF3
+
+    if [ -n "$UPLINK_PREFIX" ]; then
+        HOST_UPLINK_INTF1="${UPLINK_PREFIX}-eth1-1"
+        HOST_UPLINK_INTF2="${UPLINK_PREFIX}-eth1-2"
+        HOST_UPLINK_INTF3="${UPLINK_PREFIX}-dsc0"
+        ip link set $UPLINK_INTF1 name $HOST_UPLINK_INTF1
+        ip link set $UPLINK_INTF2 name $HOST_UPLINK_INTF2
+        ip link set $UPLINK_INTF3 name $HOST_UPLINK_INTF3
+        echo "Renamed host interfaces: $HOST_UPLINK_INTF1, $HOST_UPLINK_INTF2, $HOST_UPLINK_INTF3"
+    fi
+
+    ip link set $HOST_UPLINK_INTF1 up
+    ip link set mtu 9440 dev $HOST_UPLINK_INTF1
+    ip link set $HOST_UPLINK_INTF2 up
+    ip link set mtu 9440 dev $HOST_UPLINK_INTF2
+    ip link set $HOST_UPLINK_INTF3 up
+    ip link set mtu 9440 dev $HOST_UPLINK_INTF3
+    ip addr show dev $HOST_UPLINK_INTF3 | grep -q "$DSC_HOST_IP" || ip addr add $DSC_HOST_IP dev $HOST_UPLINK_INTF3
     sleep 1
-    ip link show $UPLINK_INTF1 && ip link show $UPLINK_INTF2 && ip link show $UPLINK_INTF3
+    ip link show $HOST_UPLINK_INTF1 && ip link show $HOST_UPLINK_INTF2 && ip link show $HOST_UPLINK_INTF3
     echo
 }
 
@@ -221,14 +259,19 @@ setup_bitw_smart_switch_env
 cleanup_docker
 load_docker
 run_docker
+configure_dpu_mgmt_alias
 if [ $NO_ADS = 0 ]; then
     echo "Launching NPU Sim"
     cp -r /sdk/s1sdklibs/*so* /usr/lib64/.ip link 
     cp -r /sdk/s1sdklibs/libprotobuf-c-rpc.so.0.0.0 /usr/lib/x86_64-linux-gnu/.
     DCHAL_SWITCH_TYPE=LAKEFRONT /sdk/launch_s1.sh
 fi
-echo "Move DPU Sim interfaces to NPU Sim's Parent Container"
-setup_naples_env
-move_naples_uplink_interfaces
+if [ "$SKIP_UPLINK_MOVE" = "1" ]; then
+    echo "Skipping DPU Sim uplink interface move (SKIP_UPLINK_MOVE=1)"
+else
+    echo "Move DPU Sim interfaces to NPU Sim's Parent Container"
+    setup_naples_env
+    move_naples_uplink_interfaces
+fi
 
 exit 0

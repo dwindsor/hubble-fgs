@@ -461,13 +461,12 @@ def test_dual_policy_multi_cidr(cmd):
         verify_policy_removed_from_sim(sim_policies)
 
 
-@pytest.mark.skip
 @pytest.mark.agw
 @pytest.mark.packet_flow
 @allure.feature("Packet Flow")
-@allure.story("Port Range Policy Enforcement")
+@allure.story("Packet flow with VRF policy enforcement")
 @pytest.mark.parametrize("name, rules, pkt, vrf_id", get_vrf_policy_params())
-def test_vrf(cmd, ports, sniffers: List[AsyncSniffer], name, rules, pkt, vrf_id):
+def test_packet_flow_with_vrf(cmd, ports, sniffers: List[AsyncSniffer], name, rules, pkt, vrf_id):
     policy_name = f"{name}"
 
     with allure.step("Generate and apply policy"):

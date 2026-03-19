@@ -34,3 +34,5 @@ tests/sanity/smartswitch/venv/
 tests/sanity/smartswitch/allure-results/
 tests/sanity/smartswitch/.pytest_cache/
 tests/sanity/smartswitch/__pycache__/
+tests/sanity/smartswitch/.pytest_cache/
+tests/sanity/smartswitch/**/__pycache__/

@@ -22,9 +22,22 @@ class TestingConfig:
         self.timeout = int(os.getenv("TEST_TIMEOUT", "30"))  # seconds
         
         self.policy_remote_path = "/tmp/test_policy.yaml"
-        
-        self._port0 = os.getenv("DPU_PORT0", "Eth1-1")
-        self._port1 = os.getenv("DPU_PORT1", "Eth1-2")
+
+        sim_prefix = os.getenv("DPU_SIM_PREFIX", "sim1")
+        sim_port0 = f"{sim_prefix}-eth1-1"
+        sim_port1 = f"{sim_prefix}-eth1-2"
+
+        if os.path.exists(f"/sys/class/net/{sim_port0}") and os.path.exists(
+            f"/sys/class/net/{sim_port1}"
+        ):
+            default_port0 = sim_port0
+            default_port1 = sim_port1
+        else:
+            default_port0 = "Eth1-1"
+            default_port1 = "Eth1-2"
+
+        self._port0 = os.getenv("DPU_PORT0", default_port0)
+        self._port1 = os.getenv("DPU_PORT1", default_port1)
         
         self.sniff_timeout = float(os.getenv("SNIFF_TIMEOUT", "1"))
     

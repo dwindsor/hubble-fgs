@@ -13,7 +13,8 @@
         run-tests-with-allure show-allure-report run-specific-test \
         clean-test-artifacts \
         launch-containers build-agw-image pull-sim-image launch-agw configure-network shutdown-containers \
-        launch-sim attach-sim attach-agw show-containers-status
+        launch-sim attach-sim attach-agw show-containers-status \
+        launch-containers-multi launch-sim-multi configure-network-multi shutdown-containers-multi show-containers-status-multi
 
 # Configuration
 REPO_ROOT := $(shell cd ../../.. && pwd)
@@ -27,6 +28,7 @@ CLEAN_VERSION := $(shell echo "$(SIM_VERSION)" | sed 's/^v//')
 # Dynamically determine VER based on what's available
 VER ?= $(shell docker images hypershield/naples --format "{{.Tag}}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$$' | head -1 || echo "$(CLEAN_VERSION)")
 DSC_INSTANCE ?= naples-$(VER)
+SIM_COUNT ?= 2
 TIMEOUT ?= 180
 HOST_AGW_IP ?= 169.254.101.2
 APPLY_ROUTE ?= 0
@@ -46,8 +48,11 @@ help:
 	@echo ""
 	@echo "Container Targets:"
 	@echo "  launch-containers          - Build AGW + pull DPU + run containers + configure network"
+	@echo "  launch-containers-multi    - Build AGW + pull DPU + run N SIMs + configure network"
 	@echo "  shutdown-containers        - Stop and remove both containers"
+	@echo "  shutdown-containers-multi  - Stop AGW and all naples-* containers"
 	@echo "  show-containers-status     - Show status and health of all containers"
+	@echo "  show-containers-status-multi - Show status/health for AGW and all SIMs"
 	@echo ""
 	@echo "AGW Targets:"
 	@echo "  build-agw-image            - Build AGW image only"
@@ -57,6 +62,7 @@ help:
 	@echo "DPU Sim Targets:"
 	@echo "  pull-sim-image             - Download DPU Sim tarball from GitHub releases"
 	@echo "  launch-sim                 - Launch DPU Sim container using launch_sas.sh"
+	@echo "  launch-sim-multi           - Launch multiple DPU Sim containers (SIM_COUNT)"
 	@echo "  attach-sim                 - Attach to running DPU Sim container"
 	@echo ""
 	@echo "Network Configuration:"
@@ -74,6 +80,7 @@ help:
 	@echo ""
 	@echo "Configuration Options:"
 	@echo "  SIM_VERSION=v1.32.0        - Specific release version (default: latest)"
+	@echo "  SIM_COUNT=2                - Number of SIMs for *-multi targets (default: 2)"
 	@echo "  GITHUB_REPO=org/repo       - GitHub repository (default: cisco-hypershield/hs-dpu-pensando)"
 	@echo "  APPLY_ROUTE=1              - Enable DPU bridge routing (default: 0)"
 	@echo ""
@@ -240,6 +247,142 @@ show-containers-status:
 	else \
 		echo "❌ DPU not running"; \
 	fi
+
+launch-sim-multi:
+	@echo "Launching $(SIM_COUNT) DPU Sim container(s) using launch_sas.sh"
+	@-docker rm -f $$(docker ps -aq --filter "name=naples-") >/dev/null 2>&1 || true
+	@ACTUAL_VER=$$(ls -1 /tmp/naples-docker-*.tgz 2>/dev/null | sed 's|/tmp/naples-docker-||; s|.tgz$$||' | sort -V | tail -1); \
+	if [ -z "$$ACTUAL_VER" ]; then \
+		echo "❌ No DPU Sim tarball found in /tmp/"; \
+		echo "Run 'make pull-sim-image' first to download the tarball"; \
+		exit 1; \
+	fi; \
+	SCRIPT_TARBALL="/tmp/naples-docker-$$ACTUAL_VER.tgz"; \
+	if ! [ "$(SIM_COUNT)" -ge 1 ] 2>/dev/null; then \
+		echo "❌ SIM_COUNT must be a positive integer"; \
+		exit 1; \
+	fi; \
+	echo "Version: $$ACTUAL_VER"; \
+	echo "Timeout: $(TIMEOUT)s"; \
+	echo "SIM count: $(SIM_COUNT)"; \
+	echo "📋 Using tarball: $$SCRIPT_TARBALL"; \
+	chmod +x scripts/launch_sas.sh; \
+	for IDX in $$(seq 1 $(SIM_COUNT)); do \
+		INSTANCE_NAME="naples-$$ACTUAL_VER-$$IDX"; \
+		if [ "$$IDX" -eq 1 ]; then \
+			BIND_PORTS=""; \
+		else \
+			BIND_PORTS="1"; \
+		fi; \
+		SKIP_MOVE="0"; \
+		UPLINK_PREFIX="sim$$IDX"; \
+		DSC_IP_CIDR="192.168.$$((100 + IDX)).101/24"; \
+		AGENT_IP_CIDR="169.254.201.$$IDX/32"; \
+		echo "Launching $$INSTANCE_NAME (BIND_GRPC_PORTS=$${BIND_PORTS:-0}, UPLINK_PREFIX=$$UPLINK_PREFIX, DSC_HOST_IP=$$DSC_IP_CIDR, INT_MNIC0_IP=$$AGENT_IP_CIDR)"; \
+		sudo NO_ADS=1 \
+			DPUIMG="$$SCRIPT_TARBALL" \
+			TIMEOUT=$(TIMEOUT) \
+			VER="$$ACTUAL_VER" \
+			DSC_INSTANCE="$$INSTANCE_NAME" \
+			BIND_GRPC_PORTS="$$BIND_PORTS" \
+			SKIP_UPLINK_MOVE="$$SKIP_MOVE" \
+			UPLINK_PREFIX="$$UPLINK_PREFIX" \
+			DSC_HOST_IP="$$DSC_IP_CIDR" \
+			INT_MNIC0_IP="$$AGENT_IP_CIDR" \
+			bash scripts/launch_sas.sh; \
+		LAUNCH_EXIT=$$?; \
+		if [ "$$LAUNCH_EXIT" -ne 0 ]; then \
+			echo "❌ Failed to launch $$INSTANCE_NAME (exit: $$LAUNCH_EXIT)"; \
+			exit $$LAUNCH_EXIT; \
+		fi; \
+	done; \
+	sleep 3; \
+	RUNNING_COUNT=$$(docker ps --filter "name=naples-$$ACTUAL_VER-" --format "{{.Names}}" | wc -l | tr -d ' '); \
+	if [ "$$RUNNING_COUNT" -ge "$(SIM_COUNT)" ]; then \
+		echo "✅ Launched $$RUNNING_COUNT DPU Sim container(s)"; \
+		docker ps --filter "name=naples-$$ACTUAL_VER-" --format "  - {{.Names}}"; \
+		echo "Host interfaces per SIM:"; \
+		for IDX in $$(seq 1 $(SIM_COUNT)); do \
+			echo "  - SIM $$IDX: sim$$IDX-eth1-1, sim$$IDX-eth1-2, sim$$IDX-dsc0 (IP 192.168.$$((100 + IDX)).101/24)"; \
+		done; \
+		exit 0; \
+	else \
+		echo "❌ Expected $(SIM_COUNT) DPU Sim container(s), found $$RUNNING_COUNT"; \
+		docker ps -a | grep naples || echo "No naples containers found"; \
+		exit 1; \
+	fi
+
+configure-network-multi:
+	@echo "Configuring host IP alias $(HOST_AGW_IP) (Ubuntu)"
+	@sh -c 'if ! ip addr show lo | grep -q "$(HOST_AGW_IP)"; then sudo ip addr add $(HOST_AGW_IP)/32 dev lo; else echo "IP already configured"; fi'
+	@DPU_CONTAINERS="$$(docker ps --filter "name=naples-" --format "{{.Names}}")"; \
+	if [ -z "$$DPU_CONTAINERS" ]; then \
+		echo "❌ No running DPU Sim containers found"; \
+		exit 1; \
+	fi; \
+	if [ "$(APPLY_ROUTE)" = "1" ]; then \
+		echo "Configuring DPU route to AGW IP via Docker bridge"; \
+		BRIDGE_IP=$$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}'); \
+		for C in $$DPU_CONTAINERS; do \
+			echo "  - $$C: route $(HOST_AGW_IP) via $$BRIDGE_IP"; \
+			docker exec "$$C" ip route add $(HOST_AGW_IP) via $$BRIDGE_IP 2>/dev/null || echo "    Route already exists"; \
+		done; \
+	else \
+		echo "Skipping DPU bridge route (APPLY_ROUTE=0)"; \
+	fi; \
+	echo "Creating DPU mgmt alias int_mnic0 to satisfy FWA (idempotent)"; \
+	for C in $$DPU_CONTAINERS; do \
+		SUFFIX=$$(echo "$$C" | sed -n 's/.*-\([0-9][0-9]*\)$$/\1/p'); \
+		if [ -z "$$SUFFIX" ]; then \
+			echo "  - $$C: unable to parse index, skipping int_mnic0 remap"; \
+			continue; \
+		fi; \
+		AGENT_IP="169.254.201.$$SUFFIX/32"; \
+		echo "  - $$C: ensuring int_mnic0=$$AGENT_IP"; \
+		docker exec "$$C" sh -c 'ip link show int_mnic0 >/dev/null 2>&1 || ip link add int_mnic0 type dummy'; \
+		CURRENT_IP=$$(docker exec "$$C" sh -c "ip -4 -o addr show dev int_mnic0 2>/dev/null | awk '{print \$$4}' | head -1"); \
+		if [ "$$CURRENT_IP" != "$$AGENT_IP" ]; then \
+			echo "    updating int_mnic0 from '$$CURRENT_IP' to '$$AGENT_IP'"; \
+			docker exec "$$C" sh -c 'ip addr flush dev int_mnic0'; \
+			docker exec "$$C" sh -c "ip addr add $$AGENT_IP dev int_mnic0"; \
+		fi; \
+		docker exec "$$C" sh -c 'ip link set int_mnic0 up || true'; \
+	done
+
+show-containers-status-multi:
+	@echo "Container Status:"
+	@docker ps --filter "name=agw" --filter "name=naples-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || echo "No containers running"
+	@echo ""
+	@echo "Health Checks:"
+	@if docker ps --filter "name=agw" --format "{{.Names}}" | grep -q agw; then \
+		docker exec agw ./agwctl health >/dev/null 2>&1 && echo "✅ AGW is healthy" || echo "❌ AGW health check failed"; \
+	else \
+		echo "❌ AGW not running"; \
+	fi
+	@DPU_CONTAINERS="$$(docker ps --filter "name=naples-" --format "{{.Names}}")"; \
+	if [ -n "$$DPU_CONTAINERS" ]; then \
+		for C in $$DPU_CONTAINERS; do \
+			docker exec "$$C" pgrep -f "pds_dp_app" >/dev/null 2>&1 && echo "✅ $$C dataplane is running" || echo "❌ $$C dataplane not running"; \
+		done; \
+	else \
+		echo "❌ DPU not running"; \
+	fi
+
+shutdown-containers-multi:
+	@echo "Stopping containers..."
+	@echo "Stopping AGW container..."
+	@-docker rm -f agw >/dev/null 2>&1 || true
+	@echo "Stopping DPU Sim container(s)..."
+	@-docker rm -f $$(docker ps -aq --filter "name=naples-") >/dev/null 2>&1 || true
+	@echo "Cleaning host SIM interfaces..."
+	@for IFACE in $$(ip -o link show | awk -F': ' '{print $$2}' | sed 's/@.*//' | grep -E '^sim[0-9]+-(eth1-1|eth1-2|dsc0)$$' || true); do \
+		echo "  - deleting $$IFACE"; \
+		sudo ip link delete "$$IFACE" >/dev/null 2>&1 || true; \
+	done
+	@echo "✅ All containers stopped"
+
+launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-agw configure-network-multi show-containers-status-multi
+	@echo "Multi-SIM stack ready"
 
 # ============================================================================
 # Test Targets

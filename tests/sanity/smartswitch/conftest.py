@@ -65,8 +65,9 @@ def clean_policies_and_flows(cmd):
         logger.warning(f"Failed to clear AGW policies: {e}")
     
     try:
-        cmd.sim_clear_policies()
-        logger.info("✅ SIM policies cleared")
+        sim_clear_results = cmd.sim_clear_policies_all()
+        for sim_name in sim_clear_results:
+            logger.info(f"✅ SIM policies cleared: {sim_name}")
     except Exception as e:
         logger.warning(f"Failed to clear SIM policies: {e}")
     
