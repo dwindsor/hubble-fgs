@@ -54,6 +54,13 @@ struct {
 	__uint(value_size, sizeof(uint64_t));
 } tg_tree_id SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 1); // will be resized by userspace
+	__type(key, u64); // cgroup ID
+	__type(value, u64); // state ID
+} tg_cgid_wlid SEC(".maps");
+
 static int atomic_xchg(__u64 *cnt, __u64 val)
 {
 	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);

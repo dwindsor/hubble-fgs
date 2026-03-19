@@ -198,7 +198,7 @@ The Application Model is an **enterprise-only feature** that differs fundamental
 BPF Maps (kernel)                    Model Server (userspace)
 ├─ process_tree_map          ──────▶ GetProcessModel()
 ├─ destination_endpoint_map  ──────▶   │
-└─ tg_cgroup_namespace_map   ──────▶   ▼
+└─ tg_cgid_wlid              ──────▶   ▼
                                     ProcessModelToApplicationModel()
                                        │
                                        ▼
