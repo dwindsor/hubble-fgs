@@ -77,6 +77,8 @@
 #define IP_ERROR_TCP_RTT_NO_TIMESTAMP	       56
 #define IP_ERROR_TCP_RTT_DELTA_TOO_BIG	       57
 #define IP_ERROR_INET_READ_TCP		       58
+#define IP_ERROR_IGMP_JOIN_MISSING_PROCESS     59
+#define IP_ERROR_IGMP_LEAVE_MISSING_PROCESS    60
 
 struct handler_vars {
 	struct iphdr ip;

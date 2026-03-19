@@ -12,6 +12,7 @@ ALIGNCHECKEROSSDIR = $(OSSBPFDIR)/alignchecker/
 SOCKTRACKDIR := $(NETWORKINGDIR)socktrack/
 ICMPDIR := $(L3DIR)icmp/
 PINGDIR := $(L3DIR)ping/
+IGMPDIR := $(L3DIR)igmp/
 RAWSOCKDIR := $(NETWORKINGDIR)rawsock/
 TIMESTAMPDIR := $(NETWORKINGDIR)timestamp/
 ISOPROCESS := process/
@@ -46,6 +47,7 @@ L2 = bpf_net_ns_net_exit.o
 
 ICMP = bpf_icmp_rcv.o bpf_icmp_rcv_fentry.o
 PING = bpf_pingsock_create.o bpf_pingsock_create_fentry.o
+IGMP = bpf_igmp_kprobe.o bpf_igmp_fentry.o bpf_igmp_gr_kprobe.o bpf_igmp_gr_fentry.o
 L3 = bpf_cgroup_net.o bpf_cgroup_net_pstree.o bpf_cgroup_net_pstree_timer.o
 
 RAWSOCK = bpf_rawsock_create.o bpf_rawsock_create_fentry.o
@@ -178,6 +180,7 @@ L2OBJ	      := $(addprefix $(OBJSDIR),$(L2))
 L3OBJ	      := $(addprefix $(OBJSDIR),$(L3))
 PINGOBJ	      := $(addprefix $(OBJSDIR),$(PING))
 ICMPOBJ	      := $(addprefix $(OBJSDIR),$(ICMP))
+IGMPOBJ	      := $(addprefix $(OBJSDIR),$(IGMP))
 RAWSOCKOBJ    := $(addprefix $(OBJSDIR),$(RAWSOCK))
 TIMESTAMPOBJ  := $(addprefix $(OBJSDIR),$(TIMESTAMP))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
@@ -186,7 +189,7 @@ FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
 ALIGNCHECKEROSSOBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKEROSS))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(SOCKTRACKOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(CGROUPOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(SOCKTRACKOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(IGMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(CGROUPOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
 DEPS          := $(patsubst $(OBJSDIR)%.o,$(DEPSDIR)%.d,$(OBJS))
 
 all: $(OBJS) $(DEPS)
@@ -328,6 +331,13 @@ objs/%.o: $(ICMPDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(ICMPDIR)%.c
+	$(rule_d)
+
+#IGMP
+objs/%.o: $(IGMPDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+$(DEPSDIR)%.d: $(IGMPDIR)%.c
 	$(rule_d)
 
 # RAWSOCKDIR
