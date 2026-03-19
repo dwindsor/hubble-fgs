@@ -31,7 +31,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	ossoption "github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
 
 	"github.com/cilium/cilium/pkg/container/set"
@@ -49,6 +48,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/protoutils"
+	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 
 const (
@@ -57,7 +57,6 @@ const (
 	listenEndpointMapName      = "listen_endpoint_map"
 	endpointIdMapName          = "tg_endpoint_id_map"
 	syscallMapName             = "tg_syscall_map"
-	nsIDMapName                = "tg_cgroup_namespace_map"
 	cgTrackerIdMapName         = "tg_cgtracker_map"
 )
 
@@ -344,7 +343,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMapName)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMapName)
 	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMapName)
-	nsIDMapPath := filepath.Join(bpf.MapPrefixPath(), nsIDMapName)
+	nsIDMapPath := filepath.Join(bpf.MapPrefixPath(), workloadid.CgroupIDWorkloadIDMapName)
 	cgTrackerIdMapPath := filepath.Join(bpf.MapPrefixPath(), cgTrackerIdMapName)
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
@@ -632,12 +631,6 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		syscallVal types.ProcessSyscallValue
 	)
 
-	state, err := policyfilter.GetState()
-	if err != nil {
-		logger.GetLogger().Warn("Could not get policyfilter state", logfields.Error, err)
-		return nil, err
-	}
-
 	err = initContainerIDMap()
 	if err != nil {
 		logger.GetLogger().Error("Could not open cgroupID to containerID map", logfields.Error, err)
@@ -648,7 +641,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	for ns, d := range nsList {
 		var nsPath, wlPath, kind string
 
-		nsId, ok := state.GetNsId(policyfilter.StateID(ns))
+		nsId, ok := workloadid.GetState().LookupMeta(workloadid.WorkloadID(ns))
 		if ok {
 			nsPath = nsId.Namespace
 			wlPath = nsId.Workload
@@ -756,7 +749,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			}
 		}
 
-		policyFilterNSInfo, ok := state.GetNsId(policyfilter.StateID(key.NSID))
+		policyFilterNSInfo, ok := workloadid.GetState().LookupMeta(workloadid.WorkloadID(key.NSID))
 		if ok {
 			ns = policyFilterNSInfo.Namespace
 			wl = policyFilterNSInfo.Workload

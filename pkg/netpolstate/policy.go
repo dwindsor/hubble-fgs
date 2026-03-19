@@ -18,13 +18,13 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/servicemap"
+	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -132,33 +132,28 @@ func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) erro
 	return nil
 }
 
-func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
-	var nsId policyfilter.StateID
+func (state *PolicyState) createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
+	var nsId workloadid.WorkloadID
 	if namespace != "" {
 		var ok bool
 
-		workload := policyfilter.NSID{
+		workload := workloadid.WorkloadMeta{
 			Namespace: namespace,
 			Workload:  wl,
 			Kind:      kind,
 		}
 
-		state, err := policyfilter.GetState()
-		if err != nil {
-			logger.GetLogger().Warn("Unable to get policyfilter", logfields.Error, err)
-			return nil, err
-		}
 		// If the ID does not yet exist we need to wait for it to be added. This is
 		// an imperfect solution. Ideally we would just modify the policyfilter state
 		// to preallocate an ID.But, its in OSS and not obvious how to extend it to
 		// support this.
-		nsId, ok = state.GetIdNs(workload)
+		nsId, ok = state.workloadID.LookupID(workload)
 		if !ok {
 			logger.GetLogger().Debug("workload info does not exist yet, queuing for workload updates.", "namespace", namespace, "workload", wl)
 			return nil, nil
 		}
 	} else {
-		nsId = policyfilter.StateID(0)
+		nsId = workloadid.WorkloadID(0)
 	}
 
 	return &types.ProcessTreeKey{
@@ -359,7 +354,7 @@ func (state *PolicyState) createServiceSelectorRecordsForPolicy(podInfo *v1alpha
 		return records, nil
 	}
 
-	src, err := createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
+	src, err := state.createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
 	if err != nil || src == nil {
 		return records, err
 	}
@@ -629,7 +624,7 @@ func applyServiceSelectorEndpointCIDRDelta(namespace, name string, ipsToAdd, ips
 				continue
 			}
 
-			src, err := createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
+			src, err := state.createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
 			if err != nil || src == nil {
 				continue
 			}
@@ -756,7 +751,7 @@ func (state *PolicyState) CreateServiceSelectorRecords(pod metav1.Object) ([]rec
 		return records, nil
 	}
 
-	src, err := createObjectSrcKey(pod)
+	src, err := state.createObjectSrcKey(pod)
 	if err != nil {
 		return records, err
 	}

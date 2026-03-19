@@ -158,7 +158,7 @@ int find_my_nsid(__u64 cgid)
 {
 	__u64 *nsid;
 
-	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+	nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
 	if (nsid)
 		return *nsid;
 	return 0;
@@ -700,7 +700,7 @@ found_id:
 	dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = 0;
 
 	if (cgid) {
-		nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+		nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
 		if (nsid) {
 			dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = *nsid;
 		}
@@ -726,7 +726,7 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 	if (!tuple)
 		return 0;
 
-	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+	nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
 	if (nsid)
 		key.nsid = *nsid;
 	else
@@ -763,7 +763,7 @@ static int repair_socket_nsid(struct destination_endpoint_key *key, struct bpf_s
 
 	// Otherwise we have CGID, but no local NSID mapping so lets
 	// attempt to discover if one exists.
-	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+	nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
 	if (nsid) {
 		key->local_nsid = *nsid;
 		return 1;

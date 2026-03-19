@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/stretchr/testify/require"
 
@@ -36,6 +35,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/servicemap"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -47,7 +47,7 @@ var (
 
 // wildcardSrc matches all source processes/pods (NSID=0 means host)
 var wildcardSrc = &types.ProcessTreeKey{
-	NSID:  uint64(policyfilter.StateID(0)),
+	NSID:  uint64(workloadid.WorkloadID(0)),
 	Depth: 0,
 	Self:  0,
 	Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},

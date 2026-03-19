@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
+	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
@@ -92,7 +93,7 @@ func createObjectEndpoint(object metav1.Object) *endpoint.Endpoint {
 	return &ep
 }
 
-func createObjectSrcKey(object metav1.Object) (*types.ProcessTreeKey, error) {
+func (state *PolicyState) createObjectSrcKey(object metav1.Object) (*types.ProcessTreeKey, error) {
 	var name, namespace, kind string
 	switch o := object.(type) {
 	case *v1alpha1.PodInfo:
@@ -108,7 +109,7 @@ func createObjectSrcKey(object metav1.Object) (*types.ProcessTreeKey, error) {
 	default:
 		return nil, fmt.Errorf("object %s has unsupported type", o.GetName())
 	}
-	return createSrcKey(namespace, name, kind)
+	return state.createSrcKey(namespace, name, kind)
 }
 
 func GetRealizedState() *PolicyState {
@@ -133,6 +134,8 @@ type PolicyState struct {
 	SrcLock sync.Mutex
 
 	Reader sync.RWMutex
+
+	workloadID *workloadid.State
 }
 
 func NewPolicyState() *PolicyState {
@@ -163,6 +166,9 @@ func NewPolicyState() *PolicyState {
 	s.serviceSelLock = sync.Mutex{}
 
 	s.Reader = sync.RWMutex{}
+
+	s.workloadID = workloadid.GetState()
+
 	return s
 }
 
@@ -277,7 +283,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 		return records, nil
 	}
 
-	subject, err := createObjectSrcKey(pod)
+	subject, err := state.createObjectSrcKey(pod)
 	if err != nil {
 		return records, nil
 	}
@@ -589,7 +595,7 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 
 	epRecords := state.EndpointAdd(ep, ml, true)
 
-	src, err := createObjectSrcKey(endpointObject)
+	src, err := state.createObjectSrcKey(endpointObject)
 	if err != nil {
 		return epRecords, err
 	}
