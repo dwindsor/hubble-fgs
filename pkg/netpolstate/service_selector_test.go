@@ -99,10 +99,9 @@ func split(s, sep string) []string {
 // TestServiceSelectorRecordGeneration verifies that serviceSelector policies
 // generate CIDR records for ClusterIP and endpoint IPs
 func TestServiceSelectorRecordGeneration(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
 
@@ -138,10 +137,9 @@ func TestServiceSelectorRecordGeneration(t *testing.T) {
 	assert.Len(t, policies, 1, "should have one matching serviceSelector policy")
 
 	// Add subject pod
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-test-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 	t.Cleanup(func() {
-		delPod(t, srcId)
+		delPod(t)
 	})
 
 	// Create serviceSelector records for the pod
@@ -176,10 +174,9 @@ func TestServiceSelectorRecordGeneration(t *testing.T) {
 
 // TestServiceSelectorWithPorts verifies port-specific serviceSelector policies
 func TestServiceSelectorWithPorts(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
 
@@ -207,10 +204,9 @@ func TestServiceSelectorWithPorts(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add subject pod
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-port-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 	t.Cleanup(func() {
-		delPod(t, srcId)
+		delPod(t)
 	})
 
 	// Create serviceSelector records
@@ -239,10 +235,9 @@ func TestServiceSelectorWithPorts(t *testing.T) {
 // TestServiceSelectorNoMatchingService verifies behavior when service doesn't exist in servicemap.
 // No records are generated since CIDR records require the service to exist to get ClusterIP/endpoint IPs.
 func TestServiceSelectorNoMatchingService(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
 
@@ -253,10 +248,9 @@ func TestServiceSelectorNoMatchingService(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add subject pod
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-noexist-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 	t.Cleanup(func() {
-		delPod(t, srcId)
+		delPod(t)
 	})
 
 	// Create serviceSelector records - should not fail even if service doesn't exist
@@ -271,10 +265,9 @@ func TestServiceSelectorNoMatchingService(t *testing.T) {
 // TestServiceSelectorPodNotMatchingSubject verifies that pods not matching
 // the subject selector don't get serviceSelector records
 func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "other-pod"
 	srcPodLabels := "app=other" // Different from policy subject
 
@@ -297,10 +290,9 @@ func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add pod with different labels (app=other)
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-nomatch-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 	t.Cleanup(func() {
-		delPod(t, srcId)
+		delPod(t)
 	})
 
 	// Get matching policies - should be empty
@@ -315,10 +307,9 @@ func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
 
 // TestServiceSelectorAllowAction verifies allow rules work correctly
 func TestServiceSelectorAllowAction(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
 
@@ -344,10 +335,9 @@ func TestServiceSelectorAllowAction(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add subject pod
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-allow-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 	t.Cleanup(func() {
-		delPod(t, srcId)
+		delPod(t)
 	})
 
 	records, err := s.CreateServiceSelectorRecords(srcPod)
@@ -370,10 +360,9 @@ func TestServiceSelectorAllowAction(t *testing.T) {
 
 // TestServiceSelectorMultiplePolicies verifies multiple serviceSelector policies work together
 func TestServiceSelectorMultiplePolicies(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
 
@@ -409,10 +398,9 @@ func TestServiceSelectorMultiplePolicies(t *testing.T) {
 	assert.Len(t, policies, 2, "should have two matching policies")
 
 	// Add subject pod
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-multi-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 	t.Cleanup(func() {
-		delPod(t, srcId)
+		delPod(t)
 	})
 
 	records, err := s.CreateServiceSelectorRecords(srcPod)
@@ -439,10 +427,9 @@ func TestServiceSelectorMultiplePolicies(t *testing.T) {
 
 // TestServiceSelectorDefaultNamespace verifies CIDR records are generated for services in default namespace
 func TestServiceSelectorDefaultNamespace(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
 
@@ -465,10 +452,9 @@ func TestServiceSelectorDefaultNamespace(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add subject pod
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-default-ns-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 	t.Cleanup(func() {
-		delPod(t, srcId)
+		delPod(t)
 	})
 
 	records, err := s.CreateServiceSelectorRecords(srcPod)
@@ -491,10 +477,9 @@ func TestServiceSelectorDefaultNamespace(t *testing.T) {
 
 // TestServiceSelectorPolicyRemoval verifies policy removal cleans up correctly
 func TestServiceSelectorPolicyRemoval(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
-	srcId := nextId()
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
 
@@ -521,8 +506,7 @@ func TestServiceSelectorPolicyRemoval(t *testing.T) {
 	assert.Len(t, policies, 1)
 
 	// Add subject pod
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "svc-sel-remove-1", "testNamespace", srcPodName, "Deployment", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 
 	// Create records
 	records, err := s.CreateServiceSelectorRecords(srcPod)
@@ -538,5 +522,5 @@ func TestServiceSelectorPolicyRemoval(t *testing.T) {
 	assert.Len(t, policies, 0, "should have no policies after removal")
 
 	// Cleanup
-	delPod(t, srcId)
+	delPod(t)
 }

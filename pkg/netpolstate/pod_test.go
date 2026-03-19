@@ -17,9 +17,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cilium/tetragon/pkg/podhelpers"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stype "k8s.io/apimachinery/pkg/types"
@@ -28,72 +27,44 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 
-// One thing that is odd about these tests is we are working over the NSID
-// State cache. So checking NSID values depends on if there is an existing
-// Pod* -> NSID match in the cache. I decided the pain of tracking this to
-// be worthwhile so I could verify CGID expected values. A couple tests will
-// check this to be sure we are correctly doing mappings and after that we
-// just expect non-zero cgid.
-//
-// Second trouble here is nothign is parallizable.
-var (
-	globalCgId = 0
+const (
+	testNamespace = "testNamespace"
+	testKind      = "testKind"
 )
 
-func nextId() policyfilter.PodID {
-	var next policyfilter.PodID
-	globalCgId++
+// This was useful when using the policy filter, this could be cleaned up
+// eventually
+func delPod(t *testing.T) {
+	t.Helper()
 
-	next = [16]byte{
-		byte(0xff & globalCgId),
-		byte(0xff & (globalCgId >> 8)),
-		byte(0xff & (globalCgId >> 16)),
-		byte(0xff & (globalCgId >> 24))}
-	return next
+	// Shouldn't do anything as the workloadid can never delete entries for now
 }
 
-func delPod(t *testing.T, id policyfilter.PodID) {
-	state, err := policyfilter.GetState()
-	assert.NoError(t, err)
-
-	err = state.DelPod(id)
-	assert.NoError(t, err)
+// registerWorkloadID registers the workload in the cgroup ID to workload ID
+// mapping like we would on the event of a creation of a new Pod from cluster.
+func registerWorkloadID(t *testing.T, s *PolicyState, ns, name, kind string) {
+	t.Helper()
+	err := s.workloadID.Update(
+		workloadid.WorkloadMeta{
+			Namespace: ns,
+			Workload:  name,
+			Kind:      kind,
+		},
+		workloadid.CgroupID(0x2),
+	)
+	require.NoError(t, err)
 }
 
-func addPod(t *testing.T, id policyfilter.PodID, name, labels string) {
-	state, err := policyfilter.GetState()
-	assert.NoError(t, err)
-
-	matchLabels := make(map[string]string)
-	for _, l := range strings.Split(labels, ",") {
-		kv := strings.Split(l, "=")
-		matchLabels[kv[0]] = kv[1]
-	}
-
-	cgid := policyfilter.CgroupID(0x2)
-
-	err = state.AddPodContainer(id,
-		"testNamespace", name, "testKind",
-		matchLabels,
-		"testContainerID", cgid,
-		podhelpers.ContainerInfo{Name: "testContainerName", Repo: "testContainerRepo"})
-	assert.NoError(t, err)
-}
-
-func podId(id string) policyfilter.PodID {
-	uid := [16]byte{}
-
-	copy(uid[:], id)
-	return uid
-}
-
-func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.PodInfo {
-	state, err := policyfilter.GetState()
-	assert.NoError(t, err)
+// newPodFromCluster creates a new fake Pod like we would receive from the API,
+// it also registers the workload fake workload ID.
+func newPodFromCluster(t *testing.T, s *PolicyState, ns, name, kind, matchLabels string) *v1alpha1.PodInfo {
+	t.Helper()
 
 	ml := make(map[string]string)
 	for _, l := range strings.Split(matchLabels, ",") {
@@ -116,19 +87,14 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 		Name:      name,
 		Namespace: ns,
 	}
-	podInfo := &v1alpha1.PodInfo{
+
+	registerWorkloadID(t, s, ns, name, kind)
+
+	return &v1alpha1.PodInfo{
 		WorkloadType:   ty,
 		WorkloadObject: wl,
 		ObjectMeta:     meta,
 	}
-
-	cgid := policyfilter.CgroupID(0x01)
-	err = state.AddPodContainer(
-		podId(id), ns, name, kind, ml, "testContainerID", cgid,
-		podhelpers.ContainerInfo{Name: "testContainerName", Repo: "testContainerRepo"})
-	assert.NoError(t, err)
-
-	return podInfo
 }
 
 // fakeK8sReader is a mock implementation of client.Reader for testing
@@ -150,36 +116,40 @@ func (f *fakeK8sReader) List(_ context.Context, _ client.ObjectList, _ ...client
 	return nil
 }
 
+func newTestPolicyState(t *testing.T) *PolicyState {
+	t.Helper()
+	s := NewPolicyState()
+	s.prog = &datapath.DummyBpfProgrammer{}
+	s.workloadID = workloadid.NewFakeState(t)
+	s.k8sReader = &fakeK8sReader{}
+	return s
+}
+
 // This tests assumes NSID space is incrementing every addPolicyFilter
 // which allows us to check cgroupID
 func TestSrcKeyLookup(t *testing.T) {
-	test1Id := nextId()
-	test2Id := nextId()
+	s := newTestPolicyState(t)
 
-	addPod(t, test1Id, "test1", "A=a")
-	addPod(t, test2Id, "test2", "B=b")
+	registerWorkloadID(t, s, testNamespace, "test1", testKind)
+	registerWorkloadID(t, s, testNamespace, "test2", testKind)
 
-	key, err := createSrcKey("testNamespace", "test1", "testKind")
+	key, err := s.createSrcKey(testNamespace, "test1", testKind)
 	assert.NoError(t, err)
 	assert.NotNil(t, key)
 	assert.NotZero(t, key.NSID)
 
-	key, err = createSrcKey("testNamespace", "test2", "testKind")
+	key, err = s.createSrcKey(testNamespace, "test2", testKind)
 	assert.NoError(t, err)
 	assert.NotNil(t, key)
 	assert.NotZero(t, key.NSID)
 
-	delPod(t, test1Id)
-	delPod(t, test2Id)
-
+	delPod(t)
+	delPod(t)
 }
 
 func TestCheckMatchLabelsPolicy(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "netpol"
-	srcId := nextId()
-	dstId := nextId()
-	dstIdKeep := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -196,8 +166,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 1, len(s.Dst))
 
 	// srcPod matches subject labels so will be granted to records one for FQDN name.
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
@@ -209,8 +178,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 
 	// dstPod does not match subject so will have no FQDN records but will match endpoint
 	// labels and srcPod needs to be given a record for the srcPod->dstPod pair.
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	r2, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r2))
@@ -218,8 +186,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r2[0].Endpoint.EP.Type)
 	assert.Equal(t, dstPodName, r2[0].Endpoint.EP.Name)
 
-	addPod(t, dstIdKeep, dstPodNameKeep, dstPodLabels)
-	dstPodKeep := testPod(t, "4", "testNamespace", dstPodNameKeep, "testPod", dstPodLabels)
+	dstPodKeep := newPodFromCluster(t, s, testNamespace, dstPodNameKeep, testKind, dstPodLabels)
 	r3, err := s.objectAdd(dstPodKeep)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r3))
@@ -239,12 +206,12 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 2, len(dst.Endpoints))
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, dst.Endpoints[0].Type)
 	assert.Equal(t, dstPodName, dst.Endpoints[0].Name)
-	assert.Equal(t, "testNamespace", dst.Endpoints[0].Namespace)
-	assert.Equal(t, "testPod", dst.Endpoints[0].Kind)
+	assert.Equal(t, testNamespace, dst.Endpoints[0].Namespace)
+	assert.Equal(t, testKind, dst.Endpoints[0].Kind)
 
 	// Deleting dstId pod will remove the Endpoints but because
 	// its a subjects no change that will not change.
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err := s.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(dst.Endpoints))
@@ -259,14 +226,14 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, 1, len(deleted))
 
-	delPod(t, dstIdKeep)
+	delPod(t)
 	deleted, err = s.podRemove(dstPodKeep)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, 1, len(deleted))
 
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err = s.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
@@ -280,9 +247,8 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestSrcPolicyAddsDefaultAction(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "netpol"
-	srcId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -295,8 +261,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.Equal(t, 1, len(s.Dst))
 
 	// srcPod matches subject labels so will be granted to records one for default action
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
@@ -316,7 +281,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.Equal(t, r1[2].Action.Action, record.PolicyAllow)
 
 	// Remove pod and policy
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := s.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
@@ -329,10 +294,8 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 
 // Test addPod again, but bring up subject after destinations are already loaded
 func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "netpol"
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -347,15 +310,13 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.Equal(t, 1, len(s.Dst))
 
 	// add dst pod first which does not match a subject for any policy8
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rDst)) // no records to program datapath bc not a subject
 
 	// add src pod next and ensure we build correct policy
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
@@ -379,13 +340,13 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.Equal(t, r1[3].Action.Action, record.PolicyDeny)
 
 	// Remove pod and policy
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err := s.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err = s.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
@@ -397,11 +358,9 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 }
 
 func TestPolicySet(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 	name := "netpol"
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -413,27 +372,25 @@ func TestPolicySet(t *testing.T) {
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
 	AddPolicies(netpolSet)
 	// add dst pod first which does not match a subject for any policy8
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
 	// Remove pod and policy
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err := s.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err = s.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
@@ -471,11 +428,9 @@ func cntRecordsEPTypes(records []record.DatapathRecord) (int, int, int, int) {
 }
 
 func TestPolicySetWithPods(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 	name := "netpol"
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -484,15 +439,13 @@ func TestPolicySetWithPods(t *testing.T) {
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
 	// Add src pod and dest pod while no policy is in play
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
@@ -510,13 +463,13 @@ func TestPolicySetWithPods(t *testing.T) {
 	assert.Equal(t, cntNilType, 1)
 
 	// Remove pod and policy
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err := newState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err = newState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
@@ -526,12 +479,8 @@ func TestPolicySetWithPods(t *testing.T) {
 }
 
 func TestPolicyOverlapping(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
-	indId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -543,21 +492,18 @@ func TestPolicyOverlapping(t *testing.T) {
 	indPodLabels := "C=c"
 
 	// Add src pod and dest pod while no policy is in play
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testKind", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testKind", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
-	addPod(t, indId, indPodName, indPodLabels)
-	indPod := testPod(t, "4", "testNamespace", indPodName, "testKind", indPodLabels)
+	indPod := newPodFromCluster(t, s, testNamespace, indPodName, testKind, indPodLabels)
 	rind, err := s.objectAdd(indPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rind))
@@ -591,19 +537,19 @@ func TestPolicyOverlapping(t *testing.T) {
 	SetRealizedState(bState)
 
 	// Remove independent pod there should be no rules associated with this pod
-	delPod(t, indId)
+	delPod(t)
 	deleted, err := bState.podRemove(indPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destinatoin pod, should delete records from source->destination
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = bState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(deleted))
 
 	// Remove source pod should delete remaining records for FQDN and defaults
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err = bState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 6, len(deleted)) // delete entries from both policy sources
@@ -616,12 +562,8 @@ func TestPolicyOverlapping(t *testing.T) {
 }
 
 func TestPolicyOverlappingPolicyDelete(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
-	indId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -633,21 +575,18 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	indPodLabels := "C=c"
 
 	// Add src, dst, and ind pods while no policy is in play
-	addPod(t, indId, indPodName, indPodLabels)
-	indPod := testPod(t, "4", "testNamespace", indPodName, "testKind", indPodLabels)
+	indPod := newPodFromCluster(t, s, testNamespace, indPodName, testKind, indPodLabels)
 	rind, err := s.objectAdd(indPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rind))
 
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testKind", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testKind", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
@@ -718,30 +657,27 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 0, len(aUpdate))
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := cState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = cState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove other pod, should not be any records remaining
-	delPod(t, indId)
+	delPod(t)
 	deleted, err = cState.podRemove(indPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
 
 func TestDestSrcProcessPolicy(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -750,16 +686,14 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
 	// Add src pod and dest pod while no policy is in play
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 
 	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
@@ -793,24 +727,21 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
 
 func TestSrcDestProcessPolicy(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -818,15 +749,13 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	dstPodName := "testNamePodDst"
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	// Add src pod and dest pod while no policy is in play
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 
 	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
@@ -862,24 +791,21 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
 
 func TestProcessPolicySrcDest(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -897,8 +823,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	assert.Zero(t, len(removeASet))
 
 	// Add src pod and dest pod while no policy is in play
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	SetRealizedState(aState)
 
 	s = GetRealizedState()
@@ -906,8 +831,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
@@ -924,24 +848,21 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
 func TestProcessPolicyDestSrc(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -962,14 +883,12 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	SetRealizedState(aState)
 	s = GetRealizedState()
 
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
@@ -986,24 +905,21 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
 func TestProcessPortPolicyDestSrc(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1024,14 +940,12 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	SetRealizedState(aState)
 	s = GetRealizedState()
 
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 13, len(r1))
@@ -1076,13 +990,13 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
@@ -1112,11 +1026,8 @@ func countPorts(records []record.DatapathRecord, port uint32) int {
 }
 
 func TestProcessPortPolicySrcDest(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1137,8 +1048,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	SetRealizedState(aState)
 	s = GetRealizedState()
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 9, len(r1))
@@ -1154,8 +1064,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 4, port80)
 	assert.Equal(t, 4, port81)
 
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(rDst))
@@ -1187,24 +1096,21 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 6, port81)
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
 func TestProcessCIDRPolicySrcDest(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
-
-	srcId := nextId()
-	dstId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1225,8 +1131,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	SetRealizedState(aState)
 	s = GetRealizedState()
 
-	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 13, len(r1))
@@ -1243,8 +1148,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 4, port80)
 	assert.Equal(t, 4, port81)
 
-	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(rDst))
@@ -1278,13 +1182,13 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 6, port81)
 
 	// Remove source pod there should be no more records
-	delPod(t, srcId)
+	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
-	delPod(t, dstId)
+	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))

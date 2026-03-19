@@ -17,7 +17,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -119,7 +118,7 @@ func testMatchPortCIDRDstProcessLabelsDenyPolicy(name, src, dst, action, cidr st
 }
 
 func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "testName"
 
 	policy := testMatchSrcLabelsPolicy(name, "A=a,B=b")
@@ -134,10 +133,8 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestCreateDstMatchLabelsPolicy(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "testName"
-
-	nextId()
 
 	policy := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	s.CreateDstMatchLabelsPolicy(policy)
@@ -151,7 +148,7 @@ func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestCreateSrcKey(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 
 	ml := make(map[string]string)
 	ml["A"] = "a"
@@ -203,7 +200,7 @@ func TestCreateSrcKey(t *testing.T) {
 }
 
 func CreateDstMatchLabels(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	s.CreateDstMatchLabelsPolicy(netpol)
@@ -214,7 +211,7 @@ func CreateDstMatchLabels(t *testing.T) {
 }
 
 func CreateSrcMatchLabels(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	s.CreateSrcMatchLabelsPolicy(netpol)
@@ -226,7 +223,7 @@ func CreateSrcMatchLabels(t *testing.T) {
 }
 
 func TestAddNetworkPolicy(t *testing.T) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	err := s.CreateMatchLabelsPolicy(netpol)
@@ -244,7 +241,7 @@ func TestAddNetworkPolicy(t *testing.T) {
 }
 
 func testAddNetworkActionPolicy(t *testing.T, action string) {
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
 	err := s.CreateMatchLabelsPolicy(netpol)
@@ -285,9 +282,7 @@ var tests = []policyCalcTest{
 }
 
 func TestMatchLabelsTable(t *testing.T) {
-	policyfilter.TestingEnableAndReset(t)
-
-	s := NewPolicyState()
+	s := newTestPolicyState(t)
 	SetRealizedState(s)
 
 	for _, test := range tests {
@@ -299,15 +294,13 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 	s := GetRealizedState()
 
 	policyMap := make(map[string]*types.TetragonNetworkPolicy)
-	podMap := []policyfilter.PodID{}
+	// podMap := []policyfilter.PodID{}
 
 	for _, pod := range podML {
 		x := strings.Split(pod, ":")
 		assert.Equal(t, len(x), 2)
 
-		id := nextId()
-		addPod(t, id, x[0], x[1])
-		podMap = append(podMap, id)
+		registerWorkloadID(t, s, testNamespace, x[0], testKind)
 	}
 
 	for _, p := range policy {
@@ -327,7 +320,7 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 		x := strings.Split(pod, ":")
 		assert.Equal(t, len(x), 2)
 
-		p := testPod(t, "100", "testNamespace", x[0], "testKind", x[1])
+		p := newPodFromCluster(t, s, "testNamespace", x[0], "testKind", x[1])
 		PodAdd(p)
 	}
 
@@ -355,7 +348,6 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 		assert.NoError(t, err)
 	}
 
-	for _, i := range podMap {
-		delPod(t, i)
-	}
+	// Before we were cleaning up the pod calling del Pod but we don't use
+	// the policy filter so this should not be needed
 }
