@@ -52,13 +52,13 @@ import (
 )
 
 const (
-	processTreeMap         = "process_tree_map"
-	destinationEndpointMap = "destination_endpoint_map"
-	listenEndpointMap      = "listen_endpoint_map"
-	endpointIdMap          = "tg_endpoint_id_map"
-	syscallMap             = "tg_syscall_map"
-	nsIDMapName            = "tg_cgroup_namespace_map"
-	cgTrackerIdMapName     = "tg_cgtracker_map"
+	processTreeMapName         = "process_tree_map"
+	destinationEndpointMapName = "destination_endpoint_map"
+	listenEndpointMapName      = "listen_endpoint_map"
+	endpointIdMapName          = "tg_endpoint_id_map"
+	syscallMapName             = "tg_syscall_map"
+	nsIDMapName                = "tg_cgroup_namespace_map"
+	cgTrackerIdMapName         = "tg_cgtracker_map"
 )
 
 // decodeBinaryArgs extracts the null-terminated binary path and
@@ -107,10 +107,10 @@ type Server struct {
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
 	dests := make([]*tetragon.DestinationEndpointDebug, 0)
-	destMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	destMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMapName)
 	m, err := ebpf.LoadPinnedMap(destMap, nil)
 	if err != nil {
-		logger.GetLogger().Warn("Could not open destinationEndpointMap for GetDestinationMapRequest", logfields.Error, err, "file", destinationEndpointMap)
+		logger.GetLogger().Warn("Could not open destinationEndpointMap for GetDestinationMapRequest", logfields.Error, err, "file", destinationEndpointMapName)
 		return nil, err
 	}
 	defer m.Close()
@@ -150,7 +150,7 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	tetragonUUID := make([]*tetragon.ProcessUUID, 0)
 	indexedUUID := make(map[uint64]*tetragon.ProcessUUID)
 
-	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
+	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMapName)
 
 	m, err := ebpf.LoadPinnedMap(treeMap, nil)
 	if err != nil {
@@ -247,7 +247,7 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 		// continue and at least collect other endpoints
 	}
 
-	endptIdMap := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
+	endptIdMap := filepath.Join(bpf.MapPrefixPath(), endpointIdMapName)
 	endpt, err := ebpf.LoadPinnedMap(endptIdMap, nil)
 	if err != nil {
 		logger.GetLogger().Warn("Could not open destination endpoint map for EndpointDebugReq", logfields.Error, err, "file", endptIdMap)
@@ -303,7 +303,7 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 		v.SrcIP = ip.String()
 	}
 
-	listenMap := filepath.Join(bpf.MapPrefixPath(), listenEndpointMap)
+	listenMap := filepath.Join(bpf.MapPrefixPath(), listenEndpointMapName)
 	listen, err := ebpf.LoadPinnedMap(listenMap, nil)
 	if err != nil {
 		return nil, err
@@ -341,9 +341,9 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 
 func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, error) {
 	processModel := make([]*types.ProcessModel, 0)
-	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
-	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMap)
+	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMapName)
+	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMapName)
+	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMapName)
 	nsIDMapPath := filepath.Join(bpf.MapPrefixPath(), nsIDMapName)
 	cgTrackerIdMapPath := filepath.Join(bpf.MapPrefixPath(), cgTrackerIdMapName)
 
