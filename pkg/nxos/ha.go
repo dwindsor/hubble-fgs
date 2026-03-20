@@ -664,6 +664,16 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	if watching && rsp.MbrInfo.PolInfo != nil && polRev != rsp.MbrInfo.PolInfo.Revision {
 		logger.GetLogger().Error("Adjacency policy revision mismatch while watching",
 			"localRev", polRev, "peerRev", rsp.MbrInfo.PolInfo.Revision)
+		n.Lock()
+		delete(n.Ha.Adjacencies, peer)
+		if haPeer, ok := n.GetHaPeer(peer); ok {
+			haPeer.State = hav1.MBR_STATE_HA_FAIL
+			haPeer.StateReason = fmt.Sprintf("adjacency policy revision mismatch: peer=%s local=%s",
+				rsp.MbrInfo.PolInfo.Revision, polRev)
+			n.SetHaPeer(peer, haPeer)
+		}
+		n.setRemoteStatesAdjDown(ctx, peer)
+		n.Unlock()
 		return
 	}
 
