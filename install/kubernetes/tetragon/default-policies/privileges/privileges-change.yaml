@@ -11,7 +11,7 @@ metadata:
   annotations:
     author: "Isovalent"
   labels:
-    app.kubernetes.io/version: 1.19.0-pre.5
+    app.kubernetes.io/version: 1.19.0-pre.6
 spec:
   kprobes:
     # Monitor changing capabilities of current process.
