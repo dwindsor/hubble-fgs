@@ -79,10 +79,10 @@ jobs:
 
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Login to quay.io
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USER }}
@@ -142,7 +142,7 @@ jobs:
           gh pr create -B ${{ steps.tag.outputs.branch }} --title "chore: Update CSV images to ${{ steps.tag.outputs.tag }}" --body 'Created by GitHub action: Image CI Releases.'
 
       - name: Bundle build 
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         id: bundle_build
         with:
           context: ./install/olm
@@ -162,7 +162,7 @@ jobs:
             secret/data/org/${{ github.repository_owner }} github_app_pem | GH_READONLY_APP_PEM;
           
       - id: generate-token
-        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ env.GH_READONLY_APP_ID }}
           private-key: ${{ env.GH_READONLY_APP_PEM }}
@@ -207,7 +207,7 @@ jobs:
           submodules: true
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           # renovate: datasource=golang-version depName=go
           go-version: '1.26.0'
@@ -241,7 +241,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.ref }}

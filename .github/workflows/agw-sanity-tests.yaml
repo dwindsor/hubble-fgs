@@ -38,18 +38,18 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
 
       - name: Generate GitHub App Token for DPU Simulator
         id: dpu-token
-        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
           private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
@@ -66,7 +66,7 @@ jobs:
           sudo apt install gh -y
 
       - name: Docker login to devhub-cloud
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: artifactory.devhub-cloud.cisco.com
           username: ${{ vars.ARTIFACTORY_USERNAME }}
@@ -255,7 +255,7 @@ jobs:
 
       - name: Load Allure test report history
         id: load-allure-history
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         if: always()
         continue-on-error: true
         with:

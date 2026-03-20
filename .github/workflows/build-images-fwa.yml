@@ -71,9 +71,9 @@ jobs:
           fetch-tags: true
           fetch-depth: 0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - name: Docker login to devhub-cloud
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: artifactory.devhub-cloud.cisco.com
           username: ${{ vars.ARTIFACTORY_USERNAME }}
@@ -205,7 +205,7 @@ jobs:
           echo "Generated fwa.yaml:"
           cat ./fwa.yaml
       - name: Get Artifactory Credentials from Vault
-        uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b # v3.4.0
         with:
           url: ${{ vars.VAULT_URL }}
           method: ${{ vars.VAULT_METHOD }}
@@ -214,7 +214,7 @@ jobs:
             secret/data/devops/${{ github.repository_owner }} artifactory_username | JF_USER;
             secret/data/devops/${{ github.repository_owner }} artifactory_password | JF_PASSWORD;
       - name: Setup access to Artifactory
-        uses: jfrog/setup-jfrog-cli@ff5cb544114ffc152db9cea1cd3d5978d5074946 # v4.5.11
+        uses: jfrog/setup-jfrog-cli@86dacb6974c66cc99e7651e1205f6581aaddba9a # v4.10.0
         env:
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
         with:
@@ -279,7 +279,7 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
           private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
@@ -400,7 +400,7 @@ jobs:
           git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" || echo "No changes to commit"
           git push origin main
       - name: Create GitHub Release in hubble-fwa-releases
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
@@ -474,7 +474,7 @@ jobs:
     steps:
       - name: Generate GitHub App Token
         id: workflow-token
-        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
           private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
