@@ -918,7 +918,7 @@ func (n *Nxos) haUpdateNx(ctx context.Context) {
 
 			case hav1.SERVICE_STATE_SVC_FAILURE:
 				logger.GetLogger().Debug("Cleanup service redir")
-				n.cleanup(ctx)
+				n.cleanup(ctx, false)
 			}
 		}
 	}

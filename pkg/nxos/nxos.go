@@ -259,7 +259,7 @@ func (n *Nxos) CheckUpgradeState(ctx context.Context) (bool, error) {
 func (n *Nxos) Cleanup(ctx context.Context) error {
 	n.RLock()
 	defer n.RUnlock()
-	n.cleanup(ctx)
+	n.cleanup(ctx, true)
 	return nil
 }
 
@@ -753,7 +753,7 @@ func (n *Nxos) GracefulRestartAgent(ctx context.Context, cleanup bool) {
 	logger.GetLogger().Info("restarting agw agent...")
 	if cleanup {
 		// Cleanup service redirects before exit.
-		n.cleanup(ctx)
+		n.cleanup(ctx, true)
 		logger.GetLogger().Debug("Graceful restart with cleanup")
 	}
 	// Use centralized shutdown manager with restart exit code
@@ -837,11 +837,13 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 }
 
 // clean up all: connection status, systemState, PolicyState and service redir
-func (n *Nxos) cleanup(ctx context.Context) {
+func (n *Nxos) cleanup(ctx context.Context, resetConn bool) {
 	logger.GetLogger().Debug("clean up fw policy state, system state and service redir")
 
 	// reset connection state
-	n.ResetConn(ctx)
+	if resetConn {
+		n.ResetConn(ctx)
+	}
 
 	for name, vrf := range n.Vrfs {
 		if !vrf.IsGlobal || !vrf.IsService {
