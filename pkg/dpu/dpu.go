@@ -937,6 +937,9 @@ func (dpu *DPUAgent) handleIPCConnection(ctx context.Context, conn net.Conn) {
 			continue
 		}
 
+		// Ensure AgentUid is set for all IPC events
+		event.AgentUid = dpu.AgentId
+
 		// TODO: Remove log for performance
 		logger.GetLogger().Info("received event message", "event", event)
 
