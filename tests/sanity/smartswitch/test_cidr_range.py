@@ -10,17 +10,16 @@
 
 import allure
 import pytest
-from typing import List
 
-from scapy.sendrecv import AsyncSniffer
-
-from helper.verification import (
-    verify_policy_added_to_agw,
-    verify_policies_match_agw_and_dpu,
-)
 from helper.policy_generator import generate_policy_for_test
-from helper.packet_utils import send_packet_and_sniff
+from helper.packet_utils import create_sniffers, send_packet_and_sniff
 from helper.packet_verification import verify_packet_processed
+from helper.verification import (
+    verify_policies_match_agw_and_dpu,
+    verify_policy_added_to_agw,
+    verify_policy_removed_from_agw,
+    verify_policy_removed_from_sim,
+)
 from helper.utils import wait_for_timeout
 from parameters.test_params import (
     get_cidr_source_packet_test_params,
@@ -35,48 +34,89 @@ from parameters.test_params import (
 @allure.story("Source CIDR Policy Enforcement")
 @pytest.mark.parametrize("cidr,rules,packets", get_cidr_source_packet_test_params(),
                          ids=[p[0] for p in get_cidr_source_packet_test_params()])
-def test_cidr_source_enforcement(cmd, sniffers: List[AsyncSniffer], ports, cidr, rules, packets):
+def test_cidr_source_enforcement(cmd, cidr, rules, packets):
     """Test source CIDR mask enforcement with packets before, inside, and after range."""
     policy_name = f"cidr-src-{cidr.replace('/', '-').replace('.', '-')}"
-    allure.dynamic.title(f"Source CIDR test: {cidr}")
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
+    sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
+    sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
+    allure.dynamic.title(f"Source CIDR test on two DPUs: {cidr}")
 
     with allure.step(f"Apply source CIDR policy for {cidr}"):
-        policy, policy_file = generate_policy_for_test(policy_name, rules)
+        _, policy_file = generate_policy_for_test(policy_name, rules)
         result = cmd.agw_add_policy(str(policy_file))
         agw_policies = cmd.agw_show_policies()
         verify_policy_added_to_agw(result, policy_name, agw_policies)
-        wait_for_timeout(2)
+        wait_for_timeout(3)
 
-    with allure.step("Verify policy is applied to DPU"):
-        sim_policies = cmd.sim_show_policies()
+    with allure.step(f"Verify policy is applied to DPU '{sim1_name}'"):
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
-            expected_rule_count=1
+            expected_rule_count=1,
+        )
+
+    with allure.step(f"Verify policy is applied to DPU '{sim2_name}'"):
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=1,
         )
 
     ip_before, pkt_before = packets[0]
     ip_inside, pkt_inside = packets[1]
     ip_after, pkt_after = packets[2]
 
-    with allure.step(f"Packet from {ip_before} (before range) - expect blocked"):
-        send_packet_and_sniff(pkt_before, sniffers, ports[0], f"TCP from src {ip_before}")
-        assert verify_packet_processed(sniffers, pkt_before, False), \
-            f"Packet from src {ip_before} (before range) should be dropped"
+    with allure.step(f"Packet from {ip_before} (before range) on DPU '{sim1_name}' - expect blocked"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_before, sim1_sniffers, sim1_port0, f"TCP from src {ip_before} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_before, False), \
+            f"Packet from src {ip_before} (before range) on {sim1_name} should be dropped"
 
-    with allure.step(f"Packet from {ip_inside} (inside range) - expect allowed"):
-        send_packet_and_sniff(pkt_inside, sniffers, ports[0], f"TCP from src {ip_inside}")
-        assert verify_packet_processed(sniffers, pkt_inside, True), \
-            f"Packet from src {ip_inside} (inside range) should be forwarded"
+    with allure.step(f"Packet from {ip_inside} (inside range) on DPU '{sim1_name}' - expect allowed"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_inside, sim1_sniffers, sim1_port0, f"TCP from src {ip_inside} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_inside, True), \
+            f"Packet from src {ip_inside} (inside range) on {sim1_name} should be forwarded"
 
-    with allure.step(f"Packet from {ip_after} (after range) - expect blocked"):
-        send_packet_and_sniff(pkt_after, sniffers, ports[0], f"TCP from src {ip_after}")
-        assert verify_packet_processed(sniffers, pkt_after, False), \
-            f"Packet from src {ip_after} (after range) should be dropped"
+    with allure.step(f"Packet from {ip_after} (after range) on DPU '{sim1_name}' - expect blocked"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_after, sim1_sniffers, sim1_port0, f"TCP from src {ip_after} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_after, False), \
+            f"Packet from src {ip_after} (after range) on {sim1_name} should be dropped"
 
-    with allure.step("Cleanup policy"):
-        cmd.agw_remove_policy(str(policy_file))
+    with allure.step(f"Packet from {ip_before} (before range) on DPU '{sim2_name}' - expect blocked"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_before, sim2_sniffers, sim2_port0, f"TCP from src {ip_before} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_before, False), \
+            f"Packet from src {ip_before} (before range) on {sim2_name} should be dropped"
+
+    with allure.step(f"Packet from {ip_inside} (inside range) on DPU '{sim2_name}' - expect allowed"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_inside, sim2_sniffers, sim2_port0, f"TCP from src {ip_inside} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_inside, True), \
+            f"Packet from src {ip_inside} (inside range) on {sim2_name} should be forwarded"
+
+    with allure.step(f"Packet from {ip_after} (after range) on DPU '{sim2_name}' - expect blocked"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_after, sim2_sniffers, sim2_port0, f"TCP from src {ip_after} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_after, False), \
+            f"Packet from src {ip_after} (after range) on {sim2_name} should be dropped"
+
+    with allure.step("Remove policy and verify cleanup on AGW and both DPUs"):
+        result = cmd.agw_remove_policy(str(policy_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_removed_from_agw(result, agw_policies)
+
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -85,48 +125,89 @@ def test_cidr_source_enforcement(cmd, sniffers: List[AsyncSniffer], ports, cidr,
 @allure.story("Destination CIDR Policy Enforcement")
 @pytest.mark.parametrize("cidr,rules,packets", get_cidr_dest_packet_test_params(),
                          ids=[p[0] for p in get_cidr_dest_packet_test_params()])
-def test_cidr_dest_enforcement(cmd, sniffers: List[AsyncSniffer], ports, cidr, rules, packets):
+def test_cidr_dest_enforcement(cmd, cidr, rules, packets):
     """Test destination CIDR mask enforcement with packets before, inside, and after range."""
     policy_name = f"cidr-dest-{cidr.replace('/', '-').replace('.', '-')}"
-    allure.dynamic.title(f"Dest CIDR test: {cidr}")
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
+    sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
+    sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
+    allure.dynamic.title(f"Dest CIDR test on two DPUs: {cidr}")
 
     with allure.step(f"Apply destination CIDR policy for {cidr}"):
-        policy, policy_file = generate_policy_for_test(policy_name, rules)
+        _, policy_file = generate_policy_for_test(policy_name, rules)
         result = cmd.agw_add_policy(str(policy_file))
         agw_policies = cmd.agw_show_policies()
         verify_policy_added_to_agw(result, policy_name, agw_policies)
         wait_for_timeout(2)
 
-    with allure.step("Verify policy is applied to DPU"):
-        sim_policies = cmd.sim_show_policies()
+    with allure.step(f"Verify policy is applied to DPU '{sim1_name}'"):
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
-            expected_rule_count=1
+            expected_rule_count=1,
+        )
+
+    with allure.step(f"Verify policy is applied to DPU '{sim2_name}'"):
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=1,
         )
 
     ip_before, pkt_before = packets[0]
     ip_inside, pkt_inside = packets[1]
     ip_after, pkt_after = packets[2]
 
-    with allure.step(f"Packet to {ip_before} (before range) - expect blocked"):
-        send_packet_and_sniff(pkt_before, sniffers, ports[0], f"TCP to dest {ip_before}")
-        assert verify_packet_processed(sniffers, pkt_before, False), \
-            f"Packet to dest {ip_before} (before range) should be dropped"
+    with allure.step(f"Packet to {ip_before} (before range) on DPU '{sim1_name}' - expect blocked"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_before, sim1_sniffers, sim1_port0, f"TCP to dest {ip_before} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_before, False), \
+            f"Packet to dest {ip_before} (before range) on {sim1_name} should be dropped"
 
-    with allure.step(f"Packet to {ip_inside} (inside range) - expect allowed"):
-        send_packet_and_sniff(pkt_inside, sniffers, ports[0], f"TCP to dest {ip_inside}")
-        assert verify_packet_processed(sniffers, pkt_inside, True), \
-            f"Packet to dest {ip_inside} (inside range) should be forwarded"
+    with allure.step(f"Packet to {ip_inside} (inside range) on DPU '{sim1_name}' - expect allowed"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_inside, sim1_sniffers, sim1_port0, f"TCP to dest {ip_inside} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_inside, True), \
+            f"Packet to dest {ip_inside} (inside range) on {sim1_name} should be forwarded"
 
-    with allure.step(f"Packet to {ip_after} (after range) - expect blocked"):
-        send_packet_and_sniff(pkt_after, sniffers, ports[0], f"TCP to dest {ip_after}")
-        assert verify_packet_processed(sniffers, pkt_after, False), \
-            f"Packet to dest {ip_after} (after range) should be dropped"
+    with allure.step(f"Packet to {ip_after} (after range) on DPU '{sim1_name}' - expect blocked"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_after, sim1_sniffers, sim1_port0, f"TCP to dest {ip_after} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_after, False), \
+            f"Packet to dest {ip_after} (after range) on {sim1_name} should be dropped"
 
-    with allure.step("Cleanup policy"):
-        cmd.agw_remove_policy(str(policy_file))
+    with allure.step(f"Packet to {ip_before} (before range) on DPU '{sim2_name}' - expect blocked"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_before, sim2_sniffers, sim2_port0, f"TCP to dest {ip_before} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_before, False), \
+            f"Packet to dest {ip_before} (before range) on {sim2_name} should be dropped"
+
+    with allure.step(f"Packet to {ip_inside} (inside range) on DPU '{sim2_name}' - expect allowed"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_inside, sim2_sniffers, sim2_port0, f"TCP to dest {ip_inside} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_inside, True), \
+            f"Packet to dest {ip_inside} (inside range) on {sim2_name} should be forwarded"
+
+    with allure.step(f"Packet to {ip_after} (after range) on DPU '{sim2_name}' - expect blocked"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_after, sim2_sniffers, sim2_port0, f"TCP to dest {ip_after} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_after, False), \
+            f"Packet to dest {ip_after} (after range) on {sim2_name} should be dropped"
+
+    with allure.step("Remove policy and verify cleanup on AGW and both DPUs"):
+        result = cmd.agw_remove_policy(str(policy_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_removed_from_agw(result, agw_policies)
+
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -135,7 +216,7 @@ def test_cidr_dest_enforcement(cmd, sniffers: List[AsyncSniffer], ports, cidr, r
 @allure.story("Combined CIDR Policy Enforcement")
 @pytest.mark.parametrize("cidr_combo,rules,packets", get_cidr_combined_packet_test_params(),
                          ids=[p[0] for p in get_cidr_combined_packet_test_params()])
-def test_cidr_combined_enforcement(cmd, sniffers: List[AsyncSniffer], ports, cidr_combo, rules, packets):
+def test_cidr_combined_enforcement(cmd, cidr_combo, rules, packets):
     """Test combined source AND destination CIDR enforcement.
     
     Verifies that BOTH source and destination CIDR must match for traffic to be allowed:
@@ -144,42 +225,83 @@ def test_cidr_combined_enforcement(cmd, sniffers: List[AsyncSniffer], ports, cid
     - Both allowed → allowed
     """
     policy_name = f"cidr-combined-{cidr_combo.replace('/', '-').replace('.', '-').replace('+', '-')}"
-    allure.dynamic.title(f"Combined CIDR test: {cidr_combo}")
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
+    sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
+    sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
+    allure.dynamic.title(f"Combined CIDR test on two DPUs: {cidr_combo}")
 
     with allure.step(f"Apply combined source+destination CIDR policy"):
-        policy, policy_file = generate_policy_for_test(policy_name, rules)
+        _, policy_file = generate_policy_for_test(policy_name, rules)
         result = cmd.agw_add_policy(str(policy_file))
         agw_policies = cmd.agw_show_policies()
         verify_policy_added_to_agw(result, policy_name, agw_policies)
         wait_for_timeout(2)
 
-    with allure.step("Verify policy is applied to DPU"):
-        sim_policies = cmd.sim_show_policies()
+    with allure.step(f"Verify policy is applied to DPU '{sim1_name}'"):
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
-            expected_rule_count=1
+            expected_rule_count=1,
+        )
+
+    with allure.step(f"Verify policy is applied to DPU '{sim2_name}'"):
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=1,
         )
 
     test_name_0, pkt_0, expected_0 = packets[0]
     test_name_1, pkt_1, expected_1 = packets[1]
     test_name_2, pkt_2, expected_2 = packets[2]
 
-    with allure.step(f"Test {test_name_0}: source inside, dest outside - expect blocked"):
-        send_packet_and_sniff(pkt_0, sniffers, ports[0], test_name_0)
-        assert verify_packet_processed(sniffers, pkt_0, expected_0), \
-            f"{test_name_0} should be dropped (dest outside range)"
+    with allure.step(f"Test {test_name_0} on DPU '{sim1_name}': source inside, dest outside - expect blocked"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_0, sim1_sniffers, sim1_port0, f"{test_name_0} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_0, expected_0), \
+            f"{test_name_0} on {sim1_name} should be dropped (dest outside range)"
 
-    with allure.step(f"Test {test_name_1}: source outside, dest inside - expect blocked"):
-        send_packet_and_sniff(pkt_1, sniffers, ports[0], test_name_1)
-        assert verify_packet_processed(sniffers, pkt_1, expected_1), \
-            f"{test_name_1} should be dropped (source outside range)"
+    with allure.step(f"Test {test_name_1} on DPU '{sim1_name}': source outside, dest inside - expect blocked"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_1, sim1_sniffers, sim1_port0, f"{test_name_1} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_1, expected_1), \
+            f"{test_name_1} on {sim1_name} should be dropped (source outside range)"
 
-    with allure.step(f"Test {test_name_2}: both inside - expect allowed"):
-        send_packet_and_sniff(pkt_2, sniffers, ports[0], test_name_2)
-        assert verify_packet_processed(sniffers, pkt_2, expected_2), \
-            f"{test_name_2} should be forwarded (both match)"
+    with allure.step(f"Test {test_name_2} on DPU '{sim1_name}': both inside - expect allowed"):
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_2, sim1_sniffers, sim1_port0, f"{test_name_2} on {sim1_name}")
+        assert verify_packet_processed(sim1_sniffers, pkt_2, expected_2), \
+            f"{test_name_2} on {sim1_name} should be forwarded (both match)"
 
-    with allure.step("Cleanup policy"):
-        cmd.agw_remove_policy(str(policy_file))
+    with allure.step(f"Test {test_name_0} on DPU '{sim2_name}': source inside, dest outside - expect blocked"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_0, sim2_sniffers, sim2_port0, f"{test_name_0} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_0, expected_0), \
+            f"{test_name_0} on {sim2_name} should be dropped (dest outside range)"
+
+    with allure.step(f"Test {test_name_1} on DPU '{sim2_name}': source outside, dest inside - expect blocked"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_1, sim2_sniffers, sim2_port0, f"{test_name_1} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_1, expected_1), \
+            f"{test_name_1} on {sim2_name} should be dropped (source outside range)"
+
+    with allure.step(f"Test {test_name_2} on DPU '{sim2_name}': both inside - expect allowed"):
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_2, sim2_sniffers, sim2_port0, f"{test_name_2} on {sim2_name}")
+        assert verify_packet_processed(sim2_sniffers, pkt_2, expected_2), \
+            f"{test_name_2} on {sim2_name} should be forwarded (both match)"
+
+    with allure.step("Remove policy and verify cleanup on AGW and both DPUs"):
+        result = cmd.agw_remove_policy(str(policy_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_removed_from_agw(result, agw_policies)
+
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)

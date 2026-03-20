@@ -401,9 +401,15 @@ class CommandExecutor:
             timeout=longer_timeout
         )
 
-    def sim_add_vrf(self, vrf_id: int): 
-        container = self._get_sim_container()
-        return self._exec_in_container(
-            container,
-            DPCTL.VRF_ADD.value.format(vrf_id)
-        )
+    def sim_add_vrf(self, vrf_id: int, sim_container_name: Optional[str] = None):
+        container = self._get_sim_container_by_name(sim_container_name)
+        try:
+            return self._exec_in_container(
+                container,
+                DPCTL.VRF_ADD.value.format(vrf_id)
+            )
+        except RuntimeError as e:
+            if "API_STATUS_ERR" in str(e) or "already" in str(e).lower():
+                logger.info(f"VRF {vrf_id} already exists on {container.name}, skipping")
+                return f"VRF {vrf_id} already exists"
+            raise

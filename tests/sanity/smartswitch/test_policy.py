@@ -8,11 +8,8 @@
 #  or reproduction of this material is strictly forbidden unless prior written
 #  permission is obtained from Isovalent Inc.
 
-from typing import List
-
 import allure
 import pytest
-from scapy.sendrecv import AsyncSniffer
 from helper.verification import (
     verify_policy_added_to_agw,
     verify_policy_removed_from_agw,
@@ -36,7 +33,7 @@ from parameters.test_params import (
 from helper.utils import wait_for_timeout, get_last_packet_from_sniffer
 from helper.constants import AGW_POLICIES_DIR
 from helper.packet_builder import build_packet
-from helper.packet_utils import send_packet_and_sniff
+from helper.packet_utils import create_sniffers, send_packet_and_sniff
 from helper.packet_verification import verify_packet_processed
 
 
@@ -50,6 +47,7 @@ def test_policy_lifecycle(cmd):
     policy_name = "permit-all-simple"
     policy_file_base = "permit_all_simple"
     agw_policy_file = AGW_POLICIES_DIR / f"{policy_file_base}.yaml"
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     with allure.step(f"Add policy '{policy_name}' via agwctl"):
         result = cmd.agw_add_policy(str(agw_policy_file))
@@ -58,10 +56,17 @@ def test_policy_lifecycle(cmd):
         wait_for_timeout(2)
 
     with allure.step("Verify policy matches between AGW and DPU"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy_name,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy_name,
             strict_protocol_check=True,
         )
@@ -71,8 +76,10 @@ def test_policy_lifecycle(cmd):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -86,6 +93,7 @@ def test_l3_default_vrf(cmd):
     """
     policy_name = "l3-default"
     expected_rules = 2  # IPv4 + IPv6
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     with allure.step("Generate policy YAML with default VRF"):
         policy, policy_file = generate_vrf_policy_for_test(
@@ -99,10 +107,18 @@ def test_l3_default_vrf(cmd):
         wait_for_timeout(2)
 
     with allure.step(f"Verify {expected_rules} rules match between AGW and DPU"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy_name,
+            expected_rule_count=expected_rules,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy_name,
             expected_rule_count=expected_rules,
             strict_protocol_check=True,
@@ -113,8 +129,10 @@ def test_l3_default_vrf(cmd):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -128,6 +146,7 @@ def test_l3_epbr_vrf(cmd):
     """
     policy_name = "l3-epbr"
     expected_rules = 50  # 25 VRFs × 2 IP versions
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     with allure.step("Generate policy YAML with EPBR range (1001-1025)"):
         policy, policy_file = generate_vrf_policy_for_test(
@@ -141,10 +160,18 @@ def test_l3_epbr_vrf(cmd):
         wait_for_timeout(2)
 
     with allure.step(f"Verify {expected_rules} rules match between AGW and DPU"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy_name,
+            expected_rule_count=expected_rules,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy_name,
             expected_rule_count=expected_rules,
             strict_protocol_check=True,
@@ -155,8 +182,10 @@ def test_l3_epbr_vrf(cmd):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -170,6 +199,7 @@ def test_l3_trmvrf(cmd):
     """
     policy_name = "l3-trmvrf"
     expected_rules = 150  # 75 VRFs × 2 IP versions
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     with allure.step("Generate policy YAML with TRM VRF range (3001-3075)"):
         policy, policy_file = generate_vrf_policy_for_test(
@@ -183,10 +213,18 @@ def test_l3_trmvrf(cmd):
         wait_for_timeout(2)
 
     with allure.step(f"Verify {expected_rules} rules match between AGW and DPU"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy_name,
+            expected_rule_count=expected_rules,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy_name,
             expected_rule_count=expected_rules,
             strict_protocol_check=True,
@@ -197,8 +235,10 @@ def test_l3_trmvrf(cmd):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -218,6 +258,7 @@ def test_l2_vlan_with_ip(cmd):
     """
     policy_name = "l2-vlan-ip"
     expected_rules = 200  # 100 VLANs × 2 IP versions
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     with allure.step(
         "Generate policy YAML with VLAN range (801-900) with specific IPs"
@@ -233,10 +274,18 @@ def test_l2_vlan_with_ip(cmd):
         wait_for_timeout(2)
 
     with allure.step(f"Verify {expected_rules} rules match between AGW and DPU"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy_name,
+            expected_rule_count=expected_rules,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy_name,
             expected_rule_count=expected_rules,
             strict_protocol_check=True,
@@ -247,8 +296,10 @@ def test_l2_vlan_with_ip(cmd):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -280,6 +331,7 @@ def test_l2_vlan_any_ip(cmd, vlan_start, vlan_end):
     """
     policy_name = f"l2-vlan-any-{vlan_start}-{vlan_end}"
     expected_rules = 200  # 100 VLANs × 2 IP versions
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     with allure.step(
         f"Generate policy YAML with VLAN range ({vlan_start}-{vlan_end}) without specific IPs"
@@ -295,10 +347,18 @@ def test_l2_vlan_any_ip(cmd, vlan_start, vlan_end):
         wait_for_timeout(2)
 
     with allure.step(f"Verify {expected_rules} rules match between AGW and DPU"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy_name,
+            expected_rule_count=expected_rules,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy_name,
             expected_rule_count=expected_rules,
             strict_protocol_check=True,
@@ -309,8 +369,10 @@ def test_l2_vlan_any_ip(cmd, vlan_start, vlan_end):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -329,6 +391,7 @@ def test_several_cidr_policy(cmd):
     Expected rule expansion: 3 × 3 = 9 rules (CIDRs expanded, protoPorts per rule)
     """
     policy_name, rules, expected_rules = get_multi_cidr_policy_params()
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     with allure.step("Generate policy YAML with multiple CIDRs and port ranges"):
         policy, policy_file = generate_policy_for_test(name=policy_name, rules=rules)
@@ -340,10 +403,18 @@ def test_several_cidr_policy(cmd):
         wait_for_timeout(2)
 
     with allure.step(f"Verify {expected_rules} rules match between AGW and DPU"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy_name,
+            expected_rule_count=expected_rules,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy_name,
             expected_rule_count=expected_rules,
             strict_protocol_check=True,
@@ -354,8 +425,10 @@ def test_several_cidr_policy(cmd):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -401,6 +474,7 @@ def test_dual_policy_multi_cidr(cmd):
         policy2_rules,
         policy2_expected_rules,
     ) = get_dual_policy_multi_cidr_params()
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
 
     total_expected_rules = policy1_expected_rules + policy2_expected_rules
 
@@ -427,19 +501,32 @@ def test_dual_policy_multi_cidr(cmd):
     with allure.step(
         f"Verify {total_expected_rules} total rules match between AGW and DPU"
     ):
-        sim_policies = cmd.sim_show_policies()
-
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=policy1_expected_rules,
             strict_protocol_check=True,
         )
-
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
+            policy_name=policy2_name,
+            expected_rule_count=policy2_expected_rules,
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=policy1_expected_rules,
+            strict_protocol_check=True,
+        )
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
             policy_name=policy2_name,
             expected_rule_count=policy2_expected_rules,
             strict_protocol_check=True,
@@ -457,8 +544,10 @@ def test_dual_policy_multi_cidr(cmd):
         agw_policies = cmd.agw_show_policies()
         verify_policy_removed_from_agw(result, agw_policies)
 
-        sim_policies = cmd.sim_show_policies()
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
 
 
 @pytest.mark.agw
@@ -466,8 +555,11 @@ def test_dual_policy_multi_cidr(cmd):
 @allure.feature("Packet Flow")
 @allure.story("Packet flow with VRF policy enforcement")
 @pytest.mark.parametrize("name, rules, pkt, vrf_id", get_vrf_policy_params())
-def test_packet_flow_with_vrf(cmd, ports, sniffers: List[AsyncSniffer], name, rules, pkt, vrf_id):
+def test_packet_flow_with_vrf(cmd, name, rules, pkt, vrf_id):
     policy_name = f"{name}"
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
+    sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
+    sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
 
     with allure.step("Generate and apply policy"):
         policy, policy_file = generate_policy_for_test(policy_name, rules)
@@ -476,30 +568,65 @@ def test_packet_flow_with_vrf(cmd, ports, sniffers: List[AsyncSniffer], name, ru
         verify_policy_added_to_agw(result, policy_name, agw_policies)
         wait_for_timeout(2)
 
-    with allure.step("Verify policy is applied to DPU"):
-        sim_policies = cmd.sim_show_policies()
+    with allure.step(f"Verify policy is applied to DPU '{sim1_name}'"):
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=1,
         )
 
-    with allure.step(f"Send TCP packet"):
-        cmd.sim_add_vrf(vrf_id)
+    with allure.step(f"Verify policy is applied to DPU '{sim2_name}'"):
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=1,
+        )
 
-        send_packet_and_sniff(pkt, sniffers, ports[0], f"TCP packet")
+    with allure.step(f"Send TCP packet on DPU '{sim1_name}'"):
+        cmd.sim_add_vrf(vrf_id, sim_container_name=sim1_name)
+
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt, sim1_sniffers, sim1_port0, f"TCP packet on {sim1_name}")
         pkt_second_pass = build_packet()._update_dst_vrf(
             pkt,
-            get_last_packet_from_sniffer(sniffers),
+            get_last_packet_from_sniffer(sim1_sniffers),
             2,
         )
-        send_packet_and_sniff(pkt_second_pass, sniffers, ports[0])
+        sim1_sniffers = create_sniffers([sim1_port0, sim1_port1])
+        send_packet_and_sniff(pkt_second_pass, sim1_sniffers, sim1_port0)
 
-    with allure.step(f"Verify packet to port"):
-        assert verify_packet_processed(sniffers, pkt, is_transmitted=True), (
-            f"Packet should be {'forwarded' if True else 'dropped'}"
+    with allure.step(f"Verify packet on DPU '{sim1_name}'"):
+        assert verify_packet_processed(sim1_sniffers, pkt, is_transmitted=True), (
+            f"Packet on {sim1_name} should be forwarded"
         )
 
-    with allure.step("Cleanup policy"):
-        cmd.agw_remove_policy(str(policy_file))
+    with allure.step(f"Send TCP packet on DPU '{sim2_name}'"):
+        cmd.sim_add_vrf(vrf_id, sim_container_name=sim2_name)
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt, sim2_sniffers, sim2_port0, f"TCP packet on {sim2_name}")
+        pkt_second_pass = build_packet()._update_dst_vrf(
+            pkt,
+            get_last_packet_from_sniffer(sim2_sniffers),
+            2,
+        )
+        sim2_sniffers = create_sniffers([sim2_port0, sim2_port1])
+        send_packet_and_sniff(pkt_second_pass, sim2_sniffers, sim2_port0)
+
+    with allure.step(f"Verify packet on DPU '{sim2_name}'"):
+        assert verify_packet_processed(sim2_sniffers, pkt, is_transmitted=True), (
+            f"Packet on {sim2_name} should be forwarded"
+        )
+
+    with allure.step("Remove policy and verify cleanup on AGW and both DPUs"):
+        result = cmd.agw_remove_policy(str(policy_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_removed_from_agw(result, agw_policies)
+
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)

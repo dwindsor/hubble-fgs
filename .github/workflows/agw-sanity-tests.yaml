@@ -34,7 +34,7 @@ jobs:
       actions: read
       pages: write
       id-token: write
-    timeout-minutes: 15 
+    timeout-minutes: 25 
     
     steps:
       - name: Checkout code
@@ -116,88 +116,104 @@ jobs:
           GITHUB_REPO: cisco-hypershield/hs-dpu-pensando
           SIM_VERSION: latest
 
-      - name: Launch DPU Simulator container
+      - name: Launch DPU Simulator containers
         run: |
           free -h
           docker system prune -f
           cd tests/sanity/smartswitch
-          make launch-sim
+          make launch-sim-multi SIM_COUNT=2
 
-      - name: Verify DPU container is running
+      - name: Verify DPU containers are running
         run: |
-          echo "Waiting for DPU container to stabilize..."
+          echo "Waiting for DPU containers to stabilize..."
           sleep 10
           echo "Checking DPU container status:"
           docker ps -a
           
-          CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep naples || true)
-          if [ -z "$CONTAINER_NAME" ]; then
-            echo "❌ No DPU container found"
+          CONTAINERS=$(docker ps --format '{{.Names}}' | grep naples || true)
+          if [ -z "$CONTAINERS" ]; then
+            echo "❌ No DPU containers found"
             exit 1
           fi
           
-          CONTAINER_STATUS=$(docker inspect -f '{{.State.Status}}' "$CONTAINER_NAME")
-          echo "Container: $CONTAINER_NAME"
-          echo "Status: $CONTAINER_STATUS"
+          CONTAINER_COUNT=$(echo "$CONTAINERS" | wc -l | tr -d ' ')
+          echo "Found $CONTAINER_COUNT DPU container(s)"
           
-          if [ "$CONTAINER_STATUS" != "running" ]; then
-            echo "❌ DPU container is not running"
-            docker logs "$CONTAINER_NAME" || true
+          if [ "$CONTAINER_COUNT" -lt 2 ]; then
+            echo "❌ Expected at least 2 DPU containers, found $CONTAINER_COUNT"
             exit 1
           fi
           
-          echo "✅ DPU container $CONTAINER_NAME is running"
-          
-          # Check DPU processes inside container
-          echo ""
-          echo "Checking DPU processes:"
-          docker exec "$CONTAINER_NAME" ps aux || true
-          
-          # Check if critical services are running
-          echo ""
-          echo "Checking for critical DPU services:"
-          docker exec "$CONTAINER_NAME" ps aux | grep -E "hal|pds|sysmgr|nicmgr" || echo "⚠️  No critical services found"
-          
-          # Wait for DPU gRPC services to be ready (dpctl needs these)
-          echo ""
-          echo "Waiting for DPU gRPC services to be ready..."
-          MAX_WAIT=180
-          WAIT_INTERVAL=5
-          ELAPSED=0
-          
-          while [ $ELAPSED -lt $MAX_WAIT ]; do
-            echo "Attempt $((ELAPSED/WAIT_INTERVAL + 1)): Checking gRPC port 11357..."
+          FAILED=0
+          for CONTAINER_NAME in $CONTAINERS; do
+            echo ""
+            echo "========================================"
+            echo "Verifying container: $CONTAINER_NAME"
+            echo "========================================"
             
-            # Check if gRPC port is listening and responsive
-            if docker exec "$CONTAINER_NAME" sh -c "curl -s --max-time 5 http://localhost:11357 >/dev/null 2>&1 || nc -z localhost 11357" 2>/dev/null; then
-              echo "✅ gRPC port 11357 is responsive!"
-              
-              # Now test dpctl with a simple command
-              echo "Testing dpctl responsiveness..."
-              if timeout 15 docker exec "$CONTAINER_NAME" dpctl show version 2>&1 | grep -q "version\|Version\|error" || true; then
-                echo "✅ DPU dataplane is ready!"
-                break
-              else
-                echo "⚠️  dpctl still not responding, continuing to wait..."
-              fi
-            else
-              echo "⚠️  gRPC services not ready yet, waiting ${WAIT_INTERVAL}s..."
+            CONTAINER_STATUS=$(docker inspect -f '{{.State.Status}}' "$CONTAINER_NAME")
+            echo "Status: $CONTAINER_STATUS"
+            
+            if [ "$CONTAINER_STATUS" != "running" ]; then
+              echo "❌ DPU container $CONTAINER_NAME is not running"
+              docker logs "$CONTAINER_NAME" || true
+              FAILED=1
+              continue
             fi
             
-            sleep $WAIT_INTERVAL
-            ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+            echo "✅ DPU container $CONTAINER_NAME is running"
+            
+            # Check DPU processes inside container
+            echo "Checking DPU processes:"
+            docker exec "$CONTAINER_NAME" ps aux || true
+            
+            # Check if critical services are running
+            echo "Checking for critical DPU services:"
+            docker exec "$CONTAINER_NAME" ps aux | grep -E "hal|pds|sysmgr|nicmgr" || echo "⚠️  No critical services found"
+            
+            # Wait for DPU gRPC services to be ready (dpctl needs these)
+            echo "Waiting for DPU gRPC services to be ready..."
+            MAX_WAIT=180
+            WAIT_INTERVAL=5
+            ELAPSED=0
+            
+            while [ $ELAPSED -lt $MAX_WAIT ]; do
+              echo "Attempt $((ELAPSED/WAIT_INTERVAL + 1)): Checking gRPC port 11357 on $CONTAINER_NAME..."
+              
+              if docker exec "$CONTAINER_NAME" sh -c "curl -s --max-time 5 http://localhost:11357 >/dev/null 2>&1 || nc -z localhost 11357" 2>/dev/null; then
+                echo "✅ gRPC port 11357 is responsive on $CONTAINER_NAME!"
+                
+                echo "Testing dpctl responsiveness..."
+                if timeout 15 docker exec "$CONTAINER_NAME" dpctl show version 2>&1 | grep -q "version\|Version\|error" || true; then
+                  echo "✅ DPU dataplane is ready on $CONTAINER_NAME!"
+                  break
+                else
+                  echo "⚠️  dpctl still not responding on $CONTAINER_NAME, continuing to wait..."
+                fi
+              else
+                echo "⚠️  gRPC services not ready on $CONTAINER_NAME yet, waiting ${WAIT_INTERVAL}s..."
+              fi
+              
+              sleep $WAIT_INTERVAL
+              ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+            done
+            
+            if [ $ELAPSED -ge $MAX_WAIT ]; then
+              echo "❌ DPU dataplane on $CONTAINER_NAME did not become ready within ${MAX_WAIT}s"
+              echo "=== Checking stuck processes ==="
+              docker exec "$CONTAINER_NAME" ps aux | grep dpctl || true
+              echo "=== Container logs ==="
+              docker logs --tail 100 "$CONTAINER_NAME"
+              FAILED=1
+            fi
           done
           
-          if [ $ELAPSED -ge $MAX_WAIT ]; then
-            echo "❌ DPU dataplane did not become ready within ${MAX_WAIT}s"
-            echo ""
-            echo "=== Checking stuck processes ==="
-            docker exec "$CONTAINER_NAME" ps aux | grep dpctl || true
-            echo ""
-            echo "=== Container logs ==="
-            docker logs --tail 100 "$CONTAINER_NAME"
+          if [ "$FAILED" -ne 0 ]; then
+            echo "❌ One or more DPU containers failed verification"
             exit 1
           fi
+          echo ""
+          echo "✅ All DPU containers verified successfully"
 
       - name: Launch AGW container
         run: |
@@ -207,12 +223,12 @@ jobs:
       - name: Configure network
         run: |
           cd tests/sanity/smartswitch
-          make configure-network
+          make configure-network-multi
 
       - name: Show container status
         run: |
           cd tests/sanity/smartswitch
-          make show-containers-status
+          make show-containers-status-multi
 
       - name: Install test dependencies
         run: |
@@ -224,34 +240,41 @@ jobs:
           cd tests/sanity/smartswitch
           sudo make run-tests-with-allure
       
-      - name: Debug DPU container on failure
+      - name: Debug DPU containers on failure
         if: failure()
         run: |
           echo "=== DPU Container Status ==="
-          CONTAINER_NAME=$(docker ps -a --format '{{.Names}}' | grep naples || echo "none")
-          if [ "$CONTAINER_NAME" != "none" ]; then
-            echo "Container: $CONTAINER_NAME"
+          CONTAINERS=$(docker ps -a --format '{{.Names}}' | grep naples || echo "none")
+          if [ "$CONTAINERS" = "none" ]; then
+            echo "No DPU containers found"
+            exit 0
+          fi
+          
+          for CONTAINER_NAME in $CONTAINERS; do
+            echo ""
+            echo "========================================"
+            echo "Debug: $CONTAINER_NAME"
+            echo "========================================"
             docker inspect "$CONTAINER_NAME" --format='{{json .State}}' | jq '.'
             
             echo ""
-            echo "=== DPU Container Processes ==="
+            echo "=== Processes ==="
             docker exec "$CONTAINER_NAME" ps auxf || true
             
             echo ""
-            echo "=== DPU Container Logs (last 100 lines) ==="
+            echo "=== Container Logs (last 100 lines) ==="
             docker logs --tail 100 "$CONTAINER_NAME" || true
             
             echo ""
-            echo "=== DPU /var/log/pensando (if mounted) ==="
+            echo "=== /var/log/pensando (if mounted) ==="
             cd tests/sanity/smartswitch
             if [ -d "dsc/$CONTAINER_NAME/var/log/pensando" ]; then
               find "dsc/$CONTAINER_NAME/var/log/pensando" -type f -name "*.log" -exec echo "--- {} ---" \; -exec tail -50 {} \;
             else
-              echo "Log directory not found"
+              echo "Log directory not found for $CONTAINER_NAME"
             fi
-          else
-            echo "No DPU container found"
-          fi
+            cd -
+          done
 
       - name: Load Allure test report history
         id: load-allure-history
@@ -330,4 +353,4 @@ jobs:
         if: always()
         run: |
           cd tests/sanity/smartswitch
-          make shutdown-containers
+          make shutdown-containers-multi

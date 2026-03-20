@@ -50,6 +50,7 @@ def test_policy_add_then_update_with_new_rule(cmd):
     4. Verify AGW and DPU output at each step
     """
     policy_name = "policy1-rule-update"
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
     
     with allure.step("Step 1: Create Policy with Rule1 and Rule2"):
         _, policy_file = generate_policy_for_test(name=policy_name, rules=get_initial_incremental_policy())
@@ -60,13 +61,21 @@ def test_policy_add_then_update_with_new_rule(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 1: AGW and DPU have 2 rules"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=2,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=2,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 2: Update Policy to add Rule3"):
@@ -77,14 +86,22 @@ def test_policy_add_then_update_with_new_rule(cmd):
         verify_policy_added_to_agw(result, policy_name, agw_policies)
         wait_for_timeout(2)
     
-    with allure.step("Verify Step 2: AGW and DPU have 3 rules"):        
-        sim_policies = cmd.sim_show_policies()        
+    with allure.step("Verify Step 2: AGW and DPU have 3 rules"):
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=3,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=3,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 3: Update Policy to add Rule4 and Rule5"):
@@ -96,14 +113,21 @@ def test_policy_add_then_update_with_new_rule(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 3: AGW and DPU have 5 rules"):
-        sim_policies = cmd.sim_show_policies()
-        
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=5,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=5,
+            strict_protocol_check=True,
         )
 
 
@@ -121,6 +145,7 @@ def test_add_two_policies_single_rule(cmd):
     3. Verify both policies exist in AGW and DPU
     """
     policy1_name, policy1_rules, policy2_name, policy2_rules = get_two_policies_single_rule()
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
     
     with allure.step("Step 1: Add Policy1 with 1 rule"):
         _, policy1_file = generate_policy_for_test(name=policy1_name, rules=policy1_rules)
@@ -131,13 +156,21 @@ def test_add_two_policies_single_rule(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 1: AGW and DPU have Policy1 with 1 rule"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 2: Add Policy2 with 1 rule"):
@@ -149,20 +182,35 @@ def test_add_two_policies_single_rule(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 2: AGW and DPU have both policies"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
         )
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy2_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
+        )
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy2_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
         )
 
 
@@ -180,6 +228,7 @@ def test_update_rules_in_5rule_policy(cmd):
     3. Update rule4 and rule5 and verify
     """
     policy_name = "policy-5rules-update"
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
     
     with allure.step("Step 1: Add policy with 5 rules"):
         _, policy_file = generate_policy_for_test(name=policy_name, rules=get_policy_5rules_initial())
@@ -190,13 +239,21 @@ def test_update_rules_in_5rule_policy(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 1: AGW and DPU have 5 rules"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=5,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=5,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 2: Update rule2 (port 443 -> 8443)"):
@@ -208,13 +265,21 @@ def test_update_rules_in_5rule_policy(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 2: AGW and DPU have updated rule2"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=5,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=5,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 3: Update rule4 and rule5"):
@@ -226,13 +291,21 @@ def test_update_rules_in_5rule_policy(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 3: AGW and DPU have updated rule4 and rule5"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=5,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=5,
+            strict_protocol_check=True,
         )
 
 
@@ -251,6 +324,7 @@ def test_update_rules_in_two_policies(cmd):
     """
     (policy1_name, policy1_initial, policy1_updated,
      policy2_name, policy2_initial, policy2_updated) = get_two_policies_for_update()
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
     
     with allure.step("Step 1: Add Policy1 with initial rule"):
         _, policy1_file = generate_policy_for_test(name=policy1_name, rules=policy1_initial)
@@ -269,20 +343,35 @@ def test_update_rules_in_two_policies(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 2: Both policies have initial rules"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
         )
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy2_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
+        )
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy2_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 3: Update Policy1 rule (port 80 -> 8080)"):
@@ -302,20 +391,35 @@ def test_update_rules_in_two_policies(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 4: Both policies have updated rules"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
         )
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy2_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
+        )
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy2_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
         )
 
 
@@ -333,6 +437,7 @@ def test_remove_rules_from_policy(cmd):
     3. Remove rule2 and rule4 and verify AGW and DPU have 2 rules
     """
     policy_name = "policy-5rules-removal"
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
     
     with allure.step("Step 1: Add policy with 5 rules"):
         _, policy_file = generate_policy_for_test(name=policy_name, rules=get_policy_5rules_for_removal())
@@ -343,13 +448,21 @@ def test_remove_rules_from_policy(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 1: AGW and DPU have 5 rules"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=5,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=5,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 2: Remove rule3 from policy"):
@@ -361,13 +474,21 @@ def test_remove_rules_from_policy(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 2: AGW and DPU have 4 rules"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=4,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=4,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 3: Remove rule2 and rule4 from policy"):
@@ -379,13 +500,21 @@ def test_remove_rules_from_policy(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 3: AGW and DPU have 2 rules"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy_name,
             expected_rule_count=2,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy_name,
+            expected_rule_count=2,
+            strict_protocol_check=True,
         )
 
 
@@ -403,6 +532,7 @@ def test_remove_policy_keep_other(cmd):
     3. Verify policy1 is still present in AGW and DPU
     """
     policy1_name, policy1_rules, policy2_name, policy2_rules = get_two_policies_for_removal()
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
     
     with allure.step("Step 1: Add Policy1 with 1 rule"):
         _, policy1_file = generate_policy_for_test(name=policy1_name, rules=policy1_rules)
@@ -421,20 +551,35 @@ def test_remove_policy_keep_other(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 2: Both policies exist"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
         )
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy2_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
+        )
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy2_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 3: Remove Policy2"):
@@ -443,14 +588,22 @@ def test_remove_policy_keep_other(cmd):
     
     with allure.step("Verify Step 3: Policy1 still exists, Policy2 removed"):
         agw_policies = cmd.agw_show_policies()
-        sim_policies = cmd.sim_show_policies()
         
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
         )
         
         verify_policy_not_in_agw(policy2_name, agw_policies)
@@ -472,6 +625,7 @@ def test_clear_all_policies(cmd):
     (policy1_name, policy1_rules,
      policy2_name, policy2_rules,
      policy3_name, policy3_rules) = get_three_policies_for_clear()
+    sim1_name, sim2_name = cmd.get_two_sim_container_names()
     
     with allure.step("Step 1: Add Policy1"):
         _, policy1_file = generate_policy_for_test(name=policy1_name, rules=policy1_rules)
@@ -493,27 +647,49 @@ def test_clear_all_policies(cmd):
         wait_for_timeout(2)
     
     with allure.step("Verify Step 3: All three policies exist"):
-        sim_policies = cmd.sim_show_policies()
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy1_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
         )
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy2_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
         )
         verify_policies_match_agw_and_dpu(
             agw_output=agw_policies,
-            dpu_output=sim_policies,
+            dpu_output=sim1_policies,
             policy_name=policy3_name,
             expected_rule_count=1,
-            strict_protocol_check=True
+            strict_protocol_check=True,
+        )
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy1_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
+        )
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy2_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
+        )
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim2_policies,
+            policy_name=policy3_name,
+            expected_rule_count=1,
+            strict_protocol_check=True,
         )
     
     with allure.step("Step 4: Clear all policies"):
@@ -522,10 +698,12 @@ def test_clear_all_policies(cmd):
     
     with allure.step("Verify Step 4: No policies exist in AGW and SIM"):
         agw_policies = cmd.agw_show_policies()
-        sim_policies = cmd.sim_show_policies()
         
         verify_policy_not_in_agw(policy1_name, agw_policies)
         verify_policy_not_in_agw(policy2_name, agw_policies)
         verify_policy_not_in_agw(policy3_name, agw_policies)
         
-        verify_policy_removed_from_sim(sim_policies)
+        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+        verify_policy_removed_from_sim(sim1_policies)
+        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+        verify_policy_removed_from_sim(sim2_policies)
