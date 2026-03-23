@@ -8,22 +8,22 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package peers
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha"
 )
 
 func init() {
-	agwctl.RootCmd.AddCommand(HaCmd)
+	ha.HaCmd.AddCommand(PeersCmd)
 }
 
-// HaCmd represents the ha command
-var HaCmd = &cobra.Command{
-	Use:          "ha",
+// PeersCmd represents the peers command
+var PeersCmd = &cobra.Command{
+	Use:          "peers",
 	SilenceUsage: true,
-	Short:        "Manage HA data",
-	Long:         `Manage HA data - show HA store contents.`,
+	Short:        "Manage peer data",
+	Long:         `Manage peer data - show peer details.`,
 }

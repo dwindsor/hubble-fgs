@@ -8,22 +8,22 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package gnmi
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl/mock"
 )
 
 func init() {
-	agwctl.RootCmd.AddCommand(HaCmd)
+	mock.MockCmd.AddCommand(GnmiCmd)
 }
 
-// HaCmd represents the ha command
-var HaCmd = &cobra.Command{
-	Use:          "ha",
+// GnmiCmd represents the mock gnmi parent command.
+var GnmiCmd = &cobra.Command{
+	Use:          "gnmi",
 	SilenceUsage: true,
-	Short:        "Manage HA data",
-	Long:         `Manage HA data - show HA store contents.`,
+	Short:        "Interact with the mock gNMI handler",
+	Long:         `View and modify mock gNMI path/value data for development and testing.`,
 }

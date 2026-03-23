@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package dpu
 
 import (
 	"context"
@@ -21,14 +21,14 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	DpuCmd.AddCommand(statusCmd)
 }
 
-var showCmd = &cobra.Command{
-	Use:          "show",
+var statusCmd = &cobra.Command{
+	Use:          "status",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
+	Short:        "Show DPU fleet status summary",
+	Long:         `Show the DPU fleet status summary without per-DPU details.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -39,7 +39,7 @@ var showCmd = &cobra.Command{
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_DPU_STATUS, data)
 		if err != nil {
 			return err
 		}

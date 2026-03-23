@@ -8,10 +8,11 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package vrf
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -21,25 +22,35 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	deleteCmd.Flags().StringP("name", "n", "", "VRF name")
+	VrfCmd.AddCommand(deleteCmd)
 }
 
-var showCmd = &cobra.Command{
-	Use:          "show",
+var deleteCmd = &cobra.Command{
+	Use:          "delete",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	Short:        "Delete a VRF from the mock gNMI handler",
+	Long:         `Send global and service VRF delete notifications to remove the VRF from the domain store.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
+		name, err := cmd.Flags().GetString("name")
+		if err != nil {
+			return err
+		}
+		if name == "" {
+			return errors.New("--name is required")
+		}
+
 		data := ipc.MessageData{
 			Flags: map[string]string{
+				"name": name,
 				"json": fmt.Sprintf("%t", agwctl.JSON),
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_MOCK_VRF_DELETE, data)
 		if err != nil {
 			return err
 		}

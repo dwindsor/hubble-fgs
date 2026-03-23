@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package vrf
 
 import (
 	"context"
@@ -21,14 +21,14 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	VrfCmd.AddCommand(listCmd)
 }
 
-var showCmd = &cobra.Command{
-	Use:          "show",
+var listCmd = &cobra.Command{
+	Use:          "list",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
+	Short:        "List active VRFs",
+	Long:         `Show a compact table of active VRFs only with a count summary.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -39,7 +39,7 @@ var showCmd = &cobra.Command{
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_VRF_LIST, data)
 		if err != nil {
 			return err
 		}

@@ -8,10 +8,11 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package gnmi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -21,25 +22,35 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	getCmd.Flags().StringP("path", "p", "", "gNMI path to retrieve")
+	GnmiCmd.AddCommand(getCmd)
 }
 
-var showCmd = &cobra.Command{
-	Use:          "show",
+var getCmd = &cobra.Command{
+	Use:          "get",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	Short:        "Get a value from the mock gNMI handler by path",
+	Long:         `Retrieve the value stored at a specific gNMI path in the mock handler.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
+		path, err := cmd.Flags().GetString("path")
+		if err != nil {
+			return err
+		}
+		if path == "" {
+			return errors.New("--path is required")
+		}
+
 		data := ipc.MessageData{
 			Flags: map[string]string{
+				"path": path,
 				"json": fmt.Sprintf("%t", agwctl.JSON),
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_MOCK_GNMI_GET, data)
 		if err != nil {
 			return err
 		}

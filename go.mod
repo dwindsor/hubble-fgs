@@ -61,8 +61,7 @@ require (
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
-	go.opentelemetry.io/proto/otlp v1.10.0
-	golang.design/x/chann v0.1.2
+	go.opentelemetry.io/proto/otlp v1.9.0
 	golang.org/x/net v0.52.0
 	golang.org/x/sys v0.42.0
 	golang.org/x/time v0.15.0

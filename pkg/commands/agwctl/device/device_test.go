@@ -8,22 +8,27 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package device
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
+	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	agwctl.RootCmd.AddCommand(HaCmd)
+func TestDeviceCmd(t *testing.T) {
+	assert.Equal(t, "device", DeviceCmd.Use)
+	assert.True(t, DeviceCmd.SilenceUsage)
 }
 
-// HaCmd represents the ha command
-var HaCmd = &cobra.Command{
-	Use:          "ha",
-	SilenceUsage: true,
-	Short:        "Manage HA data",
-	Long:         `Manage HA data - show HA store contents.`,
+func TestDeviceShowCmd(t *testing.T) {
+	var found bool
+	for _, cmd := range DeviceCmd.Commands() {
+		if cmd.Use == "show" {
+			found = true
+			assert.NotNil(t, cmd.RunE)
+			break
+		}
+	}
+	assert.True(t, found, "show subcommand not registered")
 }

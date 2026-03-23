@@ -59,6 +59,7 @@ RUN mkdir -p /etc/ssl/certs
 RUN mkdir -p /data/volatile
 RUN mkdir -p /iox_data
 RUN mkdir -p /iox_data/isovalent/policy
+RUN mkdir -p /run/cisco
 WORKDIR /usr/src/app
 #COPY --from=gnmic /app/gnmic ./
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agw ./
@@ -81,10 +82,16 @@ RUN mkdir -p /var/log/fluent-bit /data/hypershield
 EXPOSE 8880 8881 8882
 ENTRYPOINT ["./init.sh"]
 
-# Test container for headless testing (no NXOS dependencies)
-# It container env vars for all AGW configuration flags, which can be overwritten at runtime
-FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev AS agw-test
+# Test container for headless testing (no NXOS dependencies).
+# Built on top of base-build so it shares the same production init.sh lifecycle
+# (Fluent Bit, ntpd, crond, crash/restart logic). test-init.sh is a setup
+# wrapper that mocks the gNMI endpoint, maps env vars to CLI flags, and then
+# execs init.sh. All AGW configuration flags can be overridden at runtime via
+# environment variables.
+FROM base-build AS agw-test
 USER root
+RUN apk add --no-cache socat
+# Env var overrides for headless testing (can be overridden at runtime)
 ENV AGW_CONFIG="" \
     AGW_NETWORK_POLICY="" \
     AGW_ENABLE_K8S="false" \
@@ -96,21 +103,9 @@ ENV AGW_CONFIG="" \
     AGW_TIMESCAPE_CLIENT_ENABLE="false" \
     AGW_TIMESCAPE_PASSWORD="" \
     AGW_TIMESCAPE_ENDPOINT="" \
-    AGW_FLB_SOCKET_PATH="/tmp/fluentbit_agw.sock" \
+    AGW_FLB_SOCKET_PATH="/run/cisco/fluentbit_agw.sock" \
     AGW_FLB_CONFIG_PATH="/data/hypershield/daflogger.yaml" \
     FLUENT_BIT_CONFIG="/data/hypershield/daflogger.yaml" \
     FLUENT_BIT_METRICS_URL="http://localhost:2020/api/v1/metrics"
-EXPOSE 8880
-WORKDIR /usr/src/app
-COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agw ./
-COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agwctl ./
-RUN apk add --no-cache fluent-bit-4.0
-RUN echo 'PS1="HypershieldAgent:\w# "' >> /etc/bash.bashrc
-ENV PATH="/usr/src/app:${PATH}"
-RUN mkdir -p /opt/cisco/daf/etc
-RUN mkdir -p /iox_data
-RUN mkdir -p /data/hypershield
-COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/dafconfig /opt/cisco/daf/etc
-COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/fluent-bit.yaml /data/hypershield/daflogger.yaml
-COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/test-entrypoint.sh /usr/src/app/entrypoint.sh
-ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
+COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/test-init.sh /usr/src/app/test-init.sh
+ENTRYPOINT ["/usr/src/app/test-init.sh"]

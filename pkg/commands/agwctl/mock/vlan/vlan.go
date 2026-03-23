@@ -8,22 +8,22 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package vlan
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl/mock"
 )
 
 func init() {
-	agwctl.RootCmd.AddCommand(HaCmd)
+	mock.MockCmd.AddCommand(VlanCmd)
 }
 
-// HaCmd represents the ha command
-var HaCmd = &cobra.Command{
-	Use:          "ha",
+// VlanCmd represents the mock vlan parent command.
+var VlanCmd = &cobra.Command{
+	Use:          "vlan",
 	SilenceUsage: true,
-	Short:        "Manage HA data",
-	Long:         `Manage HA data - show HA store contents.`,
+	Short:        "Mock VLAN gNMI operations",
+	Long:         `Send mock VLAN gNMI notifications to the domain store for development and testing.`,
 }

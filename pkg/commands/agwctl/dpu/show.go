@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package dpu
 
 import (
 	"context"
@@ -21,25 +21,32 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	showCmd.Flags().StringP("filter", "", "", "Regex filter on DPU name")
+	DpuCmd.AddCommand(showCmd)
 }
 
 var showCmd = &cobra.Command{
 	Use:          "show",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	Short:        "Show DPU store contents",
+	Long:         `Show the contents of the DPU gNMI data store. Use --filter to match DPU names by regex.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
+		filter, err := cmd.Flags().GetString("filter")
+		if err != nil {
+			return err
+		}
+
 		data := ipc.MessageData{
 			Flags: map[string]string{
-				"json": fmt.Sprintf("%t", agwctl.JSON),
+				"filter": filter,
+				"json":   fmt.Sprintf("%t", agwctl.JSON),
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_DPU_SHOW, data)
 		if err != nil {
 			return err
 		}

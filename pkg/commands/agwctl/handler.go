@@ -25,7 +25,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchtechsupport"
-	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
 // Commands
@@ -64,12 +63,32 @@ const (
 	CMD_CONFIG_ADD_DPU
 	CMD_CONFIG_REMOVE_DPU
 	CMD_SHOW_TIMESCAPE_CONFIG
-	CMD_HA_SHOW
-	CMD_HA_FAIL
-	CMD_HA_OK
-	CMD_HA_PEER_FAIL
-	CMD_HA_PEER_OK
 	CMD_SHOW_METRICS
+	CMD_VRF_SHOW
+	CMD_VLAN_SHOW
+	CMD_DEVICE_SHOW
+	CMD_DPU_SHOW
+	CMD_HA_SHOW
+	CMD_MOCK_GNMI_SHOW
+	CMD_MOCK_GNMI_GET
+	CMD_MOCK_GNMI_SET
+	CMD_MOCK_GNMI_DELETE
+	CMD_HA_CRITERIA_FAIL
+	CMD_HA_CRITERIA_OK
+	CMD_VRF_LIST
+	CMD_VRF_INFO
+	CMD_VRF_GIDS
+	CMD_VRF_PEERS
+	CMD_VLAN_LIST
+	CMD_VLAN_INFO
+	CMD_DPU_STATUS
+	CMD_HA_PEERS
+	CMD_HA_CRITERIA_SHOW
+	CMD_MOCK_VRF_ADD
+	CMD_MOCK_VRF_DELETE
+	CMD_MOCK_VLAN_ADD
+	CMD_MOCK_VLAN_DELETE
+	CMD_MOCK_GNMI_SET_BULK
 )
 
 const (
@@ -119,7 +138,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = "healthy"
 
 	case CMD_SHOW_STATUS:
-		status := nxos.Nexus.ShowStatus(ctx)
+		status := agwAgent.NxosManager().ShowStatus(ctx)
 		response.ReturnCode = "ok"
 		response.Data = status
 
@@ -186,7 +205,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.ReturnCode = "ok"
 
 	case CMD_DEL_TOKENS:
-		rsp := nxos.Nexus.DelTokens(ctx)
+		rsp := agwAgent.NxosManager().DelTokens(ctx)
 		response.ReturnCode = "ok"
 		response.Data = rsp
 
@@ -197,7 +216,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 
 	case CMD_SHOW_TECH:
 		pol := agwAgent.PoliciesShow(ctx, ipc.MessageData{})
-		status := nxos.Nexus.ShowStatus(ctx)
+		status := agwAgent.NxosManager().ShowStatus(ctx)
 		dpu := agwAgent.ShowDpu(ctx, ipc.MessageData{})
 		vrf := agwAgent.ShowVrf(ctx)
 		gid := agwAgent.GnmiShowVrfGids(ctx, ipc.MessageData{})
@@ -209,6 +228,12 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			syslog = "Syslog: " + err.Error()
 		}
 		cfg := agwAgent.ConfigShow(ctx, data)
+		vrfStore := agwAgent.GnmiShowVrf(ctx, ipc.MessageData{})
+		vlanStore := agwAgent.GnmiShowVlan(ctx, ipc.MessageData{})
+		dpuStore := agwAgent.GnmiShowDpu(ctx, ipc.MessageData{})
+		haStore := agwAgent.GnmiShowHa(ctx, ipc.MessageData{})
+		deviceStore := agwAgent.GnmiShowDevice(ctx, ipc.MessageData{})
+		haPeers := agwAgent.GnmiShowHaPeers(ctx, ipc.MessageData{})
 		response.ReturnCode = "ok"
 		response.Data = "`agwctl show_status`\n" + status + "\n" +
 			"`agwctl policies show`\n" + pol + "\n" +
@@ -219,7 +244,13 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			"`agwctl show_mbr`\n" + mbr + "\n" +
 			"`agwctl show_adj`\n" + adj + "\n" +
 			"`agwctl show_syslog`\n" + syslog + "\n" +
-			"`agwctl config show`\n" + cfg + "\n"
+			"`agwctl config show`\n" + cfg + "\n" +
+			"`agwctl vrf show`\n" + vrfStore + "\n" +
+			"`agwctl vlan show`\n" + vlanStore + "\n" +
+			"`agwctl dpu show`\n" + dpuStore + "\n" +
+			"`agwctl ha show`\n" + haStore + "\n" +
+			"`agwctl device show`\n" + deviceStore + "\n" +
+			"`agwctl ha peers`\n" + haPeers + "\n"
 
 	case CMD_TECH_SUPPORT_DPU:
 		// Parse includeCores flag from request data
@@ -347,22 +378,27 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		}
 
 	case CMD_SHOW_HA:
-		ha := nxos.Nexus.ShowHa(ctx)
+		ha := agwAgent.NxosManager().ShowHa(ctx)
 		response.ReturnCode = "ok"
 		response.Data = ha
 
 	case CMD_SHOW_ADJ:
-		adj := nxos.Nexus.ShowAdj(ctx)
+		adj := agwAgent.NxosManager().ShowAdj(ctx)
 		response.ReturnCode = "ok"
 		response.Data = adj
 
 	case CMD_SHOW_MBR:
-		mbr := nxos.Nexus.ShowMbr(ctx)
+		mbr := agwAgent.NxosManager().ShowMbr(ctx)
 		response.ReturnCode = "ok"
 		response.Data = mbr
 
 	case CMD_SHOW_GID:
 		res := agwAgent.GnmiShowVrfGids(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_POLICIES_ADD:
+		res := agwAgent.PoliciesAdd(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = res
 		response.ReturnCode = "ok"
@@ -468,20 +504,125 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			response.Data = string(jsonData)
 		}
 
+	case CMD_VRF_SHOW:
+		res := agwAgent.GnmiShowVrf(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_VLAN_SHOW:
+		res := agwAgent.GnmiShowVlan(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_DPU_SHOW:
+		res := agwAgent.GnmiShowDpu(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
 	case CMD_HA_SHOW:
-		ha := nxos.Nexus.ShowHa(ctx)
+		res := agwAgent.GnmiShowHa(ctx, data)
 		response.ReturnCode = "ok"
-		response.Data = ha
+		response.Data = res
 
-	case CMD_HA_FAIL:
-		nxos.Nexus.HaSetDebugFail(ctx, true)
+	case CMD_DEVICE_SHOW:
+		res := agwAgent.GnmiShowDevice(ctx, data)
 		response.ReturnCode = "ok"
-		response.Data = "Debug failure injected - HA state will fail"
+		response.Data = res
 
-	case CMD_HA_OK:
-		nxos.Nexus.HaSetDebugFail(ctx, false)
+	case CMD_MOCK_GNMI_SHOW:
+		res := agwAgent.MockGnmiShow(ctx, data)
 		response.ReturnCode = "ok"
-		response.Data = "Debug failure cleared - normal operation restored"
+		response.Data = res
+
+	case CMD_MOCK_GNMI_GET:
+		res := agwAgent.MockGnmiGet(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_GNMI_SET:
+		res := agwAgent.MockGnmiSet(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_GNMI_DELETE:
+		res := agwAgent.MockGnmiDelete(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_GNMI_SET_BULK:
+		res := agwAgent.MockGnmiSetBulk(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_HA_CRITERIA_FAIL:
+		res := agwAgent.HaCriteriaFail(ctx)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_HA_CRITERIA_OK:
+		res := agwAgent.HaCriteriaOk(ctx)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_VRF_LIST:
+		res := agwAgent.GnmiShowVrfList(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_VRF_INFO:
+		res := agwAgent.GnmiShowVrfInfo(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_VRF_GIDS:
+		res := agwAgent.GnmiShowVrfGids(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_VLAN_LIST:
+		res := agwAgent.GnmiShowVlanList(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_VLAN_INFO:
+		res := agwAgent.GnmiShowVlanInfo(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_DPU_STATUS:
+		res := agwAgent.GnmiShowDpuStatus(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_HA_PEERS:
+		res := agwAgent.GnmiShowHaPeers(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_HA_CRITERIA_SHOW:
+		res := agwAgent.GnmiShowHaCriteria(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_VRF_ADD:
+		res := agwAgent.MockVrfAdd(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_VRF_DELETE:
+		res := agwAgent.MockVrfDelete(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_VLAN_ADD:
+		res := agwAgent.MockVlanAdd(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_VLAN_DELETE:
+		res := agwAgent.MockVlanDelete(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
 
 	case CMD_HA_PEER_FAIL:
 		peer := data.Flags["peer"]

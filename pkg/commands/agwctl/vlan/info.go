@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package vlan
 
 import (
 	"context"
@@ -21,14 +21,14 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	VlanCmd.AddCommand(infoCmd)
 }
 
-var showCmd = &cobra.Command{
-	Use:          "show",
+var infoCmd = &cobra.Command{
+	Use:          "info",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
+	Short:        "Show aggregate VLAN statistics",
+	Long:         `Show aggregate VLAN statistics: totals, active counts, ID assignment, and pinning distribution.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -39,7 +39,7 @@ var showCmd = &cobra.Command{
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_VLAN_INFO, data)
 		if err != nil {
 			return err
 		}

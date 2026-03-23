@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package peers
 
 import (
 	"context"
@@ -21,25 +21,32 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	showCmd.Flags().StringP("filter", "", "", "Regex filter on peer IP")
+	PeersCmd.AddCommand(showCmd)
 }
 
 var showCmd = &cobra.Command{
 	Use:          "show",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	Short:        "Show HA peer details",
+	Long:         `Show per-peer HA state details. Use --filter to match peer IPs by regex.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
+		filter, err := cmd.Flags().GetString("filter")
+		if err != nil {
+			return err
+		}
+
 		data := ipc.MessageData{
 			Flags: map[string]string{
-				"json": fmt.Sprintf("%t", agwctl.JSON),
+				"filter": filter,
+				"json":   fmt.Sprintf("%t", agwctl.JSON),
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_PEERS, data)
 		if err != nil {
 			return err
 		}

@@ -11,7 +11,7 @@
 
 set -e
 ARGS=""
-AGW_FLB_SOCKET_PATH="${AGW_FLB_SOCKET_PATH:-/tmp/fluentbit_agw.sock}"
+AGW_FLB_SOCKET_PATH="${AGW_FLB_SOCKET_PATH:-/run/cisco/fluentbit_agw.sock}"
 AGW_FLB_CONFIG_PATH="${AGW_FLB_CONFIG_PATH:-/data/hypershield/daflogger.yaml}"
 FLUENT_BIT_CONFIG="${FLUENT_BIT_CONFIG:-$AGW_FLB_CONFIG_PATH}"
 FLUENT_BIT_METRICS_URL="${FLUENT_BIT_METRICS_URL:-http://localhost:2020/api/v1/metrics}"
@@ -76,6 +76,7 @@ if [ -n "$AGW_FLB_CONFIG_PATH" ]; then
 fi
 
 start_fluent_bit() {
+    mkdir -p "$(dirname "$AGW_FLB_SOCKET_PATH")"
     echo "Starting Fluent Bit with config: $FLUENT_BIT_CONFIG"
     /usr/bin/fluent-bit -Y -c "$FLUENT_BIT_CONFIG" &
     FLUENT_BIT_PID=$!

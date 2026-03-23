@@ -8,42 +8,22 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package vrf
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
-	"github.com/isovalent/hubble-fgs/pkg/ipc"
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	agwctl.RootCmd.AddCommand(VrfCmd)
 }
 
-var showCmd = &cobra.Command{
-	Use:          "show",
+// VrfCmd represents the vrf command
+var VrfCmd = &cobra.Command{
+	Use:          "vrf",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		data := ipc.MessageData{
-			Flags: map[string]string{
-				"json": fmt.Sprintf("%t", agwctl.JSON),
-			},
-		}
-
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
-		if err != nil {
-			return err
-		}
-		ipc.PrintResponse(ret, agwctl.JSON)
-		return nil
-	},
+	Short:        "Manage VRF data",
+	Long:         `Manage VRF data - show VRF store contents.`,
 }

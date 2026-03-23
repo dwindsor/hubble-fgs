@@ -8,22 +8,28 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package peers
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
+	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	agwctl.RootCmd.AddCommand(HaCmd)
+func TestPeersCmd(t *testing.T) {
+	assert.Equal(t, "peers", PeersCmd.Use)
+	assert.True(t, PeersCmd.SilenceUsage)
 }
 
-// HaCmd represents the ha command
-var HaCmd = &cobra.Command{
-	Use:          "ha",
-	SilenceUsage: true,
-	Short:        "Manage HA data",
-	Long:         `Manage HA data - show HA store contents.`,
+func TestPeersShowCmd(t *testing.T) {
+	var found bool
+	for _, cmd := range PeersCmd.Commands() {
+		if cmd.Use == "show" {
+			found = true
+			assert.NotNil(t, cmd.RunE)
+			assert.NotNil(t, cmd.Flags().Lookup("filter"), "show should have --filter flag")
+			break
+		}
+	}
+	assert.True(t, found, "show subcommand not registered")
 }

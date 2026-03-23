@@ -117,7 +117,7 @@ do
    export GOTRACEBACK=crash
    # Start agw and redirect output to log file.
    /usr/src/app/agw \
-     --flb-socket-path=/tmp/fluentbit_agw.sock \
+     --flb-socket-path=/run/cisco/fluentbit_agw.sock \
      --flb-config-path=/data/hypershield/daflogger.yaml \
      >> /data/volatile/logs/agw.log 2>&1 &
    pid=$!

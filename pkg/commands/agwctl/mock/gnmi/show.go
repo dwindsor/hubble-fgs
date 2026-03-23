@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package gnmi
 
 import (
 	"context"
@@ -21,14 +21,14 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(showCmd)
+	GnmiCmd.AddCommand(showCmd)
 }
 
 var showCmd = &cobra.Command{
 	Use:          "show",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
+	Short:        "Dump all mock gNMI path/value pairs",
+	Long:         `Display all path/value pairs currently stored in the mock gNMI handler.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -39,7 +39,7 @@ var showCmd = &cobra.Command{
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_MOCK_GNMI_SHOW, data)
 		if err != nil {
 			return err
 		}
