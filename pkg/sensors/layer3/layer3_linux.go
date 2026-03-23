@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -41,6 +42,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	layer3cfg "github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/config"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/igmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
@@ -65,6 +67,7 @@ var (
 	udpEnabled              = false
 	dnsEnabled              = false
 	icmpEnabled             = false
+	igmpEnabled             = false
 	rawEnabled              = false
 	reportRawClose          = false
 	udpCGroup               = false
@@ -104,6 +107,13 @@ func unloadLayer3Sensor(pin bool) error {
 			return err
 		}
 		icmpEnabled = false
+	}
+	if igmpEnabled {
+		err := igmp.UnloadSensor()
+		if err != nil {
+			return err
+		}
+		igmpEnabled = false
 	}
 	if rawEnabled {
 		err := rawsock.UnloadSensor()
@@ -279,6 +289,12 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		progsCollectStats = append(progsCollectStats, icmpProgsStats...)
 		maps = append(maps, icmpMaps...)
 		needDispatcher = true
+	}
+	if igmpEnabled {
+		igmpProgsInit, igmpProgsStats, igmpMaps := igmp.EnableIgmp()
+		progsInitSock = append(progsInitSock, igmpProgsInit...)
+		progsCollectStats = append(progsCollectStats, igmpProgsStats...)
+		maps = append(maps, igmpMaps...)
 	}
 	if rawEnabled {
 		rawProgsInit, rawProgsStats, rawMaps := rawsock.EnableRawsock()
@@ -557,6 +573,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		config.Proto.ICMP4Enabled = 1
 		config.Proto.ICMP6Enabled = 1
 	}
+	// IGMP has no config maps.
 	// Rawsock has no config maps.
 
 	err := layer3cfg.UpdateMap(config)
@@ -591,6 +608,9 @@ func (l3 *l3Sensor) configureSensor() error {
 	}
 	if icmpEnabled {
 		icmp.ConfigureSensor()
+	}
+	if igmpEnabled {
+		igmp.ConfigureSensor()
 	}
 	if rawEnabled {
 		rawsock.ConfigureSensor()
@@ -651,7 +671,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			logger.GetLogger().Warn("TC_EGRESS", logfields.Error, err)
 			return err
 		}
-	case "tcp_fentry", "udp_fentry", "icmp_fentry", "rawsock_fentry", "socktrack_fentry":
+	case "tcp_fentry", "udp_fentry", "icmp_fentry", "rawsock_fentry", "socktrack_fentry", "igmp_fentry":
 		err := program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
 			logger.GetLogger().Warn("FENTRY", logfields.Error, err)
@@ -708,6 +728,12 @@ func AddLayer3() {
 		return
 	}
 
+	err = igmp.Init()
+	if err != nil {
+		logger.GetLogger().Error("IGMP init failed. Disabling Layer3", logfields.Error, err)
+		return
+	}
+
 	err = rawsock.Init()
 	if err != nil {
 		logger.GetLogger().Error("RAW init failed. Disabling Layer3", logfields.Error, err)
@@ -729,6 +755,7 @@ func AddLayer3() {
 	sensors.RegisterProbeType("tcp_fentry", l3)
 	sensors.RegisterProbeType("udp_fentry", l3)
 	sensors.RegisterProbeType("icmp_fentry", l3)
+	sensors.RegisterProbeType("igmp_fentry", l3)
 	sensors.RegisterProbeType("rawsock_fentry", l3)
 	sensors.RegisterProbeType("socktrack_fentry", l3)
 
@@ -756,6 +783,14 @@ func EnableLayer3Progs() error {
 	}
 	if enterpriseOption.Config.EnableICMP {
 		icmpEnabled = true
+	}
+	if enterpriseOption.Config.EnableIGMP {
+		// We initially gate the IGMP observability at v5.15. It will be possible to support earlier versions
+		// but some rework will be required.
+		if !kernels.MinKernelVersion("5.15") {
+			return fmt.Errorf("IGMP requires kernel v5.15 or later")
+		}
+		igmpEnabled = true
 	}
 	if enterpriseOption.Config.EnableRawsock {
 		if !utils.RawHooksAvailable() {
