@@ -9,13 +9,14 @@
 #  permission is obtained from Isovalent Inc.
 
 .PHONY: help \
-        install-test-dependencies run-all-tests \
+        install-test-dependencies run-all-tests run-nxos-tests \
         run-tests-with-allure show-allure-report run-specific-test \
         clean-test-artifacts \
         launch-containers build-agw-image pull-sim-image launch-agw configure-network shutdown-containers \
         launch-sim attach-sim attach-agw show-containers-status \
         launch-containers-multi launch-sim-multi configure-network-multi shutdown-containers-multi show-containers-status-multi \
-        create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token teardown-kind-cluster
+        create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token teardown-kind-cluster \
+        create-ha-network remove-ha-network launch-ha-agw shutdown-ha-containers show-ha-status run-ha-tests
 
 # Configuration
 REPO_ROOT := $(shell cd ../../.. && pwd)
@@ -33,6 +34,14 @@ SIM_COUNT ?= 2
 TIMEOUT ?= 180
 HOST_AGW_IP ?= 169.254.101.2
 APPLY_ROUTE ?= 0
+
+# HA configuration (leader = lowest IP, wins election)
+HA_NETWORK := ha-net
+HA_SUBNET := 172.20.0.0/24
+AGW_LEADER_IP := 172.20.0.2
+AGW_FOLLOWER_IP := 172.20.0.3
+AGW_LEADER_NAME := agw-leader
+AGW_FOLLOWER_NAME := agw-follower
 
 # Test configuration
 VENV := venv
@@ -93,7 +102,8 @@ help:
 	@echo "Test Targets:"
 	@echo "  install-test-dependencies  - Create venv and install Python packages"
 	@echo "  run-all-tests              - Execute all sanity tests"
-	@echo "  run-tests-with-allure      - Execute tests with Allure report"
+	@echo "  run-nxos-tests             - Execute NX-OS mock mode tests (mark: nxos)"
+	@echo "  run-tests-with-allure      - Execute all tests and generate Allure report"
 	@echo "  show-allure-report         - Open Allure report in browser"
 	@echo "  run-specific-test          - Run specific test (TEST=test_file::test_name)"
 	@echo ""
@@ -110,6 +120,12 @@ help:
 	@echo "  TIMESCAPE_PASSWORD         - Timescape push API password"
 	@echo "  PROMETHEUS_PASSWORD        - Prometheus basic auth password"
 	@echo ""
+	@echo "HA Targets:"
+	@echo "  launch-ha-agw              - Start dual-AGW containers on ha-net (DPU-less HA)"
+	@echo "  shutdown-ha-containers     - Stop HA containers and remove ha-net"
+	@echo "  show-ha-status             - Show HA container health"
+	@echo "  run-ha-tests               - Run pytest -m ha"
+	@echo ""
 	@echo "Quick Start:"
 	@echo "  make launch-containers             - Start full stack (AGW + DPU + K8s)"
 	@echo "  make install-test-dependencies     - Install test dependencies"
@@ -123,7 +139,7 @@ help:
 
 build-agw-image:
 	@echo "Building AGW image: $(AGW_IMAGE)"
-	@cd $(REPO_ROOT) && docker build -f Dockerfile.agw -t $(AGW_IMAGE) .
+	@cd $(REPO_ROOT) && docker build -f Dockerfile.agw -t $(AGW_IMAGE) --target=agw-test .
 
 launch-agw: create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token
 	@echo "Starting AGW container with K8s + Prometheus + Timescape..."
@@ -145,7 +161,6 @@ launch-agw: create-kind-cluster deploy-crds deploy-prometheus deploy-timescape g
 	docker run -d \
 		--name agw \
 		--network host \
-		-v /tmp:/tmp \
 		-e AGW_CONFIG="" \
 		-e AGW_NETWORK_POLICY="" \
 		-e AGW_ENABLE_K8S="true" \
@@ -582,6 +597,57 @@ teardown-kind-cluster:
 	@echo "✅ Kind cluster deleted"
 
 # ============================================================================
+# HA Targets (leader = lowest IP, wins election per ha/manager.go)
+# ============================================================================
+
+create-ha-network:
+	@docker network create --subnet=$(HA_SUBNET) $(HA_NETWORK) 2>/dev/null || echo "Network already exists"
+
+remove-ha-network:
+	@-docker network rm $(HA_NETWORK) 2>/dev/null || true
+
+launch-ha-agw: create-ha-network
+	@echo "Starting HA AGW containers (DPU-less)..."
+	@-docker rm -f $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) >/dev/null 2>&1 || true
+	@docker run -d --name $(AGW_LEADER_NAME) --network $(HA_NETWORK) --ip $(AGW_LEADER_IP) \
+		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
+		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
+		-e AGW_DEBUG="true" \
+		-e NX_AGENT_IGNORE_MODULES="1" \
+		-e AGW_HA_PEER_IP="$(AGW_FOLLOWER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_LEADER_IP)" \
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		$(AGW_IMAGE)
+	@docker run -d --name $(AGW_FOLLOWER_NAME) --network $(HA_NETWORK) --ip $(AGW_FOLLOWER_IP) \
+		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
+		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
+		-e AGW_DEBUG="true" \
+		-e NX_AGENT_IGNORE_MODULES="1" \
+		-e AGW_HA_PEER_IP="$(AGW_LEADER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_FOLLOWER_IP)" \
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		$(AGW_IMAGE)
+	@echo "HA AGW containers started (leader=$(AGW_LEADER_NAME), follower=$(AGW_FOLLOWER_NAME))"
+
+shutdown-ha-containers:
+	@-docker rm -f $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) >/dev/null 2>&1 || true
+	@$(MAKE) remove-ha-network
+	@echo "HA containers stopped"
+
+show-ha-status:
+	@docker ps --filter "name=$(AGW_LEADER_NAME)" --filter "name=$(AGW_FOLLOWER_NAME)" \
+		--format "table {{.Names}}\t{{.Status}}" || echo "No HA containers"
+	@for c in $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME); do \
+		if docker ps --filter "name=$$c" --format "{{.Names}}" | grep -q "$$c"; then \
+			docker exec $$c ./agwctl health >/dev/null 2>&1 && echo "  $$c: healthy" || echo "  $$c: unhealthy"; \
+		else echo "  $$c: not running"; fi; done
+
+run-ha-tests:
+	AGW_CONTAINER=$(AGW_LEADER_NAME) AGW_LEADER=$(AGW_LEADER_NAME) AGW_FOLLOWER=$(AGW_FOLLOWER_NAME) $(PYTEST) -v -m ha
+
+# ============================================================================
 # Test Targets
 # ============================================================================
 
@@ -600,6 +666,9 @@ install-test-dependencies:
 
 run-all-tests:
 	$(PYTEST) -v
+
+run-nxos-tests:
+	$(PYTEST) -v nxos/
 
 run-tests-with-allure:
 	$(PYTEST) -v --alluredir=allure-results

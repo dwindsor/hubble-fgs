@@ -90,6 +90,7 @@ do
       echo "Attempting to contact gNMI server at $NX_GRPC_IP:$NX_GRPC_PORT..."
       curl -k https://$NX_GRPC_IP:$NX_GRPC_PORT > /dev/null 2>&1 && break
    done
+   echo "gNMI server running"
 
    # Check if NX_AGENT_HEADLESS_MODE is not enabled (i.e., not "1").
    hl=`cat /etc/sas.cfg | grep NX_AGENT_HEADLESS_MODE=1 | cut -d '=' -f2`

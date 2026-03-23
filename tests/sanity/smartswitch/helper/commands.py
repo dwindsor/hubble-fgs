@@ -35,6 +35,41 @@ class AGWCTL(Enum):
     SHOW_TOKENS = "show_tokens"
     SHOW_TECH = "show_tech"  # Requires NXOS
     METRICS_SHOW = "metrics show"
+    SHOW_HA = "show_ha"  # Requires NXOS mock mode
+    SHOW_ADJ = "show_adj"  # Requires NXOS mock mode
+    SHOW_MBR = "show_mbr"  # Requires NXOS mock mode
+    SHOW_GID = "show_gid"  # Requires NXOS mock mode
+
+    # New gNMI store subcommands
+    VRF_SHOW = "vrf show"
+    VLAN_SHOW = "vlan show"
+    DPU_SHOW_GNMI = "dpu show"       # "DPU_SHOW_GNMI" avoids collision with SHOW_DPU
+    HA_SHOW_GNMI = "ha show"         # "HA_SHOW_GNMI" avoids collision with SHOW_HA
+    DEVICE_SHOW = "device show"
+    POLICIES_INFO = "policies info"
+    POLICIES_TRANSLATE = "policies translate"
+
+    # Mock gNMI commands (require NX-OS mock mode)
+    MOCK_GNMI_SHOW = "mock gnmi show"
+    MOCK_GNMI_GET = "mock gnmi get --path {}"
+    MOCK_GNMI_SET = "mock gnmi set --path {} --value {}"
+    MOCK_GNMI_SET_FILE = "mock gnmi set --file {}"
+    MOCK_GNMI_DELETE = "mock gnmi delete --path {}"
+
+    # New store subcommands
+    HA_PEERS_GNMI = "ha peers show"
+    HA_CRITERIA_SHOW_GNMI = "ha criteria show"
+
+    # VRF/VLAN subcommands
+    VRF_LIST = "vrf list"
+    VRF_INFO = "vrf info --name {}"
+    VRF_GIDS = "vrf gids"
+    VLAN_LIST = "vlan list"
+    VLAN_INFO = "vlan info --name {}"
+
+    # HA debug criteria commands
+    HA_CRITERIA_FAIL = "ha criteria fail"
+    HA_CRITERIA_OK = "ha criteria ok"
 
 
 class FWACTL(Enum):

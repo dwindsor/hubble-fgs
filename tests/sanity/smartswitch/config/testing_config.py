@@ -19,6 +19,8 @@ class TestingConfig:
     
     def __init__(self):
         self.agw_container_name = os.getenv("AGW_CONTAINER", "agw")
+        self.agw_leader_name = os.getenv("AGW_LEADER", "agw-leader")
+        self.agw_follower_name = os.getenv("AGW_FOLLOWER", "agw-follower")
         self.timeout = int(os.getenv("TEST_TIMEOUT", "30"))  # seconds
         
         self.policy_remote_path = "/tmp/test_policy.yaml"

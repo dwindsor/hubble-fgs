@@ -13,6 +13,7 @@ package mock
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -44,6 +45,9 @@ type Handler struct {
 	// Persistence
 	persistPath string
 
+	// Transaction log
+	txLog *TxLog
+
 	// Error injection for testing
 	getErrors map[string]error
 	setErrors map[string]error
@@ -52,6 +56,11 @@ type Handler struct {
 // NewHandler creates a new mock gNMI handler with default state.
 func NewHandler() *Handler {
 	return NewHandlerBuilder().Build()
+}
+
+// TxLog returns the transaction log for this handler, or nil if not configured.
+func (h *Handler) TxLog() *TxLog {
+	return h.txLog
 }
 
 // Close simulates closing the gNMI connection.
@@ -66,6 +75,7 @@ func (h *Handler) Close() error {
 	}
 
 	h.closed = true
+	h.txLog.Close()
 
 	return nil
 }
@@ -75,6 +85,7 @@ func (h *Handler) RegisterHandler(handler gnmi.SubscriptionCallback, subscriptio
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.handlers = append(h.handlers, mockHandlerRegistration{handler: handler, subscriptionPaths: subscriptionPaths})
+	h.txLog.Log("subscribe", strings.Join(subscriptionPaths, ","), "", "")
 }
 
 // UnregisterHandler is a no-op for the mock handler.
@@ -205,6 +216,19 @@ func (h *Handler) Route(path string, update *gnmiproto.Update, isDelete bool) {
 	copy(regs, h.handlers)
 	h.mu.RUnlock()
 
+	routeVal := ""
+	if isDelete {
+		routeVal = "delete"
+	} else if update != nil && update.Val != nil {
+		switch v := update.Val.Value.(type) {
+		case *gnmiproto.TypedValue_StringVal:
+			routeVal = v.StringVal
+		case *gnmiproto.TypedValue_UintVal:
+			routeVal = strconv.FormatUint(v.UintVal, 10)
+		}
+	}
+	h.txLog.Log("route", path, routeVal, "")
+
 	for _, reg := range regs {
 		for _, subPath := range reg.subscriptionPaths {
 			if paths.PathMatchesPrefix(path, subPath) {
@@ -257,6 +281,7 @@ func (h *Handler) SetAndNotify(_ context.Context, path, valueJSON string) error 
 	h.data[normalizedPath] = valueJSON
 	h.mu.Unlock()
 	h.persist()
+	h.txLog.Log("set_notify", path, valueJSON, "")
 	// If the value is a plain integer, send as UintVal so numeric gNMI
 	// handlers (e.g. affinity) receive the correct TypedValue type.
 	if n, err := strconv.ParseUint(valueJSON, 10, 64); err == nil {
@@ -274,6 +299,7 @@ func (h *Handler) DeleteAndNotify(_ context.Context, path string) error {
 	delete(h.data, normalizedPath)
 	h.mu.Unlock()
 	h.persist()
+	h.txLog.Log("delete_notify", path, "", "")
 	h.Route(path, nil, true)
 	return nil
 }
@@ -288,6 +314,7 @@ func (h *Handler) Get(ctx context.Context, path string) ([]string, error) {
 
 	// Check for injected errors
 	if err, ok := h.getErrors[path]; ok {
+		h.txLog.Log("get", path, "", err.Error())
 		return nil, err
 	}
 
@@ -297,6 +324,7 @@ func (h *Handler) Get(ctx context.Context, path string) ([]string, error) {
 	// Get data for this path
 	data := h.getDataForPath(normalizedPath)
 	if data == nil {
+		h.txLog.Log("get", path, "", "")
 		return nil, nil
 	}
 
@@ -321,6 +349,7 @@ func (h *Handler) Get(ctx context.Context, path string) ([]string, error) {
 		strs = append(strs, string(jsonBytes))
 	}
 
+	h.txLog.Log("get", path, strings.Join(strs, ","), "")
 	return strs, nil
 }
 
@@ -333,11 +362,13 @@ func (h *Handler) Set(ctx context.Context, path string, value any) error {
 
 	// Check for injected errors
 	if err, ok := h.setErrors[path]; ok {
+		h.txLog.Log("set", path, "", err.Error())
 		return err
 	}
 
 	normalizedPath := normalizePath(path)
 	h.data[normalizedPath] = value
+	h.txLog.Log("set", path, fmt.Sprintf("%v", value), "")
 
 	return nil
 }
@@ -351,11 +382,13 @@ func (h *Handler) Delete(ctx context.Context, path string) error {
 
 	// Check for injected errors
 	if err, ok := h.setErrors[path]; ok {
+		h.txLog.Log("delete", path, "", err.Error())
 		return err
 	}
 
 	normalizedPath := normalizePath(path)
 	delete(h.data, normalizedPath)
+	h.txLog.Log("delete", path, "", "")
 
 	return nil
 }

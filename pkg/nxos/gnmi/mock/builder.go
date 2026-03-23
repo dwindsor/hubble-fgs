@@ -14,6 +14,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -99,12 +100,19 @@ func (b *HandlerBuilder) WithSetError(path string, err error) *HandlerBuilder {
 
 // Build creates the Handler. If a persist file exists it is used as the sole data
 // source; otherwise the handler is initialized from the builder's tree.
+// When a persistPath is configured, a transaction log is created at the same
+// directory with the name "mock_gnmi.log", and a startup entry is written.
 func (b *HandlerBuilder) Build() *Handler {
 	h := &Handler{
 		data:        make(map[string]interface{}),
 		getErrors:   b.getErrors,
 		setErrors:   b.setErrors,
 		persistPath: b.persistPath,
+	}
+	if b.persistPath != "" {
+		logPath := filepath.Join(filepath.Dir(b.persistPath), "mock_gnmi.log")
+		h.txLog = NewTxLog(logPath)
+		h.txLog.Log("startup", "", "", "")
 	}
 	if !h.loadPersisted() {
 		for k, v := range TreeToFlat(b.tree) {

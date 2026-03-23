@@ -89,6 +89,7 @@ const (
 	CMD_MOCK_VLAN_ADD
 	CMD_MOCK_VLAN_DELETE
 	CMD_MOCK_GNMI_SET_BULK
+	CMD_MOCK_GNMI_LOG
 )
 
 const (
@@ -606,6 +607,11 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 
 	case CMD_MOCK_VRF_ADD:
 		res := agwAgent.MockVrfAdd(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_MOCK_GNMI_LOG:
+		res := agwAgent.MockGnmiLog(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = res
 

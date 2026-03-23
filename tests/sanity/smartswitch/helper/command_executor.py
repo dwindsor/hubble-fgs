@@ -8,12 +8,14 @@
 #  or reproduction of this material is strictly forbidden unless prior written
 #  permission is obtained from Isovalent Inc.
 
+import io
 import json
 import logging
 import os
 import re
 import shutil
 import signal
+import tarfile
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
@@ -209,12 +211,18 @@ class CommandExecutor:
         source_path = Path(local_path)
         if not source_path.exists():
             raise FileNotFoundError(f"Source file not found: {local_path}")
-        
-        dest_path = Path(remote_path)
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        shutil.copy(source_path, dest_path)
-        logger.info(f"Copied file: {local_path} -> {dest_path}")
+
+        container = self._get_agw_container()
+        dest_dir = str(Path(remote_path).parent)
+        dest_name = Path(remote_path).name
+
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tar:
+            tar.add(str(source_path), arcname=dest_name)
+        buf.seek(0)
+
+        container.put_archive(dest_dir, buf)
+        logger.info(f"Copied file into container: {local_path} -> {remote_path}")
     
     def _copy_file_to_sim_container(self, local_path: str, filename: str):
         source_path = Path(local_path)
@@ -244,6 +252,46 @@ class CommandExecutor:
         return self._exec_in_container(
             container,
             f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_STATUS.value}"
+        )
+
+    def agw_show_ha(self) -> str:
+        """Show AGW HA state"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_HA.value}"
+        )
+
+    def agw_show_gid(self) -> str:
+        """Show AGW GID allocations"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_GID.value}"
+        )
+
+    def agw_show_vrf(self) -> str:
+        """Show AGW VRF state"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_VRF.value}"
+        )
+
+    def agw_show_mbr(self) -> str:
+        """Show AGW member state"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_MBR.value}"
+        )
+
+    def agw_show_adj(self) -> str:
+        """Show AGW adjacency state"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_ADJ.value}"
         )
     
     def agw_add_policy(self, policy_file_path: str) -> str:
@@ -275,7 +323,8 @@ class CommandExecutor:
             container,
             f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.POLICIES_SHOW.value}"
         )
-        return json.loads(output)
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
     
     def agw_show_policy_by_filter(self, filter_str: str) -> str:
         """Show policies filtered by ResourceID"""
@@ -331,6 +380,305 @@ class CommandExecutor:
         return json.loads(output)
     
     
+
+    # gNMI store commands (text output)
+
+    def agw_gnmi_vrf_show(self) -> str:
+        """Show VRF store via gNMI (agwctl vrf show)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.VRF_SHOW.value}"
+        )
+
+    def agw_gnmi_vlan_show(self) -> str:
+        """Show VLAN store via gNMI (agwctl vlan show)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.VLAN_SHOW.value}"
+        )
+
+    def agw_gnmi_dpu_show(self) -> str:
+        """Show DPU store via gNMI (agwctl dpu show)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.DPU_SHOW_GNMI.value}"
+        )
+
+    def agw_gnmi_ha_show(self) -> str:
+        """Show HA store via gNMI (agwctl ha show)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_SHOW_GNMI.value}"
+        )
+
+    def agw_gnmi_device_show(self) -> str:
+        """Show device store via gNMI (agwctl device show)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.DEVICE_SHOW.value}"
+        )
+
+    def agw_policies_info(self) -> str:
+        """Show policies info (agwctl policies info)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.POLICIES_INFO.value}"
+        )
+
+    # gNMI store commands (JSON output)
+
+    def agw_gnmi_vrf_show_json(self) -> dict:
+        """Show VRF store via gNMI in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.VRF_SHOW.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_vlan_show_json(self) -> dict:
+        """Show VLAN store via gNMI in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.VLAN_SHOW.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_dpu_show_json(self) -> dict:
+        """Show DPU store via gNMI in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.DPU_SHOW_GNMI.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_ha_show_json(self) -> dict:
+        """Show HA store via gNMI in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.HA_SHOW_GNMI.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_ha_peers_json(self) -> dict:
+        """Show HA peers via gNMI in JSON format (agwctl ha peers show --json)"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.HA_PEERS_GNMI.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_device_show_json(self) -> dict:
+        """Show device store via gNMI in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.DEVICE_SHOW.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_policies_info_json(self) -> dict:
+        """Show policies info in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.POLICIES_INFO.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    # VRF/VLAN subcommands
+
+    def agw_gnmi_vrf_list(self) -> str:
+        """List VRF names (agwctl vrf list)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.VRF_LIST.value}"
+        )
+
+    def agw_gnmi_vrf_list_json(self) -> dict:
+        """List VRF names in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.VRF_LIST.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_vrf_info(self, name: str) -> str:
+        """Show VRF info for a specific VRF (agwctl vrf info --name <name>)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.VRF_INFO.value.format(name)}"
+        )
+
+    def agw_gnmi_vrf_info_json(self, name: str) -> dict:
+        """Show VRF info for a specific VRF in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.VRF_INFO.value.format(name)}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_vrf_gids(self) -> str:
+        """Show VRF GID allocations (agwctl vrf gids)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.VRF_GIDS.value}"
+        )
+
+    def agw_gnmi_vrf_gids_json(self) -> dict:
+        """Show VRF GID allocations in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.VRF_GIDS.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_vlan_list(self) -> str:
+        """List VLAN names (agwctl vlan list)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.VLAN_LIST.value}"
+        )
+
+    def agw_gnmi_vlan_list_json(self) -> dict:
+        """List VLAN names in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.VLAN_LIST.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_gnmi_vlan_info(self, name: str) -> str:
+        """Show VLAN info for a specific VLAN (agwctl vlan info --name <name>)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.VLAN_INFO.value.format(name)}"
+        )
+
+    def agw_gnmi_vlan_info_json(self, name: str) -> dict:
+        """Show VLAN info for a specific VLAN in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.VLAN_INFO.value.format(name)}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    # Mock gNMI commands
+
+    def agw_mock_gnmi_show(self) -> str:
+        """Dump all mock gNMI path/value pairs (text)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.MOCK_GNMI_SHOW.value}"
+        )
+
+    def agw_mock_gnmi_show_json(self) -> dict:
+        """Dump all mock gNMI path/value pairs (JSON)"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.MOCK_GNMI_SHOW.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_mock_gnmi_get(self, path: str) -> str:
+        """Get the value stored at a specific mock gNMI path"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.MOCK_GNMI_GET.value.format(path)}"
+        )
+
+    def agw_mock_gnmi_get_json(self, path: str) -> dict:
+        """Get the value stored at a specific mock gNMI path (JSON)"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.MOCK_GNMI_GET.value.format(path)}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_mock_gnmi_set(self, path: str, value: str) -> str:
+        """Set a value at a mock gNMI path and trigger notifications"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.MOCK_GNMI_SET.value.format(path, value)}"
+        )
+
+    def agw_mock_gnmi_set_file(self, local_path: str) -> str:
+        """Bulk-load mock gNMI values from a nested JSON tree file.
+
+        Copies the local file into the container and runs
+        ``agwctl mock gnmi set --file <remote_path>``.
+        """
+        remote_path = "/tmp/mock_gnmi_seed.json"
+        self._copy_file_to_container(local_path, remote_path)
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.MOCK_GNMI_SET_FILE.value.format(remote_path)}"
+        )
+
+    def agw_mock_gnmi_delete(self, path: str) -> str:
+        """Delete a path from the mock gNMI handler and trigger notifications"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.MOCK_GNMI_DELETE.value.format(path)}"
+        )
+
+    def agw_ha_criteria_fail(self) -> str:
+        """Set the debug_override HA criterion to false, forcing ha-switchover"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_CRITERIA_FAIL.value}"
+        )
+
+    def agw_ha_criteria_ok(self) -> str:
+        """Set the debug_override HA criterion to true, restoring normal evaluation"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_CRITERIA_OK.value}"
+        )
+
     def get_container_logs(self, container_name: str, tail_lines: int = 50) -> str:
         """Get logs from a Docker container"""
         try:

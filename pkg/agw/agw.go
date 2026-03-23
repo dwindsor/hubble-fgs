@@ -3041,6 +3041,69 @@ func (agw *AgentGateway) MockGnmiSetBulk(ctx context.Context, msgData ipc.Messag
 	return fmt.Sprintf("Set %d path(s)", len(entries))
 }
 
+// MockGnmiLog reads transaction log entries from the mock gNMI handler, applying
+// optional filters for exact path, path prefix, and operation type.
+// Flags: "path" (exact), "prefix", "operation", "n" (last N entries as string), "json".
+func (agw *AgentGateway) MockGnmiLog(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockGnmiLog")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	txLog := h.TxLog()
+	if txLog == nil {
+		return "transaction log is not configured (no persist path set)"
+	}
+
+	pathExact := msgData.Flags["path"]
+	pathPrefix := msgData.Flags["prefix"]
+	operation := msgData.Flags["operation"]
+
+	entries, err := txLog.ReadEntries(pathExact, pathPrefix, operation)
+	if err != nil {
+		return fmt.Sprintf("Error reading log: %v", err)
+	}
+
+	// Apply -n (tail N) filtering.
+	if nStr := msgData.Flags["n"]; nStr != "" {
+		if n, err := strconv.Atoi(nStr); err == nil && n > 0 && n < len(entries) {
+			entries = entries[len(entries)-n:]
+		}
+	}
+
+	if len(entries) == 0 {
+		return "No log entries found"
+	}
+
+	if msgData.Flags["json"] == "true" {
+		jsonBytes, err := json.MarshalIndent(entries, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("Error marshalling JSON: %v", err)
+		}
+		return string(jsonBytes)
+	}
+
+	var buf bytes.Buffer
+	for _, e := range entries {
+		errPart := ""
+		if e.Error != "" {
+			errPart = fmt.Sprintf(" [error: %s]", e.Error)
+		}
+		valuePart := ""
+		if e.Value != "" {
+			valuePart = fmt.Sprintf(" = %s", e.Value)
+		}
+		pathPart := ""
+		if e.Path != "" {
+			pathPart = fmt.Sprintf(" %s", e.Path)
+		}
+		fmt.Fprintf(&buf, "%s  %-14s%s%s%s\n", e.Timestamp, e.Action, pathPart, valuePart, errPart)
+	}
+	return buf.String()
+}
+
 // defaultAffinity returns "0" (dynamic). The store determines pinning mode via
 // isLbModePinning(); affinity 0 is valid in both symmetric_hash and dpu_pinning modes.
 func defaultAffinity(_ interface {
