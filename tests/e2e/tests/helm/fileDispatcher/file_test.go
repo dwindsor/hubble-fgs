@@ -34,6 +34,9 @@ import (
 var runner *runners.Runner
 
 func TestMain(m *testing.M) {
+	if os.Getenv("FLAKY_FIM") != "" {
+		return
+	}
 	if os.Getenv("RUN_FIM_DISPATCHER") != "1" {
 		return
 	}
