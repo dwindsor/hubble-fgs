@@ -28,6 +28,6 @@ dependencies:
     repository: https://grafana.github.io/helm-charts
     condition: integratedGrafana.enabled
   - name: kube-state-metrics
-    version: "6.4.2"
+    version: "7.2.2"
     repository: https://prometheus-community.github.io/helm-charts
     condition: integratedGrafana.enabled
