@@ -284,6 +284,10 @@ func (agw *AgentGateway) GetNxHeadlessMode() bool {
 	return nxos.Nexus.GetHeadlessMode()
 }
 
+func (agw *AgentGateway) GetServiceIp() string {
+	return nxos.Nexus.GetServiceIp()
+}
+
 // DisableHaWatching disables HA policy watching (used in headless mode).
 func (agw *AgentGateway) DisableHaWatching(ctx context.Context) {
 	nxos.Nexus.NotifyWatching(ctx, false)

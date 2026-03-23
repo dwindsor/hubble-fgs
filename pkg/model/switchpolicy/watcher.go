@@ -44,6 +44,11 @@ type MetricsCollectorInterface interface {
 	SetPolicyHandler(PolicyHandler)
 }
 
+// SmartSwitchNetworkPolicyWatcher interface to access the policy watcher for updates
+type SmartSwitchNetworkPolicyWatcher interface {
+	SetPolicyStatusHandler(handler policystatus.PolicyStatusHandler)
+}
+
 // SetPolicyStatusHandler sets the policy status handler for failure reporting
 func (w *smartSwitchNetworkPolicyWatcher) SetPolicyStatusHandler(handler policystatus.PolicyStatusHandler) {
 	w.policyStatusHandler = handler
@@ -211,10 +216,10 @@ func (w *smartSwitchNetworkPolicyWatcher) deleteSmartSwitchNetworkPolicy(ctx con
 	}
 }
 
-func AddSmartSwitchNetworkPolicyInformer(ctx context.Context, m *manager.ControllerManager, policyHandler PolicyHandler, policyStatusHandler policystatus.PolicyStatusHandler, metricsCollector MetricsCollectorInterface) error {
+func AddSmartSwitchNetworkPolicyInformer(ctx context.Context, m *manager.ControllerManager, policyHandler PolicyHandler, policyStatusHandler policystatus.PolicyStatusHandler, metricsCollector MetricsCollectorInterface) (SmartSwitchNetworkPolicyWatcher, error) {
 	informer, err := m.Manager.GetCache().GetInformer(ctx, &isovalentv1.SmartSwitchNetworkPolicy{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	watcher := smartSwitchNetworkPolicyWatcher{
@@ -240,7 +245,10 @@ func AddSmartSwitchNetworkPolicyInformer(ctx context.Context, m *manager.Control
 			DeleteFunc: func(obj any) {
 				watcher.deleteSmartSwitchNetworkPolicy(ctx, obj)
 			}})
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return &watcher, nil
 }
 
 func isStagingPolicy(np *isovalentv1.SmartSwitchNetworkPolicy) bool {

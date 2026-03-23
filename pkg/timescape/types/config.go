@@ -25,6 +25,8 @@ const (
 	DefaultBaseBackoff           = 100 * time.Millisecond
 	DefaultMaxBatchSize          = 2
 	DefaultBatchTimeout          = 30000 * time.Millisecond
+	DefaultTLSHandshakeTimeout   = 10 * time.Second
+	DefaultInsecureSkipVerify    = true // For development only; always verify in production
 )
 
 // Transport defines the interface for sending messages to timescape
@@ -63,6 +65,16 @@ type HTTPTransportConfig struct {
 	Username string
 	Password string
 
+	// mTLS Authentication
+	UseMTLS bool // Enable mTLS authentication
+
+	// mTLS configuration fields for certificate manager integration
+	MTLSSerialNumber      string // Serial number for certificate CN
+	MTLSNamespace         string // Kubernetes namespace for CSR
+	MTLSServiceIP         string // Service IP for certificate SAN
+	MTLSCASecretName      string // CA certificate Secret name
+	MTLSCASecretNamespace string // CA certificate Secret namespace
+
 	// Future: Certificate-based authentication (mTLS)
 	CertFile string // Future: client certificate file path
 	KeyFile  string // Future: client private key file path
@@ -79,8 +91,7 @@ type HTTPTransportConfig struct {
 	MaxRetries int // Maximum number of retry attempts
 
 	// TLS settings
-	InsecureSkipVerify bool   // For development/testing only
-	ServerName         string // For SNI when using custom certificates
+	InsecureSkipVerify bool // For development/testing only
 }
 
 // DefaultConfig returns a sensible default configuration

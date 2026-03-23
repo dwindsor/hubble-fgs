@@ -18,10 +18,12 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/manager"
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/policystatus"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/systemstatus"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	"github.com/isovalent/hubble-fgs/pkg/timescape"
@@ -30,8 +32,9 @@ import (
 
 // Package-level variable to store the handler instance
 var (
-	globalTimescapeHandler ITimescape
-	handlerMu              sync.RWMutex
+	globalTimescapeHandler     ITimescape
+	globalNetworkPolicyWatcher switchpolicy.SmartSwitchNetworkPolicyWatcher
+	handlerMu                  sync.RWMutex
 )
 
 // TimescapeHandler implements ITimescape by combining system and policy handlers
@@ -150,6 +153,49 @@ func GetGlobalPolicyStatusHandler() policystatus.PolicyStatusHandler {
 	return nil
 }
 
+func SetGlobalPolicyStatusHandler(handler policystatus.PolicyStatusHandler) {
+	logger.GetLogger().Info("SetGlobalPolicyStatusHandler called", "handler_not_nil", handler != nil)
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+
+	if globalTimescapeHandler != nil {
+		logger.GetLogger().Info("Global timescape handler found, setting policy status handler on it")
+		if th, ok := globalTimescapeHandler.(*TimescapeHandler); ok {
+			th.policyStatusHandler = handler
+			logger.GetLogger().Info("Successfully set policy status handler on global timescape handler")
+		} else {
+			logger.GetLogger().Warn("Global timescape handler is not of expected type, cannot set policy status handler")
+		}
+	} else {
+		logger.GetLogger().Warn("No global timescape handler to set policy status handler on")
+	}
+}
+
+// SetGlobalNetworkPolicyWatcher stores the network policy watcher globally for later updates
+func SetGlobalNetworkPolicyWatcher(watcher switchpolicy.SmartSwitchNetworkPolicyWatcher) {
+	logger.GetLogger().Info("SetGlobalNetworkPolicyWatcher called", "watcher_not_nil", watcher != nil)
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+	globalNetworkPolicyWatcher = watcher
+}
+
+// updateNetworkPolicyWatcherWithHandler updates the policy status handler for the global network policy watcher using provided handler
+func updateNetworkPolicyWatcherWithHandler(policyStatusHandler policystatus.PolicyStatusHandler) error {
+	logger.GetLogger().Info("updateNetworkPolicyWatcherWithHandler called", "handler_not_nil", policyStatusHandler != nil)
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+
+	if globalNetworkPolicyWatcher != nil {
+		logger.GetLogger().Info("Global network policy watcher found, updating with provided policy status handler")
+		globalNetworkPolicyWatcher.SetPolicyStatusHandler(policyStatusHandler)
+		logger.GetLogger().Info("Successfully updated network policy watcher with policy status handler")
+	} else {
+		logger.GetLogger().Warn("No global network policy watcher to update")
+		return fmt.Errorf("no global network policy watcher to update")
+	}
+	return nil
+}
+
 // ReportSystemStatus triggers a system status report
 func (h *TimescapeHandler) ReportSystemStatus(ctx context.Context) error {
 	return h.systemStatusHandler.ReportSystemStatus(ctx)
@@ -174,7 +220,7 @@ func (h *TimescapeHandler) ReportPolicyStatus(ctx context.Context) error {
 //
 // It blocks until the context is cancelled, at which point it gracefully shuts down the handler
 // and closes the client connection.
-func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
+func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, controllerManager *manager.ControllerManager) error {
 	// Get configuration from the config manager
 	config := CurrentTimescapeConfig()
 	if config == nil {
@@ -182,8 +228,10 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 		return fmt.Errorf("timescape configuration not available")
 	}
 
-	// Validate authentication for BasicAuth
-	if config.UseBasicAuth && config.Password == "" {
+	// Validate authentication configuration
+	if !config.UseBasicAuth && !config.UseMTLS {
+		logger.GetLogger().Warn("No authentication configured - neither BasicAuth nor mTLS is enabled")
+	} else if config.UseBasicAuth && config.Password == "" {
 		logger.GetLogger().Warn("Timescape password not provided for basic auth, return")
 		return fmt.Errorf("timescape password required for BasicAuth")
 	}
@@ -198,9 +246,13 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 		Username:    config.Username,
 		Password:    config.Password,
 		EndpointURL: config.Endpoint,
+		UseMTLS:     config.UseMTLS,
 
-		UseProtobuf:        false,                                                 // Use JSON for now, can be made configurable later
-		InsecureSkipVerify: true,                                                  // Skip TLS verification for development
+		// mTLS configuration fields
+		MTLSCASecretName:      config.MTLSCASecretName,
+		MTLSCASecretNamespace: config.MTLSCASecretNamespace,
+
+		InsecureSkipVerify: types.DefaultInsecureSkipVerify,                       // Skip verification (development)
 		Timeout:            time.Duration(config.RequestTimeoutSec) * time.Second, // Use config value or default
 
 		ConnectionTimeout: time.Duration(config.ConnectionTimeoutSec) * time.Second, // Connection timeout
@@ -228,6 +280,7 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 	logger.GetLogger().Info("Setting up timescape client",
 		"endpoint", config.Endpoint,
 		"auth_type", getAuthTypeString(config),
+		"insecure_skip_verify", timescapeConfig.InsecureSkipVerify,
 		"max_retries", timescapeConfig.MaxRetries,
 		"connection_timeout_sec", timescapeConfig.ConnectionTimeout.Seconds(),
 		"request_timeout_sec", timescapeConfig.Timeout.Seconds(),
@@ -298,22 +351,30 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 		return err
 	}
 
+	// Get the policy status handler from the handler and set it globally
+	if th, ok := handler.(*TimescapeHandler); ok {
+		globalPolicyStatusHandler := th.GetPolicyStatusHandler()
+		updateNetworkPolicyWatcherWithHandler(globalPolicyStatusHandler)
+		logger.GetLogger().Info("Policy status handler extracted from timescape handler", "handler_not_nil", globalPolicyStatusHandler != nil)
+	}
+
 	// Set the policy status handler from the timescape setup on the DPU listener
-	go func() {
-		logger.GetLogger().Debug("Setting up policy status handler on DPU listener")
-		policyStatusHandler := GetGlobalPolicyStatusHandler()
-		if policyStatusHandler != nil {
-			// Access the DPU listener through the AgentGateway and set the handler
-			dpuListener := agw.GetDPUListener()
-			if dpuListener != nil {
-				dpuListener.SetPolicyStatusHandler(policyStatusHandler)
-			} else {
-				logger.GetLogger().Warn("DPU listener not available to set policy status handler")
-			}
+	// Do this synchronously to avoid race conditions with incoming policy events
+	logger.GetLogger().Debug("Setting up policy status handler on DPU listener")
+	policyStatusHandler := GetGlobalPolicyStatusHandler()
+	if policyStatusHandler != nil {
+		logger.GetLogger().Info("Policy status handler obtained from global timescape handler")
+		// Access the DPU listener through the AgentGateway and set the handler
+		dpuListener := agw.GetDPUListener()
+		if dpuListener != nil {
+			dpuListener.SetPolicyStatusHandler(policyStatusHandler)
+			logger.GetLogger().Info("Policy status handler successfully set on DPU listener")
 		} else {
-			logger.GetLogger().Warn("Policy status handler not available from timescape setup")
+			logger.GetLogger().Warn("DPU listener not available to set policy status handler")
 		}
-	}()
+	} else {
+		logger.GetLogger().Warn("Policy status handler not available from global timescape handler")
+	}
 
 	// Keep client running until context is cancelled
 	go func() {

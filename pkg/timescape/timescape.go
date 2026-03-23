@@ -42,12 +42,19 @@ func NewTimescapeClient(ctx context.Context, config types.HTTPTransportConfig, m
 	clientOnce.Do(func() {
 		builder := client.NewClientBuilder().
 			WithEndpoint(config.EndpointURL).
-			WithAuth(config.Username, config.Password).
 			WithRequestTimeout(config.Timeout).
 			WithConnectionTimeout(config.ConnectionTimeout).
 			WithRetryConfig(config.MaxRetries, types.DefaultBaseBackoff).
 			WithBatchConfig(maxBatchSize, time.Duration(batchTimeoutMs)*time.Millisecond).
 			WithCompression(config.Compression)
+
+		// Set authentication method based on configuration
+		if config.UseMTLS {
+			builder = builder.WithMTLS()
+		} else {
+			// Use BasicAuth for non-mTLS authentication
+			builder = builder.WithAuth(config.Username, config.Password)
+		}
 
 		// Set Protobuf or JSON serialization
 		if config.UseProtobuf {
@@ -59,10 +66,6 @@ func NewTimescapeClient(ctx context.Context, config types.HTTPTransportConfig, m
 		// Set TLS configurations
 		if config.InsecureSkipVerify {
 			builder = builder.WithInsecureSkipVerify()
-		}
-
-		if config.ServerName != "" {
-			builder = builder.WithServerName(config.ServerName)
 		}
 
 		var err error

@@ -17,6 +17,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/manager"
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
@@ -25,7 +26,7 @@ import (
 )
 
 // SetupTimescapeFromCLI validates timescape configuration from CLI and initializes the client
-func SetupTimescapeFromCLI(ctx context.Context, agwAgent *agw.AgentGateway, enableNXOS bool, timescapeClientEnable bool, timescapePassword string, timescapeEndpoint string) error {
+func SetupTimescapeFromCLI(ctx context.Context, agwAgent *agw.AgentGateway, enableNXOS bool, timescapeClientEnable bool, timescapePassword string, timescapeEndpoint string, controllerManager *manager.ControllerManager) error {
 	if !timescapeClientEnable {
 		return nil
 	}
@@ -63,7 +64,7 @@ func SetupTimescapeFromCLI(ctx context.Context, agwAgent *agw.AgentGateway, enab
 		return nil
 	}
 
-	SetTimescapeSetupParams(ctx, agwAgent, enableNXOS)
+	SetTimescapeSetupParams(ctx, agwAgent, enableNXOS, controllerManager)
 
 	// Initialize configuration from CLI values using repository pattern
 	err = library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE,

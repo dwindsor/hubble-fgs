@@ -49,6 +49,12 @@ func (b *ClientBuilder) WithAuth(username, password string) *ClientBuilder {
 	return b
 }
 
+// WithMTLS enables mTLS authentication and sets the kubernetes client
+func (b *ClientBuilder) WithMTLS() *ClientBuilder {
+	b.config.UseMTLS = true
+	return b
+}
+
 // WithAuthFromEnv sets basic authentication from environment variables
 func (b *ClientBuilder) WithAuthFromEnv() *ClientBuilder {
 	b.config.Username = os.Getenv("TIMESCAPE_USERNAME")
@@ -89,12 +95,6 @@ func (b *ClientBuilder) WithInsecureSkipVerify() *ClientBuilder {
 	return b
 }
 
-// WithServerName sets the server name for TLS verification in the client configuration.
-func (b *ClientBuilder) WithServerName(serverName string) *ClientBuilder {
-	b.config.ServerName = serverName
-	return b
-}
-
 // WithQueueConfig sets custom queue configuration
 func (b *ClientBuilder) WithQueueConfig(cfg types.Config) *ClientBuilder {
 	b.queueConfig = cfg
@@ -123,7 +123,10 @@ func (b *ClientBuilder) WithCompression(enabled bool) *ClientBuilder {
 
 // Build creates the timescape client with queue and transport
 func (b *ClientBuilder) Build(ctx context.Context) (types.Client, error) {
-	transport := NewHTTPTransport(b.config)
+	transport, err := NewHTTPTransport(b.config)
+	if err != nil {
+		return nil, err
+	}
 	cfg := b.queueConfig
 	cfg.Transport = transport
 	client, err := NewQueue(ctx, cfg)

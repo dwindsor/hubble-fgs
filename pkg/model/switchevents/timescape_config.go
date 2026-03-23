@@ -24,12 +24,23 @@ type TimescapeConfig struct {
 	// Core configuration
 	ClientEnabled bool   `json:"client_enabled"`
 	Endpoint      string `json:"endpoint"`
-	Username      string `json:"username"`
-	Password      string `json:"-"` // Don't serialize password in JSON
 
 	// Authentication method selection (oneOf pattern from protobuf)
 	UseBasicAuth bool `json:"use_basic_auth"`
 	UseMTLS      bool `json:"use_mtls"`
+
+	// Basic Auth configuration fields
+	Username string `json:"username"`
+	Password string `json:"-"` // Don't serialize password in JSON
+
+	// Certificate Manager Configuration (MTLSCertManager)
+	MTLSIssuerGroup string `json:"mtls_issuer_group,omitempty"` // cert-manager.io
+	MTLSIssuerKind  string `json:"mtls_issuer_kind,omitempty"`  // ClusterIssuer, Issuer
+	MTLSIssuerName  string `json:"mtls_issuer_name,omitempty"`  // Issuer name
+
+	// Client CA Configuration (MTLSClientCA)
+	MTLSCASecretName      string `json:"mtls_ca_secret_name,omitempty"`      // CA Secret name
+	MTLSCASecretNamespace string `json:"mtls_ca_secret_namespace,omitempty"` // CA Secret namespace
 
 	// Connection settings from protobuf TimescapeConfig
 	Host        string `json:"host"`
@@ -80,12 +91,20 @@ func (tcm *TimescapeConfigManager) GetTimescapeConfig() *TimescapeConfig {
 
 	// Return a copy to prevent external modifications
 	return &TimescapeConfig{
-		ClientEnabled:        tcm.config.ClientEnabled,
-		Endpoint:             tcm.config.Endpoint,
-		Username:             tcm.config.Username,
-		Password:             tcm.config.Password,
-		UseBasicAuth:         tcm.config.UseBasicAuth,
-		UseMTLS:              tcm.config.UseMTLS,
+		ClientEnabled: tcm.config.ClientEnabled,
+		Endpoint:      tcm.config.Endpoint,
+		Username:      tcm.config.Username,
+		Password:      tcm.config.Password,
+		UseBasicAuth:  tcm.config.UseBasicAuth,
+		UseMTLS:       tcm.config.UseMTLS,
+
+		// Enhanced mTLS configuration
+		MTLSIssuerGroup:       tcm.config.MTLSIssuerGroup,
+		MTLSIssuerKind:        tcm.config.MTLSIssuerKind,
+		MTLSIssuerName:        tcm.config.MTLSIssuerName,
+		MTLSCASecretName:      tcm.config.MTLSCASecretName,
+		MTLSCASecretNamespace: tcm.config.MTLSCASecretNamespace,
+
 		Host:                 tcm.config.Host,
 		Port:                 tcm.config.Port,
 		Protocol:             tcm.config.Protocol,
@@ -110,22 +129,27 @@ func (tcm *TimescapeConfigManager) SetTimescapeConfig(config *TimescapeConfig) {
 	}
 
 	tcm.config = &TimescapeConfig{
-		ClientEnabled:        config.ClientEnabled,
-		Endpoint:             config.Endpoint,
-		Username:             config.Username,
-		Password:             config.Password,
-		UseBasicAuth:         config.UseBasicAuth,
-		UseMTLS:              config.UseMTLS,
-		Host:                 config.Host,
-		Port:                 config.Port,
-		Protocol:             config.Protocol,
-		TlsEnabled:           config.TlsEnabled,
-		EndpointApi:          config.EndpointApi,
-		MaxRetries:           config.MaxRetries,
-		ConnectionTimeoutSec: config.ConnectionTimeoutSec,
-		RequestTimeoutSec:    config.RequestTimeoutSec,
-		MaxBatchSize:         config.MaxBatchSize,
-		BatchTimeoutMs:       config.BatchTimeoutMs,
+		ClientEnabled:         config.ClientEnabled,
+		Endpoint:              config.Endpoint,
+		Username:              config.Username,
+		Password:              config.Password,
+		UseBasicAuth:          config.UseBasicAuth,
+		UseMTLS:               config.UseMTLS,
+		MTLSIssuerGroup:       config.MTLSIssuerGroup,
+		MTLSIssuerKind:        config.MTLSIssuerKind,
+		MTLSIssuerName:        config.MTLSIssuerName,
+		MTLSCASecretName:      config.MTLSCASecretName,
+		MTLSCASecretNamespace: config.MTLSCASecretNamespace,
+		Host:                  config.Host,
+		Port:                  config.Port,
+		Protocol:              config.Protocol,
+		TlsEnabled:            config.TlsEnabled,
+		EndpointApi:           config.EndpointApi,
+		MaxRetries:            config.MaxRetries,
+		ConnectionTimeoutSec:  config.ConnectionTimeoutSec,
+		RequestTimeoutSec:     config.RequestTimeoutSec,
+		MaxBatchSize:          config.MaxBatchSize,
+		BatchTimeoutMs:        config.BatchTimeoutMs,
 	}
 }
 

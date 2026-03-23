@@ -234,11 +234,11 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 			logger.GetLogger().Info("Adding Timescape ConfigMap to informer")
 			ConfigMaps = append(ConfigMaps, TimescapeConfigMapName)
 			// Set parameters needed for Setup calls from ConfigMap callbacks
-			switchevents.SetTimescapeSetupParams(ctx, agwAgent, Config.EnableNXOS)
+			switchevents.SetTimescapeSetupParams(ctx, agwAgent, Config.EnableNXOS, kubernetesManager)
 		} else {
 			// Start Timescape client using CLI configuration
 			if err := switchevents.SetupTimescapeFromCLI(ctx, agwAgent, Config.EnableNXOS,
-				Config.TimescapeClientEnable, Config.TimescapePassword, Config.TimescapeEndpoint); err != nil {
+				Config.TimescapeClientEnable, Config.TimescapePassword, Config.TimescapeEndpoint, kubernetesManager); err != nil {
 				library.GetRepository().DeleteConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE)
 				return err
 			}
@@ -269,11 +269,14 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		}
 
 		policyStatusHandler := switchevents.GetGlobalPolicyStatusHandler()
-		err = switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler, policyStatusHandler, metricsCollector)
+		networkpolicyWatcher, err := switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler, policyStatusHandler, metricsCollector)
 		if err != nil {
 			logger.GetLogger().Error("failed to watch smartswitch policy crd", logfields.Error, err)
 			return err
 		}
+
+		// Store the watcher globally so timescape client can update its policy status handler when initialized
+		switchevents.SetGlobalNetworkPolicyWatcher(networkpolicyWatcher)
 	}
 
 	logger.GetLogger().Info("Agent startup complete.")

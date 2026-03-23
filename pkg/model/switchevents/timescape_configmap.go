@@ -15,8 +15,10 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/manager"
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
+	"github.com/isovalent/hubble-fgs/pkg/mtls"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 
@@ -28,16 +30,18 @@ const TimescapeConfigMapId = "timescape-config"
 
 // Package-level variables to store Setup parameters for ConfigMap callbacks
 var (
-	setupContext    context.Context
-	setupAgw        *agw.AgentGateway
-	setupEnableNxos bool
+	setupContext           context.Context
+	setupAgw               *agw.AgentGateway
+	setupEnableNxos        bool
+	setupControllerManager *manager.ControllerManager
 )
 
 // SetTimescapeSetupParams stores the parameters needed for Setup calls from ConfigMap callbacks
-func SetTimescapeSetupParams(ctx context.Context, agwGateway *agw.AgentGateway, enableNxos bool) {
+func SetTimescapeSetupParams(ctx context.Context, agwGateway *agw.AgentGateway, enableNxos bool, controllerManager *manager.ControllerManager) {
 	setupContext = ctx
 	setupAgw = agwGateway
 	setupEnableNxos = enableNxos
+	setupControllerManager = controllerManager
 }
 
 // SubscribeTimescapeConfig handles ConfigMap-based Timescape configuration changes
@@ -84,7 +88,7 @@ func SubscribeTimescapeConfig(oldConfig, newConfig *v1alpha.ConfigObject) error 
 
 		// New Config Added
 		// Convert protobuf config to our internal TimescapeConfig struct
-		internalConfig := convertProtobufToInternalConfig(timescapeConfig)
+		internalConfig := convertProtobufToInternalConfig(timescapeConfig, setupContext, setupAgw, setupEnableNxos)
 
 		// Update the configuration
 		configManager := GetTimescapeConfigManager()
@@ -93,7 +97,7 @@ func SubscribeTimescapeConfig(oldConfig, newConfig *v1alpha.ConfigObject) error 
 		// Call Setup to start or restart the timescape client
 		if setupContext != nil && setupAgw != nil {
 			logger.GetLogger().Debug("Starting Timescape client...")
-			err := Setup(setupContext, setupAgw, setupEnableNxos)
+			err := Setup(setupContext, setupAgw, setupEnableNxos, setupControllerManager)
 			if err != nil {
 				logger.GetLogger().Error("Failed to setup Timescape client from Config", "error", err)
 				return fmt.Errorf("timescape client setup failed: %w", err)
@@ -135,7 +139,24 @@ func checkForConfigMapName(oldConfig, newConfig *v1alpha.ConfigObject) bool {
 }
 
 // convertProtobufToInternalConfig converts a protobuf TimescapeConfig to our internal TimescapeConfig
-func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig) *TimescapeConfig {
+// This function handles the complete mTLS configuration flow from ConfigMap to internal structures:
+//
+// ConfigMap Flow:
+// 1. ConfigMap contains protobuf TimescapeConfig with mTLS.enabled = true
+// 2. This function extracts mTLS configuration and populates internal TimescapeConfig
+// 3. Sets UseMTLS = true and populates CA configuration from defaults
+// 4. Runtime values (SerialNumber, Namespace, ServiceIP) are populated later by enhanceMTLSConfig()
+// 5. The internal config flows to HTTPTransportConfig in timescape_handler.go
+//
+// ConfigMap Fields Extracted:
+// - mTLS enabled flag from protobuf
+// - Only default CA Secret configuration (not runtime-specific values)
+//
+// Runtime Fields (NOT from ConfigMap):
+// - MTLSSerialNumber: Set from AGW context at runtime
+// - MTLSNamespace: Set from runtime environment
+// - MTLSServiceIP: Set by caller when needed
+func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig, ctx context.Context, agw *agw.AgentGateway, enableNXOS bool) *TimescapeConfig {
 	config := &TimescapeConfig{
 		ClientEnabled:        true, // Enable client when ConfigMap is present
 		Host:                 pbConfig.GetHost(),
@@ -191,13 +212,148 @@ func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig) *Timesca
 			"hasPassword", config.Password != "")
 	} else if mtls := pbConfig.GetMtls(); mtls != nil {
 		config.UseBasicAuth = false
-		config.UseMTLS = true
+		config.UseMTLS = mtls.GetEnabled()
 		config.Username = "" // mTLS doesn't use username/password
 		config.Password = ""
-		logger.GetLogger().Debug("timescape: configured mTLS authentication", "enabled", mtls.GetEnabled())
+
+		logger.GetLogger().Info("timescape: configuring mTLS authentication from ConfigMap",
+			"mtlsEnabled", mtls.GetEnabled(),
+			"useMTLS", config.UseMTLS)
+
+		// Extract Certificate Manager configuration (MTLSCertManager)
+		if cm := mtls.GetCertmanager(); cm != nil {
+			if issuerRef := cm.GetIssuerRef(); issuerRef != nil {
+				config.MTLSIssuerGroup = issuerRef.GetGroup()
+				config.MTLSIssuerKind = issuerRef.GetKind()
+				config.MTLSIssuerName = issuerRef.GetName()
+				logger.GetLogger().Debug("timescape: extracted certificate manager config",
+					"issuerGroup", config.MTLSIssuerGroup,
+					"issuerKind", config.MTLSIssuerKind,
+					"issuerName", config.MTLSIssuerName)
+			}
+		}
+
+		// Extract Client CA configuration (MTLSClientCA)
+		if ca := mtls.GetManagedCa(); ca != nil {
+			config.MTLSCASecretName = ca.GetSecretName()
+			config.MTLSCASecretNamespace = ca.GetSecretNamespace()
+			logger.GetLogger().Debug("timescape: extracted client CA config",
+				"caSecretName", config.MTLSCASecretName,
+				"caSecretNamespace", config.MTLSCASecretNamespace)
+		}
+
+		// Apply enhanced mTLS configuration with runtime values
+		if err := setMTLSConfig(ctx, config, setupAgw, setupEnableNxos); err != nil {
+			logger.GetLogger().Warn("Failed to set enhanced mTLS configuration", "error", err)
+		}
+
+		logger.GetLogger().Info("timescape: configured comprehensive mTLS authentication",
+			"enabled", config.UseMTLS,
+			"issuerGroup", config.MTLSIssuerGroup,
+			"issuerKind", config.MTLSIssuerKind,
+			"issuerName", config.MTLSIssuerName,
+			"caSecretName", config.MTLSCASecretName,
+			"caSecretNamespace", config.MTLSCASecretNamespace)
 	} else {
 		logger.GetLogger().Warn("timescape: no authentication method configured")
 	}
 
 	return config
+}
+
+// setMTLSConfig populates comprehensive mTLS configuration fields from proto MTLSConfig
+// This function extracts the complete mTLS configuration from the protobuf structure
+// and populates all enhanced mTLS fields in the internal TimescapeConfig.
+//
+// Fields populated from proto MTLSConfig:
+// - Certificate Manager configuration (issuer_group, kind, issuer_name)
+// - Client CA configuration (ca_secret_name, ca_secret_namespace)
+// - mTLS enabled flag
+//
+// Fields populated from runtime/defaults:
+// - Serial number from AGW context
+// - Namespace from runtime environment
+// - Service IP from AGW or fallback
+func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentGateway, enableNXOS bool) error {
+	if !config.UseMTLS {
+		return nil
+	}
+
+	if agw == nil {
+		logger.GetLogger().Warn("AGW not available, cannot populate mTLS serial number")
+		return fmt.Errorf("AGW context not available for mTLS configuration")
+	}
+
+	// Populate runtime values from AGW context
+	serialNumber := "unknown"
+	if ctx != nil && enableNXOS {
+		serialNumber = agw.GetSerialNumber(ctx)
+	}
+
+	// Service Account Namespace
+	saNamespace := ""
+	serviceIp := ""
+	if agw.Token != nil {
+		saNamespace = agw.Token.K8sNamespace()
+	} else {
+		// TODO
+		logger.GetLogger().Warn("AGW token not available, cannot populate Service Account namespace for mTLS configuration")
+		saNamespace = "hypershield" // Fallback namespace
+	}
+
+	// Fallback for missing service IP (required for mTLS certificate SAN)
+	if serviceIp == "" {
+		logger.GetLogger().Warn("Service IP not available from AGW, using default for mTLS certificate")
+		// Temporary fallback IP for local testing - in production, this should be properly set
+		serviceIp = "171.70.188.33" // Fallback IP for certificate SAN
+		// return nil
+	}
+
+	// Certificate Manager Configuration
+	if config.MTLSIssuerGroup == "" || config.MTLSIssuerKind == "" || config.MTLSIssuerName == "" {
+		// No certificate manager config from proto
+		return fmt.Errorf("mTLS enabled but certificate IssuerName missing from ConfigMap")
+	} else {
+		logger.GetLogger().Info("timescape: using certificate manager from ConfigMap",
+			"issuerGroup", config.MTLSIssuerGroup,
+			"issuerKind", config.MTLSIssuerKind,
+			"issuerName", config.MTLSIssuerName)
+	}
+
+	// Client CA Configuration
+	// Use ConfigMap values if available, otherwise apply intelligent defaults
+	if config.MTLSCASecretName == "" || config.MTLSCASecretNamespace == "" {
+		return fmt.Errorf("mTLS enabled but client CA Secret configuration missing from ConfigMap")
+	}
+	logger.GetLogger().Info("timescape: using client CA from ConfigMap",
+		"caSecretName", config.MTLSCASecretName,
+		"caSecretNamespace", config.MTLSCASecretNamespace)
+
+	logger.GetLogger().Info("comprehensive mTLS configuration applied",
+		"enabled", config.UseMTLS,
+		"serialNumber", serialNumber,
+		"namespace", saNamespace,
+		"serviceIP", serviceIp,
+		"issuerGroup", config.MTLSIssuerGroup,
+		"issuerKind", config.MTLSIssuerKind,
+		"issuerName", config.MTLSIssuerName,
+		"caSecretName", config.MTLSCASecretName,
+		"caSecretNamespace", config.MTLSCASecretNamespace)
+
+	// Create mTLS client configuration for certificate manager
+	clientConfig := mtls.NewClientConfig(serialNumber, saNamespace,
+		serviceIp, config.MTLSCASecretName, config.MTLSCASecretNamespace, config.MTLSIssuerName, config.MTLSIssuerGroup, config.MTLSIssuerKind)
+	if clientConfig == nil {
+		logger.GetLogger().Error("Failed to create mTLS client configuration")
+		return fmt.Errorf("failed to create mTLS client configuration")
+	}
+
+	// Create certificate manager
+	certManager := mtls.GetCertificateManagerInstance(setupControllerManager, clientConfig)
+	if certManager == nil {
+		logger.GetLogger().Error("Failed to create mTLS certificate manager")
+		return fmt.Errorf("failed to create mTLS certificate manager")
+	}
+
+	return certManager.CompleteCertificateFlow(ctx)
 }

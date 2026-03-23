@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/isovalent/hubble-fgs/pkg/mtls"
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 )
 
@@ -34,7 +35,20 @@ type HTTPTransport struct {
 }
 
 // NewHTTPTransport creates a new HTTP transport with the given configuration
-func NewHTTPTransport(config types.HTTPTransportConfig) *HTTPTransport {
+// It automatically chooses between BasicAuth and mTLS based on the UseMTLS flag
+func NewHTTPTransport(config types.HTTPTransportConfig) (*HTTPTransport, error) {
+	logger.GetLogger().Info("NewHTTPTransport called",
+		"UseMTLS", config.UseMTLS,
+		"EndpointURL", config.EndpointURL)
+
+	if config.UseMTLS {
+		return NewHTTPTransportWithMTLS(config)
+	}
+	return NewHTTPTransportWithBasicAuth(config), nil
+}
+
+// NewHTTPTransportWithBasicAuth creates a new HTTP transport with BasicAuth support
+func NewHTTPTransportWithBasicAuth(config types.HTTPTransportConfig) *HTTPTransport {
 	if config.Timeout == 0 {
 		config.Timeout = types.DefaultHTTPRequestTimeout
 	}
@@ -53,6 +67,48 @@ func NewHTTPTransport(config types.HTTPTransportConfig) *HTTPTransport {
 	}
 }
 
+// NewHTTPTransportWithMTLS creates a new HTTP transport with mTLS support for external AGW clients
+func NewHTTPTransportWithMTLS(config types.HTTPTransportConfig) (*HTTPTransport, error) {
+	if config.Timeout == 0 {
+		config.Timeout = types.DefaultHTTPRequestTimeout
+	}
+
+	certManager := mtls.GetExistingCertificateManager()
+	if certManager == nil {
+		return nil, fmt.Errorf("no existing CertificateManager instance found")
+	}
+
+	// Get TLS configuration with client certificate
+	tlsConfig, err := certManager.GetTLSConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get mTLS configuration: %w", err)
+	}
+
+	// Apply InsecureSkipVerify setting from config for development environments
+	if config.InsecureSkipVerify {
+		tlsConfig.InsecureSkipVerify = true
+		logger.GetLogger().Warn("InsecureSkipVerify enabled - server certificate verification disabled (development only)")
+	} else {
+		tlsConfig.InsecureSkipVerify = false
+		logger.GetLogger().Info("TLS certificate verification enabled for security")
+	}
+
+	// Create optimized transport with mTLS
+	transport := createOptimizedTransport(config)
+	transport.TLSClientConfig = tlsConfig
+	transport.TLSHandshakeTimeout = types.DefaultTLSHandshakeTimeout
+
+	client := &http.Client{
+		Timeout:   config.Timeout,
+		Transport: transport,
+	}
+
+	return &HTTPTransport{
+		config: config,
+		client: client,
+	}, nil
+}
+
 func (h *HTTPTransport) Name() string {
 	return h.config.EndpointURL
 }
@@ -62,8 +118,7 @@ func (h *HTTPTransport) newTracedClient() *http.Client {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			MinVersion:         tls.VersionTLS13,
-			InsecureSkipVerify: true,
-			ServerName:         "", // Empty to skip hostname verification
+			InsecureSkipVerify: types.DefaultInsecureSkipVerify,
 		},
 		TLSHandshakeTimeout:   10 * time.Second,
 		ResponseHeaderTimeout: 15 * time.Second,
@@ -163,7 +218,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	}
 
 	// Log the full payload for debugging
-	logger.GetLogger().Debug("HTTP transport payload",
+	logger.GetLogger().Info("HTTP transport payload",
 		"count", len(msgs),
 		"endpoint", h.config.EndpointURL,
 		"payload", string(reqBody),
@@ -183,10 +238,9 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "timescape-client/1.0")
 
-	// Add basic authentication if configured
-	if h.config.Username != "" && h.config.Password != "" {
-		auth := base64.StdEncoding.EncodeToString([]byte(h.config.Username + ":" + h.config.Password))
-		req.Header.Set("Authorization", "Basic "+auth)
+	// Add authentication based on configuration
+	if err := h.addAuthentication(req); err != nil {
+		return fmt.Errorf("failed to add authentication: %w", err)
 	}
 
 	// Send request and measure latency with tracing
@@ -214,7 +268,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	}
 
 	// Log successful HTTP response
-	logger.GetLogger().Debug("transport push successful",
+	logger.GetLogger().Info("transport push successful",
 		"status_code", resp.StatusCode,
 		"status", resp.Status,
 		"count", len(msgs),
@@ -222,6 +276,28 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 		"endpoint", h.config.EndpointURL,
 	)
 
+	return nil
+}
+
+// addAuthentication adds the appropriate authentication method to the HTTP request
+func (h *HTTPTransport) addAuthentication(req *http.Request) error {
+	if h.config.UseMTLS {
+		// For mTLS, authentication is handled via TLS client certificates
+		// The client certificate is already configured in the transport's TLS config
+		logger.GetLogger().Info("Using mTLS authentication")
+		return nil
+	}
+
+	// Use BasicAuth if credentials are provided
+	if h.config.Username != "" && h.config.Password != "" {
+		auth := base64.StdEncoding.EncodeToString([]byte(h.config.Username + ":" + h.config.Password))
+		req.Header.Set("Authorization", "Basic "+auth)
+		logger.GetLogger().Info("Using BasicAuth authentication")
+		return nil
+	}
+
+	// No authentication configured
+	logger.GetLogger().Warn("No authentication configured")
 	return nil
 }
 
@@ -242,19 +318,6 @@ func createOptimizedTransport(config types.HTTPTransportConfig) *http.Transport 
 		// Optimize for single connection
 		ForceAttemptHTTP2:  true,                // Try HTTP/2 for better multiplexing
 		DisableCompression: !config.Compression, // Enable/disable compression based on config
-	}
-
-	// Only configure TLS if needed for HTTPS (future use).
-	// Can use cert package in pkg/cert for loading certs if needed.
-	if config.InsecureSkipVerify || config.CertFile != "" || config.KeyFile != "" {
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: config.InsecureSkipVerify,
-			ServerName:         config.ServerName,
-		}
-
-		// Future: Add mTLS support here when certificates are provided
-		transport.TLSClientConfig = tlsConfig
-		transport.TLSHandshakeTimeout = 10 * time.Second
 	}
 
 	return transport
