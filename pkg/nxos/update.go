@@ -1201,7 +1201,7 @@ func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 	adj, adjExists := n.Ha.Adjacencies[ip]
 	adjUp := adjExists && adj.Connected
 	if !adjUp {
-		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
+		list.SvcState = model.Cisco_NX_OSDevice_Sas_PeerSvcStateE_unknown
 		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
 	} else {
 		peerSvc, ok := n.Ha.PeerSvcStates[ip]
@@ -1211,13 +1211,13 @@ func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 		logger.GetLogger().Debug("setRemoteSvcState", "peerSvc", peerSvc)
 		switch peerSvc {
 		case PeerSvcReady:
-			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
+			list.SvcState = model.Cisco_NX_OSDevice_Sas_PeerSvcStateE_ready
 			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_fw_config
 		case PeerSvcNotReady:
-			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
+			list.SvcState = model.Cisco_NX_OSDevice_Sas_PeerSvcStateE_not_ready
 			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
 		default:
-			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
+			list.SvcState = model.Cisco_NX_OSDevice_Sas_PeerSvcStateE_unknown
 			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
 		}
 	}
@@ -1251,7 +1251,7 @@ func (n *Nxos) setRemoteStatesAdjDown(ctx context.Context, ip string) error {
 	list := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{
 		IpAddr: &ip,
 	}
-	list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
+	list.SvcState = model.Cisco_NX_OSDevice_Sas_PeerSvcStateE_unknown
 	list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
 
 	items.HaPeerExtList[ip] = &list
@@ -1292,8 +1292,7 @@ func (n *Nxos) setLocalHaState(ctx context.Context) error {
 		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_switchover
 
 	case hav1.HA_STATE_HA_TAKEOVER:
-		// Map to ha_init temporarily until YANG model is updated
-		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_init
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_takeover
 
 	case hav1.HA_STATE_HA_DEGRADED:
 		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_degraded
