@@ -460,6 +460,85 @@ func TestHaHandleNotify_Recovery(t *testing.T) {
 	}
 }
 
+// TestHaUpdateCrit_InServiceFalse_SvcFailureDerived verifies that setting
+// HaCritInService=false causes stableIsFunc to return false and the derived
+// HA state to reflect a service failure (HA_NOTREADY when no peer, or
+// HA_SWITCHOVER when peer is ready).
+func TestHaUpdateCrit_InServiceFalse_SvcFailureDerived(t *testing.T) {
+	n := newTestNxosForHA(true) // leader
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+		MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+	}
+
+	// Baseline: all criteria pass → HA_READY.
+	ctx := context.Background()
+	n.haUpdateNxState(ctx)
+	if n.Ha.NxStates.HaState != hav1.HA_STATE_HA_READY {
+		t.Fatalf("baseline state = %v, want HA_READY", n.Ha.NxStates.HaState)
+	}
+
+	// Simulate out-of-service: clear InService criterion.
+	n.haUpdateCrit(ctx, HaCritInService, false)
+
+	// Local is no longer func → SVC_FAILURE.
+	if n.stableIsFunc() {
+		t.Error("stableIsFunc should be false after HaCritInService=false")
+	}
+	// Peer is ready → local should derive HA_SWITCHOVER (standby side).
+	if n.Ha.NxStates.HaState != hav1.HA_STATE_HA_SWITCHOVER {
+		t.Errorf("state after InService=false = %v, want HA_SWITCHOVER", n.Ha.NxStates.HaState)
+	}
+}
+
+// TestHaCheckAdjMbr_AdjTimeout_HaStateUpdated verifies that when an adjacency
+// times out, the peer HA state is set to HA_FAIL and haUpdateNxState is called
+// so the local derived HA state changes appropriately (e.g. HA_READY → HA_NOTREADY
+// when the only peer goes unknown).
+func TestHaCheckAdjMbr_AdjTimeout_HaStateUpdated(t *testing.T) {
+	n := newTestNxosForHA(true) // leader
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+
+	// Set up adjacency that is already expired.
+	n.Ha.Adjacencies[peer] = HaAdj{
+		Connected: true,
+		Epoch:     0, // epoch=0 means it will always be expired
+	}
+	// Peer is ready and HA criteria pass → leader should be HA_READY.
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+		MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+	}
+	n.haUpdateNxState(context.Background())
+	if n.Ha.NxStates.HaState != hav1.HA_STATE_HA_READY {
+		t.Fatalf("baseline state = %v, want HA_READY", n.Ha.NxStates.HaState)
+	}
+
+	// Run adjacency check — should expire the adjacency and recalculate state.
+	n.haCheckAdjMbr(context.Background())
+
+	// Adjacency should be gone.
+	n.RLock()
+	_, adjExists := n.Ha.Adjacencies[peer]
+	peerState, _ := n.GetHaPeer(peer)
+	derivedState := n.Ha.NxStates.HaState
+	n.RUnlock()
+
+	if adjExists {
+		t.Error("adjacency should have been removed after timeout")
+	}
+	if peerState.State != hav1.MBR_STATE_HA_FAIL {
+		t.Errorf("peer HA state = %v, want MBR_STATE_HA_FAIL", peerState.State)
+	}
+	// With adjacency gone, PeerSvcStates[peer] = PeerSvcUnknown → local ready, peer unknown → HA_NOTREADY.
+	if derivedState != hav1.HA_STATE_HA_NOTREADY {
+		t.Errorf("derived HA state after adj timeout = %v, want HA_NOTREADY", derivedState)
+	}
+}
+
 // TestReconBatches_NoContest verifies that when no GID is contested all
 // entries land in batch 2 and batch 1 is empty.
 func TestReconBatches_NoContest(t *testing.T) {

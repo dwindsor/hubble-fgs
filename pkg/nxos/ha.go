@@ -603,6 +603,46 @@ func (n *Nxos) haNotifyRemoval(ctx context.Context, peer string) {
 	}
 }
 
+// haNotifyServiceFailureLocked sends the current member info (with SVC_FAILURE)
+// via the Adjacency RPC to all connected peers.  Called when transitioning to
+// out-of-service before a graceful restart, so the peer can immediately
+// update its state (e.g. to HA_TAKEOVER) instead of waiting for adjacency
+// timeout.
+//
+// Caller must hold n.Lock().  gRPC calls are made under the lock following
+// the same pattern as haNotifyRemovalLocked.
+func (n *Nxos) haNotifyServiceFailureLocked(ctx context.Context) {
+	logger.GetLogger().Debug("haNotifyServiceFailureLocked")
+
+	if !n.Ha.IsLeader {
+		logger.GetLogger().Debug("haNotifyServiceFailureLocked: not leader, skip")
+		return
+	}
+
+	info := n.HaGetMbrInfo(ctx, "", false)
+
+	for peer, adj := range n.Ha.Adjacencies {
+		if !adj.Connected {
+			logger.GetLogger().Debug("haNotifyServiceFailureLocked: peer not connected, skip", "peer", peer)
+			continue
+		}
+		grpcClient := adj.GrpcClient.Client
+		if grpcClient == nil {
+			logger.GetLogger().Debug("haNotifyServiceFailureLocked: grpc client is nil, skip", "peer", peer)
+			continue
+		}
+		req := &hav1.AdjRequest{
+			HaIp:    n.Ha.HaIp,
+			MbrInfo: &info,
+		}
+		logger.GetLogger().Debug("Sending service failure notification to peer", "peer", peer)
+		_, err := grpcClient.Adjacency(ctx, req)
+		if err != nil {
+			logger.GetLogger().Error("Failed to send service failure notification", "peer", peer, "error", err)
+		}
+	}
+}
+
 // haNotifyRemovalLocked is the lock-free variant of haNotifyRemoval.
 // Caller must hold n.Lock(). The gRPC call is made without re-acquiring
 // the lock since the caller already holds the write lock.
@@ -973,12 +1013,14 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 	n.Lock()
 	defer n.Unlock()
 
+	changed := false
 	for ip, mbr := range n.Ha.Members {
 		if now-mbr.Epoch > mbrTimeout {
 			logger.GetLogger().Debug("Member timed out", "ip", ip)
 			delete(n.Ha.Members, ip)
 			n.Ha.PeerSvcStates[ip] = PeerSvcUnknown
 			n.HaUpdatePtnr(ctx, ip, true)
+			changed = true
 		}
 	}
 	for ip, adj := range n.Ha.Adjacencies {
@@ -997,7 +1039,15 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 				n.SetHaPeer(ip, peer)
 			}
 			n.setRemoteStatesAdjDown(ctx, ip)
+			changed = true
 		}
+	}
+
+	// Recalculate local HA state after any membership or adjacency changes
+	// so the derived state (TAKEOVER, SWITCHOVER, etc.) reflects the new
+	// peer reachability.
+	if changed {
+		n.haUpdateNxState(ctx)
 	}
 }
 

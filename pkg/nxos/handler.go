@@ -608,6 +608,12 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicy(ctx context.Context, items *
 		modified := n.setInService(ctx, false)
 		if modified {
 			logger.GetLogger().Debug("Hypershield is disabled")
+			// Update HA criteria so local state reflects SVC_FAILURE and
+			// notify peers before restarting.  This allows the peer to
+			// transition immediately (e.g. to HA_TAKEOVER) instead of
+			// waiting for adjacency timeout.
+			n.haUpdateCrit(ctx, HaCritInService, false)
+			n.haNotifyServiceFailureLocked(ctx)
 			// Graceful restart the agent with cleanup.
 			n.GracefulRestartAgent(ctx, true)
 		}
