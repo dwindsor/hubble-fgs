@@ -274,7 +274,7 @@ github.com/cilium/cilium/pkg/time
 github.com/cilium/cilium/pkg/util
 github.com/cilium/cilium/pkg/version
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
+# github.com/cilium/ebpf v0.21.0
 ## explicit; go 1.24.0
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
@@ -306,7 +306,7 @@ github.com/cilium/hive/script/internal/diff
 # github.com/cilium/lumberjack/v2 v2.4.2
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20260320141758-2c0ac9142d48 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20260323175730-7aae9ea2ebbb => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker

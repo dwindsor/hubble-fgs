@@ -10,9 +10,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.2
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.18.6
-	github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
+	github.com/cilium/ebpf v0.21.0
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.7.0-pre.0.0.20260320141758-2c0ac9142d48
+	github.com/cilium/tetragon v1.7.0-pre.0.0.20260323175730-7aae9ea2ebbb
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df

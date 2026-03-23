@@ -84,8 +84,8 @@ github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UF
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cilium/cilium v1.18.6 h1:acz5aRKhZbarCO1flx2vCP9wBh+lDc02uJgdqiTsJbA=
 github.com/cilium/cilium v1.18.6/go.mod h1:mzpKpkILwP24adE975fTVdAojyy6C1tq7TDa9qZCWyo=
-github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e h1:RVxO7xhGjAkkViOD76BP33+ZkRqDvCzXDKZ0L6RwCos=
-github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e/go.mod h1:dM+AMI6FkW5LOkzikdefUmzK0z81o7GqiKXon7D1F58=
+github.com/cilium/ebpf v0.21.0 h1:4dpx1J/B/1apeTmWBH5BkVLayHTkFrMovVPnHEk+l3k=
+github.com/cilium/ebpf v0.21.0/go.mod h1:1kHKv6Kvh5a6TePP5vvvoMa1bclRyzUXELSs272fmIQ=
 github.com/cilium/hive v0.0.0-20250611195437-5a5dacdfb354 h1:4G9PC8nQw4pGW5wCMA0g8J8rK1l4C3owlceAOQggXzs=
 github.com/cilium/hive v0.0.0-20250611195437-5a5dacdfb354/go.mod h1:pI2GJ1n3SLKIQVFrKF7W6A6gb6BQkZ+3Hp4PAEo5SuI=
 github.com/cilium/lumberjack/v2 v2.4.2 h1:Wea2z1+ikRhjS5z36I6vgeMlgh7xzvIzqW+t9tTvpkQ=

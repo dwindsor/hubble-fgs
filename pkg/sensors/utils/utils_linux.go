@@ -182,7 +182,7 @@ func _checkFuncByFuncVerif() error {
 	proto := &btf.FuncProto{Return: u32}
 	fn := &btf.Func{Name: "f", Type: proto, Linkage: btf.GlobalFunc}
 
-	builder, err := btf.NewBuilder([]btf.Type{u32, proto, fn})
+	builder, err := btf.NewBuilder([]btf.Type{u32, proto, fn}, nil)
 	if err != nil {
 		return err
 	}

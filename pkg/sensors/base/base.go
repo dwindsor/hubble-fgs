@@ -82,12 +82,15 @@ var (
 		"execve",
 	).SetPolicy(sensors.BaseSensorName)
 
+	// changed from "seccomp" to "socket" because of
+	// https://github.com/cilium/ebpf/commit/d9790fefdf5d8f55b9a29c44fbbc0f0ae5dcb4e7
+	// and https://github.com/cilium/tetragon/commit/29c6fbf1c
 	ExecveMapUpdate = program.Builder(
 		config.ExecUpdateObj(),
-		"seccomp",
-		"seccomp",
+		"socket",
+		"socket",
 		"execve_map_update",
-		"seccomp",
+		"socket",
 	).SetPolicy(sensors.BaseSensorName)
 
 	ExecveBprmCommit = program.Builder(
