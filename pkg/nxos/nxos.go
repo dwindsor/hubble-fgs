@@ -194,11 +194,10 @@ func (n *Nxos) initiate(ctx context.Context) error {
 		n.Ha.Local.Criteria[HaCritDpuHealth] = false
 		n.Ha.Local.Criteria[HaCritDpuInSync] = false
 	}
-	n.Ha.Local.Criteria[HaCritSvcRedir] = false
+	n.Ha.Local.Criteria[HaCritInService] = false
 	n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
-	n.Ha.EverReady = false
+	n.Ha.PeerSvcStates = make(map[string]PeerServiceState)
 	n.Ha.Watching = true
-	n.Ha.Partners = make(map[string]struct{})
 	n.Ha.IsLeader = true
 
 	n.haInit(ctx)
@@ -500,7 +499,7 @@ func (n *Nxos) waitForChange(ctx context.Context) error {
 		logger.GetLogger().Error("stage", logfields.Error, err, "stage", n.Stage)
 		return err
 	}
-	n.HaUpdateCrit(ctx, HaCritSvcRedir, true)
+	n.HaUpdateCrit(ctx, HaCritInService, true)
 
 	for {
 		select {
@@ -840,6 +839,11 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 func (n *Nxos) cleanup(ctx context.Context, resetConn bool) {
 	logger.GetLogger().Debug("clean up fw policy state, system state and service redir")
 
+	// Set local state to not-ready BEFORE removing redirects
+	if n.isConfigured(ctx, false) && !n.IsDelSvcFw {
+		n.setLocalSvcStateToFailure(ctx)
+	}
+
 	// reset connection state
 	if resetConn {
 		n.ResetConn(ctx)
@@ -882,10 +886,6 @@ func (n *Nxos) cleanup(ctx context.Context, resetConn bool) {
 	}
 
 	n.remove(ctx, allocFname)
-
-	if n.isConfigured(ctx, false) && !n.IsDelSvcFw {
-		n.setLocalSvcStateToFailure(ctx)
-	}
 }
 
 func (n *Nxos) setSkipReg(_ context.Context, reason string) {

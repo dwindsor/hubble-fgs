@@ -17,6 +17,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
+
+	"golang.design/x/chann"
 )
 
 // stubPolicyHandler satisfies switchpolicy.PolicyHandler without any real logic.
@@ -50,8 +52,11 @@ func newTestNxos() *Nxos {
 	n.Ha.peers = make(map[string]HaPeer)
 	n.Ha.Members = make(map[string]HaMbr)
 	n.Ha.Adjacencies = make(map[string]HaAdj)
+	n.Ha.PeerSvcStates = make(map[string]PeerServiceState)
+	n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
 	n.Vrfs = make(map[string]VrfBd)
 	n.Bds = make(map[string]VrfBd)
+	n.WaitHa = chann.New[string]()
 	return n
 }
 
@@ -295,6 +300,163 @@ func TestHaSetMbrInfo_LbModeMismatch(t *testing.T) {
 	}
 	if result.Reason == "" {
 		t.Error("Reason should be non-empty on LB mode mismatch")
+	}
+}
+
+// newTestNxosForHA returns a minimal Nxos with HA state initialized for
+// deriveAgentHaState and standby criteria tests.
+func newTestNxosForHA(isLeader bool) *Nxos {
+	n := newTestNxos()
+	n.Ha.enabled = true
+	n.Ha.operUp = true
+	n.Ha.IsLeader = isLeader
+	n.Ha.HaIp = "10.0.0.1"
+	n.Ha.Local.Criteria = map[HaCrit]bool{
+		HaCritDpuHealth: true,
+		HaCritDpuInSync: true,
+		HaCritInService: true,
+	}
+	n.Ha.Local.IsFunc = true
+	return n
+}
+
+// TestDeriveAgentHaState_BothReadyPeerHAFail_LeaderTakeover verifies that
+// when both peers are ready but HA criteria fail, the leader computes TAKEOVER.
+func TestDeriveAgentHaState_BothReadyPeerHAFail_LeaderTakeover(t *testing.T) {
+	n := newTestNxosForHA(true) // leader
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // HA fail
+
+	// Leader should NOT get standby criteria injected.
+	n.haEvaluateStandbyCrit()
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
+		t.Error("Leader should not have HaCritHaStandby injected")
+	}
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_TAKEOVER {
+		t.Errorf("Leader state = %v, want HA_TAKEOVER", state)
+	}
+}
+
+// TestDeriveAgentHaState_BothReadyPeerHAFail_FollowerSwitchover verifies that
+// when both peers are ready but HA criteria fail, the follower gets standby
+// criteria injected and computes SWITCHOVER with SVC_FAILURE.
+func TestDeriveAgentHaState_BothReadyPeerHAFail_FollowerSwitchover(t *testing.T) {
+	n := newTestNxosForHA(false) // follower
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // HA fail
+
+	// Follower should get standby criteria injected.
+	n.haEvaluateStandbyCrit()
+	if v, has := n.Ha.Local.Criteria[HaCritHaStandby]; !has || v != false {
+		t.Error("Follower should have HaCritHaStandby = false")
+	}
+	if n.Ha.Local.IsFunc {
+		t.Error("Follower IsFunc should be false after standby criteria injection")
+	}
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_SWITCHOVER {
+		t.Errorf("Follower state = %v, want HA_SWITCHOVER", state)
+	}
+}
+
+// TestStandbyCrit_Recovery verifies that when peer HA criteria recover,
+// the standby criteria is removed and the follower can return to READY.
+func TestStandbyCrit_Recovery(t *testing.T) {
+	n := newTestNxosForHA(false) // follower
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+
+	// Initially: HA fail → standby injected
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false}
+	n.haEvaluateStandbyCrit()
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; !has {
+		t.Fatal("Expected standby criteria to be injected")
+	}
+
+	// Recovery: all peer criteria pass
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+		MembershipOk: true,
+		PolicyOk:     true,
+		KeepaliveOk:  true,
+		BulkSyncOk:   true,
+	}
+	n.haEvaluateStandbyCrit()
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
+		t.Error("Standby criteria should be removed after peer recovery")
+	}
+	if !n.Ha.Local.IsFunc {
+		t.Error("IsFunc should be true after standby criteria removal")
+	}
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_READY {
+		t.Errorf("Follower state after recovery = %v, want HA_READY", state)
+	}
+}
+
+// TestHaHandleNotify_LeaderTakeover verifies that when the follower receives
+// a Notify with HA_TAKEOVER from the leader, the standby criteria injection
+// is transient — haEvaluateStandbyCrit removes it when peer HA criteria are healthy.
+func TestHaHandleNotify_LeaderTakeover(t *testing.T) {
+	n := newTestNxosForHA(false) // follower
+	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_READY
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true}
+
+	haInfo := &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_TAKEOVER,
+	}
+	resp := n.HaHandleNotify(context.Background(), peer, haInfo)
+
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
+		t.Error("Expected standby criteria to be removed by haEvaluateStandbyCrit")
+	}
+	if resp.Ha != hav1.HA_STATE_HA_READY {
+		t.Errorf("Response HA state = %v, want HA_READY", resp.Ha)
+	}
+	if resp.Service != hav1.SERVICE_STATE_SVC_SUCCESS {
+		t.Errorf("Response service state = %v, want SVC_SUCCESS", resp.Service)
+	}
+}
+
+// TestHaHandleNotify_Recovery verifies that when the follower receives
+// a Notify with HA_READY, it removes the standby criteria.
+func TestHaHandleNotify_Recovery(t *testing.T) {
+	n := newTestNxosForHA(false) // follower
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true}
+
+	// Pre-inject standby criteria
+	n.Ha.Local.Criteria[HaCritHaStandby] = false
+	n.Ha.Local.IsFunc = false
+
+	haInfo := &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_READY,
+	}
+	resp := n.HaHandleNotify(context.Background(), peer, haInfo)
+
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
+		t.Error("Standby criteria should be removed after recovery Notify")
+	}
+	if resp.Ha != hav1.HA_STATE_HA_READY {
+		t.Errorf("Response HA state = %v, want HA_READY", resp.Ha)
+	}
+	if resp.Service != hav1.SERVICE_STATE_SVC_SUCCESS {
+		t.Errorf("Response service state = %v, want SVC_SUCCESS", resp.Service)
 	}
 }
 

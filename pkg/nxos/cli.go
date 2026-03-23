@@ -20,6 +20,8 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
 
 func (n *Nxos) ShowStatus(_ context.Context) string {
@@ -88,31 +90,60 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 		return "FAIL"
 	}
 
+	haStateName := func(s hav1.HA_STATE) string {
+		switch s {
+		case hav1.HA_STATE_HA_READY:
+			return "active/active"
+		case hav1.HA_STATE_HA_NOTREADY:
+			return "standalone"
+		case hav1.HA_STATE_HA_TAKEOVER:
+			return "active/standby (active)"
+		case hav1.HA_STATE_HA_SWITCHOVER:
+			return "active/standby (standby)"
+		case hav1.HA_STATE_HA_DEGRADED:
+			return "unavailable"
+		case hav1.HA_STATE_NO_HA:
+			return "no-ha"
+		default:
+			return "unknown"
+		}
+	}
+
 	// NX states (local + peer)
 	status := "\n=== NX States ==="
-	status += fmt.Sprintf("\n  Local HA: %v  Svc: %v",
-		n.Ha.NxStates.HaState, n.Ha.NxStates.SvcState)
+	localSvcName := "not-ready"
+	if n.Ha.NxStates.SvcState == hav1.SERVICE_STATE_SVC_SUCCESS {
+		localSvcName = "ready"
+	}
+	status += fmt.Sprintf("\n  Local HA: %v (%v)  Svc: %v",
+		n.Ha.NxStates.HaState, haStateName(n.Ha.NxStates.HaState), localSvcName)
 	for ip := range n.GetHaPeers() {
-		peerHa := "UNKNOWN"
-		if mbr, ok := n.Ha.Members[ip]; ok && mbr.Info.HaInfo != nil {
-			peerHa = fmt.Sprintf("%v", mbr.Info.HaInfo.Ha)
-		}
-		peerSvc := "SVC_UNKNOWN"
-		if adj, ok := n.Ha.Adjacencies[ip]; ok && adj.Connected {
-			if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok && peerCrit.IsOk() {
-				peerSvc = "SVC_SUCCESS"
-			} else {
-				peerSvc = "SVC_FAILURE"
+		peerSvc := "unknown"
+		if ps, ok := n.Ha.PeerSvcStates[ip]; ok {
+			switch ps {
+			case PeerSvcReady:
+				peerSvc = "ready"
+			case PeerSvcNotReady:
+				peerSvc = "not-ready"
 			}
 		}
-		status += fmt.Sprintf("\n  Peer %v HA: %v  Svc: %v",
-			ip, peerHa, peerSvc)
+		peerHA := "ha-fail"
+		if pc, ok := n.Ha.PeerCriteria[ip]; ok && pc.IsOk() {
+			peerHA = "ha-ok"
+		}
+		status += fmt.Sprintf("\n  Peer %v: Svc=%v  HA=%v", ip, peerSvc, peerHA)
 	}
 
 	// Local state
 	status += "\n\n=== Local State ==="
 	status += fmt.Sprintf("\n  IP: %v  Leader: %v  Enabled: %v  Oper Ready: %v",
 		n.Ha.HaIp, n.Ha.IsLeader, n.GetHaEnabled(), n.GetHaOperUp())
+	localSvc := "not-ready"
+	if n.Ha.Local.IsFunc {
+		localSvc = "ready"
+	}
+	status += fmt.Sprintf("\n  Local Service: %v  IsFunc: %v  Recovery Pending: %v  Flaps: %v",
+		localSvc, n.Ha.Local.IsFunc, n.Ha.Local.IsFuncRecoveryPending, n.Ha.Local.FlapCount)
 	status += fmt.Sprintf("\n  Model: %v  SerNum: %v  SwVer: %v  CpaVer: %v  LbMode: %v  DPUs: %v",
 		n.Model, n.SerNum, n.SwVer, n.CpaVer, n.LbMode, len(n.Dpus))
 	if n.Ha.Watching {
@@ -155,8 +186,8 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 		}
 		status += fmt.Sprintf("\n  %v HA State: %v  IP Config OK: %v%s", ip, peer.State, peer.IpConfigOk, reason)
 		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
-			status += fmt.Sprintf("\n    [%s] Service  [%s] Policy  [%s] Keepalive  [%s] Bulk Sync",
-				okOrFail(peerCrit.ServiceOk), okOrFail(peerCrit.PolicyOk),
+			status += fmt.Sprintf("\n    [%s] Membership  [%s] Policy  [%s] Keepalive  [%s] Bulk Sync",
+				okOrFail(peerCrit.MembershipOk), okOrFail(peerCrit.PolicyOk),
 				okOrFail(peerCrit.KeepaliveOk), okOrFail(peerCrit.BulkSyncOk))
 		}
 	}
@@ -192,11 +223,17 @@ func (n *Nxos) ShowMbr(_ context.Context) string {
 		status += fmt.Sprintf("\n IP: %v, updated at: %v, info: %+v",
 			ip, mbr.Epoch, mbr.Info)
 	}
-	if len(n.Ha.Partners) > 0 {
-
-		status += "\n HA parteners:"
-		for ip := range n.Ha.Partners {
-			status += " " + ip
+	if len(n.Ha.PeerSvcStates) > 0 {
+		status += "\n Peer service states:"
+		for ip, svc := range n.Ha.PeerSvcStates {
+			svcStr := "unknown"
+			switch svc {
+			case PeerSvcReady:
+				svcStr = "ready"
+			case PeerSvcNotReady:
+				svcStr = "not-ready"
+			}
+			status += fmt.Sprintf(" %s=%s", ip, svcStr)
 		}
 	}
 	status += "\n"

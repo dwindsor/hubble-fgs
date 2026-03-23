@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HaClient interface {
 	Adjacency(ctx context.Context, in *AdjRequest, opts ...grpc.CallOption) (*AdjResponse, error)
+	Notify(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyResponse, error)
 }
 
 type haClient struct {
@@ -42,11 +43,21 @@ func (c *haClient) Adjacency(ctx context.Context, in *AdjRequest, opts ...grpc.C
 	return out, nil
 }
 
+func (c *haClient) Notify(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyResponse, error) {
+	out := new(NotifyResponse)
+	err := c.cc.Invoke(ctx, "/proto.ha.v1.Ha/Notify", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HaServer is the server API for Ha service.
 // All implementations must embed UnimplementedHaServer
 // for forward compatibility
 type HaServer interface {
 	Adjacency(context.Context, *AdjRequest) (*AdjResponse, error)
+	Notify(context.Context, *NotifyRequest) (*NotifyResponse, error)
 	mustEmbedUnimplementedHaServer()
 }
 
@@ -56,6 +67,9 @@ type UnimplementedHaServer struct {
 
 func (UnimplementedHaServer) Adjacency(context.Context, *AdjRequest) (*AdjResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Adjacency not implemented")
+}
+func (UnimplementedHaServer) Notify(context.Context, *NotifyRequest) (*NotifyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
 }
 func (UnimplementedHaServer) mustEmbedUnimplementedHaServer() {}
 
@@ -88,6 +102,24 @@ func _Ha_Adjacency_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Ha_Notify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NotifyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HaServer).Notify(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.ha.v1.Ha/Notify",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HaServer).Notify(ctx, req.(*NotifyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Ha_ServiceDesc is the grpc.ServiceDesc for Ha service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -98,6 +130,10 @@ var Ha_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Adjacency",
 			Handler:    _Ha_Adjacency_Handler,
+		},
+		{
+			MethodName: "Notify",
+			Handler:    _Ha_Notify_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

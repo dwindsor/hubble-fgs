@@ -118,17 +118,26 @@ func (s DpuBulkSyncStatus) Done() bool {
 	return s.LocalDone && s.PeerDone
 }
 
-// HaPeerCriteria tracks the per-peer HA criteria
+// PeerServiceState represents the peer's self-reported local service state.
+type PeerServiceState int
+
+const (
+	PeerSvcUnknown  PeerServiceState = iota // No adjacency / no connectivity
+	PeerSvcReady                            // Peer reports SVC_SUCCESS
+	PeerSvcNotReady                         // Peer reports SVC_FAILURE
+)
+
+// HaPeerCriteria tracks the per-peer HA criteria (membership + adjacency).
 type HaPeerCriteria struct {
-	ServiceOk   bool // Peer reports SVC_SUCCESS
-	PolicyOk    bool // Policy revision matches with this peer
-	KeepaliveOk bool // All DPUs have keepalive up
-	BulkSyncOk  bool // All DPUs have bulk sync complete
+	MembershipOk bool // All membership criteria pass (model, version, DPU count, LB mode)
+	PolicyOk     bool // Policy revision matches with this peer
+	KeepaliveOk  bool // All DPUs have keepalive up
+	BulkSyncOk   bool // All DPUs have bulk sync complete
 }
 
-// IsOk returns true if all per-peer criteria pass
+// IsOk returns true if all per-peer HA criteria pass (membership + adjacency).
 func (c HaPeerCriteria) IsOk() bool {
-	return c.ServiceOk && c.PolicyOk && c.KeepaliveOk && c.BulkSyncOk
+	return c.MembershipOk && c.PolicyOk && c.KeepaliveOk && c.BulkSyncOk
 }
 
 type HaCrit string
@@ -136,8 +145,9 @@ type HaCrit string
 const (
 	HaCritDpuHealth HaCrit = "dpu healthy"
 	HaCritDpuInSync HaCrit = "dpu insync"
-	HaCritSvcRedir  HaCrit = "service redir ok"
+	HaCritInService HaCrit = "in service"
 	HaCritDebugFail HaCrit = "debug override"
+	HaCritHaStandby HaCrit = "ha standby"
 )
 
 type HaLocal struct {
@@ -189,10 +199,9 @@ type Ha struct {
 	PolRev   string
 
 	// derived local and remote
-	Local        HaLocal
-	Partners     map[string]struct{}
-	PeerCriteria map[string]HaPeerCriteria // per-peer criteria (key: peer HA IP)
-	EverReady    bool                      // true after HA_READY reached once
+	Local         HaLocal
+	PeerSvcStates map[string]PeerServiceState // per-peer service state (key: peer HA IP)
+	PeerCriteria  map[string]HaPeerCriteria   // per-peer HA criteria (key: peer HA IP)
 
 	// states to nx
 	NxStates HaNxStates

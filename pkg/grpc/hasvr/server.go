@@ -103,3 +103,23 @@ func (s *haServer) Adjacency(_ context.Context, req *hav1.AdjRequest) (*hav1.Adj
 		MbrInfo: &info,
 	}, nil
 }
+
+func (s *haServer) Notify(_ context.Context, req *hav1.NotifyRequest) (*hav1.NotifyResponse, error) {
+	logger.GetLogger().Debug("Received Notify", "peer", req.HaIp, "haInfo", req.HaInfo)
+
+	if !nxos.Nexus.IsPeerOk(s.Ctx, req.HaIp) {
+		logger.GetLogger().Debug("Unexpected peer on notify", "peer", req.HaIp)
+		return &hav1.NotifyResponse{
+			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
+			Details: "Unexpected peer",
+		}, nil
+	}
+
+	localHaInfo := nxos.Nexus.HaHandleNotify(s.Ctx, req.HaIp, req.HaInfo)
+
+	return &hav1.NotifyResponse{
+		Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS,
+		Details: "Notify successful",
+		HaInfo:  localHaInfo,
+	}, nil
+}

@@ -6,6 +6,7 @@ option go_package = "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1";
 
 service Ha {
     rpc Adjacency(AdjRequest) returns (AdjResponse) {}
+    rpc Notify(NotifyRequest) returns (NotifyResponse) {}
 }
 
 enum ADJ_RESPONSE_STATUS {
@@ -22,9 +23,11 @@ enum SERVICE_STATE {
 
 enum HA_STATE {
     NO_HA = 0;
-    HA_READY = 1;
-    HA_NOTREADY = 2;
-    HA_SWITCHOVER = 3;
+    HA_READY = 1;       // active/active (MO: ha-ready)
+    HA_NOTREADY = 2;    // standalone (MO: ha-not-ready)
+    HA_SWITCHOVER = 3;  // active/standby standby side (MO: ha-switchover)
+    HA_TAKEOVER = 4;    // active/standby active side (MO: ha-takeover)
+    HA_DEGRADED = 5;    // unavailable (MO: ha-degraded)
 }
 
 enum MBR_STATE {
@@ -88,4 +91,16 @@ message AdjResponse {
     string details = 2; // status details if error
     string trace_id = 3;
     MbrInfo mbr_info = 4;
+}
+
+message NotifyRequest {
+    string trace_id = 1;
+    string ha_ip = 2;
+    HaInfo ha_info = 3;
+}
+
+message NotifyResponse {
+    ADJ_RESPONSE_STATUS status = 1;
+    string details = 2;
+    HaInfo ha_info = 3;
 }

@@ -1133,12 +1133,11 @@ func (n *Nxos) delHa(ctx context.Context) {
 	n.Ha.Members = make(map[string]HaMbr)
 	n.Ha.Alloc = make(map[string]HaAlloc)
 	n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
-	n.Ha.Partners = make(map[string]struct{})
+	n.Ha.PeerSvcStates = make(map[string]PeerServiceState)
 	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_NOTREADY
 	n.Ha.NxStates.HaStateEpoch = 0
 	n.Ha.NxStates.SvcStateEpoch = 0
 	n.Ha.IsLeader = false
-	n.Ha.EverReady = false
 	n.Ha.Local.IsFunc = false
 	n.Ha.Local.IsFuncRecoveryPending = false
 	n.Ha.Local.PendingEpoch = 0
@@ -1169,7 +1168,7 @@ func (n *Nxos) delPeer(ctx context.Context, peer string) {
 	n.SetHaPeers(make(map[string]HaPeer))
 	n.Ha.Alloc = make(map[string]HaAlloc)
 	n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
-	n.Ha.Partners = make(map[string]struct{})
+	n.Ha.PeerSvcStates = make(map[string]PeerServiceState)
 	select {
 	case n.WaitHa.In() <- WakeHa:
 	default:
@@ -1191,6 +1190,7 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(ctx context.Context, items *mo
 		n.Ha.Members = make(map[string]HaMbr)
 		n.SetHaPeers(make(map[string]HaPeer))
 		n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
+		n.Ha.PeerSvcStates = make(map[string]PeerServiceState)
 		select {
 		case n.WaitHa.In() <- WakeHa:
 		default:
@@ -1241,11 +1241,14 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(ctx context.Context, items *mo
 		// PolicyOk starts as true until adjacency validates
 		if n.Ha.PeerCriteria != nil {
 			n.Ha.PeerCriteria[pip] = HaPeerCriteria{
-				ServiceOk:   false,
-				PolicyOk:    true,
-				KeepaliveOk: n.aggregateDpuKeepalive(),
-				BulkSyncOk:  n.aggregateDpuBulkSync(),
+				MembershipOk: false,
+				PolicyOk:     true,
+				KeepaliveOk:  n.aggregateDpuKeepalive(),
+				BulkSyncOk:   n.aggregateDpuBulkSync(),
 			}
+		}
+		if n.Ha.PeerSvcStates != nil {
+			n.Ha.PeerSvcStates[pip] = PeerSvcUnknown
 		}
 		// Push initial svc_unknown: adj not yet established for new peer.
 		n.setRemoteSvcState(ctx, pip)

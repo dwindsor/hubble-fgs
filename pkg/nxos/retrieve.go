@@ -305,6 +305,13 @@ func (n *Nxos) getLocalHaState(ctx context.Context) {
 			case model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_switchover:
 				n.Ha.NxStates.HaState = hav1.HA_STATE_HA_SWITCHOVER
 
+			case model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_init:
+				// ha_init maps to HA_TAKEOVER (temporary until YANG model updated)
+				n.Ha.NxStates.HaState = hav1.HA_STATE_HA_TAKEOVER
+
+			case model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_degraded:
+				n.Ha.NxStates.HaState = hav1.HA_STATE_HA_DEGRADED
+
 			case model.Cisco_NX_OSDevice_SasAgentHaStateE_no_ha:
 
 			default:

@@ -1197,23 +1197,27 @@ func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 		IpAddr: &ip,
 	}
 
-	// Determine three-way peer SVC state based on adjacency and criteria.
+	// Determine peer SVC state from what the peer actually reports.
 	adj, adjExists := n.Ha.Adjacencies[ip]
 	adjUp := adjExists && adj.Connected
 	if !adjUp {
 		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
 		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
 	} else {
-		peerSvcOk := false
-		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
-			peerSvcOk = peerCrit.IsOk()
+		peerSvc, ok := n.Ha.PeerSvcStates[ip]
+		if !ok {
+			peerSvc = PeerSvcUnknown
 		}
-		logger.GetLogger().Debug("setRemoteSvcState", "peerCritOk", peerSvcOk)
-		if peerSvcOk {
+		logger.GetLogger().Debug("setRemoteSvcState", "peerSvc", peerSvc)
+		switch peerSvc {
+		case PeerSvcReady:
 			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
 			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_fw_config
-		} else {
+		case PeerSvcNotReady:
 			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
+			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
+		default:
+			list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
 			list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
 		}
 	}
@@ -1286,6 +1290,13 @@ func (n *Nxos) setLocalHaState(ctx context.Context) error {
 
 	case hav1.HA_STATE_HA_SWITCHOVER:
 		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_switchover
+
+	case hav1.HA_STATE_HA_TAKEOVER:
+		// Map to ha_init temporarily until YANG model is updated
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_init
+
+	case hav1.HA_STATE_HA_DEGRADED:
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_degraded
 	}
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
 		Format:        ygot.RFC7951,

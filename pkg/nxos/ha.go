@@ -220,10 +220,12 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	if info.HaInfo != nil && info.HaInfo.Ha == hav1.HA_STATE_NO_HA {
 		logger.GetLogger().Info("Peer signaled HA removal (NO_HA state)", "peer", peer)
 
-		// Remove peer from runtime state (Partners, Members) but NOT from config (n.Ha.peers).
+		// Remove peer from runtime state (Members) but NOT from config (n.Ha.peers).
 		// Peer stays in config so haSetup() will try to reconnect.
-		delete(n.Ha.Partners, peer)
 		delete(n.Ha.Members, peer)
+
+		// Set peer service state to unknown since connectivity is lost
+		n.Ha.PeerSvcStates[peer] = PeerSvcUnknown
 
 		// Set peer state to NA (not FAIL - this isn't a failure)
 		if haPeer, ok := n.GetHaPeer(peer); ok {
@@ -234,8 +236,8 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 			n.setRemoteMbrState(ctx, peer)
 		}
 
-		// Update HA state - go to NOTREADY if no partners (not SWITCHOVER)
-		n.haUpdateNxStateForRemoval(ctx)
+		// Update HA state via table-based derivation
+		n.haUpdateNxState(ctx)
 
 		// Wake up HA setup to try reconnecting to new members
 		select {
@@ -347,10 +349,34 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	}
 	n.HaUpdatePtnr(ctx, peer, isDel)
 
-	// Update ServiceOk on peer criteria from peer's self-reported service state.
-	// updatePeerServiceCrit will call setRemoteSvcState only if ServiceOk changes.
-	svcOk := info.HaInfo != nil && info.HaInfo.Service == hav1.SERVICE_STATE_SVC_SUCCESS
-	n.updatePeerServiceCrit(ctx, peer, svcOk)
+	// Update peer service state from peer's self-reported state.
+	if info.HaInfo != nil {
+		var newPeerSvc PeerServiceState
+		switch info.HaInfo.Service {
+		case hav1.SERVICE_STATE_SVC_SUCCESS:
+			newPeerSvc = PeerSvcReady
+		case hav1.SERVICE_STATE_SVC_FAILURE:
+			newPeerSvc = PeerSvcNotReady
+		default:
+			newPeerSvc = PeerSvcUnknown
+		}
+		prevPeerSvc := n.Ha.PeerSvcStates[peer]
+		n.Ha.PeerSvcStates[peer] = newPeerSvc
+		if prevPeerSvc != newPeerSvc {
+			n.setRemoteSvcState(ctx, peer)
+			n.haUpdateNxState(ctx)
+		}
+	}
+
+	// Update membership criteria based on validation result.
+	if crit, ok := n.Ha.PeerCriteria[peer]; ok {
+		newMembership := !isDel
+		if crit.MembershipOk != newMembership {
+			crit.MembershipOk = newMembership
+			n.Ha.PeerCriteria[peer] = crit
+			n.haUpdateNxState(ctx)
+		}
+	}
 
 	if notify {
 		n.setRemoteSvcState(ctx, peer)
@@ -508,6 +534,7 @@ func (n *Nxos) haDisconnect(_ context.Context, peer string) {
 // Caller must hold n.Lock().
 func (n *Nxos) haDisconnectLocked(peer string) {
 	delete(n.Ha.Members, peer)
+	n.Ha.PeerSvcStates[peer] = PeerSvcUnknown
 
 	if !n.Ha.IsLeader {
 		logger.GetLogger().Debug("haDisconnect: not leader, skip")
@@ -714,149 +741,228 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 	return peers
 }
 
-// anyPeerCriteriaOk returns true if at least one peer has all per-peer criteria passing.
-func (n *Nxos) anyPeerCriteriaOk() bool {
-	for _, crit := range n.Ha.PeerCriteria {
-		if crit.IsOk() {
-			return true
+// aggregatePeerStates returns the best-case peer service state and peer HA state
+// across all configured peers.
+// Caller must hold a lock.
+func (n *Nxos) aggregatePeerStates() (PeerServiceState, bool) {
+	if !n.haIsEnabled(context.Background(), false) || len(n.GetHaPeers()) == 0 {
+		return PeerSvcUnknown, false
+	}
+
+	bestPeerSvc := PeerSvcUnknown
+	peerHAOk := false
+
+	for ip := range n.GetHaPeers() {
+		if peerSvc, ok := n.Ha.PeerSvcStates[ip]; ok {
+			if peerSvc == PeerSvcReady {
+				bestPeerSvc = PeerSvcReady
+			} else if peerSvc == PeerSvcNotReady && bestPeerSvc == PeerSvcUnknown {
+				bestPeerSvc = PeerSvcNotReady
+			}
+		}
+
+		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok && peerCrit.IsOk() {
+			peerHAOk = true
 		}
 	}
-	return false
+
+	return bestPeerSvc, peerHAOk
 }
 
-// anyPeerRequiredCritFail returns true if any peer has a required criteria failure
-// (model/version mismatch) that means HA can never work with that peer.
-func (n *Nxos) anyPeerRequiredCritFail() bool {
-	for _, peer := range n.GetHaPeers() {
-		if peer.State == hav1.MBR_STATE_HA_FAIL && peer.IsRequiredCritFail {
-			return true
-		}
-	}
-	return false
-}
+// deriveAgentHaState implements the state table from HA.md.
+// Caller must hold a lock.
+func (n *Nxos) deriveAgentHaState() hav1.HA_STATE {
+	localReady := n.stableIsFunc()
+	peerSvc, peerHAOk := n.aggregatePeerStates()
 
-// anyPeerInHaReady returns true if at least one peer member has reported HA_READY state.
-// This indicates the local switch still has an active-active partner.
-func (n *Nxos) anyPeerInHaReady() bool {
-	for _, mbr := range n.Ha.Members {
-		if mbr.Info.HaInfo != nil && mbr.Info.HaInfo.Ha == hav1.HA_STATE_HA_READY {
-			return true
-		}
+	switch {
+	case localReady && peerSvc == PeerSvcReady && peerHAOk:
+		return hav1.HA_STATE_HA_READY // active/active
+	case localReady && peerSvc == PeerSvcUnknown:
+		return hav1.HA_STATE_HA_NOTREADY // standalone
+	case localReady && peerSvc == PeerSvcReady && !peerHAOk:
+		return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
+	case localReady && peerSvc == PeerSvcNotReady:
+		return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
+	case !localReady && peerSvc == PeerSvcUnknown:
+		return hav1.HA_STATE_HA_DEGRADED // unavailable
+	case !localReady && peerSvc == PeerSvcReady:
+		return hav1.HA_STATE_HA_SWITCHOVER // active/standby (standby side)
+	case !localReady && peerSvc == PeerSvcNotReady:
+		return hav1.HA_STATE_HA_DEGRADED // unavailable
+	default:
+		return hav1.HA_STATE_HA_NOTREADY
 	}
-	return false
 }
 
 func (n *Nxos) haUpdateNxState(_ context.Context) {
 	now := time.Now().Unix()
 	logger.GetLogger().Debug("haUpdateNxState", "timestamp", now)
 
+	// Evaluate standby criteria for follower before deriving state.
+	// This directly updates IsFunc without going through
+	// recalculateIsFuncAndState to avoid recursion.
+	n.haEvaluateStandbyCrit()
+
 	var svcState hav1.SERVICE_STATE
-	var haState hav1.HA_STATE
 	if n.stableIsFunc() {
-		if n.anyPeerRequiredCritFail() {
-			// Required criteria failure (model/version mismatch): HA can never work.
-			// Leader: handle all traffic (SWITCHOVER + SVC_SUCCESS).
-			// Follower: yield all traffic (NOTREADY + SVC_FAILURE).
-			if n.Ha.IsLeader {
-				svcState = hav1.SERVICE_STATE_SVC_SUCCESS
-				haState = hav1.HA_STATE_HA_SWITCHOVER
-				logger.GetLogger().Info("Required criteria failure: leader switching over")
-			} else {
-				svcState = hav1.SERVICE_STATE_SVC_FAILURE
-				haState = hav1.HA_STATE_HA_NOTREADY
-				logger.GetLogger().Info("Required criteria failure: follower going not-ready")
-			}
-		} else {
-			svcState = hav1.SERVICE_STATE_SVC_SUCCESS
-			if len(n.Ha.Partners) > 0 && n.anyPeerCriteriaOk() {
-				haState = hav1.HA_STATE_HA_READY
-				if !n.Ha.EverReady {
-					n.Ha.EverReady = true
-					logger.GetLogger().Info("HA_READY reached for the first time")
-				}
-			} else if n.Ha.EverReady {
-				if n.anyPeerInHaReady() {
-					// At least one peer is still HA_READY — stay in active-active mode
-					haState = hav1.HA_STATE_HA_READY
-					logger.GetLogger().Debug("Staying in HA_READY (at least one peer still HA_READY)")
-				} else {
-					// No peer is HA_READY — no longer in active-active mode
-					haState = hav1.HA_STATE_HA_NOTREADY
-					n.Ha.EverReady = false
-					logger.GetLogger().Info("Transitioning to HA_NOTREADY (no peer in HA_READY)")
-				}
-			} else {
-				haState = hav1.HA_STATE_HA_NOTREADY
-			}
-		}
+		svcState = hav1.SERVICE_STATE_SVC_SUCCESS
 	} else {
 		svcState = hav1.SERVICE_STATE_SVC_FAILURE
-		if n.Ha.NxStates.HaState == hav1.HA_STATE_HA_READY {
-			// Was actively in HA_READY with a peer — switchover so peer takes over
-			haState = hav1.HA_STATE_HA_SWITCHOVER
-			n.Ha.EverReady = false
-			logger.GetLogger().Info("Transitioning to HA_SWITCHOVER (was in HA_READY)")
-		} else {
-			// Already HA_NOTREADY or initializing — no peer to take over, stay NOTREADY
-			haState = hav1.HA_STATE_HA_NOTREADY
-			n.Ha.EverReady = false
-			logger.GetLogger().Debug("Staying in HA_NOTREADY (no active peer to switchover to)")
-		}
 	}
+
+	haState := n.deriveAgentHaState()
+
 	logger.GetLogger().Debug("Derived states", "svcState", svcState, "haState", haState)
 
+	changed := false
 	if n.Ha.NxStates.HaState != haState {
 		logger.GetLogger().Debug("update haState", "prev", n.Ha.NxStates.HaState, "next", haState)
 		n.Ha.NxStates.HaState = haState
 		n.Ha.NxStates.HaStateEpoch = now
+		changed = true
 	}
 	if n.Ha.NxStates.SvcState != svcState {
 		logger.GetLogger().Debug("update SvcState", "prev", n.Ha.NxStates.SvcState, "next", svcState)
 		n.Ha.NxStates.SvcState = svcState
 		n.Ha.NxStates.SvcStateEpoch = now
+		changed = true
+	}
+
+	// Wake HA loop to trigger immediate adjacency exchange so peer
+	// learns about our state change without waiting for the next tick.
+	if changed {
+		select {
+		case n.WaitHa.In() <- WakeHa:
+		default:
+		}
+
+		// Leader pushes state change to followers immediately via Notify.
+		// Run asynchronously since haUpdateNxState is called under lock.
+		if n.Ha.IsLeader {
+			go n.haNotifyPeers(context.Background())
+		}
 	}
 }
 
-// haUpdateNxStateForRemoval handles state transition when peer intentionally removes HA.
-// Unlike haUpdateNxState(), this always goes to HA_NOTREADY (not SWITCHOVER) when no partners remain,
-// because peer removal is not a failure condition - it's intentional.
-func (n *Nxos) haUpdateNxStateForRemoval(_ context.Context) {
-	now := time.Now().Unix()
-	logger.GetLogger().Debug("haUpdateNxStateForRemoval", "timestamp", now)
+// haEvaluateStandbyCrit checks whether this node (as a follower) should
+// inject or remove the HaCritHaStandby criteria.  When the follower detects
+// that peer HA criteria have failed but the peer's service is ready, the
+// leader should be active and the follower should become standby.
+// Injecting HaCritHaStandby = false causes isFunc to become false, which
+// makes deriveAgentHaState return HA_SWITCHOVER via the existing
+// !localReady && peerSvc == PeerSvcReady case.
+//
+// This directly updates criteria and IsFunc without calling
+// recalculateIsFuncAndState to avoid recursion (haUpdateNxState is called
+// from recalculateIsFuncAndState).
+// Caller must hold the lock.
+func (n *Nxos) haEvaluateStandbyCrit() {
+	peerSvc, peerHAOk := n.aggregatePeerStates()
 
+	// Follower should be standby when:
+	// - Not the leader
+	// - Peer service is ready (peer is healthy)
+	// - Peer HA criteria are NOT ok (membership/adjacency failure)
+	shouldBeStandby := !n.Ha.IsLeader && peerSvc == PeerSvcReady && !peerHAOk
+
+	_, hasStandby := n.Ha.Local.Criteria[HaCritHaStandby]
+
+	if shouldBeStandby && !hasStandby {
+		logger.GetLogger().Debug("Injecting standby criteria (follower yields to leader)")
+		n.Ha.Local.Criteria[HaCritHaStandby] = false
+		n.Ha.Local.IsFunc = n.computeIsFunc()
+	} else if !shouldBeStandby && hasStandby {
+		logger.GetLogger().Debug("Removing standby criteria (recovery or role change)")
+		delete(n.Ha.Local.Criteria, HaCritHaStandby)
+		n.Ha.Local.IsFunc = n.computeIsFunc()
+	}
+}
+
+// HaHandleNotify processes an incoming Notify RPC from a peer.
+// It updates the local standby criteria based on the peer's HA state
+// and returns the local HaInfo for the response.
+func (n *Nxos) HaHandleNotify(ctx context.Context, peer string, haInfo *hav1.HaInfo) *hav1.HaInfo {
+	n.Lock()
+	defer n.Unlock()
+
+	logger.GetLogger().Debug("HaHandleNotify", "peer", peer, "haInfo", haInfo)
+
+	if haInfo != nil && haInfo.Ha == hav1.HA_STATE_HA_TAKEOVER && !n.Ha.IsLeader {
+		// Leader is taking over — follower should become standby.
+		if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; !has {
+			logger.GetLogger().Debug("Notify: injecting standby criteria from leader takeover")
+			n.Ha.Local.Criteria[HaCritHaStandby] = false
+			n.Ha.Local.IsFunc = n.computeIsFunc()
+			n.haUpdateNxState(ctx)
+		}
+	} else if haInfo != nil && (haInfo.Ha == hav1.HA_STATE_HA_READY || haInfo.Ha == hav1.HA_STATE_NO_HA) {
+		// Recovery or HA removal — clear standby criteria if present.
+		if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
+			logger.GetLogger().Debug("Notify: removing standby criteria on recovery")
+			delete(n.Ha.Local.Criteria, HaCritHaStandby)
+			n.Ha.Local.IsFunc = n.computeIsFunc()
+			n.haUpdateNxState(ctx)
+		}
+	}
+
+	// Return local HA info for response.
 	var svcState hav1.SERVICE_STATE
-	var haState hav1.HA_STATE
-
 	if n.stableIsFunc() {
 		svcState = hav1.SERVICE_STATE_SVC_SUCCESS
-		if len(n.Ha.Partners) > 0 && n.anyPeerCriteriaOk() {
-			haState = hav1.HA_STATE_HA_READY
-			if !n.Ha.EverReady {
-				n.Ha.EverReady = true
-				logger.GetLogger().Info("HA_READY reached for the first time (during removal)")
-			}
-		} else {
-			// Key difference from haUpdateNxState: always go to NOTREADY, not SWITCHOVER
-			// This allows the switch to try reconnecting to new peers
-			haState = hav1.HA_STATE_HA_NOTREADY
-		}
 	} else {
-		// Service failure - but since this is intentional removal, still go to NOTREADY
 		svcState = hav1.SERVICE_STATE_SVC_FAILURE
-		haState = hav1.HA_STATE_HA_NOTREADY
+	}
+	return &hav1.HaInfo{
+		Service: svcState,
+		Ha:      n.Ha.NxStates.HaState,
+	}
+}
+
+// haNotifyPeers sends a Notify RPC to all connected peers to push
+// the local HA state immediately.  Called asynchronously from
+// haUpdateNxState when the leader's state changes.
+// Must NOT hold the lock when called.
+func (n *Nxos) haNotifyPeers(ctx context.Context) {
+	n.RLock()
+	if !n.Ha.IsLeader {
+		n.RUnlock()
+		return
+	}
+	haIp := n.Ha.HaIp
+	haState := n.Ha.NxStates.HaState
+	var svcState hav1.SERVICE_STATE
+	if n.stableIsFunc() {
+		svcState = hav1.SERVICE_STATE_SVC_SUCCESS
+	} else {
+		svcState = hav1.SERVICE_STATE_SVC_FAILURE
 	}
 
-	logger.GetLogger().Debug("Derived states for removal", "svcState", svcState, "haState", haState)
-
-	if n.Ha.NxStates.HaState != haState {
-		logger.GetLogger().Debug("update haState for removal", "prev", n.Ha.NxStates.HaState, "next", haState)
-		n.Ha.NxStates.HaState = haState
-		n.Ha.NxStates.HaStateEpoch = now
+	type peerClient struct {
+		ip     string
+		client hav1.HaClient
 	}
-	if n.Ha.NxStates.SvcState != svcState {
-		logger.GetLogger().Debug("update SvcState for removal", "prev", n.Ha.NxStates.SvcState, "next", svcState)
-		n.Ha.NxStates.SvcState = svcState
-		n.Ha.NxStates.SvcStateEpoch = now
+	var clients []peerClient
+	for ip, adj := range n.Ha.Adjacencies {
+		if adj.Connected && adj.GrpcClient.Client != nil {
+			clients = append(clients, peerClient{ip: ip, client: adj.GrpcClient.Client})
+		}
+	}
+	n.RUnlock()
+
+	for _, pc := range clients {
+		req := &hav1.NotifyRequest{
+			HaIp: haIp,
+			HaInfo: &hav1.HaInfo{
+				Service: svcState,
+				Ha:      haState,
+			},
+		}
+		logger.GetLogger().Debug("Sending Notify to peer", "peer", pc.ip, "haState", haState)
+		_, err := pc.client.Notify(ctx, req)
+		if err != nil {
+			logger.GetLogger().Error("Failed to send Notify", "peer", pc.ip, "error", err)
+		}
 	}
 }
 
@@ -871,6 +977,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 		if now-mbr.Epoch > mbrTimeout {
 			logger.GetLogger().Debug("Member timed out", "ip", ip)
 			delete(n.Ha.Members, ip)
+			n.Ha.PeerSvcStates[ip] = PeerSvcUnknown
 			n.HaUpdatePtnr(ctx, ip, true)
 		}
 	}
@@ -878,6 +985,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 		if now-adj.Epoch > adjTimeout {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
 			delete(n.Ha.Adjacencies, ip)
+			n.Ha.PeerSvcStates[ip] = PeerSvcUnknown
 			peer, ok := n.GetHaPeer(ip)
 			if ok {
 				peer.State = hav1.MBR_STATE_HA_FAIL
@@ -1100,7 +1208,7 @@ func (n *Nxos) computeAndUpdatePeerPolicy(ctx context.Context, peer string, info
 	n.updatePeerPolicyCrit(ctx, peer, polOk)
 }
 
-// updatePeerPolicyCrit updates PolicyOk for a specific peer and recalculates IsFunc.
+// updatePeerPolicyCrit updates PolicyOk for a specific peer and recalculates state.
 // Caller must hold the lock.
 func (n *Nxos) updatePeerPolicyCrit(ctx context.Context, peer string, polOk bool) {
 	if n.Ha.PeerCriteria == nil {
@@ -1110,44 +1218,26 @@ func (n *Nxos) updatePeerPolicyCrit(ctx context.Context, peer string, polOk bool
 	if !ok {
 		// Peer not in PeerCriteria yet - initialize with current aggregate DPU state
 		crit = HaPeerCriteria{
-			ServiceOk:   false,
-			PolicyOk:    polOk,
-			KeepaliveOk: n.aggregateDpuKeepalive(),
-			BulkSyncOk:  n.aggregateDpuBulkSync(),
+			MembershipOk: false,
+			PolicyOk:     polOk,
+			KeepaliveOk:  n.aggregateDpuKeepalive(),
+			BulkSyncOk:   n.aggregateDpuBulkSync(),
 		}
 		n.Ha.PeerCriteria[peer] = crit
 		n.setRemoteSvcState(ctx, peer)
-		n.recalculateIsFuncAndState(ctx)
+		n.haUpdateNxState(ctx)
 		return
 	}
 	if crit.PolicyOk != polOk {
 		crit.PolicyOk = polOk
 		n.Ha.PeerCriteria[peer] = crit
 		n.setRemoteSvcState(ctx, peer)
-		n.recalculateIsFuncAndState(ctx)
-	}
-}
-
-// updatePeerServiceCrit updates ServiceOk for a specific peer.
-// Caller must hold the lock.
-func (n *Nxos) updatePeerServiceCrit(ctx context.Context, peer string, svcOk bool) {
-	if n.Ha.PeerCriteria == nil {
-		return
-	}
-	crit, ok := n.Ha.PeerCriteria[peer]
-	if !ok {
-		return
-	}
-	if crit.ServiceOk != svcOk {
-		crit.ServiceOk = svcOk
-		n.Ha.PeerCriteria[peer] = crit
-		n.setRemoteSvcState(ctx, peer)
-		n.recalculateIsFuncAndState(ctx)
+		n.haUpdateNxState(ctx)
 	}
 }
 
 // recomputeAllPeerPolicyCrit recomputes PolicyOk for all peers based on current
-// watching state and policy revision, then recalculates IsFunc.
+// watching state and policy revision, then recalculates HA state.
 // Caller must hold the lock.
 func (n *Nxos) recomputeAllPeerPolicyCrit(ctx context.Context) {
 	if n.Ha.PeerCriteria == nil {
@@ -1164,7 +1254,7 @@ func (n *Nxos) recomputeAllPeerPolicyCrit(ctx context.Context) {
 		}
 	}
 	if changed {
-		n.recalculateIsFuncAndState(ctx)
+		n.haUpdateNxState(ctx)
 	}
 }
 
@@ -1209,18 +1299,10 @@ func (n *Nxos) HaUpdatePtnr(ctx context.Context, ptnr string, isDel bool) {
 		if peer.State != prev {
 			n.SetHaPeer(ptnr, peer)
 			n.setRemoteMbrState(ctx, ptnr)
+			n.haUpdateNxState(ctx)
 		}
 	} else {
 		logger.GetLogger().Debug("Peer not found")
-	}
-
-	_, ok = n.Ha.Partners[ptnr]
-	if isDel && ok {
-		delete(n.Ha.Partners, ptnr)
-		n.haUpdateNxState(ctx)
-	} else if !isDel && !ok {
-		n.Ha.Partners[ptnr] = struct{}{}
-		n.haUpdateNxState(ctx)
 	}
 }
 
@@ -1313,7 +1395,13 @@ func (n *Nxos) haSetup(ctx context.Context) {
 					if n.haIsConnected(ctx, peer) {
 						n.haAdjacency(ctx, peer)
 					}
-
+				}
+			} else if enabled {
+				// already enabled — send adjacency to propagate state change
+				for _, peer := range peers {
+					if n.haIsConnected(ctx, peer) {
+						n.haAdjacency(ctx, peer)
+					}
 				}
 			}
 
