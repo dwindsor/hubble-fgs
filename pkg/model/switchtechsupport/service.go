@@ -31,7 +31,7 @@ const (
 	DefaultTmpDir      = "/tmp/dpu_tech_support"
 	DefaultArchivePath = "/iox_data/dpu_tech_support.tgz"
 	DPULogBasePath     = "/var/log/pensando"
-	DPUCoreBasePath    = "/var/core"
+	DPUCoreBasePath    = "/data/core"
 	SystemProcPath     = "/proc"
 	SystemSysPath      = "/sys"
 
@@ -40,7 +40,7 @@ const (
 	DPUFwaLogFile    = "fwa.log"
 	DPUAppLogPattern = "dp-app.log.*.gz"
 	DPUFwaLogPattern = "fwa.log.*.gz"
-	DPUCorePattern   = "core.*"
+	DPUCorePattern   = "core.*.tar"
 
 	// Default credentials
 	DefaultDPUUser     = "root"

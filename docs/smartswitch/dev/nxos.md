@@ -19,7 +19,7 @@ git clone https://github.com/openconfig/ygot
 cd ygot
 ```
 
-Apply the following diff to `Cisco-NX-OS-device.yang`:
+Copy the below diff to changes.patch
 
 ```diff
 diff --git a/Cisco-NX-OS-device.yang b/Cisco-NX-OS-device.yang
@@ -107,8 +107,9 @@ index d358ded41..d0d5625ec 100644
 ```
 
 ```bash
+# Copy and rename the Cisco-NX-OS-device.stripped YANG file to Cisco-NX-OS-device.yang in the current directory before applying.
 # The patch targets Cisco-NX-OS-device.yang in the current directory.
-# Rename the YANG file to Cisco-NX-OS-device.yang before applying if needed.
+# Apply the patch
 patch -p1 < changes.patch
 ```
 
