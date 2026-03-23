@@ -21,6 +21,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/nxos"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 )
 
@@ -950,6 +951,425 @@ func TestPoliciesTranslate(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, result)
 			}
+		})
+	}
+}
+
+// --- Tests for GnmiShow methods ---
+
+func createTestAgwWithNxosManager(_ *testing.T) *AgentGateway {
+	ctx := context.Background()
+	nxm := nxos.NewManager(ctx, nxos.WithMockGnmiHandler(nil))
+
+	agw := &AgentGateway{
+		nxosManager: nxm,
+	}
+	return agw
+}
+
+func TestGnmiShowVrf(t *testing.T) {
+	cases := []struct {
+		name           string
+		msgData        ipc.MessageData
+		expectContains string
+	}{
+		{
+			name: "Text output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "gNMI VRF Store",
+		},
+		{
+			name: "JSON output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"vrfs"`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agw := createTestAgwWithNxosManager(t)
+			result := agw.GnmiShowVrf(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+func TestGnmiShowVlan(t *testing.T) {
+	cases := []struct {
+		name           string
+		msgData        ipc.MessageData
+		expectContains string
+	}{
+		{
+			name: "Text output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "gNMI VLAN Store",
+		},
+		{
+			name: "JSON output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"vlans"`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agw := createTestAgwWithNxosManager(t)
+			result := agw.GnmiShowVlan(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+func TestGnmiShowDpu(t *testing.T) {
+	cases := []struct {
+		name           string
+		msgData        ipc.MessageData
+		expectContains string
+	}{
+		{
+			name: "Text output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "gNMI DPU Store",
+		},
+		{
+			name: "JSON output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"dpus"`,
+		},
+		{
+			name: "JSON output contains count fields",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"count"`,
+		},
+		{
+			name: "JSON output contains port fields",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"global_port_high"`,
+		},
+		{
+			name: "JSON output contains in_sync",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"in_sync"`,
+		},
+		{
+			name: "JSON output contains healthy",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"healthy"`,
+		},
+		{
+			name: "JSON output contains in_sync_count",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"in_sync_count"`,
+		},
+		{
+			name: "Text output contains In Sync",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "In Sync:",
+		},
+		{
+			name: "JSON output contains global_port_low",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"global_port_low"`,
+		},
+		{
+			name: "JSON output contains skip_dpu",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"skip_dpu"`,
+		},
+		{
+			name: "Text output contains Global Port Range",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "Global Port Range:",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agw := createTestAgwWithNxosManager(t)
+			result := agw.GnmiShowDpu(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+func TestGnmiShowHa(t *testing.T) {
+	cases := []struct {
+		name           string
+		msgData        ipc.MessageData
+		expectContains string
+	}{
+		{
+			name: "Text output contains header",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "gNMI HA Store",
+		},
+		{
+			name: "Text output contains summary section",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "--- Summary ---",
+		},
+		{
+			name: "Text output contains local state section",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "--- Local State ---",
+		},
+		{
+			name: "Text output contains HA State field",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "HA State:",
+		},
+		{
+			name: "Text output contains SVC State field",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "SVC State:",
+		},
+		{
+			name: "Text output contains Adjacency Reached",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "Adjacency Reached:",
+		},
+		{
+			name: "Text output contains Any Peer Adj OK",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "Any Peer Adj OK:",
+		},
+		{
+			name: "JSON output contains admin_state",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"admin_state"`,
+		},
+		{
+			name: "JSON output contains peers",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"peers"`,
+		},
+		{
+			name: "JSON output contains local section",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"local"`,
+		},
+		{
+			name: "JSON output local contains ha_state",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"ha_state"`,
+		},
+		{
+			name: "JSON output local contains svc_state",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"svc_state"`,
+		},
+		{
+			name: "JSON output local contains criteria_met",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"criteria_met"`,
+		},
+		{
+			name: "JSON output local contains policy_check",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"policy_check"`,
+		},
+		{
+			name: "JSON output local contains adjacency_reached",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"adjacency_reached"`,
+		},
+		{
+			name: "JSON output contains any_peer_adj_ok",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"any_peer_adj_ok"`,
+		},
+		{
+			name: "JSON output contains any_peer_mbr_fail",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"any_peer_mbr_fail"`,
+		},
+		{
+			name: "JSON output contains any_peer_ha_ready",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"any_peer_ha_ready"`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agw := createTestAgwWithNxosManager(t)
+			result := agw.GnmiShowHa(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+func TestGnmiShowDevice(t *testing.T) {
+	cases := []struct {
+		name           string
+		msgData        ipc.MessageData
+		expectContains string
+	}{
+		{
+			name: "Text output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "gNMI Device Store",
+		},
+		{
+			name: "JSON output",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"serial_number"`,
+		},
+		{
+			name: "JSON output contains connection status",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"connection_status"`,
+		},
+		{
+			name: "JSON output contains controller endpoint",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"controller_endpoint"`,
+		},
+		{
+			name: "JSON output contains controller port",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"controller_port"`,
+		},
+		{
+			name: "JSON output contains controller version",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"controller_version"`,
+		},
+		{
+			name: "JSON output contains system state",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"system_state"`,
+		},
+		{
+			name: "JSON output contains reject reason",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"reject_reason"`,
+		},
+		{
+			name: "JSON output contains skip reg",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"skip_reg"`,
+		},
+		{
+			name: "JSON output contains skip reg reason",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"skip_reg_reason"`,
+		},
+		{
+			name: "JSON output contains proxy_address",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"proxy_address"`,
+		},
+		{
+			name: "JSON output contains system_state as string",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			expectContains: `"system_state":"disabled"`,
+		},
+		{
+			name: "Text output contains Proxy Address",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			expectContains: "Proxy Address",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agw := createTestAgwWithNxosManager(t)
+			result := agw.GnmiShowDevice(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
 		})
 	}
 }

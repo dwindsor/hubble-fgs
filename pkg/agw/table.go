@@ -238,7 +238,7 @@ func formatValue(v reflect.Value) string {
 	// Handle nil pointers
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
-			return "N/A"
+			return ""
 		}
 		v = v.Elem()
 	}
@@ -246,18 +246,14 @@ func formatValue(v reflect.Value) string {
 	// Handle interface types
 	if v.Kind() == reflect.Interface {
 		if v.IsNil() {
-			return "N/A"
+			return ""
 		}
 		v = v.Elem()
 	}
 
 	switch v.Kind() {
 	case reflect.String:
-		s := v.String()
-		if s == "" {
-			return "N/A"
-		}
-		return s
+		return v.String()
 	case reflect.Bool:
 		return fmt.Sprintf("%t", v.Bool())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -268,7 +264,7 @@ func formatValue(v reflect.Value) string {
 		return fmt.Sprintf("%g", v.Float())
 	case reflect.Slice, reflect.Array:
 		if v.Len() == 0 {
-			return "N/A"
+			return ""
 		}
 		return fmt.Sprintf("%v", v.Interface())
 	case reflect.Struct:

@@ -188,8 +188,8 @@ func TestFormatTableWithPointers(t *testing.T) {
 		t.Error("FormatTable() should contain pointer value")
 	}
 
-	if !strings.Contains(result, "N/A") {
-		t.Error("FormatTable() should contain N/A for nil pointer")
+	if strings.Contains(result, "N/A") {
+		t.Error("FormatTable() should not contain N/A for nil pointer")
 	}
 }
 

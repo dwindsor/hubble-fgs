@@ -23,8 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/policystatus"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/systemstatus"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
-
-	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 	"github.com/isovalent/hubble-fgs/pkg/timescape"
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 )
@@ -294,11 +293,11 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 				GetVersion: func() string {
 					return agw.Version()
 				},
-				GetControllerConnectionStatus: func() model.E_Cisco_NX_OSDevice_Sas_CommonStateE {
+				GetDeviceConnectionStatus: func() string {
 					if enableNxos {
-						return model.E_Cisco_NX_OSDevice_Sas_CommonStateE(agw.GetControllerConnectionStatus())
+						return agw.GetDeviceConnectionStatus()
 					}
-					return model.Cisco_NX_OSDevice_Sas_CommonStateE_unknown
+					return device.CommonStateUnknown
 				},
 			},
 			PolicyStatusDataProvider: policystatus.PolicyStatusDataProvider{

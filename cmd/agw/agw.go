@@ -14,7 +14,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 
 	gops "github.com/google/gops/agent"
 	"golang.org/x/sync/errgroup"
@@ -27,9 +30,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	agwflb "github.com/isovalent/hubble-fgs/pkg/agw/fluentbit"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
-	hasvr "github.com/isovalent/hubble-fgs/pkg/grpc/hasvr"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/mock"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 )
 
@@ -65,15 +69,64 @@ func executeAGW() {
 	// Setup centralized shutdown manager
 	shutdown.SetupShutdownManager(ctx, cancel, waitGroup)
 
+	// Create DPU listener and policy handler first (needed for NXOS manager options)
+	dpuListener := switchpolicy.NewDPUListener(ctx, Config.DPUServerAddress)
+	policyHandler := switchpolicy.NewPolicyHandler(ctx, dpuListener)
+
+	// Create the NXOS manager instance with options
+	// Parse --vrf-map entries into a seeds map used by both the mock handler
+	// and the VRF store so GIDs are consistent throughout the system.
+	vrfSeeds := make(map[string]uint16)
+	for _, nameGID := range Config.VrfMap {
+		parts := strings.SplitN(nameGID, ":", 2)
+		if len(parts) < 2 {
+			logger.GetLogger().Warn("Ignoring invalid vrf-map entry", "entry", nameGID)
+			continue
+		}
+		gid, err := strconv.Atoi(parts[1])
+		if err != nil {
+			logger.GetLogger().Warn("Ignoring vrf-map entry with non-integer GID", "entry", nameGID, logfields.Error, err)
+			continue
+		}
+		vrfSeeds[parts[0]] = uint16(gid)
+	}
+
+	nxosOpts := []nxos.Option{
+		nxos.WithDPUListener(dpuListener),
+		nxos.WithPolicyHandler(policyHandler),
+		nxos.WithStorage(storage.NewFileStorage()),
+		nxos.WithVRFGIDs(vrfSeeds),
+	}
+	if !Config.EnableNXOS {
+		// NXOS disabled - build a pre-configured mock handler so stores are populated
+		// and the NX-OS manager can reach PhaseRunning without hardware.
+		builder := mock.NewHandlerBuilder().
+			WithPersistPath(filepath.Join(storage.DefaultRootPath, "mock_gnmi.json")).
+			WithTree(mock.DPUTree(2))
+
+		haPeerIP := os.Getenv("AGW_HA_PEER_IP")
+		haSourceIP := os.Getenv("AGW_HA_SOURCE_IP")
+		if haPeerIP != "" && haSourceIP != "" {
+			builder = builder.WithTree(mock.HATree(true, haSourceIP,
+				mock.HAPeer{IP: haPeerIP, Priority: 1, State: "active"},
+			))
+		}
+		for name := range vrfSeeds {
+			builder = builder.WithTree(mock.VRFTree(mock.VRFEntry{Name: name}))
+		}
+		nxosOpts = append(nxosOpts, nxos.WithMockGnmiHandler(builder.Build()))
+	}
+	nxosManager := nxos.NewManager(ctx, nxosOpts...)
+
 	// Create AGW signal handler
 	agwSignalHandler := &AGWSignalHandler{
-		enableNXOS: Config.EnableNXOS,
+		enableNXOS:  Config.EnableNXOS,
+		nxosManager: nxosManager,
 	}
 	// Setup signal handling
 	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, shutdown.RestartExitCode)
 
-	dpuListener := switchpolicy.NewDPUListener(ctx, Config.DPUServerAddress)
-	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(ctx, dpuListener))
+	agwAgent := agw.NewAgent(dpuListener, policyHandler, Config.EnableNXOS, nxosManager)
 	err := agwAgent.Config(ctx, Config.DafConfig)
 
 	if err != nil {
@@ -81,17 +134,6 @@ func executeAGW() {
 			logfields.Error, err)
 		return
 	}
-
-	// HA is always enabled - it will only connect to peers when configured
-	waitGroup.Go(func() error {
-		haPort := agwAgent.GetPort(nxos.HAService)
-		logger.GetLogger().Info("Starting HA service at port", "port", haPort)
-		err := hasvr.RunServer(ctx, haPort)
-		if err != nil {
-			return fmt.Errorf("starting HA server failed: %w", err)
-		}
-		return nil
-	})
 
 	// Setup AGW-local FluentBit config manager. When enabled, AGW writes
 	// a FluentBit YAML config for its managed FluentBit instance, in addition
@@ -154,40 +196,37 @@ func executeAGW() {
 
 // Simple signal handler for AGW
 type AGWSignalHandler struct {
-	enableNXOS bool
+	enableNXOS  bool
+	nxosManager nxos.Manager
 }
 
-func (s *AGWSignalHandler) CheckUpgradeState(ctx context.Context) (bool, error) {
-	if s.enableNXOS {
-		return nxos.Nexus.CheckUpgradeState(ctx)
-	}
+func (s *AGWSignalHandler) CheckUpgradeState(_ context.Context) (bool, error) {
 	// AGW doesn't have upgrade state logic, always return false
 	return false, nil
 }
 
 func (s *AGWSignalHandler) Cleanup(ctx context.Context) error {
-	if s.enableNXOS {
-		if err := nxos.Nexus.Cleanup(ctx); err != nil {
+	if s.enableNXOS && s.nxosManager != nil {
+		if err := s.nxosManager.Close(ctx); err != nil {
 			return err
 		}
 	}
-	// AGW-specific cleanup logic can be added here
 	logger.GetLogger().Debug("AGW cleanup completed")
 	return nil
 }
 
 func (s *AGWSignalHandler) Close(ctx context.Context) error {
 	// Close NXOS connection if enabled
-	if s.enableNXOS {
-		return nxos.Nexus.Close(ctx)
+	if s.enableNXOS && s.nxosManager != nil {
+		return s.nxosManager.Close(ctx)
 	}
 	logger.GetLogger().Debug("AGW close completed")
 	return nil
 }
 
 func (s *AGWSignalHandler) GetExitCodeForSignal(sig os.Signal, inUpgrade bool) int {
-	if s.enableNXOS {
-		return nxos.Nexus.GetExitCodeForSignal(sig, inUpgrade)
+	if s.enableNXOS && s.nxosManager != nil {
+		return s.nxosManager.GetExitCodeForSignal(sig, inUpgrade)
 	}
 	// AGW prefers RestartExitCode for normal shutdown (agw restart)
 	return shutdown.RestartExitCode

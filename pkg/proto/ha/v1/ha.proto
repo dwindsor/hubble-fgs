@@ -12,13 +12,12 @@ service Ha {
 enum ADJ_RESPONSE_STATUS {
     ADJ_SUCCESS = 0;
     ADJ_FAILURE = 1;
-    // add more errors here 
+    // add more errors here
 }
 
-enum SERVICE_STATE {
-    SVC_SUCCESS = 0;
-    SVC_FAILURE = 1;
-    SVC_UNKNOWN = 2;
+enum LOCAL_SVC_STATE {
+    LOCAL_SVC_SUCCESS = 0;
+    LOCAL_SVC_FAILURE = 1;
 }
 
 enum HA_STATE {
@@ -40,16 +39,16 @@ enum MBR_STATE {
 message VrfInfo {
     string name = 1;
     uint32 id = 2;
-    uint32 dpu = 3;
+    uint32 affinity = 3;
 }
 
 message VlanInfo {
     uint32 id = 1;
-    uint32 dpu = 2;
+    uint32 affinity = 2;
 }
 
 message HaInfo {
-    SERVICE_STATE service = 1;
+    LOCAL_SVC_STATE local_svc_state = 1;
     HA_STATE ha = 2;
 }
 

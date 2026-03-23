@@ -24,8 +24,7 @@ import (
 	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
-	"github.com/isovalent/hubble-fgs/pkg/nxos"
-	nxosmodel "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 )
 
 const (
@@ -41,9 +40,12 @@ type InventoryHandler interface {
 
 // InventoryDataProvider provides data needed for inventory updates
 type InventoryDataProvider struct {
-	GetDPUStatus    func() ([]switchpolicy.DPUReportStatus, error)
-	GetK8sNamespace func() string
-	GetServiceMAC   func() string
+	GetDPUStatus              func() ([]switchpolicy.DPUReportStatus, error)
+	GetK8sNamespace           func() string
+	GetServiceMAC             func() string
+	GetServiceIP              func() string
+	GetDeviceConnectionStatus func() string
+	GetSerialNum              func(ctx context.Context) string
 }
 
 // inventoryHandler implements InventoryHandler
@@ -114,11 +116,11 @@ func (h *inventoryHandler) periodicUpdateLoop(ctx context.Context, kubernetesMan
 
 // isControllerConnectionHealthy checks if the controller connection is healthy
 func (h *inventoryHandler) isControllerConnectionHealthy() bool {
-	// Check controller connection status directly
-	connectionStatus := nxos.Nexus.Ctrlr.ConnectionStatus
+	// Check device connection status via callback
+	connectionStatus := h.dataProvider.GetDeviceConnectionStatus()
 
 	// Connection is healthy if status is success
-	return connectionStatus == nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_success
+	return connectionStatus == device.CommonStateSuccess
 }
 
 // updateInventory performs the actual inventory update
@@ -132,7 +134,7 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 	}
 
 	// Get serial number for SmartSwitch CR name
-	serial := nxos.Nexus.GetSerialNum(ctx)
+	serial := h.dataProvider.GetSerialNum(ctx)
 	if serial == "" {
 		return fmt.Errorf("failed to get serial number")
 	}
@@ -140,7 +142,7 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 	// Create SmartSwitchInventory fields
 	newInventory := &SmartSwitchInventoryFields{
 		BiosVersion:     "",
-		ServiceIP:       nxos.Nexus.GetServiceIp(),
+		ServiceIP:       h.dataProvider.GetServiceIP(),
 		ServiceMAC:      h.dataProvider.GetServiceMAC(),
 		SerialNumber:    serial,
 		SoftwareVersion: h.getSoftwareVersion(),

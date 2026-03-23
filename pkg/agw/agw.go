@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -42,6 +43,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
 	"github.com/isovalent/hubble-fgs/pkg/mtls"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/mock"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
+	nxtypes "github.com/isovalent/hubble-fgs/pkg/nxos/types"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 )
@@ -54,30 +58,7 @@ const (
 	// dpuTimeout = 300 // in second
 )
 
-// nxosHaEventAdapter adapts HA events from DPUs to the nxos singleton.
-type nxosHaEventAdapter struct{}
-
-func (a *nxosHaEventAdapter) UpdateKeepalive(ctx context.Context, dpuUid string, up bool) {
-	nxos.UpdateDpuHaKeepalive(ctx, dpuUid, up)
-}
-
-func (a *nxosHaEventAdapter) UpdateBulkSyncLocal(ctx context.Context, dpuUid string, done bool) {
-	nxos.UpdateDpuHaBulkSyncLocal(ctx, dpuUid, done)
-}
-
-func (a *nxosHaEventAdapter) UpdateBulkSyncPeer(ctx context.Context, dpuUid string, done bool) {
-	nxos.UpdateDpuHaBulkSyncPeer(ctx, dpuUid, done)
-}
-
-func (a *nxosHaEventAdapter) RegisterDpu(ctx context.Context, dpuUid string) {
-	nxos.RegisterDpuHa(ctx, dpuUid)
-}
-
-func (a *nxosHaEventAdapter) UpdatePolicyRevision(ctx context.Context, revision string) {
-	nxos.Nexus.NotifyPolRev(ctx, revision)
-}
-
-func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) *AgentGateway {
+func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler, enableNXOS bool, nxosManager nxos.Manager) *AgentGateway {
 	mac := os.Getenv("NX_SAS_RMAC")
 	hostname := os.Getenv("CAF_SYSTEM_NAME")
 	startupTime := time.Now()
@@ -150,6 +131,8 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 		dpuPortHigh:   uint16(dpuHigh),
 		cpaPortLow:    uint16(cpaLow),
 		cpaPortHigh:   uint16(cpaHigh),
+		enableNXOS:    enableNXOS,
+		nxosManager:   nxosManager,
 		dpuListener:   dpuListener,
 		PolicyHandler: policyHandler,
 	}
@@ -168,6 +151,15 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 			},
 			GetServiceMAC: func() string {
 				return agw.serviceMac
+			},
+			GetServiceIP: func() string {
+				return agw.nxosManager.DeviceStore().ServiceIP()
+			},
+			GetDeviceConnectionStatus: func() string {
+				return agw.nxosManager.DeviceStore().ConnectionStatus()
+			},
+			GetSerialNum: func(_ context.Context) string {
+				return agw.nxosManager.DeviceStore().SerialNumber()
 			},
 		},
 	)
@@ -194,7 +186,9 @@ type AgentGateway struct {
 	dpuPortHigh uint16
 	cpaPortLow  uint16
 	cpaPortHigh uint16
+	enableNXOS  bool // Flag to enable/disable NXOS integration
 
+	nxosManager      nxos.Manager // NXOS manager instance
 	dpuListener      *switchpolicy.DPUListener
 	PolicyHandler    switchpolicy.PolicyHandler
 	InventoryHandler switchstatus.InventoryHandler
@@ -204,6 +198,11 @@ type AgentGateway struct {
 
 func (agw *AgentGateway) Id() string {
 	return agw.AgentId
+}
+
+// NxosManager returns the NXOS manager instance.
+func (agw *AgentGateway) NxosManager() nxos.Manager {
+	return agw.nxosManager
 }
 
 func (agw *AgentGateway) Version() string {
@@ -222,8 +221,12 @@ func (agw *AgentGateway) KeepAliveInterval() int {
 }
 
 // GetPort returns a port within the CPA port range for the specified service type
-func (agw *AgentGateway) GetPort(serviceType nxos.ServicePortType) uint16 {
-	offset := nxos.GetServicePortOffset(serviceType)
+func (agw *AgentGateway) GetPort(serviceType ServicePortType) uint16 {
+	offset, err := GetServicePortOffset(serviceType)
+	if err != nil {
+		logger.GetLogger().Warn("Unknown service type for port allocation", "service_type", serviceType, "error", err)
+		return agw.cpaPortLow
+	}
 	if (agw.cpaPortLow + offset) > agw.cpaPortHigh {
 		logger.GetLogger().Warn("Requested port for service exceeds CPA port range", "service_type", serviceType)
 	}
@@ -286,41 +289,27 @@ func (agw *AgentGateway) GetDPUListener() *switchpolicy.DPUListener {
 }
 
 func (agw *AgentGateway) GetNxHeadlessMode() bool {
-	return nxos.Nexus.GetHeadlessMode()
+	return agw.nxosManager.DeviceStore().IsHeadlessMode()
 }
 
-func (agw *AgentGateway) GetServiceIp() string {
-	return nxos.Nexus.GetServiceIp()
+// DisableHaWatching disables HA store watching in headless mode.
+func (agw *AgentGateway) DisableHaWatching(_ context.Context) {
+	logger.GetLogger().Info("HA watching disabled (headless mode)")
 }
 
-// DisableHaWatching disables HA policy watching (used in headless mode).
-func (agw *AgentGateway) DisableHaWatching(ctx context.Context) {
-	nxos.Nexus.NotifyWatching(ctx, false)
+func (agw *AgentGateway) GetDeviceConnectionStatus() string {
+	return agw.nxosManager.DeviceStore().ConnectionStatus()
 }
 
-// GetNxProxyConfig retrieves the proxy configuration from the Nexus system.
-func (agw *AgentGateway) GetNxProxyConfig(ctx context.Context) error {
-	return nxos.Nexus.GetProxyConfig(ctx)
-}
-
-func (agw *AgentGateway) GetControllerConnectionStatus() int64 {
-	return int64(nxos.Nexus.GetControllerConnectionStatus())
-}
-
-func (agw *AgentGateway) GetSerialNumber(ctx context.Context) string {
+func (agw *AgentGateway) GetSerialNumber(_ context.Context) string {
 	if agw.SerialNumber == "" {
-		return nxos.Nexus.GetSerialNum(ctx)
+		return agw.nxosManager.DeviceStore().SerialNumber()
 	}
 	return agw.SerialNumber
 }
 
 func (agw *AgentGateway) Setup(ctx context.Context) error {
-	// Wire up the nxos singleton for HA event handling BEFORE Setup
-	// so that policy revision updates are propagated to HA during initialization
-	switchpolicy.SetHaEventHandler(&nxosHaEventAdapter{})
-	logger.GetLogger().Debug("HA event handler configured for nxos")
-
-	err := nxos.Nexus.Setup(ctx, agw.dpuPortLow, agw.dpuPortHigh, agw.cpaPortLow, agw.cpaPortHigh, agw.dpuListener, agw.PolicyHandler)
+	err := agw.nxosManager.Setup(ctx)
 	if err != nil {
 		// Removed GetLogger().Fatal to avoid immediate termination, use shutdown manager.
 		logger.GetLogger().Error("NXOS setup failed", "error", err)
@@ -333,18 +322,19 @@ func (agw *AgentGateway) Setup(ctx context.Context) error {
 
 func (agw *AgentGateway) RegisterStatus(ctx context.Context, status bool) {
 	logger.GetLogger().Debug("Setting registration status", "status", status)
-	nxos.Nexus.ResetReg(ctx)
+	agw.nxosManager.DeviceStore().ResetRegistration(ctx)
 	if !status {
-		nxos.Nexus.SetRegFail(ctx, nxos.RegFailK8sAuth)
-		nxos.Nexus.SetConnFail(ctx, nxos.ConnFailed)
+		agw.nxosManager.DeviceStore().SetAdmissionStatus(ctx, device.CommonStateFailure, nxos.RegFailK8sAuth)
+		agw.nxosManager.DeviceStore().SetSkipReg(ctx, true, nxos.RegFailK8sAuth)
+		agw.nxosManager.SetConnFail(ctx, nxos.ConnFailed)
 	} else {
-		nxos.Nexus.SetRegOk(ctx, nxos.RegOk)
-		nxos.Nexus.SetConnOk(ctx, nxos.ConnOk)
+		agw.nxosManager.DeviceStore().SetAdmissionStatus(ctx, device.CommonStateSuccess, nxos.RegOk)
+		agw.nxosManager.SetConnOk(ctx, nxos.ConnOk)
 	}
 }
 
 func (agw *AgentGateway) ResetConnectionStatus(ctx context.Context) {
-	nxos.Nexus.ResetConn(ctx)
+	agw.nxosManager.DeviceStore().ResetConnection(ctx)
 }
 
 func (agw *AgentGateway) SetConnectionStatus(ctx context.Context, status bool, nxosMode bool) {
@@ -355,10 +345,18 @@ func (agw *AgentGateway) SetConnectionStatus(ctx context.Context, status bool, n
 	}
 
 	if status {
-		nxos.Nexus.SetConnOk(ctx, nxos.ConnOk)
+		agw.nxosManager.SetConnOk(ctx, nxos.ConnOk)
 	} else {
-		nxos.Nexus.SetConnFail(ctx, nxos.ConnFailed)
+		agw.nxosManager.SetConnFail(ctx, nxos.ConnFailed)
 	}
+
+	agw.notifyHA(ctx, status)
+}
+
+// notifyHA notifies the high availability system about
+// the controller connection current status.
+func (agw *AgentGateway) notifyHA(ctx context.Context, status bool) {
+	agw.nxosManager.NotifyPolicyCheck(ctx, status)
 }
 
 // SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,
@@ -378,8 +376,8 @@ func (agw *AgentGateway) SetK8sCtlrAuthToken(ctx context.Context, token string) 
 		return fmt.Errorf("failed to set AgentToken")
 	}
 	// Set the token in both the AgentToken and Nxos structs.
-	// Ignore restart request from nxos.SetToken, since token is set via agw command line.
-	_, err := nxos.Nexus.SetToken(ctx, token)
+	// Ignore restart request from DeviceStore.SetToken, since token is set via agw command line.
+	_, err := agw.nxosManager.DeviceStore().SetToken(ctx, token)
 	if err != nil {
 		return err
 	}
@@ -405,11 +403,6 @@ func (agw *AgentGateway) LoadK8sAuth(ctx context.Context) (string, error) {
 		if token == "" {
 			return "", fmt.Errorf("token is still empty after waiting")
 		}
-
-		// Update controller endpoint in NXOS Managed Object
-		if err := nxos.Nexus.UpdateControllerEndpointFromToken(ctx); err != nil {
-			logger.GetLogger().Warn("Failed to update controller endpoint at startup", "error", err)
-		}
 		return token, nil
 	}
 
@@ -418,9 +411,12 @@ func (agw *AgentGateway) LoadK8sAuth(ctx context.Context) (string, error) {
 
 // LoadAuth attempts to load authentication data for the AgentGateway.
 // It sets the Kubernetes authentication token path from the configuration,
-// then repeatedly tries to load or authenticate using Kubernetes until successful
-// or until the provided context is cancelled. If the token path is not set in the
-// configuration, it returns an error immediately. The function returns true if
+// then tries to load from multiple sources in order:
+// 1. Controller store (token received via gNMI from NXOS)
+// 2. Token file on disk
+// 3. Environment variable
+// If no token is immediately available, it watches for token changes from the
+// controller store via gNMI notifications. The function returns true if
 // authentication data is loaded successfully, or false and an error otherwise.
 func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 	logger.GetLogger().Debug("loading authentication data")
@@ -431,13 +427,45 @@ func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("config TokenPath is empty")
 	}
 
+	// First, check if token is already available in the controller store (from gNMI/persistence)
+	if token := agw.nxosManager.DeviceStore().Token(); token != "" {
+		logger.GetLogger().Info("Token found in controller store")
+		if err := agw.Token.ValidK8sAuth(token); err == nil {
+			if err := agw.Token.SetAndPersistK8sAuthToken(token); err != nil {
+				logger.GetLogger().Warn("Failed to persist token from controller store", "error", err)
+			}
+			return true, nil
+		}
+		logger.GetLogger().Warn("Token in controller store is invalid, trying other sources")
+	}
+
 	// Finding and setting Token.
-	registered := make(chan bool)
+	registered := make(chan bool, 1)
+
+	// Subscribe to controller store for token changes via gNMI
+	tokenReceived := make(chan string, 1)
+	unsubscribe := agw.nxosManager.DeviceWatcher().Watch(func(event device.Event) {
+		if event.Type == device.EventTokenChanged {
+			token := agw.nxosManager.DeviceStore().Token()
+			if token != "" {
+				logger.GetLogger().Info("Token received via gNMI notification")
+				select {
+				case tokenReceived <- token:
+				default:
+				}
+			}
+		}
+	})
+	defer unsubscribe()
+
 	go func() {
-		// Try getting authentication immediately first
+		// Try getting authentication from file/env immediately first
 		reg, err := agw.tryLoadK8sAuth()
 		if err == nil {
-			registered <- reg
+			select {
+			case registered <- reg:
+			default:
+			}
 			return
 		}
 
@@ -450,19 +478,32 @@ func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 			case <-time.After(TOKEN_INTERVAL * time.Second):
 				reg, err := agw.tryLoadK8sAuth()
 				if err == nil {
-					registered <- reg
+					select {
+					case registered <- reg:
+					default:
+					}
 					return
 				}
 			}
 		}
 	}()
 
-	// Waiting for tokens to be loaded.
+	// Waiting for tokens to be loaded from any source.
 	select {
 	case <-ctx.Done():
 		return false, ctx.Err()
 	case reg := <-registered:
 		return reg, nil
+	case token := <-tokenReceived:
+		// Token received via gNMI from controller store
+		if err := agw.Token.ValidK8sAuth(token); err != nil {
+			logger.GetLogger().Error("Token from gNMI is invalid", "error", err)
+			return false, err
+		}
+		if err := agw.Token.SetAndPersistK8sAuthToken(token); err != nil {
+			logger.GetLogger().Warn("Failed to persist token from gNMI", "error", err)
+		}
+		return true, nil
 	}
 }
 
@@ -539,7 +580,7 @@ func (agw *AgentGateway) WaitForInService(ctx context.Context) {
 
 	for {
 
-		if nxos.Nexus.IsInService(ctx) {
+		if agw.nxosManager.DeviceStore().IsInService() {
 			logger.GetLogger().Debug("Now is InService")
 			return
 		}
@@ -560,7 +601,7 @@ func (agw *AgentGateway) GetStartupTime() time.Time {
 
 // GetNumDpu returns the number of DPUs from NXOS
 func (agw *AgentGateway) GetNumDpu() int {
-	return int(nxos.Nexus.GetNumDpu())
+	return agw.nxosManager.DPUStore().DpuCount()
 }
 
 // --------------------- DPU related
@@ -580,15 +621,15 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 			if !ok {
 				retries++
 				if retries > maxRetries {
-					nxos.DpuInSync(ctx, false)
-					logger.GetLogger().Error("DPU out of sync!", "retries", retries)
+					agw.nxosManager.DpuInSync(ctx, false)
+					logger.GetLogger().Error("DPU out of sync!")
 				}
 			} else {
-				nxos.DpuInSync(ctx, true)
+				agw.nxosManager.DpuInSync(ctx, true)
 				retries = 0
 			}
 			ok, cnt := agw.dpuListener.HealthCheck()
-			nxos.DpuHealth(ctx, ok, cnt)
+			agw.nxosManager.DpuHealth(ctx, ok, cnt)
 		}
 	}
 }
@@ -1015,62 +1056,52 @@ func (agw *AgentGateway) ShowVrf(ctx context.Context) string {
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "Global ID\tName\tGlobal\tService\tStatic\tAffinity\tPinned")
 
-	vrfs := nxos.Nexus.GetVrfs()
-	gids := nxos.Nexus.GetGids()
-
-	// Temporary helper object for sorting
-	type vrfWithGid struct {
-		gid    uint16
-		hasGid bool
-		name   string
-		vrf    nxos.VrfBd
-	}
-	vrfList := make([]vrfWithGid, 0, len(vrfs))
-	for name, vrf := range vrfs {
-		gid, hasGid := gids[name]
-		vrfList = append(vrfList, vrfWithGid{gid: gid, hasGid: hasGid, name: name, vrf: vrf})
-	}
+	vrfList := agw.nxosManager.VRFStore().List()
 
 	// Sort by global ID - VRFs with GIDs first (sorted by GID), then VRFs without GIDs (sorted by name)
 	sort.Slice(vrfList, func(i, j int) bool {
+		hasGidI := vrfList[i].GID != 0
+		hasGidJ := vrfList[j].GID != 0
 		// If both have GIDs, sort by GID
-		if vrfList[i].hasGid && vrfList[j].hasGid {
-			return vrfList[i].gid < vrfList[j].gid
+		if hasGidI && hasGidJ {
+			return vrfList[i].GID < vrfList[j].GID
 		}
 		// If only i has GID, it comes first
-		if vrfList[i].hasGid {
+		if hasGidI {
 			return true
 		}
 		// If only j has GID, it comes first
-		if vrfList[j].hasGid {
+		if hasGidJ {
 			return false
 		}
 		// Neither has GID, sort by name
-		return vrfList[i].name < vrfList[j].name
+		return vrfList[i].Name < vrfList[j].Name
 	})
 
+	lbModePinning := agw.nxosManager.IsLbModePinning(ctx)
 	for _, v := range vrfList {
 		gidStr := ""
-		if v.hasGid {
-			gidStr = fmt.Sprintf("%d", v.gid)
+		if v.GID != 0 {
+			gidStr = fmt.Sprintf("%d", v.GID)
 		}
 
 		affinityStr := ""
-		if v.vrf.Affinity != 0 && v.vrf.IsStatic {
-			affinityStr = fmt.Sprintf("%d", v.vrf.Affinity)
+		if v.Affinity >= 1 && v.Affinity != 65535 {
+			affinityStr = fmt.Sprintf("%d", v.Affinity)
 		}
 
 		pinnedStr := "N/A"
-		if nxos.Nexus.IsLbModePinning(ctx) {
-			pinnedStr = fmt.Sprintf("%d", v.vrf.DpuPinned)
+		if lbModePinning {
+			pinnedStr = fmt.Sprintf("%d", v.DPUPinned)
 		}
 
+		isStatic := v.Affinity >= 1 && v.Affinity != 65535
 		fmt.Fprintf(w, "%s\t%s\t%t\t%t\t%t\t%s\t%s\n",
 			gidStr,
-			v.name,
-			v.vrf.IsGlobal,
-			v.vrf.IsService,
-			v.vrf.IsStatic,
+			v.Name,
+			v.Global,
+			v.Service,
+			isStatic,
 			affinityStr,
 			pinnedStr)
 	}
@@ -1085,7 +1116,6 @@ func (agw *AgentGateway) Reopen(_ context.Context) string {
 
 func (agw *AgentGateway) ShowTokens(_ context.Context) string {
 	logger.GetLogger().Info("Show tokens")
-
 	if agw.Token != nil {
 		at := fmt.Sprintf(
 			"k8s_controller_url=%s\nk8s_service_account=%s\nk8s_namespace=%s\nk8s_token=%s",
@@ -1267,6 +1297,18 @@ func (agw *AgentGateway) ConfigAddHa(_ context.Context, msgData ipc.MessageData)
 	return "HA config added successfully"
 }
 
+// HaCriteriaFail sets the debug_override criterion to false, forcing ha-switchover.
+func (agw *AgentGateway) HaCriteriaFail(ctx context.Context) string {
+	agw.nxosManager.HAStore().UpdateLocalCriterion(ctx, nxtypes.HACritDebug, false)
+	return "HA debug criterion set to fail"
+}
+
+// HaCriteriaOk sets the debug_override criterion to true, allowing normal criteria evaluation.
+func (agw *AgentGateway) HaCriteriaOk(ctx context.Context) string {
+	agw.nxosManager.HAStore().UpdateLocalCriterion(ctx, nxtypes.HACritDebug, true)
+	return "HA debug criterion set to ok"
+}
+
 func (agw *AgentGateway) ConfigRemoveHa(_ context.Context, _ ipc.MessageData) string {
 	logger.GetLogger().Debug("Remove HA config")
 
@@ -1357,4 +1399,1786 @@ func validateLogConfig(id string, config LogConfigData) (LogConfigData, error) {
 	}
 
 	return config, nil
+}
+
+// formatDpuRange returns a DPU range string like "1-2" or "1-4" based on count.
+func formatDpuRange(dpuCount int) string {
+	if dpuCount <= 1 {
+		return "1"
+	}
+	return fmt.Sprintf("1-%d", dpuCount)
+}
+
+// GnmiShowVrf returns VRF store data.
+func (agw *AgentGateway) GnmiShowVrf(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VRF store")
+
+	vrfs := agw.nxosManager.VRFStore().List()
+
+	if filter := msgData.Flags["filter"]; filter != "" {
+		re, err := regexp.Compile(filter)
+		if err != nil {
+			return fmt.Sprintf("invalid filter regex: %v", err)
+		}
+		filtered := vrfs[:0]
+		for _, v := range vrfs {
+			if re.MatchString(v.Name) {
+				filtered = append(filtered, v)
+			}
+		}
+		vrfs = filtered
+	}
+
+	// Sort: active first, then by GID ascending, then by name
+	sort.Slice(vrfs, func(i, j int) bool {
+		if vrfs[i].Active != vrfs[j].Active {
+			return vrfs[i].Active
+		}
+		if vrfs[i].GID != vrfs[j].GID {
+			return vrfs[i].GID < vrfs[j].GID
+		}
+		return vrfs[i].Name < vrfs[j].Name
+	})
+
+	if msgData.Flags["json"] == "true" {
+		type VRFData struct {
+			Name      string `json:"name"`
+			IsGlobal  bool   `json:"is_global"`
+			IsService bool   `json:"is_service"`
+			IsActive  bool   `json:"is_active"`
+			Affinity  uint16 `json:"affinity"`
+			DPUPinned uint16 `json:"dpu_pinned"`
+			GID       uint16 `json:"gid"`
+			Preset    uint16 `json:"preset"`
+		}
+		result := struct {
+			VRFs []VRFData `json:"vrfs"`
+		}{}
+		for _, vrf := range vrfs {
+			result.VRFs = append(result.VRFs, VRFData{
+				Name:      vrf.Name,
+				IsGlobal:  vrf.Global,
+				IsService: vrf.Service,
+				IsActive:  vrf.Active,
+				Affinity:  vrf.Affinity,
+				DPUPinned: vrf.DPUPinned,
+				GID:       vrf.GID,
+				Preset:    vrf.Preset,
+			})
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VRFs: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Text output using FormatTable
+	type VRFDisplay struct {
+		Name     string `json:"Name"`
+		Global   bool   `json:"Global"`
+		Service  bool   `json:"Service"`
+		Active   bool   `json:"Active"`
+		GID      string `json:"GID"`
+		Preset   string `json:"Preset"`
+		Affinity string `json:"Affinity"`
+		Pinned   string `json:"Pinned"`
+	}
+
+	dpuCount := agw.nxosManager.DPUStore().DpuCount()
+	var data []VRFDisplay
+	for _, vrf := range vrfs {
+		gidStr := ""
+		if vrf.GID > 0 {
+			gidStr = fmt.Sprintf("%d", vrf.GID)
+		}
+		presetStr := ""
+		if vrf.Preset > 0 {
+			presetStr = fmt.Sprintf("%d", vrf.Preset)
+		}
+		pinnedStr := ""
+		if vrf.DPUPinned == 65535 {
+			pinnedStr = formatDpuRange(dpuCount)
+		} else if vrf.DPUPinned > 0 {
+			pinnedStr = fmt.Sprintf("%d", vrf.DPUPinned)
+		}
+		var affinityStr string
+		if vrf.Affinity == 0 {
+			affinityStr = formatDpuRange(dpuCount)
+		} else {
+			affinityStr = fmt.Sprintf("%d", vrf.Affinity)
+		}
+		data = append(data, VRFDisplay{
+			Name:     vrf.Name,
+			Global:   vrf.Global,
+			Service:  vrf.Service,
+			Active:   vrf.Active,
+			GID:      gidStr,
+			Preset:   presetStr,
+			Affinity: affinityStr,
+			Pinned:   pinnedStr,
+		})
+	}
+
+	result, err := FormatTable(data)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return "=== gNMI VRF Store ===" + result
+}
+
+// GnmiShowVlan returns VLAN store data.
+func (agw *AgentGateway) GnmiShowVlan(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VLAN store")
+
+	vlans := agw.nxosManager.VLANStore().List()
+
+	if filter := msgData.Flags["filter"]; filter != "" {
+		re, err := regexp.Compile(filter)
+		if err != nil {
+			return fmt.Sprintf("invalid filter regex: %v", err)
+		}
+		filtered := vlans[:0]
+		for _, v := range vlans {
+			if re.MatchString(v.Name) {
+				filtered = append(filtered, v)
+			}
+		}
+		vlans = filtered
+	}
+
+	// Sort: active first, then by name
+	sort.Slice(vlans, func(i, j int) bool {
+		if vlans[i].Active != vlans[j].Active {
+			return vlans[i].Active
+		}
+		return vlans[i].Name < vlans[j].Name
+	})
+
+	if msgData.Flags["json"] == "true" {
+		type VLANData struct {
+			Name      string `json:"name"`
+			IsGlobal  bool   `json:"is_global"`
+			IsService bool   `json:"is_service"`
+			IsActive  bool   `json:"is_active"`
+			Affinity  uint16 `json:"affinity"`
+			DPUPinned uint16 `json:"dpu_pinned"`
+			ID        uint16 `json:"id"`
+		}
+		result := struct {
+			VLANs []VLANData `json:"vlans"`
+		}{}
+		for _, vlan := range vlans {
+			result.VLANs = append(result.VLANs, VLANData{
+				Name:      vlan.Name,
+				IsGlobal:  vlan.Global,
+				IsService: vlan.Service,
+				IsActive:  vlan.Active,
+				Affinity:  vlan.Affinity,
+				DPUPinned: vlan.DPUPinned,
+				ID:        vlan.ID,
+			})
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VLANs: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Text output using FormatTable
+	type VLANDisplay struct {
+		Name     string `json:"Name"`
+		Global   bool   `json:"Global"`
+		Service  bool   `json:"Service"`
+		Active   bool   `json:"Active"`
+		ID       string `json:"ID"`
+		Affinity string `json:"Affinity"`
+		Pinned   string `json:"Pinned"`
+	}
+
+	dpuCount := agw.nxosManager.DPUStore().DpuCount()
+	var data []VLANDisplay
+	for _, vlan := range vlans {
+		idStr := ""
+		if vlan.ID > 0 {
+			idStr = fmt.Sprintf("%d", vlan.ID)
+		}
+		pinnedStr := ""
+		if vlan.DPUPinned == 65535 {
+			pinnedStr = formatDpuRange(dpuCount)
+		} else if vlan.DPUPinned > 0 {
+			pinnedStr = fmt.Sprintf("%d", vlan.DPUPinned)
+		}
+		var affinityStr string
+		if vlan.Affinity == 0 {
+			affinityStr = formatDpuRange(dpuCount)
+		} else {
+			affinityStr = fmt.Sprintf("%d", vlan.Affinity)
+		}
+		data = append(data, VLANDisplay{
+			Name:     vlan.Name,
+			Global:   vlan.Global,
+			Service:  vlan.Service,
+			Active:   vlan.Active,
+			ID:       idStr,
+			Affinity: affinityStr,
+			Pinned:   pinnedStr,
+		})
+	}
+
+	result, err := FormatTable(data)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return "=== gNMI VLAN Store ===" + result
+}
+
+// GnmiShowDpu returns DPU store data.
+func (agw *AgentGateway) GnmiShowDpu(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI DPU store")
+
+	dpuStore := agw.nxosManager.DPUStore()
+	dpus := dpuStore.List()
+
+	// Sort DPUs by name for consistent output
+	sort.Slice(dpus, func(i, j int) bool {
+		return dpus[i].Name < dpus[j].Name
+	})
+
+	if filter := msgData.Flags["filter"]; filter != "" {
+		re, err := regexp.Compile(filter)
+		if err != nil {
+			return fmt.Sprintf("invalid filter regex: %v", err)
+		}
+		filtered := dpus[:0]
+		for _, d := range dpus {
+			if re.MatchString(d.Name) {
+				filtered = append(filtered, d)
+			}
+		}
+		dpus = filtered
+	}
+
+	if msgData.Flags["json"] == "true" {
+		type DPUData struct {
+			Name      string `json:"name"`
+			IP        string `json:"ip"`
+			PortHigh  int16  `json:"port_high"`
+			PortLow   int16  `json:"port_low"`
+			State     string `json:"state"`
+			Version   string `json:"version"`
+			ModuleNum int    `json:"module_num"`
+			IsOnline  bool   `json:"is_online"`
+		}
+		portLow, portHigh := dpuStore.GetGlobalPortRange()
+		result := struct {
+			DPUs              []DPUData `json:"dpus"`
+			Count             int       `json:"count"`
+			ExpectedCount     int       `json:"expected_count"`
+			InventoryComplete bool      `json:"inventory_complete"`
+			AllOnline         bool      `json:"all_online"`
+			IsReady           bool      `json:"is_ready"`
+			HealthyCount      int       `json:"healthy_count"`
+			Healthy           bool      `json:"healthy"`
+			InSync            bool      `json:"in_sync"`
+			InSyncCount       int       `json:"in_sync_count"`
+			GlobalPortLow     uint16    `json:"global_port_low"`
+			GlobalPortHigh    uint16    `json:"global_port_high"`
+			SkipDPU           bool      `json:"skip_dpu"`
+		}{
+			Count:             dpuStore.Count(),
+			ExpectedCount:     dpuStore.DpuCount(),
+			InventoryComplete: dpuStore.IsInventoryComplete(),
+			AllOnline:         dpuStore.AreAllOnline(),
+			IsReady:           dpuStore.IsReady(),
+			HealthyCount:      dpuStore.HealthyCount(),
+			Healthy:           dpuStore.IsHealthy(),
+			InSync:            dpuStore.IsInSync(),
+			InSyncCount:       dpuStore.InSyncCount(),
+			GlobalPortLow:     portLow,
+			GlobalPortHigh:    portHigh,
+			SkipDPU:           dpuStore.IsSkipDPU(),
+		}
+		for _, dpu := range dpus {
+			result.DPUs = append(result.DPUs, DPUData{
+				Name:      dpu.Name,
+				IP:        dpu.IP,
+				PortHigh:  dpu.PortHigh,
+				PortLow:   dpu.PortLow,
+				State:     dpu.State.String(),
+				Version:   dpu.Version,
+				ModuleNum: dpu.ModuleNum,
+				IsOnline:  dpu.IsOnline(),
+			})
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal DPUs: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Text output using FormatTable
+	type DPUDisplay struct {
+		Name     string `json:"Name"`
+		IP       string `json:"IP"`
+		PortHigh int16  `json:"Port High"`
+		PortLow  int16  `json:"Port Low"`
+		State    string `json:"State"`
+		Version  string `json:"Version"`
+		Module   int    `json:"Module"`
+		Online   bool   `json:"Online"`
+	}
+
+	var data []DPUDisplay
+	for _, dpu := range dpus {
+		data = append(data, DPUDisplay{
+			Name:     dpu.Name,
+			IP:       dpu.IP,
+			PortHigh: dpu.PortHigh,
+			PortLow:  dpu.PortLow,
+			State:    dpu.State.String(),
+			Version:  dpu.Version,
+			Module:   dpu.ModuleNum,
+			Online:   dpu.IsOnline(),
+		})
+	}
+
+	portLow, portHigh := dpuStore.GetGlobalPortRange()
+	header := fmt.Sprintf("=== gNMI DPU Store ===\nCount: %d (Expected: %d, Healthy: %d)\nInventory Complete: %v, All Online: %v, Ready: %v\nHealthy: %v, In Sync: %v (Count: %d)\nGlobal Port Range: %d-%d, Skip DPU: %v",
+		dpuStore.Count(), dpuStore.DpuCount(), dpuStore.HealthyCount(),
+		dpuStore.IsInventoryComplete(), dpuStore.AreAllOnline(), dpuStore.IsReady(),
+		dpuStore.IsHealthy(), dpuStore.IsInSync(), dpuStore.InSyncCount(),
+		portLow, portHigh, dpuStore.IsSkipDPU())
+
+	table, err := FormatTable(data)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return header + table
+}
+
+// formatEpochISO returns an ISO 8601 UTC string for a unix epoch, or "" if zero.
+func formatEpochISO(epoch int64) string {
+	if epoch == 0 {
+		return ""
+	}
+	return time.Unix(epoch, 0).UTC().Format(time.RFC3339)
+}
+
+// formatEpoch returns a human-readable UTC string for a unix epoch, or "N/A" if zero.
+func formatEpoch(epoch int64) string {
+	if epoch == 0 {
+		return "N/A"
+	}
+	return time.Unix(epoch, 0).UTC().Format("2006-01-02 15:04:05 UTC")
+}
+
+// GnmiShowHa returns HA store data.
+func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI HA store")
+
+	haStore := agw.nxosManager.HAStore()
+
+	local := haStore.Local()
+	allPeers := haStore.AllPeers()
+
+	if msgData.Flags["json"] == "true" {
+		type LocalData struct {
+			HaState          string          `json:"ha_state"`
+			HaStateReason    string          `json:"ha_state_reason"`
+			HaStateEpoch     string          `json:"ha_state_epoch"`
+			SvcState         string          `json:"svc_state"`
+			SvcStateReason   string          `json:"svc_state_reason"`
+			SvcStateEpoch    string          `json:"svc_state_epoch"`
+			CriteriaMet      bool            `json:"criteria_met"`
+			CriteriaMetEpoch string          `json:"criteria_met_epoch"`
+			PolicyCheck      bool            `json:"policy_check"`
+			PolicyRev        string          `json:"policy_rev"`
+			AdjacencyReached bool            `json:"adjacency_reached"`
+			RecoveryPending  bool            `json:"recovery_pending"`
+			RecoveryEpoch    string          `json:"recovery_epoch"`
+			FlapCount        int             `json:"flap_count"`
+			Criteria         map[string]bool `json:"criteria"`
+		}
+
+		localCritJSON := make(map[string]bool, len(local.Criteria))
+		for k, v := range local.Criteria {
+			localCritJSON[string(k)] = v
+		}
+		localData := LocalData{
+			HaState:          local.HaState,
+			HaStateReason:    local.HaStateReason.String(),
+			HaStateEpoch:     formatEpochISO(local.HaStateEpoch),
+			SvcState:         local.SvcState,
+			SvcStateReason:   local.SvcStateReason.String(),
+			SvcStateEpoch:    formatEpochISO(local.SvcStateEpoch),
+			CriteriaMet:      local.CriteriaMet,
+			CriteriaMetEpoch: formatEpochISO(local.CriteriaMetEpoch),
+			PolicyCheck:      local.PolicyCheck,
+			PolicyRev:        local.PolicyRev,
+			AdjacencyReached: local.AdjacencyReached,
+			RecoveryPending:  local.CriteriaRecoveryPending,
+			RecoveryEpoch:    formatEpochISO(local.CriteriaRecoveryEpoch),
+			FlapCount:        local.CriteriaFlapCount,
+			Criteria:         localCritJSON,
+		}
+
+		peersJSON := make(map[string]bool, len(allPeers))
+		for ip := range allPeers {
+			peersJSON[ip] = true
+		}
+
+		result := struct {
+			AdminState     string          `json:"admin_state"`
+			OperState      string          `json:"oper_state"`
+			IsLeader       bool            `json:"is_leader"`
+			LocalIP        string          `json:"local_ip"`
+			Local          LocalData       `json:"local"`
+			Peers          map[string]bool `json:"peers"`
+			AnyPeerAdjOk   bool            `json:"any_peer_adj_ok"`
+			AnyPeerMbrFail bool            `json:"any_peer_mbr_fail"`
+			AnyPeerHaReady bool            `json:"any_peer_ha_ready"`
+		}{
+			AdminState:     haStore.Enabled(),
+			OperState:      haStore.SwitchState(),
+			IsLeader:       haStore.IsLeader(),
+			LocalIP:        haStore.HaIP(),
+			Local:          localData,
+			Peers:          peersJSON,
+			AnyPeerAdjOk:   haStore.AnyPeerAdjacencyCriteriaOk(),
+			AnyPeerMbrFail: haStore.AnyPeerMemberCriteriaFail(),
+			AnyPeerHaReady: haStore.AnyPeerInHaReady(),
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal HA: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Text output
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "=== gNMI HA Store ===")
+	fmt.Fprintln(w, "\n--- Summary ---")
+	fmt.Fprintf(w, "Admin State:\t%s\n", haStore.Enabled())
+	fmt.Fprintf(w, "Oper State:\t%s\n", haStore.SwitchState())
+	fmt.Fprintf(w, "Leader:\t%v\n", haStore.IsLeader())
+	fmt.Fprintf(w, "Local IP:\t%s\n", haStore.HaIP())
+
+	fmt.Fprintln(w, "\n--- Local State ---")
+	fmt.Fprintf(w, "HA State:\t%s (%s) since %s\n", local.HaState, local.HaStateReason, formatEpoch(local.HaStateEpoch))
+	fmt.Fprintf(w, "SVC State:\t%s (%s) since %s\n", local.SvcState, local.SvcStateReason, formatEpoch(local.SvcStateEpoch))
+	fmt.Fprintf(w, "Criteria Met:\t%v since %s\n", local.CriteriaMet, formatEpoch(local.CriteriaMetEpoch))
+	fmt.Fprintf(w, "Policy Check:\t%v\n", local.PolicyCheck)
+	fmt.Fprintf(w, "Policy Rev:\t%s\n", local.PolicyRev)
+	fmt.Fprintf(w, "Adjacency Reached:\t%v\n", local.AdjacencyReached)
+	fmt.Fprintf(w, "Recovery Pending:\t%v\n", local.CriteriaRecoveryPending)
+	fmt.Fprintf(w, "Flap Count:\t%d\n", local.CriteriaFlapCount)
+
+	if len(local.Criteria) > 0 {
+		fmt.Fprintln(w, "\nCriteria:")
+		keys := make([]string, 0, len(local.Criteria))
+		for k := range local.Criteria {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Fprintf(w, "  %s:\t%v\n", k, local.Criteria[nxtypes.HACriterion(k)])
+		}
+	}
+
+	fmt.Fprintf(w, "Any Peer Adj OK:\t%v\n", haStore.AnyPeerAdjacencyCriteriaOk())
+	fmt.Fprintf(w, "Any Peer Mbr Fail:\t%v\n", haStore.AnyPeerMemberCriteriaFail())
+	fmt.Fprintf(w, "Any Peer HA Ready:\t%v\n", haStore.AnyPeerInHaReady())
+
+	if len(allPeers) > 0 {
+		fmt.Fprintf(w, "\nPeers: %d (use 'ha peers show' for details)\n", len(allPeers))
+	}
+
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowDevice returns device store data.
+func (agw *AgentGateway) GnmiShowDevice(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI device store")
+
+	deviceStore := agw.nxosManager.DeviceStore()
+
+	if msgData.Flags["json"] == "true" {
+		result := struct {
+			SerialNumber       string `json:"serial_number"`
+			Model              string `json:"model"`
+			SoftwareVersion    string `json:"software_version"`
+			ServiceIP          string `json:"service_ip"`
+			ProxyServer        string `json:"proxy_server"`
+			ProxyPort          uint32 `json:"proxy_port"`
+			ProxyAddress       string `json:"proxy_address"`
+			ConnectionStatus   string `json:"connection_status"`
+			AdmissionStatus    string `json:"admission_status"`
+			RejectReason       string `json:"reject_reason"`
+			ControllerEndpoint string `json:"controller_endpoint"`
+			ControllerPort     uint32 `json:"controller_port"`
+			ControllerVersion  string `json:"controller_version"`
+			SystemState        string `json:"system_state"`
+			HeadlessMode       bool   `json:"headless_mode"`
+			InService          bool   `json:"in_service"`
+			InServiceState     string `json:"in_service_state"`
+			SkipReg            bool   `json:"skip_reg"`
+			SkipRegReason      string `json:"skip_reg_reason"`
+			HasToken           bool   `json:"has_token"`
+			LbMode             string `json:"lb_mode"`
+		}{
+			SerialNumber:       deviceStore.SerialNumber(),
+			Model:              deviceStore.Model(),
+			SoftwareVersion:    deviceStore.SoftwareVersion(),
+			ServiceIP:          deviceStore.ServiceIP(),
+			ProxyServer:        deviceStore.ProxyServer(),
+			ProxyPort:          deviceStore.ProxyPort(),
+			ProxyAddress:       deviceStore.ProxyAddress(),
+			ConnectionStatus:   deviceStore.ConnectionStatus(),
+			AdmissionStatus:    deviceStore.AdmissionStatus(),
+			RejectReason:       deviceStore.RejectReason(),
+			ControllerEndpoint: deviceStore.ControllerEndpoint(),
+			ControllerPort:     deviceStore.ControllerPort(),
+			ControllerVersion:  deviceStore.ControllerVersion(),
+			SystemState:        nxos.Phase(deviceStore.SystemState()).String(),
+			HeadlessMode:       deviceStore.IsHeadlessMode(),
+			InService:          deviceStore.IsInService(),
+			InServiceState:     deviceStore.InServiceState(),
+			SkipReg:            deviceStore.SkipReg(),
+			SkipRegReason:      deviceStore.SkipRegReason(),
+			HasToken:           deviceStore.Token() != "",
+			LbMode:             deviceStore.LbMode(),
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal device: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Text output using FormatTable
+	type DeviceDisplay struct {
+		SerialNumber       string `json:"Serial Number"`
+		Model              string `json:"Model"`
+		SoftwareVersion    string `json:"Software Version"`
+		ServiceIP          string `json:"Service IP"`
+		ProxyServer        string `json:"Proxy Server"`
+		ProxyPort          uint32 `json:"Proxy Port"`
+		ProxyAddress       string `json:"Proxy Address"`
+		ConnectionStatus   string `json:"Connection Status"`
+		AdmissionStatus    string `json:"Admission Status"`
+		RejectReason       string `json:"Reject Reason"`
+		ControllerEndpoint string `json:"Controller Endpoint"`
+		ControllerPort     uint32 `json:"Controller Port"`
+		ControllerVersion  string `json:"Controller Version"`
+		SystemState        string `json:"System State"`
+		HeadlessMode       bool   `json:"Headless Mode"`
+		InService          bool   `json:"In Service"`
+		InServiceState     string `json:"In Service State"`
+		SkipReg            bool   `json:"Skip Reg"`
+		SkipRegReason      string `json:"Skip Reg Reason"`
+		HasToken           bool   `json:"Has Token"`
+		LbMode             string `json:"LB Mode"`
+	}
+
+	data := DeviceDisplay{
+		SerialNumber:       deviceStore.SerialNumber(),
+		Model:              deviceStore.Model(),
+		SoftwareVersion:    deviceStore.SoftwareVersion(),
+		ServiceIP:          deviceStore.ServiceIP(),
+		ProxyServer:        deviceStore.ProxyServer(),
+		ProxyPort:          deviceStore.ProxyPort(),
+		ProxyAddress:       deviceStore.ProxyAddress(),
+		ConnectionStatus:   deviceStore.ConnectionStatus(),
+		AdmissionStatus:    deviceStore.AdmissionStatus(),
+		RejectReason:       deviceStore.RejectReason(),
+		ControllerEndpoint: deviceStore.ControllerEndpoint(),
+		ControllerPort:     deviceStore.ControllerPort(),
+		ControllerVersion:  deviceStore.ControllerVersion(),
+		SystemState:        nxos.Phase(deviceStore.SystemState()).String(),
+		HeadlessMode:       deviceStore.IsHeadlessMode(),
+		InService:          deviceStore.IsInService(),
+		InServiceState:     deviceStore.InServiceState(),
+		SkipReg:            deviceStore.SkipReg(),
+		SkipRegReason:      deviceStore.SkipRegReason(),
+		HasToken:           deviceStore.Token() != "",
+		LbMode:             deviceStore.LbMode(),
+	}
+
+	table, err := FormatTable(data)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return "=== gNMI Device Store ===\n" + table
+}
+
+// GnmiShowVrfList returns a compact table of active VRFs with a count summary.
+func (agw *AgentGateway) GnmiShowVrfList(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VRF list (active only)")
+
+	allVRFs := agw.nxosManager.VRFStore().List()
+	active := agw.nxosManager.VRFStore().ListActive()
+
+	sort.Slice(active, func(i, j int) bool {
+		if active[i].GID != active[j].GID {
+			return active[i].GID < active[j].GID
+		}
+		return active[i].Name < active[j].Name
+	})
+
+	if msgData.Flags["json"] == "true" {
+		type VRFEntry struct {
+			Name     string `json:"name"`
+			GID      uint16 `json:"gid"`
+			Affinity uint16 `json:"affinity"`
+			Pinned   uint16 `json:"dpu_pinned"`
+		}
+		result := struct {
+			ActiveCount int        `json:"active_count"`
+			TotalCount  int        `json:"total_count"`
+			VRFs        []VRFEntry `json:"vrfs"`
+		}{
+			ActiveCount: len(active),
+			TotalCount:  len(allVRFs),
+		}
+		for _, v := range active {
+			result.VRFs = append(result.VRFs, VRFEntry{
+				Name:     v.Name,
+				GID:      v.GID,
+				Affinity: v.Affinity,
+				Pinned:   v.DPUPinned,
+			})
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VRF list: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	type VRFListDisplay struct {
+		Name     string `json:"Name"`
+		GID      string `json:"GID"`
+		Affinity string `json:"Affinity"`
+		Pinned   string `json:"Pinned"`
+	}
+	dpuCount := agw.nxosManager.DPUStore().DpuCount()
+	var data []VRFListDisplay
+	for _, v := range active {
+		gidStr := ""
+		if v.GID > 0 {
+			gidStr = fmt.Sprintf("%d", v.GID)
+		}
+		pinnedStr := ""
+		if v.DPUPinned == 65535 {
+			pinnedStr = formatDpuRange(dpuCount)
+		} else if v.DPUPinned > 0 {
+			pinnedStr = fmt.Sprintf("%d", v.DPUPinned)
+		}
+		var affinityStr string
+		if v.Affinity == 0 {
+			affinityStr = formatDpuRange(dpuCount)
+		} else {
+			affinityStr = fmt.Sprintf("%d", v.Affinity)
+		}
+		data = append(data, VRFListDisplay{Name: v.Name, GID: gidStr, Affinity: affinityStr, Pinned: pinnedStr})
+	}
+	table, err := FormatTable(data)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return fmt.Sprintf("=== Active VRFs (%d of %d) ===", len(active), len(allVRFs)) + table
+}
+
+// GnmiShowVrfInfo returns aggregate VRF statistics.
+func (agw *AgentGateway) GnmiShowVrfInfo(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VRF info")
+
+	vrfs := agw.nxosManager.VRFStore().List()
+
+	var total, active, globalOnly, serviceOnly, gidsAllocated, staticPinning, dynamicPinning, unpinned int
+	total = len(vrfs)
+	for _, v := range vrfs {
+		isActive := v.Active
+		if isActive {
+			active++
+		} else if v.Global {
+			globalOnly++
+		} else if v.Service {
+			serviceOnly++
+		}
+		if v.GID > 0 {
+			gidsAllocated++
+		}
+		if v.DPUPinned > 0 {
+			if v.Affinity > 0 {
+				staticPinning++
+			} else {
+				dynamicPinning++
+			}
+		} else {
+			unpinned++
+		}
+	}
+
+	if msgData.Flags["json"] == "true" {
+		result := struct {
+			Total          int `json:"total"`
+			Active         int `json:"active"`
+			GlobalOnly     int `json:"global_only"`
+			ServiceOnly    int `json:"service_only"`
+			GIDsAllocated  int `json:"gids_allocated"`
+			StaticPinning  int `json:"static_pinning"`
+			DynamicPinning int `json:"dynamic_pinning"`
+			Unpinned       int `json:"unpinned"`
+		}{
+			Total:          total,
+			Active:         active,
+			GlobalOnly:     globalOnly,
+			ServiceOnly:    serviceOnly,
+			GIDsAllocated:  gidsAllocated,
+			StaticPinning:  staticPinning,
+			DynamicPinning: dynamicPinning,
+			Unpinned:       unpinned,
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VRF info: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "=== VRF Info ===")
+	fmt.Fprintf(w, "  Total:\t%d\n", total)
+	fmt.Fprintf(w, "  Active:\t%d  (global + service)\n", active)
+	fmt.Fprintf(w, "  Global Only:\t%d\n", globalOnly)
+	fmt.Fprintf(w, "  Service Only:\t%d\n", serviceOnly)
+	fmt.Fprintf(w, "  GIDs Allocated:\t%d\n", gidsAllocated)
+	fmt.Fprintf(w, "  Static Pinning:\t%d\n", staticPinning)
+	fmt.Fprintf(w, "  Dynamic Pinning:\t%d\n", dynamicPinning)
+	fmt.Fprintf(w, "  Unpinned:\t%d\n", unpinned)
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowVrfGids returns the GID allocation table for VRFs.
+func (agw *AgentGateway) GnmiShowVrfGids(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VRF GIDs")
+
+	allVRFs := agw.nxosManager.VRFStore().List()
+	nextGID := agw.nxosManager.VRFStore().NextGID()
+
+	// Filter to VRFs with GID > 0 or Preset > 0
+	var gidVRFs []nxtypes.VRF
+	for _, v := range allVRFs {
+		if v.GID > 0 || v.Preset > 0 {
+			gidVRFs = append(gidVRFs, v)
+		}
+	}
+	// Sort: active first, then by GID ascending, then by name
+	sort.Slice(gidVRFs, func(i, j int) bool {
+		if gidVRFs[i].Active != gidVRFs[j].Active {
+			return gidVRFs[i].Active
+		}
+		if gidVRFs[i].GID != gidVRFs[j].GID {
+			return gidVRFs[i].GID < gidVRFs[j].GID
+		}
+		return gidVRFs[i].Name < gidVRFs[j].Name
+	})
+
+	if msgData.Flags["json"] == "true" {
+		type GIDEntry struct {
+			Name   string `json:"name"`
+			GID    uint16 `json:"gid"`
+			Preset uint16 `json:"preset"`
+			Active bool   `json:"active"`
+		}
+		result := struct {
+			Count   int        `json:"count"`
+			NextGID uint16     `json:"next_gid"`
+			GIDs    []GIDEntry `json:"gids"`
+		}{
+			Count:   len(gidVRFs),
+			NextGID: nextGID,
+		}
+		for _, v := range gidVRFs {
+			result.GIDs = append(result.GIDs, GIDEntry{
+				Name:   v.Name,
+				GID:    v.GID,
+				Preset: v.Preset,
+				Active: v.Active,
+			})
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VRF GIDs: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	type GIDDisplay struct {
+		VRFName string `json:"VRF Name"`
+		GID     string `json:"GID"`
+		Preset  string `json:"Preset"`
+		Active  bool   `json:"Active"`
+	}
+	var data []GIDDisplay
+	for _, v := range gidVRFs {
+		gidStr := ""
+		if v.GID > 0 {
+			gidStr = fmt.Sprintf("%d", v.GID)
+		}
+		presetStr := ""
+		if v.Preset > 0 {
+			presetStr = fmt.Sprintf("%d", v.Preset)
+		}
+		data = append(data, GIDDisplay{
+			VRFName: v.Name,
+			GID:     gidStr,
+			Preset:  presetStr,
+			Active:  v.Active,
+		})
+	}
+	table, err := FormatTable(data)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return fmt.Sprintf("=== VRF GID Allocations (%d in use, next=%d) ===", len(gidVRFs), nextGID) + table
+}
+
+// GnmiShowVrfPeers returns per-peer VRF GID reconciliation state.
+func (agw *AgentGateway) GnmiShowVrfPeers(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VRF peers")
+
+	haStore := agw.nxosManager.HAStore()
+	allPeers := haStore.AllPeers()
+
+	// Sort peers by IP for consistent output
+	ips := make([]string, 0, len(allPeers))
+	for ip := range allPeers {
+		ips = append(ips, ip)
+	}
+	sort.Strings(ips)
+
+	if msgData.Flags["json"] == "true" {
+		type PeerEntry struct {
+			IP                   string `json:"ip"`
+			AdjacencyCriteriaMet bool   `json:"adjacency_criteria_met"`
+			PeerVrfGid           bool   `json:"peer_vrf_gid"`
+		}
+		result := struct {
+			Count int         `json:"count"`
+			Peers []PeerEntry `json:"peers"`
+		}{
+			Count: len(allPeers),
+		}
+		for _, ip := range ips {
+			peer := allPeers[ip]
+			vrfGid := peer.AdjacencyCriteria[nxtypes.HACritPeerVrfGid]
+			result.Peers = append(result.Peers, PeerEntry{
+				IP:                   ip,
+				AdjacencyCriteriaMet: peer.AdjacencyCriteriaMet,
+				PeerVrfGid:           vrfGid,
+			})
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VRF peers: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "=== VRF Peer Reconciliation ===")
+	fmt.Fprintf(w, "Peers: %d\n", len(allPeers))
+	if len(allPeers) > 0 {
+		fmt.Fprintln(w, "")
+		fmt.Fprintf(w, "%-20s\t%-20s\t%-12s\n", "Peer IP", "Adj Criteria Met", "VRF GID OK")
+		for _, ip := range ips {
+			peer := allPeers[ip]
+			vrfGid := peer.AdjacencyCriteria[nxtypes.HACritPeerVrfGid]
+			fmt.Fprintf(w, "%-20s\t%-20v\t%-12v\n", ip, peer.AdjacencyCriteriaMet, vrfGid)
+		}
+	}
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowVlanList returns a compact table of active VLANs with a count summary.
+func (agw *AgentGateway) GnmiShowVlanList(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VLAN list (active only)")
+
+	allVLANs := agw.nxosManager.VLANStore().List()
+	active := agw.nxosManager.VLANStore().ListActive()
+
+	sort.Slice(active, func(i, j int) bool {
+		return active[i].Name < active[j].Name
+	})
+
+	if msgData.Flags["json"] == "true" {
+		type VLANEntry struct {
+			Name     string `json:"name"`
+			ID       uint16 `json:"id"`
+			Affinity uint16 `json:"affinity"`
+			Pinned   uint16 `json:"dpu_pinned"`
+		}
+		result := struct {
+			ActiveCount int         `json:"active_count"`
+			TotalCount  int         `json:"total_count"`
+			VLANs       []VLANEntry `json:"vlans"`
+		}{
+			ActiveCount: len(active),
+			TotalCount:  len(allVLANs),
+		}
+		for _, v := range active {
+			result.VLANs = append(result.VLANs, VLANEntry{
+				Name:     v.Name,
+				ID:       v.ID,
+				Affinity: v.Affinity,
+				Pinned:   v.DPUPinned,
+			})
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VLAN list: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	type VLANListDisplay struct {
+		Name     string `json:"Name"`
+		ID       string `json:"ID"`
+		Affinity string `json:"Affinity"`
+		Pinned   string `json:"Pinned"`
+	}
+	dpuCount := agw.nxosManager.DPUStore().DpuCount()
+	var data []VLANListDisplay
+	for _, v := range active {
+		idStr := ""
+		if v.ID > 0 {
+			idStr = fmt.Sprintf("%d", v.ID)
+		}
+		pinnedStr := ""
+		if v.DPUPinned == 65535 {
+			pinnedStr = formatDpuRange(dpuCount)
+		} else if v.DPUPinned > 0 {
+			pinnedStr = fmt.Sprintf("%d", v.DPUPinned)
+		}
+		var affinityStr string
+		if v.Affinity == 0 {
+			affinityStr = formatDpuRange(dpuCount)
+		} else {
+			affinityStr = fmt.Sprintf("%d", v.Affinity)
+		}
+		data = append(data, VLANListDisplay{Name: v.Name, ID: idStr, Affinity: affinityStr, Pinned: pinnedStr})
+	}
+	table, err := FormatTable(data)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return fmt.Sprintf("=== Active VLANs (%d of %d) ===", len(active), len(allVLANs)) + table
+}
+
+// GnmiShowVlanInfo returns aggregate VLAN statistics.
+func (agw *AgentGateway) GnmiShowVlanInfo(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI VLAN info")
+
+	vlans := agw.nxosManager.VLANStore().List()
+
+	var total, active, globalOnly, serviceOnly, staticPinning, dynamicPinning, unpinned, idsAssigned int
+	total = len(vlans)
+	for _, v := range vlans {
+		isActive := v.Active
+		if isActive {
+			active++
+		} else if v.Global {
+			globalOnly++
+		} else if v.Service {
+			serviceOnly++
+		}
+		if v.ID > 0 {
+			idsAssigned++
+		}
+		if v.DPUPinned > 0 {
+			if v.Affinity > 0 {
+				staticPinning++
+			} else {
+				dynamicPinning++
+			}
+		} else {
+			unpinned++
+		}
+	}
+
+	if msgData.Flags["json"] == "true" {
+		result := struct {
+			Total          int `json:"total"`
+			Active         int `json:"active"`
+			GlobalOnly     int `json:"global_only"`
+			ServiceOnly    int `json:"service_only"`
+			IDsAssigned    int `json:"ids_assigned"`
+			StaticPinning  int `json:"static_pinning"`
+			DynamicPinning int `json:"dynamic_pinning"`
+			Unpinned       int `json:"unpinned"`
+		}{
+			Total:          total,
+			Active:         active,
+			GlobalOnly:     globalOnly,
+			ServiceOnly:    serviceOnly,
+			IDsAssigned:    idsAssigned,
+			StaticPinning:  staticPinning,
+			DynamicPinning: dynamicPinning,
+			Unpinned:       unpinned,
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal VLAN info: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "=== VLAN Info ===")
+	fmt.Fprintf(w, "  Total:\t%d\n", total)
+	fmt.Fprintf(w, "  Active:\t%d  (global + service)\n", active)
+	fmt.Fprintf(w, "  Global Only:\t%d\n", globalOnly)
+	fmt.Fprintf(w, "  Service Only:\t%d\n", serviceOnly)
+	fmt.Fprintf(w, "  IDs Assigned:\t%d\n", idsAssigned)
+	fmt.Fprintf(w, "  Static Pinning:\t%d\n", staticPinning)
+	fmt.Fprintf(w, "  Dynamic Pinning:\t%d\n", dynamicPinning)
+	fmt.Fprintf(w, "  Unpinned:\t%d\n", unpinned)
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowDpuStatus returns DPU fleet status summary without per-DPU table.
+func (agw *AgentGateway) GnmiShowDpuStatus(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI DPU status")
+
+	dpuStore := agw.nxosManager.DPUStore()
+	portLow, portHigh := dpuStore.GetGlobalPortRange()
+
+	if msgData.Flags["json"] == "true" {
+		result := struct {
+			Count             int    `json:"count"`
+			ExpectedCount     int    `json:"expected_count"`
+			InventoryComplete bool   `json:"inventory_complete"`
+			AllOnline         bool   `json:"all_online"`
+			IsReady           bool   `json:"is_ready"`
+			HealthyCount      int    `json:"healthy_count"`
+			Healthy           bool   `json:"healthy"`
+			InSync            bool   `json:"in_sync"`
+			InSyncCount       int    `json:"in_sync_count"`
+			GlobalPortLow     uint16 `json:"global_port_low"`
+			GlobalPortHigh    uint16 `json:"global_port_high"`
+			SkipDPU           bool   `json:"skip_dpu"`
+		}{
+			Count:             dpuStore.Count(),
+			ExpectedCount:     dpuStore.DpuCount(),
+			InventoryComplete: dpuStore.IsInventoryComplete(),
+			AllOnline:         dpuStore.AreAllOnline(),
+			IsReady:           dpuStore.IsReady(),
+			HealthyCount:      dpuStore.HealthyCount(),
+			Healthy:           dpuStore.IsHealthy(),
+			InSync:            dpuStore.IsInSync(),
+			InSyncCount:       dpuStore.InSyncCount(),
+			GlobalPortLow:     portLow,
+			GlobalPortHigh:    portHigh,
+			SkipDPU:           dpuStore.IsSkipDPU(),
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal DPU status: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "=== DPU Fleet Status ===")
+	fmt.Fprintf(w, "  Count:\t%d (Expected: %d)\n", dpuStore.Count(), dpuStore.DpuCount())
+	fmt.Fprintf(w, "  Healthy:\t%v (%d healthy)\n", dpuStore.IsHealthy(), dpuStore.HealthyCount())
+	fmt.Fprintf(w, "  Inventory Complete:\t%v\n", dpuStore.IsInventoryComplete())
+	fmt.Fprintf(w, "  All Online:\t%v\n", dpuStore.AreAllOnline())
+	fmt.Fprintf(w, "  Ready:\t%v\n", dpuStore.IsReady())
+	fmt.Fprintf(w, "  In Sync:\t%v (%d in sync)\n", dpuStore.IsInSync(), dpuStore.InSyncCount())
+	fmt.Fprintf(w, "  Global Port Range:\t%d-%d\n", portLow, portHigh)
+	fmt.Fprintf(w, "  Skip DPU:\t%v\n", dpuStore.IsSkipDPU())
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowHaPeers returns per-peer HA state details with optional IP filter.
+func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI HA peers")
+
+	haStore := agw.nxosManager.HAStore()
+	allPeers := haStore.AllPeers()
+
+	// Sort peer IPs for deterministic output
+	peerIPs := make([]string, 0, len(allPeers))
+	for ip := range allPeers {
+		peerIPs = append(peerIPs, ip)
+	}
+	sort.Strings(peerIPs)
+
+	// Apply filter
+	if filter := msgData.Flags["filter"]; filter != "" {
+		re, err := regexp.Compile(filter)
+		if err != nil {
+			return fmt.Sprintf("invalid filter regex: %v", err)
+		}
+		filtered := peerIPs[:0]
+		for _, ip := range peerIPs {
+			if re.MatchString(ip) {
+				filtered = append(filtered, ip)
+			}
+		}
+		peerIPs = filtered
+	}
+
+	if msgData.Flags["json"] == "true" {
+		type DPUVersionData struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+		}
+		type MemberInfoData struct {
+			SerialNum    string           `json:"serial_num"`
+			Model        string           `json:"model"`
+			SWVersion    string           `json:"sw_version"`
+			AgentVersion string           `json:"agent_version"`
+			HaState      string           `json:"ha_state"`
+			Service      string           `json:"service"`
+			LbMode       string           `json:"lb_mode"`
+			PolicyCheck  bool             `json:"policy_check"`
+			DPUs         []DPUVersionData `json:"dpus"`
+		}
+		type DPUHAStatusData struct {
+			KeepaliveUp   bool `json:"keepalive_up"`
+			BulkSyncLocal bool `json:"bulk_sync_local"`
+			BulkSyncPeer  bool `json:"bulk_sync_peer"`
+		}
+		type PeerData struct {
+			SvcState                  string                     `json:"svc_state"`
+			SvcStateReason            string                     `json:"svc_state_reason"`
+			SvcStateEpoch             string                     `json:"svc_state_epoch"`
+			AdjacencyConnected        bool                       `json:"adjacency_connected"`
+			AdjacencyConnectedEpoch   string                     `json:"adjacency_connected_epoch"`
+			MemberCriteria            map[string]bool            `json:"member_criteria"`
+			MemberCriteriaMet         bool                       `json:"member_criteria_met"`
+			MemberCriteriaMetEpoch    string                     `json:"member_criteria_met_epoch"`
+			AdjacencyCriteria         map[string]bool            `json:"adjacency_criteria"`
+			AdjacencyCriteriaMet      bool                       `json:"adjacency_criteria_met"`
+			AdjacencyCriteriaMetEpoch string                     `json:"adjacency_criteria_met_epoch"`
+			DPUHAStatuses             map[string]DPUHAStatusData `json:"dpu_ha_statuses,omitempty"`
+			MemberInfo                *MemberInfoData            `json:"member_info,omitempty"`
+		}
+		peersData := make(map[string]PeerData, len(peerIPs))
+		for _, ip := range peerIPs {
+			peer := allPeers[ip]
+			mbrCrit := make(map[string]bool, len(peer.MemberCriteria))
+			for k, v := range peer.MemberCriteria {
+				mbrCrit[string(k)] = v
+			}
+			adjCrit := make(map[string]bool, len(peer.AdjacencyCriteria))
+			for k, v := range peer.AdjacencyCriteria {
+				adjCrit[string(k)] = v
+			}
+			var dpuHAStatuses map[string]DPUHAStatusData
+			if len(peer.DPUStatuses) > 0 {
+				dpuHAStatuses = make(map[string]DPUHAStatusData, len(peer.DPUStatuses))
+				for uid, s := range peer.DPUStatuses {
+					dpuHAStatuses[uid] = DPUHAStatusData{
+						KeepaliveUp:   s.KeepaliveUp,
+						BulkSyncLocal: s.BulkSyncLocal,
+						BulkSyncPeer:  s.BulkSyncPeer,
+					}
+				}
+			}
+			pd := PeerData{
+				SvcState:                  peer.SvcState,
+				SvcStateReason:            peer.SvcStateReason.String(),
+				SvcStateEpoch:             formatEpochISO(peer.SvcStateEpoch),
+				AdjacencyConnected:        peer.AdjacencyConnected,
+				AdjacencyConnectedEpoch:   formatEpochISO(peer.AdjacencyConnectedEpoch),
+				MemberCriteria:            mbrCrit,
+				MemberCriteriaMet:         peer.MemberCriteriaMet,
+				MemberCriteriaMetEpoch:    formatEpochISO(peer.MemberCriteriaMetEpoch),
+				AdjacencyCriteria:         adjCrit,
+				AdjacencyCriteriaMet:      peer.AdjacencyCriteriaMet,
+				AdjacencyCriteriaMetEpoch: formatEpochISO(peer.AdjacencyCriteriaMetEpoch),
+				DPUHAStatuses:             dpuHAStatuses,
+			}
+			if peer.MemberInfo != nil {
+				dpus := make([]DPUVersionData, len(peer.MemberInfo.DPUs))
+				for i, d := range peer.MemberInfo.DPUs {
+					dpus[i] = DPUVersionData{Name: d.Name, Version: d.Version}
+				}
+				pd.MemberInfo = &MemberInfoData{
+					SerialNum:    peer.MemberInfo.SerialNum,
+					Model:        peer.MemberInfo.Model,
+					SWVersion:    peer.MemberInfo.SWVersion,
+					AgentVersion: peer.MemberInfo.CPAVersion,
+					HaState:      peer.MemberInfo.HaState,
+					Service:      peer.MemberInfo.Service,
+					LbMode:       peer.MemberInfo.LbMode,
+					PolicyCheck:  peer.MemberInfo.PolicyCheck,
+					DPUs:         dpus,
+				}
+			}
+			peersData[ip] = pd
+		}
+		result := struct {
+			PeerCount int                 `json:"peer_count"`
+			Peers     map[string]PeerData `json:"peers"`
+		}{
+			PeerCount: len(peerIPs),
+			Peers:     peersData,
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal HA peers: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	if len(peerIPs) == 0 {
+		return "=== HA Peers ===\n  (no peers)\n"
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "=== HA Peers ===")
+	for _, ip := range peerIPs {
+		peer := allPeers[ip]
+		fmt.Fprintf(w, "\n--- Peer: %s ---\n", ip)
+		fmt.Fprintf(w, "Svc State:\t%s (%s) since %s\n", peer.SvcState, peer.SvcStateReason, formatEpoch(peer.SvcStateEpoch))
+		fmt.Fprintf(w, "Adjacency Connected:\t%v since %s\n", peer.AdjacencyConnected, formatEpoch(peer.AdjacencyConnectedEpoch))
+
+		fmt.Fprintf(w, "\nMember Criteria Met:\t%v since %s\n", peer.MemberCriteriaMet, formatEpoch(peer.MemberCriteriaMetEpoch))
+		mbrKeys := make([]string, 0, len(peer.MemberCriteria))
+		for k := range peer.MemberCriteria {
+			mbrKeys = append(mbrKeys, string(k))
+		}
+		sort.Strings(mbrKeys)
+		for _, k := range mbrKeys {
+			fmt.Fprintf(w, "  %s:\t%v\n", k, peer.MemberCriteria[nxtypes.HACriterion(k)])
+		}
+
+		fmt.Fprintf(w, "\nAdjacency Criteria Met:\t%v since %s\n", peer.AdjacencyCriteriaMet, formatEpoch(peer.AdjacencyCriteriaMetEpoch))
+		adjKeys := make([]string, 0, len(peer.AdjacencyCriteria))
+		for k := range peer.AdjacencyCriteria {
+			adjKeys = append(adjKeys, string(k))
+		}
+		sort.Strings(adjKeys)
+		for _, k := range adjKeys {
+			fmt.Fprintf(w, "  %s:\t%v\n", k, peer.AdjacencyCriteria[nxtypes.HACriterion(k)])
+		}
+
+		if peer.MemberInfo != nil {
+			fmt.Fprintln(w, "\nMember Info:")
+			fmt.Fprintf(w, "  Serial:\t%s\n", peer.MemberInfo.SerialNum)
+			fmt.Fprintf(w, "  Model:\t%s\n", peer.MemberInfo.Model)
+			fmt.Fprintf(w, "  SW Version:\t%s\n", peer.MemberInfo.SWVersion)
+			fmt.Fprintf(w, "  CPA Version:\t%s\n", peer.MemberInfo.CPAVersion)
+			fmt.Fprintf(w, "  HA State:\t%s\n", peer.MemberInfo.HaState)
+			fmt.Fprintf(w, "  Service:\t%s\n", peer.MemberInfo.Service)
+			fmt.Fprintf(w, "  LB Mode:\t%s\n", peer.MemberInfo.LbMode)
+			fmt.Fprintf(w, "  Policy Rev:\t%s\n", peer.MemberInfo.PolicyRev)
+			fmt.Fprintf(w, "  Policy Check:\t%v\n", peer.MemberInfo.PolicyCheck)
+			if len(peer.MemberInfo.DPUs) > 0 {
+				dpuParts := make([]string, len(peer.MemberInfo.DPUs))
+				for i, d := range peer.MemberInfo.DPUs {
+					dpuParts[i] = d.Name + "(" + d.Version + ")"
+				}
+				fmt.Fprintf(w, "  DPUs:\t%s\n", strings.Join(dpuParts, ", "))
+			}
+		}
+
+		if len(peer.DPUStatuses) > 0 {
+			fmt.Fprintln(w, "\nDPU HA Status:")
+			dpuUIDs := make([]string, 0, len(peer.DPUStatuses))
+			for uid := range peer.DPUStatuses {
+				dpuUIDs = append(dpuUIDs, uid)
+			}
+			sort.Strings(dpuUIDs)
+			for _, uid := range dpuUIDs {
+				s := peer.DPUStatuses[uid]
+				keepalive := "down"
+				if s.KeepaliveUp {
+					keepalive = "up"
+				}
+				bulkLocal := "pending"
+				if s.BulkSyncLocal {
+					bulkLocal = "done"
+				}
+				bulkPeer := "pending"
+				if s.BulkSyncPeer {
+					bulkPeer = "done"
+				}
+				fmt.Fprintf(w, "  %s:\tkeepalive=%-4s  bulk_sync_local=%-7s  bulk_sync_peer=%s\n",
+					uid, keepalive, bulkLocal, bulkPeer)
+			}
+		}
+	}
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowHaCriteria returns all local and peer HA criteria in a compact view.
+func (agw *AgentGateway) GnmiShowHaCriteria(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI HA criteria")
+
+	haStore := agw.nxosManager.HAStore()
+	local := haStore.Local()
+	allPeers := haStore.AllPeers()
+
+	// Sort peer IPs for deterministic output
+	peerIPs := make([]string, 0, len(allPeers))
+	for ip := range allPeers {
+		peerIPs = append(peerIPs, ip)
+	}
+	sort.Strings(peerIPs)
+
+	if msgData.Flags["json"] == "true" {
+		localCrit := make(map[string]bool, len(local.Criteria))
+		for k, v := range local.Criteria {
+			localCrit[string(k)] = v
+		}
+		type PeerCriteriaData struct {
+			MemberCriteria    map[string]bool `json:"member_criteria"`
+			MemberMet         bool            `json:"member_met"`
+			AdjacencyCriteria map[string]bool `json:"adjacency_criteria"`
+			AdjacencyMet      bool            `json:"adjacency_met"`
+		}
+		peersData := make(map[string]PeerCriteriaData, len(peerIPs))
+		for _, ip := range peerIPs {
+			peer := allPeers[ip]
+			mbrCrit := make(map[string]bool, len(peer.MemberCriteria))
+			for k, v := range peer.MemberCriteria {
+				mbrCrit[string(k)] = v
+			}
+			adjCrit := make(map[string]bool, len(peer.AdjacencyCriteria))
+			for k, v := range peer.AdjacencyCriteria {
+				adjCrit[string(k)] = v
+			}
+			peersData[ip] = PeerCriteriaData{
+				MemberCriteria:    mbrCrit,
+				MemberMet:         peer.MemberCriteriaMet,
+				AdjacencyCriteria: adjCrit,
+				AdjacencyMet:      peer.AdjacencyCriteriaMet,
+			}
+		}
+		result := struct {
+			LocalCriteria map[string]bool             `json:"local_criteria"`
+			LocalMet      bool                        `json:"local_met"`
+			Peers         map[string]PeerCriteriaData `json:"peers"`
+		}{
+			LocalCriteria: localCrit,
+			LocalMet:      local.CriteriaMet,
+			Peers:         peersData,
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal HA criteria: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "=== HA Criteria ===")
+	fmt.Fprintf(w, "\n--- Local (met: %v) ---\n", local.CriteriaMet)
+	if len(local.Criteria) > 0 {
+		keys := make([]string, 0, len(local.Criteria))
+		for k := range local.Criteria {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Fprintf(w, "  %s:\t%v\n", k, local.Criteria[nxtypes.HACriterion(k)])
+		}
+	} else {
+		fmt.Fprintln(w, "  (none)")
+	}
+
+	for _, ip := range peerIPs {
+		peer := allPeers[ip]
+		fmt.Fprintf(w, "\n--- Peer %s ---\n", ip)
+
+		fmt.Fprintf(w, "  Member (met: %v):\n", peer.MemberCriteriaMet)
+		mbrKeys := make([]string, 0, len(peer.MemberCriteria))
+		for k := range peer.MemberCriteria {
+			mbrKeys = append(mbrKeys, string(k))
+		}
+		sort.Strings(mbrKeys)
+		for _, k := range mbrKeys {
+			fmt.Fprintf(w, "    %s:\t%v\n", k, peer.MemberCriteria[nxtypes.HACriterion(k)])
+		}
+
+		fmt.Fprintf(w, "  Adjacency (met: %v):\n", peer.AdjacencyCriteriaMet)
+		adjKeys := make([]string, 0, len(peer.AdjacencyCriteria))
+		for k := range peer.AdjacencyCriteria {
+			adjKeys = append(adjKeys, string(k))
+		}
+		sort.Strings(adjKeys)
+		for _, k := range adjKeys {
+			fmt.Fprintf(w, "    %s:\t%v\n", k, peer.AdjacencyCriteria[nxtypes.HACriterion(k)])
+		}
+	}
+
+	w.Flush()
+	return buf.String()
+}
+
+// mockGnmiHandler returns the mock handler if active, or nil otherwise.
+func (agw *AgentGateway) mockGnmiHandler() *mock.Handler {
+	h, ok := agw.nxosManager.GnmiHandler().(*mock.Handler)
+	if !ok {
+		return nil
+	}
+	return h
+}
+
+// pathsToTree builds a nested map tree from a flat map of gNMI path → value.
+// Path segments are split on "/" and list entries like "Inst-list[moduleNum=1]"
+// are kept as-is so each instance is a distinct branch. When a path segment is
+// both a leaf and an intermediate node the existing leaf value is moved under a
+// "_value" key.
+func pathsToTree(data map[string]interface{}) map[string]interface{} {
+	tree := make(map[string]interface{})
+	for path, val := range data {
+		parts := strings.Split(path, "/")
+		cur := tree
+		for i, part := range parts {
+			if part == "" {
+				continue
+			}
+			if i == len(parts)-1 {
+				cur[part] = val
+			} else {
+				if existing, ok := cur[part]; ok {
+					if m, ok := existing.(map[string]interface{}); ok {
+						cur = m
+					} else {
+						m := map[string]interface{}{"_value": existing}
+						cur[part] = m
+						cur = m
+					}
+				} else {
+					m := make(map[string]interface{})
+					cur[part] = m
+					cur = m
+				}
+			}
+		}
+	}
+	return tree
+}
+
+// printTree writes an indented text representation of a nested tree map to buf.
+func printTree(buf *bytes.Buffer, tree map[string]interface{}, indent string) {
+	keys := make([]string, 0, len(tree))
+	for k := range tree {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := tree[k]
+		if subtree, ok := v.(map[string]interface{}); ok {
+			buf.WriteString(indent + k + "/\n")
+			printTree(buf, subtree, indent+"  ")
+		} else {
+			buf.WriteString(fmt.Sprintf("%s%s: %v\n", indent, k, v))
+		}
+	}
+}
+
+// MockGnmiShow returns all path/value pairs stored in the mock gNMI handler
+// as a nested tree (JSON when --json is passed, indented text otherwise).
+func (agw *AgentGateway) MockGnmiShow(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockGnmiShow")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	data := h.GetAllData()
+
+	tree := pathsToTree(data)
+
+	if msgData.Flags["json"] == "true" {
+		jsonBytes, err := json.MarshalIndent(tree, "", "  ")
+		if err != nil {
+			return fmt.Sprintf("Error marshalling JSON: %v", err)
+		}
+		return string(jsonBytes)
+	}
+
+	if len(data) == 0 {
+		return "No mock gNMI data stored"
+	}
+
+	var buf bytes.Buffer
+	printTree(&buf, tree, "")
+	return buf.String()
+}
+
+// MockGnmiGet returns the value stored at the given path in the mock gNMI handler.
+func (agw *AgentGateway) MockGnmiGet(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockGnmiGet")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	path := msgData.Flags["path"]
+	if path == "" {
+		return "path is required"
+	}
+
+	// Collect all entries matching the path (exact + children via prefix)
+	results := h.GetDataByPrefix(path)
+	if len(results) == 0 {
+		return fmt.Sprintf("path %q not found", path)
+	}
+
+	if len(results) == 1 {
+		for _, v := range results {
+			jsonBytes, _ := json.Marshal(v)
+			return string(jsonBytes)
+		}
+	}
+
+	merged := make([]interface{}, 0, len(results))
+	for _, v := range results {
+		merged = append(merged, v)
+	}
+	jsonBytes, _ := json.Marshal(merged)
+	return string(jsonBytes)
+}
+
+// MockGnmiSet stores a value at the given path and fires gNMI notifications.
+func (agw *AgentGateway) MockGnmiSet(ctx context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockGnmiSet")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	path := msgData.Flags["path"]
+	if path == "" {
+		return "path is required"
+	}
+	value := msgData.Flags["value"]
+	if value == "" {
+		return "value is required"
+	}
+
+	if err := h.SetAndNotify(ctx, path, value); err != nil {
+		return fmt.Sprintf("Error setting path: %v", err)
+	}
+	return fmt.Sprintf("Set %q = %s", path, value)
+}
+
+// MockGnmiDelete removes a path from the mock gNMI handler and fires gNMI notifications.
+func (agw *AgentGateway) MockGnmiDelete(ctx context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockGnmiDelete")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	path := msgData.Flags["path"]
+	if path == "" {
+		return "path is required"
+	}
+
+	if err := h.DeleteAndNotify(ctx, path); err != nil {
+		return fmt.Sprintf("Error deleting path: %v", err)
+	}
+	return fmt.Sprintf("Deleted %q", path)
+}
+
+// MockGnmiSetBulk sets multiple path/value pairs from a JSON-encoded map.
+func (agw *AgentGateway) MockGnmiSetBulk(ctx context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockGnmiSetBulk")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	entriesJSON := msgData.Flags["entries"]
+	if entriesJSON == "" {
+		return "entries is required"
+	}
+
+	var entries map[string]string
+	if err := json.Unmarshal([]byte(entriesJSON), &entries); err != nil {
+		return fmt.Sprintf("Error parsing entries: %v", err)
+	}
+
+	for path, value := range entries {
+		if err := h.SetAndNotify(ctx, path, value); err != nil {
+			return fmt.Sprintf("Error setting %q: %v", path, err)
+		}
+	}
+	return fmt.Sprintf("Set %d path(s)", len(entries))
+}
+
+// defaultAffinity returns "0" (dynamic). The store determines pinning mode via
+// isLbModePinning(); affinity 0 is valid in both symmetric_hash and dpu_pinning modes.
+func defaultAffinity(_ interface {
+	GetData(string) (interface{}, bool)
+}) string {
+	return "0"
+}
+
+// MockVrfAdd creates a VRF in the mock gNMI handler by sending global and service
+// path notifications, then sets its affinity. Affinity defaults based on LB mode.
+func (agw *AgentGateway) MockVrfAdd(ctx context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockVrfAdd")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	name := msgData.Flags["name"]
+	if name == "" {
+		return "name is required"
+	}
+
+	affinity := msgData.Flags["affinity"]
+	if affinity == "" {
+		affinity = defaultAffinity(h)
+	}
+
+	globalPath := fmt.Sprintf("device:/System/inst-items/Inst-list[name=%s]/name", name)
+	if err := h.SetAndNotify(ctx, globalPath, name); err != nil {
+		return fmt.Sprintf("Error setting global VRF: %v", err)
+	}
+
+	servicePath := fmt.Sprintf("device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicy-items/ipvrf-items/dom-items/Dom-list[name=%s]/name", name)
+	if err := h.SetAndNotify(ctx, servicePath, name); err != nil {
+		return fmt.Sprintf("Error setting service VRF: %v", err)
+	}
+
+	affinityPath := fmt.Sprintf("device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicy-items/ipvrf-items/dom-items/Dom-list[name=%s]/affinity", name)
+	if err := h.SetAndNotify(ctx, affinityPath, affinity); err != nil {
+		return fmt.Sprintf("Error setting VRF affinity: %v", err)
+	}
+
+	return fmt.Sprintf("VRF %q added (affinity=%s)", name, affinity)
+}
+
+// MockVrfDelete removes a VRF from the mock gNMI handler by deleting both
+// global and service path entries.
+func (agw *AgentGateway) MockVrfDelete(ctx context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockVrfDelete")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	name := msgData.Flags["name"]
+	if name == "" {
+		return "name is required"
+	}
+
+	globalPath := fmt.Sprintf("device:/System/inst-items/Inst-list[name=%s]", name)
+	if err := h.DeleteAndNotify(ctx, globalPath); err != nil {
+		return fmt.Sprintf("Error deleting global VRF: %v", err)
+	}
+
+	servicePath := fmt.Sprintf("device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicy-items/ipvrf-items/dom-items/Dom-list[name=%s]", name)
+	if err := h.DeleteAndNotify(ctx, servicePath); err != nil {
+		return fmt.Sprintf("Error deleting service VRF: %v", err)
+	}
+
+	return fmt.Sprintf("VRF %q deleted", name)
+}
+
+// MockVlanAdd creates a VLAN in the mock gNMI handler by sending global and service
+// path notifications, then sets its affinity. Affinity defaults based on LB mode.
+func (agw *AgentGateway) MockVlanAdd(ctx context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockVlanAdd")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	id := msgData.Flags["id"]
+	if id == "" {
+		return "id is required"
+	}
+
+	affinity := msgData.Flags["affinity"]
+	if affinity == "" {
+		affinity = defaultAffinity(h)
+	}
+
+	fabEncap := fmt.Sprintf("vxlan-%s", id)
+	globalPath := fmt.Sprintf("device:/System/bd-items/bd-items/BD-list[fabEncap=%s]/fabEncap", fabEncap)
+	if err := h.SetAndNotify(ctx, globalPath, fabEncap); err != nil {
+		return fmt.Sprintf("Error setting global VLAN: %v", err)
+	}
+
+	servicePath := fmt.Sprintf("device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicy-items/bd-items/vlan-items/Vlan-list[vlanId=%s]/vlanId", id)
+	if err := h.SetAndNotify(ctx, servicePath, id); err != nil {
+		return fmt.Sprintf("Error setting service VLAN: %v", err)
+	}
+
+	affinityPath := fmt.Sprintf("device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicy-items/bd-items/vlan-items/Vlan-list[vlanId=%s]/affinity", id)
+	if err := h.SetAndNotify(ctx, affinityPath, affinity); err != nil {
+		return fmt.Sprintf("Error setting VLAN affinity: %v", err)
+	}
+
+	return fmt.Sprintf("VLAN %q added (affinity=%s)", id, affinity)
+}
+
+// MockVlanDelete removes a VLAN from the mock gNMI handler by deleting both
+// global and service path entries.
+func (agw *AgentGateway) MockVlanDelete(ctx context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("MockVlanDelete")
+
+	h := agw.mockGnmiHandler()
+	if h == nil {
+		return "mock gNMI is not active (NXOS is enabled)"
+	}
+
+	id := msgData.Flags["id"]
+	if id == "" {
+		return "id is required"
+	}
+
+	fabEncap := fmt.Sprintf("vxlan-%s", id)
+	globalPath := fmt.Sprintf("device:/System/bd-items/bd-items/BD-list[fabEncap=%s]", fabEncap)
+	if err := h.DeleteAndNotify(ctx, globalPath); err != nil {
+		return fmt.Sprintf("Error deleting global VLAN: %v", err)
+	}
+
+	servicePath := fmt.Sprintf("device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicy-items/bd-items/vlan-items/Vlan-list[vlanId=%s]", id)
+	if err := h.DeleteAndNotify(ctx, servicePath); err != nil {
+		return fmt.Sprintf("Error deleting service VLAN: %v", err)
+	}
+
+	return fmt.Sprintf("VLAN %q deleted", id)
 }

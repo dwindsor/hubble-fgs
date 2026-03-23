@@ -20,7 +20,7 @@ import (
 	"github.com/isovalent/ipa/system_status/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 )
 
@@ -54,8 +54,8 @@ type SystemStatusDataProvider struct {
 	GetVersion func() string
 	// GetSerialNumber returns the system serial number
 	GetSerialNumber func() string
-	// GetControllerConnectionStatus returns the controller connection status as nxosmodel.E_Cisco_NX_OSDevice_Sas_CommonStateE
-	GetControllerConnectionStatus func() model.E_Cisco_NX_OSDevice_Sas_CommonStateE
+	// GetDeviceConnectionStatus returns the device connection status as a string
+	GetDeviceConnectionStatus func() string
 }
 
 // SystemConnectionHandler manages periodic system connection status updates to timescape
@@ -168,8 +168,8 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 	}
 	h.mu.RUnlock()
 
-	// Get current system connection status from NXOS controller
-	currentStatus := h.dataProvider.GetControllerConnectionStatus()
+	// Get current system connection status from NXOS device
+	currentStatus := h.dataProvider.GetDeviceConnectionStatus()
 
 	// Convert system connection status to system status event
 	event := h.writeSystemStatusUpdate(currentStatus)
@@ -181,7 +181,7 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 	err_code := h.client.Send(ctx, event, types.PriorityHigh)
 	// Resend if queue is busy
 	if err_code == types.ErrCodeQueueBusy {
-		logger.GetLogger().Debug("timescape: queue full, waiting before retry", "status", currentStatus.String())
+		logger.GetLogger().Debug("timescape: queue full, waiting before retry", "status", currentStatus)
 
 		// Wait for queue to clear before retrying
 		select {
@@ -203,7 +203,7 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 	}
 
 	logger.GetLogger().Debug("timescape: successfully sent system connection status",
-		"status", currentStatus.String())
+		"status", currentStatus)
 }
 
 // writeSystemStatusUpdate creates a SystemStatusEvent based on the provided system connection status.
@@ -216,7 +216,7 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 //
 // Returns:
 //   - *v1alpha.SystemStatusEvent: The created system status event, or nil for failure status
-func (h *systemConnectionHandler) writeSystemStatusUpdate(status model.E_Cisco_NX_OSDevice_Sas_CommonStateE) *v1alpha.SystemStatusEvent {
+func (h *systemConnectionHandler) writeSystemStatusUpdate(status string) *v1alpha.SystemStatusEvent {
 	now := time.Now()
 
 	// Create event structure similar to controller writeStatusUpdate
@@ -254,13 +254,13 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status model.E_Cisco_N
 
 	// Map NXOS system connection status to conditions
 	switch status {
-	case model.Cisco_NX_OSDevice_Sas_CommonStateE_success:
+	case device.CommonStateSuccess:
 		statusUpdate.TotalConditions = 0
 		statusUpdate.FailingConditions = []*v1alpha.FailingCondition{}
 		statusUpdate.ExtraData = map[string]string{
 			"connection_status": CONNECTED,
 		}
-	case model.Cisco_NX_OSDevice_Sas_CommonStateE_failure:
+	case device.CommonStateFailure:
 		// Failure: add error condition
 		statusUpdate.TotalConditions = 1
 		statusUpdate.FailingConditions = []*v1alpha.FailingCondition{
@@ -271,7 +271,7 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status model.E_Cisco_N
 			},
 		}
 		logger.GetLogger().Info("timescape:  sending DISCONNECTED status update")
-	case model.Cisco_NX_OSDevice_Sas_CommonStateE_unknown:
+	case device.CommonStateUnknown:
 		fallthrough
 	default:
 		// Unknown: add error condition

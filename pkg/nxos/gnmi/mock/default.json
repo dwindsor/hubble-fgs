@@ -1,0 +1,62 @@
+{
+  "System": {
+    "ch-items": {
+      "spbp-items": {
+        "spcmn-items": {
+          "serNum": "MOCK-SERIAL-001"
+        }
+      },
+      "supslot-items": {
+        "SupCSlot-list": {
+          "sup-items": {
+            "model": "N9K-MOCK",
+            "swVer": "10.5(1)"
+          }
+        }
+      }
+    },
+    "sas-items": {
+      "globalpol-items": {
+        "lbMode": "symmetric_hash"
+      },
+      "state-items": {
+        "agent-items": {
+          "SasAgent-list[svcName=hypershield]": {
+            "agentSrcIntfAddr": "10.0.0.1",
+            "agentHaSrcIntfAddr": ""
+          }
+        }
+      },
+      "svc-items": {
+        "svcinst-items": {
+          "SvcInstance-list[name=hypershield]": {
+            "fwpolicy-items": {
+              "operState": "in-service"
+            },
+            "ha-items": {
+              "adminState": "disabled"
+            },
+            "scontroller-items": {
+              "ext-items": {
+                "admissionStatus": "success",
+                "connectionStatus": "success"
+              }
+            },
+            "sagent-items": {
+              "ext-items": {
+                "initState": "success",
+                "policyState": "success",
+                "systemState": 0
+              }
+            }
+          }
+        }
+      },
+      "dpu-items": {
+        "ext-items": {
+          "numDpus": 0
+        }
+      }
+    }
+  }
+}

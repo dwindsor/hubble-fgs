@@ -41,6 +41,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/ha"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
@@ -81,21 +82,36 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		logger.GetLogger().Error("failed to set CLI configured vrfmap", logfields.Error, err, "vrfmap", Config.VrfMap)
 	}
 
+	// Setup NXOS manager first — discovers DPU inventory via gNMI
+	// before accepting DPU gRPC connections.
+	if err := agwAgent.Setup(ctx); err != nil {
+		return fmt.Errorf("FWAgent setup failed: %w", err)
+	}
+
+	// Launch HA manager as a lifecycle goroutine — reacts to HA config via store Watch.
+	haManager := ha.NewManager(
+		ha.WithHAStoreForManager(agwAgent.NxosManager().HAStore()),
+		ha.WithVRFStore(agwAgent.NxosManager().VRFStore()),
+		ha.WithVLANStore(agwAgent.NxosManager().VLANStore()),
+		ha.WithDeviceStore(agwAgent.NxosManager().DeviceStore()),
+		ha.WithDPUStore(agwAgent.NxosManager().DPUStore()),
+	)
+	// Wire HA event handler so DPU keepalive/bulk-sync events update criteria.
+	switchpolicy.SetHaEventHandler(haManager)
+	waitGroup.Go(func() error {
+		return haManager.Run(ctx)
+	})
+
+	// Sync DPU count to listener now that inventory is complete.
+	dpuCount := agwAgent.NxosManager().DPUStore().DpuCount()
+	if dpuCount > 0 {
+		dpuListener.SetPeerGroupSize(uint16(dpuCount))
+	}
+
 	waitGroup.Go(func() error {
 		err := dpuListener.Start()
 		if err != nil {
 			return fmt.Errorf("DPU listener failed: %w", err)
-		}
-		return nil
-	})
-
-	waitGroup.Go(func() error {
-		// Setting up agent local state
-		if Config.EnableNXOS {
-			err := agwAgent.Setup(ctx)
-			if err != nil {
-				return fmt.Errorf("FWAgent setup failed: %w", err)
-			}
 		}
 		return nil
 	})
@@ -183,12 +199,8 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		conf.K8sConfigRetry = enterpriseConf.K8sConfigRetry
 
 		// Reset NXOS connection status before starting K8s manager.
-		// Set the initial proxy configuration from NXOS.
 		if Config.EnableNXOS {
 			agwAgent.ResetConnectionStatus(ctx)
-			// ignore error here, as proxy may not be needed,
-			// or user can still configure later.
-			agwAgent.GetNxProxyConfig(ctx)
 		}
 
 		// Initialize and connect to K8s controller manager

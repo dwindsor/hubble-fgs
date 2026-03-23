@@ -200,10 +200,10 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		status := nxos.Nexus.ShowStatus(ctx)
 		dpu := agwAgent.ShowDpu(ctx, ipc.MessageData{})
 		vrf := agwAgent.ShowVrf(ctx)
-		gid := nxos.Nexus.ShowGid(ctx)
-		ha := nxos.Nexus.ShowHa(ctx)
-		mbr := nxos.Nexus.ShowMbr(ctx)
-		adj := nxos.Nexus.ShowAdj(ctx)
+		gid := agwAgent.GnmiShowVrfGids(ctx, ipc.MessageData{})
+		ha := agwAgent.NxosManager().ShowHa(ctx)
+		mbr := agwAgent.NxosManager().ShowMbr(ctx)
+		adj := agwAgent.NxosManager().ShowAdj(ctx)
 		syslog, err := agwAgent.ShowSyslog(ctx)
 		if err != nil {
 			syslog = "Syslog: " + err.Error()
@@ -362,14 +362,10 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = mbr
 
 	case CMD_SHOW_GID:
-		mbr := nxos.Nexus.ShowGid(ctx)
-		response.ReturnCode = "ok"
-		response.Data = mbr
-
-	case CMD_POLICIES_ADD:
-		res := agwAgent.PoliciesAdd(ctx, data)
+		res := agwAgent.GnmiShowVrfGids(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = res
+		response.ReturnCode = "ok"
 
 	case CMD_POLICIES_DEL:
 		res := agwAgent.PoliciesRemove(ctx, data)
