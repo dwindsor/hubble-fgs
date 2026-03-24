@@ -71,7 +71,10 @@ func main() {
 	saKey := os.Args[3]
 
 	ctx := context.Background()
-	sheetsService, err := sheets.NewService(ctx, option.WithCredentialsJSON([]byte(saKey)))
+	sheetsService, err := sheets.NewService(
+		ctx,
+		option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(saKey)),
+	)
 	if err != nil {
 		log.Fatalf("NewService error: %s", err)
 	}

@@ -34,7 +34,7 @@ func (s Set[T]) Len() int {
 
 func (s Set[T]) String() string {
 	if s.single != nil {
-		return fmt.Sprintf("%v", s.single)
+		return fmt.Sprintf("%v", *s.single)
 	}
 	res := ""
 	for m := range s.members {
@@ -166,6 +166,16 @@ func (s Set[T]) Equal(o Set[T]) bool {
 		}
 	}
 	return true
+}
+
+// DeepEqual is same as Equal due to Set keys being comparable.
+func (s *Set[T]) DeepEqual(o *Set[T]) bool {
+	return s.Equal(*o)
+}
+
+func (in *Set[T]) DeepCopyInto(out *Set[T]) {
+	*out = *in
+	maps.Copy(out.members, in.members)
 }
 
 // Members returns an iterator for the members in the set.

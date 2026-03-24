@@ -16,6 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/vishvananda/netns"
+	"golang.org/x/sys/cpu"
 	"golang.org/x/sys/unix"
 )
 
@@ -78,24 +79,14 @@ func GetIPFamily(ip net.IP) int {
 	return FAMILY_V6
 }
 
-var nativeEndian binary.ByteOrder
-
 // NativeEndian gets native endianness for the system
 func NativeEndian() binary.ByteOrder {
-	if nativeEndian == nil {
-		var x uint32 = 0x01020304
-		if *(*byte)(unsafe.Pointer(&x)) == 0x01 {
-			nativeEndian = binary.BigEndian
-		} else {
-			nativeEndian = binary.LittleEndian
-		}
-	}
-	return nativeEndian
+	return binary.NativeEndian
 }
 
 // Byte swap a 16 bit value if we aren't big endian
 func Swap16(i uint16) uint16 {
-	if NativeEndian() == binary.BigEndian {
+	if cpu.IsBigEndian {
 		return i
 	}
 	return (i&0xff00)>>8 | (i&0xff)<<8
@@ -103,7 +94,7 @@ func Swap16(i uint16) uint16 {
 
 // Byte swap a 32 bit value if aren't big endian
 func Swap32(i uint32) uint32 {
-	if NativeEndian() == binary.BigEndian {
+	if cpu.IsBigEndian {
 		return i
 	}
 	return (i&0xff000000)>>24 | (i&0xff0000)>>8 | (i&0xff00)<<8 | (i&0xff)<<24
@@ -627,11 +618,19 @@ done:
 				err = syscall.Errno(-errno)
 
 				unreadData := m.Data[4:]
-				if m.Header.Flags&unix.NLM_F_ACK_TLVS != 0 && len(unreadData) > syscall.SizeofNlMsghdr {
-					// Skip the echoed request message.
-					echoReqH := (*syscall.NlMsghdr)(unsafe.Pointer(&unreadData[0]))
-					unreadData = unreadData[nlmAlignOf(int(echoReqH.Len)):]
 
+				if m.Header.Type == unix.NLMSG_ERROR {
+					if m.Header.Flags&unix.NLM_F_CAPPED != 0 {
+						// The request payload is capped, just skip the nlmsghdr
+						unreadData = unreadData[syscall.SizeofNlMsghdr:]
+					} else {
+						// Skip the entire request message
+						echoReqH := (*syscall.NlMsghdr)(unsafe.Pointer(&unreadData[0]))
+						unreadData = unreadData[nlmAlignOf(int(echoReqH.Len)):]
+					}
+				}
+
+				if m.Header.Flags&unix.NLM_F_ACK_TLVS != 0 && len(unreadData) > syscall.SizeofNlMsghdr {
 					// Annotate `err` using nlmsgerr attributes.
 					for len(unreadData) >= syscall.SizeofRtAttr {
 						attr := (*syscall.RtAttr)(unsafe.Pointer(&unreadData[0]))
