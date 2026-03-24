@@ -20,7 +20,7 @@ from helper.verification import (
     verify_policy_removed_from_agw,
     verify_policy_removed_from_sim,
 )
-from helper.utils import wait_for_timeout
+from helper.utils import wait_for_timeout, retry_on_failure
 from parameters.test_params import (
     get_cidr_source_packet_test_params,
     get_cidr_dest_packet_test_params,
@@ -50,22 +50,26 @@ def test_cidr_source_enforcement(cmd, cidr, rules, packets):
         wait_for_timeout(3)
 
     with allure.step(f"Verify policy is applied to DPU '{sim1_name}'"):
-        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
-        verify_policies_match_agw_and_dpu(
-            agw_output=agw_policies,
-            dpu_output=sim1_policies,
-            policy_name=policy_name,
-            expected_rule_count=1,
-        )
+        def check_sim1_policy():
+            sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+            verify_policies_match_agw_and_dpu(
+                agw_output=agw_policies,
+                dpu_output=sim1_policies,
+                policy_name=policy_name,
+                expected_rule_count=1,
+            )
+        retry_on_failure(check_sim1_policy)
 
     with allure.step(f"Verify policy is applied to DPU '{sim2_name}'"):
-        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
-        verify_policies_match_agw_and_dpu(
-            agw_output=agw_policies,
-            dpu_output=sim2_policies,
-            policy_name=policy_name,
-            expected_rule_count=1,
-        )
+        def check_sim2_policy():
+            sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+            verify_policies_match_agw_and_dpu(
+                agw_output=agw_policies,
+                dpu_output=sim2_policies,
+                policy_name=policy_name,
+                expected_rule_count=1,
+            )
+        retry_on_failure(check_sim2_policy)
 
     ip_before, pkt_before = packets[0]
     ip_inside, pkt_inside = packets[1]
@@ -141,22 +145,26 @@ def test_cidr_dest_enforcement(cmd, cidr, rules, packets):
         wait_for_timeout(2)
 
     with allure.step(f"Verify policy is applied to DPU '{sim1_name}'"):
-        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
-        verify_policies_match_agw_and_dpu(
-            agw_output=agw_policies,
-            dpu_output=sim1_policies,
-            policy_name=policy_name,
-            expected_rule_count=1,
-        )
+        def check_sim1_policy():
+            sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+            verify_policies_match_agw_and_dpu(
+                agw_output=agw_policies,
+                dpu_output=sim1_policies,
+                policy_name=policy_name,
+                expected_rule_count=1,
+            )
+        retry_on_failure(check_sim1_policy)
 
     with allure.step(f"Verify policy is applied to DPU '{sim2_name}'"):
-        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
-        verify_policies_match_agw_and_dpu(
-            agw_output=agw_policies,
-            dpu_output=sim2_policies,
-            policy_name=policy_name,
-            expected_rule_count=1,
-        )
+        def check_sim2_policy():
+            sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+            verify_policies_match_agw_and_dpu(
+                agw_output=agw_policies,
+                dpu_output=sim2_policies,
+                policy_name=policy_name,
+                expected_rule_count=1,
+            )
+        retry_on_failure(check_sim2_policy)
 
     ip_before, pkt_before = packets[0]
     ip_inside, pkt_inside = packets[1]
@@ -238,22 +246,26 @@ def test_cidr_combined_enforcement(cmd, cidr_combo, rules, packets):
         wait_for_timeout(2)
 
     with allure.step(f"Verify policy is applied to DPU '{sim1_name}'"):
-        sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
-        verify_policies_match_agw_and_dpu(
-            agw_output=agw_policies,
-            dpu_output=sim1_policies,
-            policy_name=policy_name,
-            expected_rule_count=1,
-        )
+        def check_sim1_policy():
+            sim1_policies = cmd.sim_show_policies(sim_container_name=sim1_name)
+            verify_policies_match_agw_and_dpu(
+                agw_output=agw_policies,
+                dpu_output=sim1_policies,
+                policy_name=policy_name,
+                expected_rule_count=1,
+            )
+        retry_on_failure(check_sim1_policy)
 
     with allure.step(f"Verify policy is applied to DPU '{sim2_name}'"):
-        sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
-        verify_policies_match_agw_and_dpu(
-            agw_output=agw_policies,
-            dpu_output=sim2_policies,
-            policy_name=policy_name,
-            expected_rule_count=1,
-        )
+        def check_sim2_policy():
+            sim2_policies = cmd.sim_show_policies(sim_container_name=sim2_name)
+            verify_policies_match_agw_and_dpu(
+                agw_output=agw_policies,
+                dpu_output=sim2_policies,
+                policy_name=policy_name,
+                expected_rule_count=1,
+            )
+        retry_on_failure(check_sim2_policy)
 
     test_name_0, pkt_0, expected_0 = packets[0]
     test_name_1, pkt_1, expected_1 = packets[1]
