@@ -160,7 +160,12 @@ func (n *Nxos) doUpdateHaConfig() {
 
 	var enabled bool
 	if len(peers) > 0 && haIp != "" && haIp != "0.0.0.0" {
-		enabled = n.GetHaConfigured() && n.GetHaOperUp() && n.stableIsFunc()
+		inService, ok := n.Ha.Local.Criteria[HaCritInService]
+		if !ok {
+			inService = true
+			logger.GetLogger().Warn("missing in service criteria", "name", HaCritInService)
+		}
+		enabled = n.GetHaConfigured() && n.GetHaOperUp() && inService
 	}
 	var flow_sync bool
 	flow_sync = enabled && n.GetHaEnabled()

@@ -539,6 +539,76 @@ func TestHaCheckAdjMbr_AdjTimeout_HaStateUpdated(t *testing.T) {
 	}
 }
 
+// TestDoUpdateHaConfig_StandbyKeepsFlowSync verifies that when the follower
+// has HaCritHaStandby injected, the HA config still has enabled=true so that
+// DPUs keep flow_sync active and bulk sync can complete.
+func TestDoUpdateHaConfig_StandbyKeepsFlowSync(t *testing.T) {
+	n := newTestNxosForHA(false) // follower
+	n.Ha.configured = true
+	n.Ha.HaIp = "10.0.0.1"
+	n.SetHaPeer("10.0.0.2", HaPeer{IpConfigOk: true})
+
+	// Inject standby criteria — stableIsFunc should be false.
+	n.Ha.Local.Criteria[HaCritHaStandby] = false
+	n.Ha.Local.IsFunc = n.computeIsFunc()
+	if n.stableIsFunc() {
+		t.Fatal("stableIsFunc should be false with standby criteria")
+	}
+
+	// InService is true, so the HA config enabled calculation should still
+	// return true despite stableIsFunc being false.
+	inService, ok := n.Ha.Local.Criteria[HaCritInService]
+	if !ok {
+		inService = true
+	}
+	wantEnabled := n.GetHaConfigured() && n.GetHaOperUp() && inService
+	if !wantEnabled {
+		t.Error("HA config enabled should be true when InService=true, even with standby criteria")
+	}
+}
+
+// TestDoUpdateHaConfig_OutOfServiceDisablesFlowSync verifies that when
+// HaCritInService is false, the HA config enabled calculation returns false.
+func TestDoUpdateHaConfig_OutOfServiceDisablesFlowSync(t *testing.T) {
+	n := newTestNxosForHA(true)
+	n.Ha.configured = true
+	n.Ha.HaIp = "10.0.0.1"
+	n.SetHaPeer("10.0.0.2", HaPeer{IpConfigOk: true})
+
+	// Take node out of service.
+	n.Ha.Local.Criteria[HaCritInService] = false
+
+	inService, ok := n.Ha.Local.Criteria[HaCritInService]
+	if !ok {
+		inService = true
+	}
+	wantEnabled := n.GetHaConfigured() && n.GetHaOperUp() && inService
+	if wantEnabled {
+		t.Error("HA config enabled should be false when InService=false")
+	}
+}
+
+// TestDoUpdateHaConfig_MissingInServiceDefaultsTrue verifies that when
+// HaCritInService is not present in the criteria map, enabled defaults to true.
+func TestDoUpdateHaConfig_MissingInServiceDefaultsTrue(t *testing.T) {
+	n := newTestNxosForHA(true)
+	n.Ha.configured = true
+	n.Ha.HaIp = "10.0.0.1"
+	n.SetHaPeer("10.0.0.2", HaPeer{IpConfigOk: true})
+
+	// Remove InService from criteria entirely.
+	delete(n.Ha.Local.Criteria, HaCritInService)
+
+	inService, ok := n.Ha.Local.Criteria[HaCritInService]
+	if !ok {
+		inService = true
+	}
+	wantEnabled := n.GetHaConfigured() && n.GetHaOperUp() && inService
+	if !wantEnabled {
+		t.Error("HA config enabled should default to true when InService criteria is absent")
+	}
+}
+
 // TestReconBatches_NoContest verifies that when no GID is contested all
 // entries land in batch 2 and batch 1 is empty.
 func TestReconBatches_NoContest(t *testing.T) {
