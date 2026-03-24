@@ -28,11 +28,10 @@ import (
 )
 
 const (
-	haTimeout       = 10 // in second
-	nxUpdateTimeout = 30 // in sec
-	adjTimeout      = 30 // in sec
-	mbrTimeout      = 30 // in sec
-	isFuncHoldDown  = 30 // in sec, anti-flapping hold-down for IsFunc recovery
+	haPoll          = 5  // in second
+	nxUpdateTimeout = 10 // in sec
+	haTimeout       = 10 // in sec
+	isFuncHoldDown  = 15 // in sec, anti-flapping hold-down for IsFunc recovery
 )
 
 // getHAPort returns the HA service port as a string, computed from the CPA port range.
@@ -1020,7 +1019,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 
 	changed := false
 	for ip, mbr := range n.Ha.Members {
-		if now-mbr.Epoch > mbrTimeout {
+		if now-mbr.Epoch > haTimeout {
 			logger.GetLogger().Debug("Member timed out", "ip", ip)
 			delete(n.Ha.Members, ip)
 			n.Ha.PeerSvcStates[ip] = PeerSvcUnknown
@@ -1029,7 +1028,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 		}
 	}
 	for ip, adj := range n.Ha.Adjacencies {
-		if now-adj.Epoch > adjTimeout {
+		if now-adj.Epoch > haTimeout {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
 			delete(n.Ha.Adjacencies, ip)
 			n.Ha.PeerSvcStates[ip] = PeerSvcUnknown
@@ -1460,8 +1459,8 @@ func (n *Nxos) haSetup(ctx context.Context) {
 				}
 			}
 
-		case <-time.After(haTimeout * time.Second):
-			// logger.GetLogger().Debug("haTimeout at", "epoch", time.Now().Unix())
+		case <-time.After(haPoll * time.Second):
+			// logger.GetLogger().Debug("haPoll at", "epoch", time.Now().Unix())
 			n.haUpdateNx(ctx)
 			n.Lock()
 			n.haCheckIsFuncHoldDown(ctx)

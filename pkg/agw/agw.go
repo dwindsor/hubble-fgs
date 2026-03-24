@@ -840,7 +840,11 @@ func (agw *AgentGateway) PoliciesTranslate(_ context.Context, msgData ipc.Messag
 
 	// Create a new state for translation
 	// This ensures we don't affect the current state
-	state := switchpolicy.NewState()
+	var nextID switchpolicy.RuleID
+	state := switchpolicy.NewState(func() switchpolicy.RuleID {
+		nextID++
+		return nextID
+	})
 
 	var ruleID switchpolicy.RuleID = 1
 	var switchPolicies []*switchpolicy.SwitchPolicy
@@ -906,7 +910,7 @@ func (agw *AgentGateway) PoliciesTranslate(_ context.Context, msgData ipc.Messag
 
 	// Use the current L3Networks from the AGW
 	currentL3Networks := agw.PolicyHandler.GetL3Networks()
-	if err := state.SetL3Networks(currentL3Networks); err != nil {
+	if _, err := state.SetL3Networks(currentL3Networks); err != nil {
 		return "", fmt.Errorf("failed to set L3 networks: %w", err)
 	}
 

@@ -63,6 +63,8 @@ type Repository interface {
 	ListPolicies() map[ResourceID]K8sRulesList
 	UpsertPolicy(resourceId ResourceID, rules K8sRulesList) (newRules, previousPolicy K8sRulesList, err error)
 	DeletePolicy(resourceId ResourceID) (deletedPolicy K8sRulesList, err error)
+	NextRuleID() RuleID
+	ReplaceRuleID(oldID, newID RuleID) error
 }
 
 type repository struct {
@@ -105,4 +107,22 @@ func (r *repository) DeletePolicy(resourceID ResourceID) (deletedPolicy K8sRules
 		return policy, nil
 	}
 	return nil, fmt.Errorf("policy with resource ID %s not found", resourceID)
+}
+
+func (r *repository) NextRuleID() RuleID {
+	r.nextRuleId++
+	return r.nextRuleId
+}
+
+func (r *repository) ReplaceRuleID(oldID, newID RuleID) error {
+	for _, rules := range r.policyByResourceID {
+		for _, rule := range rules {
+			if rule.ruleId == oldID {
+				rule.ruleId = newID
+				rule.uid.RuleName = fmt.Sprintf("%s/%d", rule.RuleName, newID)
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("rule with ID %d not found", oldID)
 }

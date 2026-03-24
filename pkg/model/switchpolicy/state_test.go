@@ -18,6 +18,14 @@ import (
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
+func testNextID() func() RuleID {
+	var id RuleID = 10000
+	return func() RuleID {
+		id++
+		return id
+	}
+}
+
 func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -32,7 +40,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "Upsert operation with allow action and TCP",
 			setupState: func() *State {
-				s := NewState()
+				s := NewState(testNextID())
 				s.networkL3Objects.Add("internal", 100)
 				s.networkL3Objects.Add("external", 200)
 				return s
@@ -104,7 +112,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "Delete operation with deny action and UDP",
 			setupState: func() *State {
-				s := NewState()
+				s := NewState(testNextID())
 				s.networkL3Objects.Add("dmz", 50)
 				return s
 			},
@@ -173,7 +181,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "ICMP protocol",
 			setupState: func() *State {
-				return NewState()
+				return NewState(testNextID())
 			},
 			rule: &SwitchPolicy{
 				UID: UniqueID{
@@ -238,7 +246,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "Empty ProtoPorts - defaults to all ports and unspecified protocol",
 			setupState: func() *State {
-				return NewState()
+				return NewState(testNextID())
 			},
 			rule: &SwitchPolicy{
 				UID: UniqueID{
@@ -291,7 +299,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "Port range with EndPort",
 			setupState: func() *State {
-				return NewState()
+				return NewState(testNextID())
 			},
 			rule: &SwitchPolicy{
 				UID: UniqueID{
@@ -356,7 +364,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "Unknown protocol defaults to unspecified",
 			setupState: func() *State {
-				return NewState()
+				return NewState(testNextID())
 			},
 			rule: &SwitchPolicy{
 				UID: UniqueID{
@@ -421,7 +429,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "No action specified - defaults to unspecified",
 			setupState: func() *State {
-				return NewState()
+				return NewState(testNextID())
 			},
 			rule: &SwitchPolicy{
 				UID: UniqueID{
@@ -487,7 +495,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "Empty VRF uses default VRF ID 0",
 			setupState: func() *State {
-				return NewState()
+				return NewState(testNextID())
 			},
 			rule: &SwitchPolicy{
 				UID: UniqueID{
@@ -554,7 +562,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		{
 			name: "Case insensitive protocol - UDP uppercase",
 			setupState: func() *State {
-				return NewState()
+				return NewState(testNextID())
 			},
 			rule: &SwitchPolicy{
 				UID: UniqueID{
@@ -662,10 +670,11 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 }
 
 func TestInterVRFPolicyAppliedWhenDestinationVRFAddedLater(t *testing.T) {
-	s := NewState()
+	s := NewState(testNextID())
 
 	// Only source VRF exists at first
-	require.NoError(t, s.SetL3Networks(&L3Networks{byName: map[VrfName]VrfGID{"": 0, "internal": 100}, byGID: map[VrfGID]VrfName{0: "", 100: "internal"}}))
+	_, err := s.SetL3Networks(&L3Networks{byName: map[VrfName]VrfGID{"": 0, "internal": 100}, byGID: map[VrfGID]VrfName{0: "", 100: "internal"}})
+	require.NoError(t, err)
 
 	rule := &SwitchPolicy{
 		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-1"},
@@ -686,7 +695,8 @@ func TestInterVRFPolicyAppliedWhenDestinationVRFAddedLater(t *testing.T) {
 	require.Len(t, delta, 0)
 
 	// Add destination VRF: policy should now be emitted
-	require.NoError(t, s.SetL3Networks(&L3Networks{byName: map[VrfName]VrfGID{"": 0, "internal": 100, "external": 200}, byGID: map[VrfGID]VrfName{0: "", 100: "internal", 200: "external"}}))
+	_, err = s.SetL3Networks(&L3Networks{byName: map[VrfName]VrfGID{"": 0, "internal": 100, "external": 200}, byGID: map[VrfGID]VrfName{0: "", 100: "internal", 200: "external"}})
+	require.NoError(t, err)
 	delta = s.GetDeltaToApply()
 	require.Len(t, delta, 1)
 	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, delta[0].Oper)
@@ -695,7 +705,7 @@ func TestInterVRFPolicyAppliedWhenDestinationVRFAddedLater(t *testing.T) {
 }
 
 func TestAddRule_DuplicateVRFDoesNotRecreatePolicyByVRFNameEntry(t *testing.T) {
-	s := NewState()
+	s := NewState(testNextID())
 
 	vrfName := VrfName("internal")
 	existing := make(map[RuleID]*SwitchPolicy)
@@ -722,7 +732,7 @@ func TestAddRule_DuplicateVRFDoesNotRecreatePolicyByVRFNameEntry(t *testing.T) {
 }
 
 func TestRemoveRuleByID_RemovingFromSourceDoesNotBreakDestinationCleanup(t *testing.T) {
-	s := NewState()
+	s := NewState(testNextID())
 
 	rule1 := &SwitchPolicy{
 		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-1"},
@@ -767,3 +777,127 @@ func TestRemoveRuleByID_RemovingFromSourceDoesNotBreakDestinationCleanup(t *test
 	require.Contains(t, s.policyByVRFName[VrfName("src")], RuleID(2))
 }
 
+func TestSetL3Networks_VRFGIDChange(t *testing.T) {
+	s := NewState(testNextID())
+
+	// Setup: add "red" VRF with GID 1
+	_, err := s.SetL3Networks(&L3Networks{
+		byName: map[VrfName]VrfGID{"": 0, "red": 1},
+		byGID:  map[VrfGID]VrfName{0: "", 1: "red"},
+	})
+	require.NoError(t, err)
+
+	// Add a rule using "red" VRF
+	rule := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-1"},
+		Policy: &SmartSwitchNetworkPolicy{
+			Source:      SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "red"}},
+			Destination: SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: "red"}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:      SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+		},
+	}
+	require.NoError(t, s.AddRule(1, rule))
+	s.GetDeltaToApply() // drain initial delta
+
+	// Change "red" GID from 1 to 5
+	idChanges, err := s.SetL3Networks(&L3Networks{
+		byName: map[VrfName]VrfGID{"": 0, "red": 5},
+		byGID:  map[VrfGID]VrfName{0: "", 5: "red"},
+	})
+	require.NoError(t, err)
+
+	// Should return ID changes
+	require.Len(t, idChanges, 1)
+	newID, ok := idChanges[RuleID(1)]
+	require.True(t, ok)
+	require.NotEqual(t, RuleID(1), newID)
+
+	// Get delta: should have ADD (new GID) and DEL (old GID)
+	delta := s.GetDeltaToApply()
+	require.Len(t, delta, 2)
+
+	// policyByRuleId should have the new ID, not the old
+	require.NotContains(t, s.policyByRuleId, RuleID(1))
+	require.Contains(t, s.policyByRuleId, newID)
+}
+
+func TestSetL3Networks_VRFGIDSwap(t *testing.T) {
+	s := NewState(testNextID())
+
+	// Setup: "red"=1, "blue"=2
+	_, err := s.SetL3Networks(&L3Networks{
+		byName: map[VrfName]VrfGID{"": 0, "red": 1, "blue": 2},
+		byGID:  map[VrfGID]VrfName{0: "", 1: "red", 2: "blue"},
+	})
+	require.NoError(t, err)
+
+	// Add rules
+	ruleRed := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "red-policy", RuleName: "rule-red"},
+		Policy: &SmartSwitchNetworkPolicy{
+			Source:      SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "red"}},
+			Destination: SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: "red"}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:      SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+		},
+	}
+	ruleBlue := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "blue-policy", RuleName: "rule-blue"},
+		Policy: &SmartSwitchNetworkPolicy{
+			Source:      SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "172.16.0.0/12", VRF: "blue"}},
+			Destination: SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "172.20.0.0/16", VRF: "blue"}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:      SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+		},
+	}
+	require.NoError(t, s.AddRule(1, ruleRed))
+	require.NoError(t, s.AddRule(2, ruleBlue))
+	s.GetDeltaToApply() // drain
+
+	// Swap: red:1→2, blue:2→1
+	idChanges, err := s.SetL3Networks(&L3Networks{
+		byName: map[VrfName]VrfGID{"": 0, "red": 2, "blue": 1},
+		byGID:  map[VrfGID]VrfName{0: "", 2: "red", 1: "blue"},
+	})
+	require.NoError(t, err)
+	require.Len(t, idChanges, 2)
+
+	// Delta should have 4 entries: 2 ADDs + 2 DELETEs
+	delta := s.GetDeltaToApply()
+	require.Len(t, delta, 4)
+}
+
+func TestSetL3Networks_VRFGIDChangeOrdering(t *testing.T) {
+	s := NewState(testNextID())
+
+	_, err := s.SetL3Networks(&L3Networks{
+		byName: map[VrfName]VrfGID{"": 0, "red": 1},
+		byGID:  map[VrfGID]VrfName{0: "", 1: "red"},
+	})
+	require.NoError(t, err)
+
+	rule := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-1"},
+		Policy: &SmartSwitchNetworkPolicy{
+			Source:      SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "red"}},
+			Destination: SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: "red"}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:      SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+		},
+	}
+	require.NoError(t, s.AddRule(1, rule))
+	s.GetDeltaToApply() // drain
+
+	// Change "red" GID from 1 to 5
+	_, err = s.SetL3Networks(&L3Networks{
+		byName: map[VrfName]VrfGID{"": 0, "red": 5},
+		byGID:  map[VrfGID]VrfName{0: "", 5: "red"},
+	})
+	require.NoError(t, err)
+
+	delta := s.GetDeltaToApply()
+	require.Len(t, delta, 2)
+
+	// ADDs must come before DELETEs (no gap in coverage)
+	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, delta[0].Oper)
+	require.Equal(t, uint32(5), delta[0].Policy.Source.VrfId)
+	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, delta[1].Oper)
+	require.Equal(t, uint32(1), delta[1].Policy.Source.VrfId)
+}

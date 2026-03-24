@@ -125,8 +125,9 @@ spec:
 			require.NotEmpty(t, internalPolicies, "Expected at least one internal policy")
 
 			// Step 3: Create state and add L3 networks
-			state := NewState()
-			err = state.SetL3Networks(tt.l3Networks)
+			var nextTestID RuleID = 1000
+			state := NewState(func() RuleID { nextTestID++; return nextTestID })
+			_, err = state.SetL3Networks(tt.l3Networks)
 			require.NoError(t, err)
 
 			// Step 4: Add rules to state and get DPU rules

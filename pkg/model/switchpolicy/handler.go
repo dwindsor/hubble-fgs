@@ -48,11 +48,12 @@ type policyHandler struct {
 }
 
 func NewPolicyHandler(ctx context.Context, dpuProgrammer DPUProgrammer) PolicyHandler {
+	repo := NewRepository()
 	return &policyHandler{
 		ctx:           ctx,
 		dpuProgrammer: dpuProgrammer,
-		state:         NewState(),
-		repository:    NewRepository(),
+		state:         NewState(repo.NextRuleID),
+		repository:    repo,
 	}
 }
 
@@ -165,9 +166,14 @@ func (h *policyHandler) SetL3Networks(networks *L3Networks) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	err := h.state.SetL3Networks(networks)
+	idChanges, err := h.state.SetL3Networks(networks)
 	if err != nil {
 		return err
+	}
+	for oldID, newID := range idChanges {
+		if err := h.repository.ReplaceRuleID(oldID, newID); err != nil {
+			logger.GetLogger().Error("failed to replace rule ID in repository", "oldID", oldID, "newID", newID, "err", err)
+		}
 	}
 	h.applyDelta()
 	return nil

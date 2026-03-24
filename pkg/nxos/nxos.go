@@ -655,8 +655,8 @@ func (n *Nxos) Setup(ctx context.Context, dpuPortLow, dpuPortHigh, cpaPortLow, c
 	now := time.Now().Unix()
 	elapsed := now - n.Ha.Start
 	logger.GetLogger().Debug("time elapsed since HA starts", "timestamp", elapsed)
-	if !n.Ha.IsLeader && elapsed < 2*haTimeout {
-		wait := 2*haTimeout - elapsed
+	if !n.Ha.IsLeader && elapsed < 2*haPoll {
+		wait := 2*haPoll - elapsed
 		logger.GetLogger().Debug("wait before service redir prog", "wait_seconds", wait)
 		time.Sleep(time.Duration(wait) * time.Second)
 	}

@@ -12,6 +12,7 @@ package switchpolicy
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
@@ -63,14 +64,26 @@ type State struct {
 
 	// Delta to apply
 	diff diffToApply
+
+	// nextID generates unique RuleIDs for replacement rules during VRF GID changes
+	nextID func() RuleID
 }
 
-func NewState() *State {
+// uniqueVRFs returns [src] if src==dst, otherwise [src, dst].
+func uniqueVRFs(src, dst VrfName) []VrfName {
+	if src == dst {
+		return []VrfName{src}
+	}
+	return []VrfName{src, dst}
+}
+
+func NewState(nextID func() RuleID) *State {
 	return &State{
 		policyByRuleId:   make(map[RuleID]*SwitchPolicy),
 		policyByVRFName:  make(map[VrfName]map[RuleID]*SwitchPolicy),
 		diff:             newDiffToApply(),
 		networkL3Objects: NewL3Networks(),
+		nextID:           nextID,
 	}
 }
 
@@ -82,17 +95,9 @@ func (s *State) RemoveRuleByID(id RuleID) error {
 
 	delete(s.policyByRuleId, id)
 	if existingPolicy.Policy != nil {
-		vrfNames := []VrfName{
-			VrfName(existingPolicy.Policy.Source.Endpoint.VRF),
-			VrfName(existingPolicy.Policy.Destination.Endpoint.VRF),
-		}
-		seen := make(map[VrfName]struct{}, len(vrfNames))
-		for _, vrfName := range vrfNames {
-			if _, ok := seen[vrfName]; ok {
-				continue
-			}
-			seen[vrfName] = struct{}{}
-
+		srcVRF := VrfName(existingPolicy.Policy.Source.Endpoint.VRF)
+		dstVRF := VrfName(existingPolicy.Policy.Destination.Endpoint.VRF)
+		for _, vrfName := range uniqueVRFs(srcVRF, dstVRF) {
 			if vrfRules, ok := s.policyByVRFName[vrfName]; ok {
 				delete(vrfRules, id)
 				if len(vrfRules) == 0 {
@@ -119,17 +124,9 @@ func (s *State) AddRule(id RuleID, policy *SwitchPolicy) error {
 	}
 	s.policyByRuleId[id] = policy
 
-	vrfNames := []VrfName{
-		VrfName(policy.Policy.Source.Endpoint.VRF),
-		VrfName(policy.Policy.Destination.Endpoint.VRF),
-	}
-	seen := make(map[VrfName]struct{}, len(vrfNames))
-	for _, vrfName := range vrfNames {
-		if _, ok := seen[vrfName]; ok {
-			continue
-		}
-		seen[vrfName] = struct{}{}
-
+	srcVRF := VrfName(policy.Policy.Source.Endpoint.VRF)
+	dstVRF := VrfName(policy.Policy.Destination.Endpoint.VRF)
+	for _, vrfName := range uniqueVRFs(srcVRF, dstVRF) {
 		if _, ok := s.policyByVRFName[vrfName]; !ok {
 			s.policyByVRFName[vrfName] = make(map[RuleID]*SwitchPolicy)
 		}
@@ -143,27 +140,102 @@ func (s *State) AddRule(id RuleID, policy *SwitchPolicy) error {
 	return nil
 }
 
-func (s *State) SetL3Networks(l3 *L3Networks) error {
+func (s *State) SetL3Networks(l3 *L3Networks) (map[RuleID]RuleID, error) {
+	// Detect VRF GID changes (same name, different GID)
+	changed := make(map[VrfName]VrfGID)
+	for vrfName, newGID := range l3.byName {
+		if oldGID, ok := s.networkL3Objects.byName[vrfName]; ok && oldGID != newGID {
+			changed[vrfName] = newGID
+		}
+	}
+
+	// Check for GID conflicts with unchanged VRFs
 	for vrfName, gid := range l3.byName {
-		if existingGid, ok := s.networkL3Objects.byName[vrfName]; ok {
-			if existingGid != gid {
-				return fmt.Errorf("L3 network with name %s already exists with different GID %d (new GID %d)", vrfName, existingGid, gid)
-			}
+		if _, isChanged := changed[vrfName]; isChanged {
+			continue
 		}
 		if existingName, ok := s.networkL3Objects.byGID[gid]; ok {
 			if existingName != vrfName {
-				return fmt.Errorf("L3 network with GID %d already exists with different name %s (new name %s)", gid, existingName, vrfName)
+				// Only error if the conflicting VRF is not also being changed
+				if _, alsoChanged := changed[existingName]; !alsoChanged {
+					return nil, fmt.Errorf("L3 network with GID %d already exists with different name %s (new name %s)", gid, existingName, vrfName)
+				}
 			}
 		}
 	}
 
+	// Process VRF GID changes
+	var idChanges map[RuleID]RuleID
+	if len(changed) > 0 {
+		// Collect affected rules per VRF before modifying anything.
+		// A rule may reference multiple changed VRFs (src and dst), so
+		// deduplicate by RuleID to avoid processing the same rule twice.
+		affectedByID := make(map[RuleID]*SwitchPolicy)
+		for vrfName := range changed {
+			for ruleId, rule := range s.policyByVRFName[vrfName] {
+				affectedByID[ruleId] = rule
+			}
+		}
+
+		// Generate DELETE diffs using OLD GIDs (L3Networks still has old mapping)
+		for ruleId, rule := range affectedByID {
+			oldConverted := s.convertRuleToDPUPolicyRule(rule, false)
+			if oldConverted != nil {
+				s.diff.Del(ruleId, oldConverted)
+			}
+		}
+
+		// Update L3Networks mapping: remove all changed first, then re-add (handles swaps)
+		for vrfName := range changed {
+			s.networkL3Objects.Remove(vrfName)
+		}
+		for vrfName, newGID := range changed {
+			if err := s.networkL3Objects.Add(vrfName, newGID); err != nil {
+				return nil, fmt.Errorf("failed to update L3 network %s to GID %d: %w", vrfName, newGID, err)
+			}
+		}
+
+		// Generate ADD diffs using NEW GIDs with new RuleIDs
+		idChanges = make(map[RuleID]RuleID)
+		for oldRuleId, rule := range affectedByID {
+			newRuleId := s.nextID()
+
+			// Update policyByRuleId
+			delete(s.policyByRuleId, oldRuleId)
+			s.policyByRuleId[newRuleId] = rule
+
+			// Update policyByVRFName references
+			srcVRF := VrfName(rule.Policy.Source.Endpoint.VRF)
+			dstVRF := VrfName(rule.Policy.Destination.Endpoint.VRF)
+			for _, vrfName := range uniqueVRFs(srcVRF, dstVRF) {
+				if vrfRules, ok := s.policyByVRFName[vrfName]; ok {
+					delete(vrfRules, oldRuleId)
+					vrfRules[newRuleId] = rule
+				}
+			}
+
+			// Update the UID's RuleName to reflect the new RuleID.
+			// The DELETE diff was already generated with the old RuleName.
+			// RuleName format is "baseName/ruleId" — replace the suffix.
+			if idx := strings.LastIndex(rule.UID.RuleName, "/"); idx >= 0 {
+				rule.UID.RuleName = fmt.Sprintf("%s/%d", rule.UID.RuleName[:idx], newRuleId)
+			}
+
+			newConverted := s.convertRuleToDPUPolicyRule(rule, true)
+			if newConverted != nil {
+				s.diff.Add(newRuleId, newConverted)
+			}
+
+			idChanges[oldRuleId] = newRuleId
+		}
+	}
+
+	// Handle new VRFs (not already in networkL3Objects)
 	for vrfName, gid := range l3.byName {
 		if _, ok := s.networkL3Objects.byName[vrfName]; !ok {
-			// New L3 network, add it
 			if err := s.networkL3Objects.Add(vrfName, gid); err != nil {
-				return fmt.Errorf("failed to add L3 network %s: %w", vrfName, err)
+				return nil, fmt.Errorf("failed to add L3 network %s: %w", vrfName, err)
 			}
-			// Mark all rules for this VRF to be added
 			for ruleId, rule := range s.policyByVRFName[vrfName] {
 				converted := s.convertRuleToDPUPolicyRule(rule, true)
 				if converted != nil {
@@ -173,10 +245,9 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 		}
 	}
 
+	// Handle removed VRFs (in current but not in incoming)
 	for vrfName := range s.networkL3Objects.byName {
 		if _, ok := l3.byName[vrfName]; !ok {
-			// L3 network was removed, delete it
-			// First we need to prepare DPU rules
 			for ruleId, rule := range s.policyByVRFName[vrfName] {
 				converted := s.convertRuleToDPUPolicyRule(rule, false)
 				if converted != nil {
@@ -184,35 +255,28 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 				}
 			}
 			if err := s.networkL3Objects.Remove(vrfName); err != nil {
-				return fmt.Errorf("failed to remove L3 network %s: %w", vrfName, err)
+				return nil, fmt.Errorf("failed to remove L3 network %s: %w", vrfName, err)
 			}
 		}
 	}
-	return nil
+
+	return idChanges, nil
 }
 
-func (s *State) AddL3Network(name VrfName, gid VrfGID) error {
+func (s *State) AddL3Network(name VrfName, gid VrfGID) (map[RuleID]RuleID, error) {
 	err := s.networkL3Objects.Add(name, gid)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = s.SetL3Networks(s.networkL3Objects)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.SetL3Networks(s.networkL3Objects)
 }
 
-func (s *State) RemoveL3Network(name VrfName) error {
+func (s *State) RemoveL3Network(name VrfName) (map[RuleID]RuleID, error) {
 	err := s.networkL3Objects.Remove(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = s.SetL3Networks(s.networkL3Objects)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.SetL3Networks(s.networkL3Objects)
 }
 
 func (s *State) GetDeltaToApply() []*DPUPolicyRule {
