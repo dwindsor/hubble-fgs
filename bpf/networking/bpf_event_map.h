@@ -16,13 +16,15 @@
 #include "api.h"
 #include "bpf_helpers.h"
 
-// We make this a msg_udp_event as it is bigger than a standard msg_ip_event struct
+#define MAX_EVENT_SIZE 16384
+
+// We make this a large char buffer as it is bigger than a standard msg_ip_event struct
 // and also bigger than the msg_ip_with_tnp_event. This means it can be used for all
-// event types.
+// event types, including those that send entire packet payloads.
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
-	__type(value, struct msg_udp_event);
+	__type(value, char[MAX_EVENT_SIZE]);
 	__uint(max_entries, 1);
 } tg_h_event SEC(".maps");
 
