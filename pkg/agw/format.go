@@ -146,12 +146,15 @@ func formatSwitchDestination(dest switchpolicy.SmartSwitchNetworkDestination) st
 			if p.Protocol != 0 {
 				b.WriteString(fmt.Sprintf("  │   • Protocol: %s\n", p.Protocol.String()))
 			}
-			if p.Port > 0 {
-				if p.EndPort > 0 && p.EndPort != p.Port {
-					b.WriteString(fmt.Sprintf("  │   • Ports: %d-%d\n", p.Port, p.EndPort))
-				} else {
-					b.WriteString(fmt.Sprintf("  │   • Port: %d\n", p.Port))
-				}
+			// ICMP doesn't use ports, so skip port display for ICMP protocols
+			if p.Protocol == 1 { // POLICY_PROTOCOL_ICMP = 1
+				continue
+			}
+			// Show port information even when Port=0 (valid port number for TCP/UDP)
+			if p.EndPort > 0 && p.EndPort != p.Port {
+				b.WriteString(fmt.Sprintf("  │   • Ports: %d-%d\n", p.Port, p.EndPort))
+			} else {
+				b.WriteString(fmt.Sprintf("  │   • Port: %d\n", p.Port))
 			}
 		}
 	}

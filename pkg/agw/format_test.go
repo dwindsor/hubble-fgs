@@ -636,6 +636,137 @@ func TestFormatSwitchDestination(t *testing.T) {
 				"│   • Port: 8080",
 			},
 		},
+		// Test cases for port formatting fix (Port=0 handling)
+		{
+			name: "Port range starting from 0 (original bug case)",
+			dest: switchpolicy.SmartSwitchNetworkDestination{
+				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
+					CIDR: "100.213.1.0/24",
+					VLAN: 3400,
+				},
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+						Port:     0,
+						EndPort:  65534,
+					},
+				},
+			},
+			expected: []string{
+				"│ Destination:",
+				"│   • CIDR: 100.213.1.0/24",
+				"│   • VLAN: 3400",
+				"│   • Protocol: POLICY_PROTOCOL_TCP",
+				"│   • Ports: 0-65534",
+			},
+		},
+		{
+			name: "Single port with same start and end port",
+			dest: switchpolicy.SmartSwitchNetworkDestination{
+				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
+					CIDR: "10.0.0.0/24",
+				},
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
+						Port:     80,
+						EndPort:  80,
+					},
+				},
+			},
+			expected: []string{
+				"│ Destination:",
+				"│   • CIDR: 10.0.0.0/24",
+				"│   • Protocol: POLICY_PROTOCOL_UDP",
+				"│   • Port: 80",
+			},
+		},
+		{
+			name: "Traditional port range",
+			dest: switchpolicy.SmartSwitchNetworkDestination{
+				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
+					CIDR: "192.168.1.0/24",
+				},
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+						Port:     1000,
+						EndPort:  2000,
+					},
+				},
+			},
+			expected: []string{
+				"│ Destination:",
+				"│   • CIDR: 192.168.1.0/24",
+				"│   • Protocol: POLICY_PROTOCOL_TCP",
+				"│   • Ports: 1000-2000",
+			},
+		},
+		{
+			name: "Port 0 only (EndPort=0)",
+			dest: switchpolicy.SmartSwitchNetworkDestination{
+				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
+					CIDR: "172.16.0.0/16",
+				},
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+						Port:     0,
+						EndPort:  0,
+					},
+				},
+			},
+			expected: []string{
+				"│ Destination:",
+				"│   • CIDR: 172.16.0.0/16",
+				"│   • Protocol: POLICY_PROTOCOL_TCP",
+				"│   • Port: 0",
+			},
+		},
+		{
+			name: "Port range starting from 0 with small range",
+			dest: switchpolicy.SmartSwitchNetworkDestination{
+				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
+					CIDR: "10.10.0.0/16",
+				},
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
+						Port:     0,
+						EndPort:  80,
+					},
+				},
+			},
+			expected: []string{
+				"│ Destination:",
+				"│   • CIDR: 10.10.0.0/16",
+				"│   • Protocol: POLICY_PROTOCOL_UDP",
+				"│   • Ports: 0-80",
+			},
+		},
+		{
+			name: "ICMP protocol without port information",
+			dest: switchpolicy.SmartSwitchNetworkDestination{
+				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
+					CIDR: "100.213.1.0/24",
+					VLAN: 3400,
+				},
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP,
+						Port:     0,
+						EndPort:  0,
+					},
+				},
+			},
+			expected: []string{
+				"│ Destination:",
+				"│   • CIDR: 100.213.1.0/24",
+				"│   • VLAN: 3400",
+				"│   • Protocol: POLICY_PROTOCOL_ICMP",
+				// Note: No port information expected for ICMP
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
