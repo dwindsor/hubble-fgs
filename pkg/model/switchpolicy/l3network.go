@@ -61,42 +61,6 @@ func (l3 *L3Networks) HasVRF(name VrfName) bool {
 	return ok
 }
 
-// GIDChange records an in-place VRF GID update.
-type GIDChange struct {
-	OldGID VrfGID
-	NewGID VrfGID
-}
-
-// Diff computes the changes needed to transition from the current state to incoming.
-// added: VRFs in incoming but not in current.
-// removed: VRFs in current but not in incoming.
-// changed: VRFs in both with different GIDs.
-func (l3 *L3Networks) Diff(incoming *L3Networks) (
-	added map[VrfName]VrfGID,
-	removed map[VrfName]VrfGID,
-	changed map[VrfName]GIDChange,
-) {
-	added = make(map[VrfName]VrfGID)
-	removed = make(map[VrfName]VrfGID)
-	changed = make(map[VrfName]GIDChange)
-
-	for name, inGID := range incoming.byName {
-		if curGID, ok := l3.byName[name]; ok {
-			if curGID != inGID {
-				changed[name] = GIDChange{OldGID: curGID, NewGID: inGID}
-			}
-		} else {
-			added[name] = inGID
-		}
-	}
-	for name, curGID := range l3.byName {
-		if _, ok := incoming.byName[name]; !ok {
-			removed[name] = curGID
-		}
-	}
-	return added, removed, changed
-}
-
 // Copy creates a deep copy of the L3Networks
 func (l3 *L3Networks) Copy() *L3Networks {
 	l3Copy := &L3Networks{

@@ -406,60 +406,6 @@ func TestPolicyHandlerAddL3Network(t *testing.T) {
 	checkRule(t, rule80, "allow-red-to-red-80/1", "ns/default/redPolicy", "10.1.0.0/16", "10.2.0.0/16", "red", 7, 80)
 }
 
-func TestPolicyHandlerGIDChange(t *testing.T) {
-	fakeDPU := NewFakeDPUProgrammer()
-	newPolicyHandler := NewPolicyHandler(context.Background(), fakeDPU)
-
-	l3Network := NewL3Networks()
-	l3Network.Add("red", 100)
-	err := newPolicyHandler.SetL3Networks(l3Network)
-	require.NoError(t, err)
-
-	resourceID := NewResourceID("SmartSwitchNetworkPolicy", "default", "test-policy")
-	err = newPolicyHandler.UpsertPolicy(
-		resourceID,
-		K8sRulesList{
-			NewPolicyRule(
-				"allow-red-to-red",
-				&SmartSwitchNetworkPolicy{
-					Source: SmartSwitchNetworkSource{
-						Endpoint: SmartSwitchNetworkEndpoint{
-							CIDR: "10.0.0.0/8",
-							VRF:  "red",
-						},
-					},
-					Destination: SmartSwitchNetworkDestination{
-						Endpoint: SmartSwitchNetworkEndpoint{
-							CIDR: "192.168.0.0/16",
-							VRF:  "red",
-						},
-					},
-				},
-			),
-		}, "",
-	)
-	require.NoError(t, err)
-	require.Len(t, fakeDPU.rules, 1)
-	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, fakeDPU.rules[0].Oper)
-	require.Equal(t, uint32(100), fakeDPU.rules[0].Policy.Source.VrfId)
-	fakeDPU.Clear()
-
-	// Change GID for "red" from 100 to 200 via SetL3Networks
-	l3New := NewL3Networks()
-	l3New.Add("red", 200)
-	err = newPolicyHandler.SetL3Networks(l3New)
-	require.NoError(t, err)
-
-	// GID change emits UPSERT(new GID) first, then stale DELETE(old GID)
-	require.Len(t, fakeDPU.rules, 2, "GID change should produce UPSERT then stale DELETE")
-	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, fakeDPU.rules[0].Oper)
-	require.Equal(t, uint32(200), fakeDPU.rules[0].Policy.Source.VrfId, "UPSERT VrfId should reflect updated GID")
-	require.Equal(t, uint32(200), fakeDPU.rules[0].Policy.Destination.VrfId, "UPSERT Destination VrfId should reflect updated GID")
-	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, fakeDPU.rules[1].Oper)
-	require.Equal(t, uint32(100), fakeDPU.rules[1].Policy.Source.VrfId, "stale DELETE VrfId should be old GID")
-	require.Equal(t, uint32(100), fakeDPU.rules[1].Policy.Destination.VrfId, "stale DELETE Destination VrfId should be old GID")
-}
-
 func TestPolicyHandlerResourceVersion(t *testing.T) {
 	fakeDPU := NewFakeDPUProgrammer()
 	handler := NewPolicyHandler(context.Background(), fakeDPU)

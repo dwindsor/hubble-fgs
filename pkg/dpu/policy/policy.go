@@ -66,7 +66,7 @@ func mergePorts(x PortV2, y PortV2) PortV2 {
 }
 
 func RuleToID(rule *switchpolicy.DPURule) string {
-	return rule.K8SResourceVersion + ":" + rule.K8SUid + ":" + rule.PolicyName + ":" + rule.RuleName
+	return rule.RuleUID()
 }
 
 func ruleToJSON(op v1alpha.PolicyOperation, rule *switchpolicy.DPURule) *FwPolicyV2 {

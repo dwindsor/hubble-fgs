@@ -362,6 +362,173 @@ func TestOOOPolicy(t *testing.T) {
 	assert.Equal(t, len(dpu2.ruleSet), 0)
 }
 
+func TestSubmitDPURuleToDPU_VRFIDChange(t *testing.T) {
+	dpu := NewDPUListener(context.Background(), "127.0.0.1:8080")
+
+	// UPSERT a rule with VrfId=100
+	ruleOld := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-1",
+			PolicyName:         "test-policy",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source:             DPUSubject{Cidr: "10.0.0.0/8", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 100},
+			Destination:        DPUSubject{Cidr: "192.168.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 100},
+		},
+	}
+	dpu.SubmitDPURuleToDPU(ruleOld)
+	assert.Equal(t, 1, len(dpu.ruleSet), "should have one rule after initial UPSERT")
+	csumBefore := dpu.Checksum()
+
+	// UPSERT the same logical rule with VrfId=200 (GID change)
+	ruleNew := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-1",
+			PolicyName:         "test-policy",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source:             DPUSubject{Cidr: "10.0.0.0/8", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 200},
+			Destination:        DPUSubject{Cidr: "192.168.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 200},
+		},
+	}
+	dpu.SubmitDPURuleToDPU(ruleNew)
+	assert.Equal(t, 1, len(dpu.ruleSet), "ruleSet should still have one rule after VRF ID change UPSERT")
+	csumAfter := dpu.Checksum()
+	assert.NotEqual(t, csumBefore, csumAfter, "checksum should change after VRF ID update")
+
+	// Verify checksum matches a fresh listener that only has the new version
+	dpuFresh := NewDPUListener(context.Background(), "127.0.0.1:8080")
+	dpuFresh.SubmitDPURuleToDPU(ruleNew)
+	assert.Equal(t, csumAfter, dpuFresh.Checksum(), "checksum should match fresh listener with only new rule")
+}
+
+func TestSubmitDPURuleToDPU_VRFIDChange_MultipleRules(t *testing.T) {
+	dpu := NewDPUListener(context.Background(), "127.0.0.1:8080")
+
+	// UPSERT two rules
+	ruleA := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-a",
+			PolicyName:         "policy-a",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source:             DPUSubject{Cidr: "10.0.0.0/8", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 100},
+			Destination:        DPUSubject{Cidr: "10.1.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 100},
+		},
+	}
+	ruleB := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-b",
+			PolicyName:         "policy-b",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_DENY,
+			Source:             DPUSubject{Cidr: "172.16.0.0/12", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "blue", VrfId: 200},
+			Destination:        DPUSubject{Cidr: "172.17.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "blue", VrfId: 200},
+		},
+	}
+	dpu.SubmitDPURuleToDPU(ruleA)
+	dpu.SubmitDPURuleToDPU(ruleB)
+	assert.Equal(t, 2, len(dpu.ruleSet))
+
+	// Change VRF ID for rule A only
+	ruleAUpdated := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-a",
+			PolicyName:         "policy-a",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source:             DPUSubject{Cidr: "10.0.0.0/8", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 300},
+			Destination:        DPUSubject{Cidr: "10.1.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 300},
+		},
+	}
+	dpu.SubmitDPURuleToDPU(ruleAUpdated)
+	assert.Equal(t, 2, len(dpu.ruleSet), "ruleSet should still have two rules after VRF ID change")
+
+	// Verify against fresh listener
+	dpuFresh := NewDPUListener(context.Background(), "127.0.0.1:8080")
+	dpuFresh.SubmitDPURuleToDPU(ruleAUpdated)
+	dpuFresh.SubmitDPURuleToDPU(ruleB)
+	assert.Equal(t, dpu.Checksum(), dpuFresh.Checksum(), "checksums should match fresh listener")
+}
+
+func TestSubmitDPURuleToDPU_VRFIDSwap(t *testing.T) {
+	dpu := NewDPUListener(context.Background(), "127.0.0.1:8080")
+
+	// Two rules in different VRFs
+	ruleRed := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-red",
+			PolicyName:         "red-policy",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source:             DPUSubject{Cidr: "10.0.0.0/8", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 100},
+			Destination:        DPUSubject{Cidr: "10.1.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 100},
+		},
+	}
+	ruleBlue := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-blue",
+			PolicyName:         "blue-policy",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_DENY,
+			Source:             DPUSubject{Cidr: "172.16.0.0/12", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "blue", VrfId: 200},
+			Destination:        DPUSubject{Cidr: "172.17.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "blue", VrfId: 200},
+		},
+	}
+	dpu.SubmitDPURuleToDPU(ruleRed)
+	dpu.SubmitDPURuleToDPU(ruleBlue)
+	assert.Equal(t, 2, len(dpu.ruleSet))
+
+	// Swap GIDs: red:100→200, blue:200→100
+	ruleRedSwapped := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-red",
+			PolicyName:         "red-policy",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source:             DPUSubject{Cidr: "10.0.0.0/8", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 200},
+			Destination:        DPUSubject{Cidr: "10.1.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "red", VrfId: 200},
+		},
+	}
+	ruleBlueSwapped := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-blue",
+			PolicyName:         "blue-policy",
+			RuleName:           "rule-1",
+			Action:             v1alpha.PolicyAction_POLICY_ACTION_DENY,
+			Source:             DPUSubject{Cidr: "172.16.0.0/12", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "blue", VrfId: 100},
+			Destination:        DPUSubject{Cidr: "172.17.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}, Vrf: "blue", VrfId: 100},
+		},
+	}
+	dpu.SubmitDPURuleToDPU(ruleRedSwapped)
+	dpu.SubmitDPURuleToDPU(ruleBlueSwapped)
+	assert.Equal(t, 2, len(dpu.ruleSet), "ruleSet should still have two rules after GID swap")
+
+	// Verify against fresh listener
+	dpuFresh := NewDPUListener(context.Background(), "127.0.0.1:8080")
+	dpuFresh.SubmitDPURuleToDPU(ruleRedSwapped)
+	dpuFresh.SubmitDPURuleToDPU(ruleBlueSwapped)
+	assert.Equal(t, dpu.Checksum(), dpuFresh.Checksum(), "checksums should match fresh listener after GID swap")
+}
+
 func TestSendConfigTimeoutForcesReconnect(t *testing.T) {
 	p := &peer{
 		uid:            "test-peer",

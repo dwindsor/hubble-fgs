@@ -80,6 +80,11 @@ type DPURule struct {
 	Destination        DPUSubject
 }
 
+// RuleUID returns a unique identifier for this rule based on its metadata.
+func (r *DPURule) RuleUID() string {
+	return r.K8SResourceVersion + ":" + r.K8SUid + ":" + r.PolicyName + ":" + r.RuleName
+}
+
 type DPUPolicyRule struct {
 	Oper      v1alpha.PolicyOperation
 	Timestamp time.Time
@@ -211,6 +216,7 @@ type DPUListener struct {
 	peerGroup     map[string]*peer
 
 	ruleSet        map[[sha256.Size]byte]*DPURule
+	ruleUIDToHash  map[string][sha256.Size]byte // reverse index: RuleUID -> current hash
 	cachedChecksum [sha256.Size]byte
 	checksumValid  bool
 	mtx            sync.RWMutex
@@ -225,6 +231,7 @@ func NewDPUListener(ctx context.Context, address string) *DPUListener {
 		address:       address,
 		peerGroup:     make(map[string]*peer),
 		ruleSet:       make(map[[sha256.Size]byte]*DPURule),
+		ruleUIDToHash: make(map[string][sha256.Size]byte),
 		peerGroupSize: 1,
 	}
 }
@@ -591,9 +598,17 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 		"currentRuleSetSize", len(dpu.ruleSet),
 		"targetPeers", len(dpu.peerGroup))
 
+	uid := rule.Policy.RuleUID()
+
 	switch rule.Oper {
 	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
+		// If this rule UID already exists with a different hash (e.g., VRF ID
+		// change), remove the old hash entry so it doesn't linger in the ruleSet.
+		if oldCsum, ok := dpu.ruleUIDToHash[uid]; ok && oldCsum != csum {
+			delete(dpu.ruleSet, oldCsum)
+		}
 		dpu.ruleSet[csum] = rule.Policy
+		dpu.ruleUIDToHash[uid] = csum
 	case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
 		if _, exists := dpu.ruleSet[csum]; exists {
 			delete(dpu.ruleSet, csum)
@@ -603,6 +618,7 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 				"policyName", rule.Policy.PolicyName,
 				"ruleName", rule.Policy.RuleName)
 		}
+		delete(dpu.ruleUIDToHash, uid)
 	default:
 		return fmt.Errorf("unknown operation type %d", rule.Oper)
 	}
