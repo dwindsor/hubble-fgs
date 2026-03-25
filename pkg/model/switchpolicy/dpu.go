@@ -334,10 +334,16 @@ func (dpu *DPUListener) StateCheck() bool {
 				"timeSinceLastUpdate", timeSinceLastUpdate,
 				"polReconnectCount", s.polReconnectCount.Load())
 
-			// Force policy reconnect by closing the channel
+			// Force policy reconnect by signaling the channel (send, not
+			// close) to avoid a race where addPeerLocked recreates the
+			// channel between close+nil and the stream handler's next
+			// select iteration, causing the signal to be lost entirely.
+			// This matches the cfgReconnectCh pattern used for config.
 			if s.polReconnectCh != nil {
-				close(s.polReconnectCh)
-				s.polReconnectCh = nil
+				select {
+				case s.polReconnectCh <- struct{}{}:
+				default:
+				}
 			}
 			logger.GetLogger().Warn("DPU sync timeout error, forcing policy reconnect", "uid", s.uid)
 			// On reset restore the fail count to zero so that we
@@ -674,10 +680,6 @@ func (dpu *DPUListener) addPeerLocked(uid string) *peer {
 	if p.polCh == nil {
 		logger.GetLogger().Info("Added peer DPU l3l4 netpol channel", "uid", uid)
 		p.polCh = make(chan *DPUPolicyRule)
-	}
-
-	if p.polReconnectCh == nil {
-		p.polReconnectCh = make(chan struct{}, 1)
 	}
 
 	if p.cfgCh == nil {

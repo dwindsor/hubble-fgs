@@ -55,6 +55,11 @@ func (s *AGWServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 		s.dpuListener.mtx.Lock()
 		defer s.dpuListener.mtx.Unlock()
 		peer := s.dpuListener.addPeerLocked(req.AgentUid)
+		// Always create a fresh reconnect channel for this stream so the
+		// handler always listens on a known-empty channel. StateCheck
+		// signals reconnect via send (not close), so we don't need to
+		// preserve any previous channel state.
+		peer.polReconnectCh = make(chan struct{}, 1)
 		peer.syncFailCount.Store(0)   // Resetting sync count
 		peer.polReconnectCount.Add(1) // Increment policy reconnect counter
 

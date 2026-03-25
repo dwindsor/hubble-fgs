@@ -223,10 +223,12 @@ func TestBasicWorkflow(t *testing.T) {
 	assert.NotNil(t, p2.polCh)
 	assert.NotNil(t, p3.polCh)
 	assert.NotNil(t, p4.polCh)
-	assert.Equal(t, 1, cap(p1.polReconnectCh))
-	assert.Equal(t, 1, cap(p2.polReconnectCh))
-	assert.Equal(t, 1, cap(p3.polReconnectCh))
-	assert.Equal(t, 1, cap(p4.polReconnectCh))
+	// polReconnectCh is no longer created by addPeer; it is created fresh
+	// by Streaml3L4NetworkPolicy when the stream handler starts.
+	assert.Nil(t, p1.polReconnectCh)
+	assert.Nil(t, p2.polReconnectCh)
+	assert.Nil(t, p3.polReconnectCh)
+	assert.Nil(t, p4.polReconnectCh)
 
 	// Report some status with no Policy
 
