@@ -835,24 +835,137 @@ export declare type TimescapeBasicAuth = Message<"l3l4networkpolicy.v1alpha.Time
 export declare const TimescapeBasicAuthSchema: GenMessage<TimescapeBasicAuth>;
 
 /**
- * mTLS configuration for Timescape
+ * Kubernetes CA (Certificate Authority) information
+ * to get the ca.crt from Kubernetes Secret resource
  *
- * @generated from message l3l4networkpolicy.v1alpha.TimescapeMTLS
+ * @generated from message l3l4networkpolicy.v1alpha.MTLSClientCA
  */
-export declare type TimescapeMTLS = Message<"l3l4networkpolicy.v1alpha.TimescapeMTLS"> & {
+export declare type MTLSClientCA = Message<"l3l4networkpolicy.v1alpha.MTLSClientCA"> & {
+  /**
+   * CA Secret name
+   *
+   * @generated from field: string secret_name = 1;
+   */
+  secretName: string;
+
+  /**
+   * CA Secret namespace
+   *
+   * @generated from field: string secret_namespace = 2;
+   */
+  secretNamespace: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.MTLSClientCA.
+ * Use `create(MTLSClientCASchema)` to create a new message.
+ */
+export declare const MTLSClientCASchema: GenMessage<MTLSClientCA>;
+
+/**
+ * IssuerRef structure matching cert-manager format
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.IssuerRef
+ */
+export declare type IssuerRef = Message<"l3l4networkpolicy.v1alpha.IssuerRef"> & {
+  /**
+   * IssuerRef group (cert-manager.io)
+   *
+   * @generated from field: string group = 1;
+   */
+  group: string;
+
+  /**
+   * Kubernetes kind (ClusterIssuer, Issuer)
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * Issuer name
+   *
+   * @generated from field: string name = 3;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.IssuerRef.
+ * Use `create(IssuerRefSchema)` to create a new message.
+ */
+export declare const IssuerRefSchema: GenMessage<IssuerRef>;
+
+/**
+ * Kubernetes CertManager can support different issuers
+ *   kind: ClusterIssuer
+ *   kind: Issuer
+ * The complete Signer string format is:
+ *   <plural-issuerRef.kind>.<issuerRef.group>/<issuerRef.name>
+ * Examples:
+ *   - "clusterissuers.cert-manager.io/cluster-root-ca-issuer"
+ *   - "issuers.cert-manager.io/my-namespace-issuer"
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.MTLSCertManager
+ */
+export declare type MTLSCertManager = Message<"l3l4networkpolicy.v1alpha.MTLSCertManager"> & {
+  /**
+   * Issuer reference
+   *
+   * @generated from field: l3l4networkpolicy.v1alpha.IssuerRef issuer_ref = 1;
+   */
+  issuerRef?: IssuerRef;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.MTLSCertManager.
+ * Use `create(MTLSCertManagerSchema)` to create a new message.
+ */
+export declare const MTLSCertManagerSchema: GenMessage<MTLSCertManager>;
+
+/**
+ * mTLS configuration
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.MTLSConfig
+ */
+export declare type MTLSConfig = Message<"l3l4networkpolicy.v1alpha.MTLSConfig"> & {
   /**
    * Enable mTLS
    *
    * @generated from field: bool enabled = 1;
    */
   enabled: boolean;
+
+  /**
+   * Certificate manager configuration
+   *
+   * @generated from field: l3l4networkpolicy.v1alpha.MTLSCertManager certmanager = 2;
+   */
+  certmanager?: MTLSCertManager;
+
+  /**
+   * CA configuration (choose one CA approach per configuration)
+   *
+   * @generated from oneof l3l4networkpolicy.v1alpha.MTLSConfig.ca_config
+   */
+  caConfig: {
+    /**
+     * Use cert-manager managed CA (reference to existing CA secret)
+     *
+     * Future: Custom CA (provide your own CA cert/key)
+     *
+     * @generated from field: l3l4networkpolicy.v1alpha.MTLSClientCA managed_ca = 3;
+     */
+    value: MTLSClientCA;
+    case: "managedCa";
+  } | { case: undefined; value?: undefined };
 };
 
 /**
- * Describes the message l3l4networkpolicy.v1alpha.TimescapeMTLS.
- * Use `create(TimescapeMTLSSchema)` to create a new message.
+ * Describes the message l3l4networkpolicy.v1alpha.MTLSConfig.
+ * Use `create(MTLSConfigSchema)` to create a new message.
  */
-export declare const TimescapeMTLSSchema: GenMessage<TimescapeMTLS>;
+export declare const MTLSConfigSchema: GenMessage<MTLSConfig>;
 
 /**
  * Object to store Timescape client configuration
@@ -972,9 +1085,9 @@ export declare type TimescapeConfig = Message<"l3l4networkpolicy.v1alpha.Timesca
     /**
      * mTLS configuration
      *
-     * @generated from field: l3l4networkpolicy.v1alpha.TimescapeMTLS mtls = 15;
+     * @generated from field: l3l4networkpolicy.v1alpha.MTLSConfig mtls = 15;
      */
-    value: TimescapeMTLS;
+    value: MTLSConfig;
     case: "mtls";
   } | { case: undefined; value?: undefined };
 };

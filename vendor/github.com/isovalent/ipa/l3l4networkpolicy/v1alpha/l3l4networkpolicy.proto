@@ -332,10 +332,51 @@ message TimescapeBasicAuth {
   string password = 2;
 }
 
-// mTLS configuration for Timescape
-message TimescapeMTLS {
+// Kubernetes CA (Certificate Authority) information
+// to get the ca.crt from Kubernetes Secret resource
+message MTLSClientCA {
+  // CA Secret name
+  string secret_name = 1;
+  // CA Secret namespace
+  string secret_namespace = 2;
+}
+
+// IssuerRef structure matching cert-manager format
+message IssuerRef {
+  // IssuerRef group (cert-manager.io)
+  string group = 1;
+  // Kubernetes kind (ClusterIssuer, Issuer)
+  string kind = 2;
+  // Issuer name
+  string name = 3;
+}
+
+// Kubernetes CertManager can support different issuers
+//   kind: ClusterIssuer
+//   kind: Issuer
+// The complete Signer string format is:
+//   <plural-issuerRef.kind>.<issuerRef.group>/<issuerRef.name>
+// Examples:
+//   - "clusterissuers.cert-manager.io/cluster-root-ca-issuer"
+//   - "issuers.cert-manager.io/my-namespace-issuer"
+message MTLSCertManager {
+  // Issuer reference
+  IssuerRef issuer_ref = 1;
+}
+
+// mTLS configuration
+message MTLSConfig {
   // Enable mTLS
   bool enabled = 1;
+  // Certificate manager configuration
+  MTLSCertManager certmanager = 2;
+
+  // CA configuration (choose one CA approach per configuration)
+  oneof ca_config {
+    // Use cert-manager managed CA (reference to existing CA secret)
+    MTLSClientCA managed_ca = 3;
+    // Future: Custom CA (provide your own CA cert/key)
+  }
 }
 
 // Object to store Timescape client configuration
@@ -378,7 +419,7 @@ message TimescapeConfig {
     // BasicAuth configuration
     TimescapeBasicAuth basic_auth = 14;
     // mTLS configuration
-    TimescapeMTLS mtls = 15;
+    MTLSConfig mtls = 15;
   }
 }
 

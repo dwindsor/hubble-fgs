@@ -9,6 +9,7 @@
     - [HAStatusEvent](#l3l4networkpolicy-v1alpha-HAStatusEvent)
     - [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig)
     - [HaPeer](#l3l4networkpolicy-v1alpha-HaPeer)
+    - [IssuerRef](#l3l4networkpolicy-v1alpha-IssuerRef)
     - [L3L4NetworkSubject](#l3l4networkpolicy-v1alpha-L3L4NetworkSubject)
     - [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig)
     - [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix)
@@ -19,6 +20,9 @@
     - [LogConfigSyslog.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSyslog-ConfigsEntry)
     - [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape)
     - [LogConfigTimescape.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigTimescape-ConfigsEntry)
+    - [MTLSCertManager](#l3l4networkpolicy-v1alpha-MTLSCertManager)
+    - [MTLSClientCA](#l3l4networkpolicy-v1alpha-MTLSClientCA)
+    - [MTLSConfig](#l3l4networkpolicy-v1alpha-MTLSConfig)
     - [NetworkConfig](#l3l4networkpolicy-v1alpha-NetworkConfig)
     - [PolicyPorts](#l3l4networkpolicy-v1alpha-PolicyPorts)
     - [PolicyRule](#l3l4networkpolicy-v1alpha-PolicyRule)
@@ -36,7 +40,6 @@
     - [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse)
     - [TimescapeBasicAuth](#l3l4networkpolicy-v1alpha-TimescapeBasicAuth)
     - [TimescapeConfig](#l3l4networkpolicy-v1alpha-TimescapeConfig)
-    - [TimescapeMTLS](#l3l4networkpolicy-v1alpha-TimescapeMTLS)
     - [Vlan](#l3l4networkpolicy-v1alpha-Vlan)
     - [Vrf](#l3l4networkpolicy-v1alpha-Vrf)
   
@@ -157,6 +160,23 @@ CONFIG_TYPE_HA
 | ip | [string](#string) |  | IP address for the peer |
 | min_port | [uint32](#uint32) |  | Minimum destination port of the peer |
 | max_port | [uint32](#uint32) |  | Maximum destination port of the peer |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-IssuerRef"></a>
+
+### IssuerRef
+IssuerRef structure matching cert-manager format
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| group | [string](#string) |  | IssuerRef group (cert-manager.io) |
+| kind | [string](#string) |  | Kubernetes kind (ClusterIssuer, Issuer) |
+| name | [string](#string) |  | Issuer name |
 
 
 
@@ -332,6 +352,64 @@ CONFIG_TYPE_LOG_TIMESCAPE
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-MTLSCertManager"></a>
+
+### MTLSCertManager
+Kubernetes CertManager can support different issuers
+  kind: ClusterIssuer
+  kind: Issuer
+The complete Signer string format is:
+  &lt;plural-issuerRef.kind&gt;.&lt;issuerRef.group&gt;/&lt;issuerRef.name&gt;
+Examples:
+  - &#34;clusterissuers.cert-manager.io/cluster-root-ca-issuer&#34;
+  - &#34;issuers.cert-manager.io/my-namespace-issuer&#34;
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| issuer_ref | [IssuerRef](#l3l4networkpolicy-v1alpha-IssuerRef) |  | Issuer reference |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-MTLSClientCA"></a>
+
+### MTLSClientCA
+Kubernetes CA (Certificate Authority) information
+to get the ca.crt from Kubernetes Secret resource
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| secret_name | [string](#string) |  | CA Secret name |
+| secret_namespace | [string](#string) |  | CA Secret namespace |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-MTLSConfig"></a>
+
+### MTLSConfig
+mTLS configuration
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enabled | [bool](#bool) |  | Enable mTLS |
+| certmanager | [MTLSCertManager](#l3l4networkpolicy-v1alpha-MTLSCertManager) |  | Certificate manager configuration |
+| managed_ca | [MTLSClientCA](#l3l4networkpolicy-v1alpha-MTLSClientCA) |  | Use cert-manager managed CA (reference to existing CA secret)
+
+Future: Custom CA (provide your own CA cert/key) |
 
 
 
@@ -636,22 +714,7 @@ CONFIG_TYPE_TIMESCAPE
 | max_batch_size | [uint32](#uint32) |  | Batching configuration for message processing Maximum number of messages to batch together (default: 1, max: 3, recommended: 2) |
 | batch_timeout_ms | [uint32](#uint32) |  | Batch timeout in milliseconds (force send batch after timeout, default: 30000ms) |
 | basic_auth | [TimescapeBasicAuth](#l3l4networkpolicy-v1alpha-TimescapeBasicAuth) |  | BasicAuth configuration |
-| mtls | [TimescapeMTLS](#l3l4networkpolicy-v1alpha-TimescapeMTLS) |  | mTLS configuration |
-
-
-
-
-
-
-<a name="l3l4networkpolicy-v1alpha-TimescapeMTLS"></a>
-
-### TimescapeMTLS
-mTLS configuration for Timescape
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| enabled | [bool](#bool) |  | Enable mTLS |
+| mtls | [MTLSConfig](#l3l4networkpolicy-v1alpha-MTLSConfig) |  | mTLS configuration |
 
 
 
