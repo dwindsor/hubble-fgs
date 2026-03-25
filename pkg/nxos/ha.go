@@ -374,7 +374,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 
 	// Update membership criteria based on validation result.
 	if crit, ok := n.Ha.PeerCriteria[peer]; ok {
-		newMembership := !isDel
+		newMembership := !(isDel && isRequiredCritFail)
 		if crit.MembershipOk != newMembership {
 			crit.MembershipOk = newMembership
 			n.Ha.PeerCriteria[peer] = crit
@@ -794,6 +794,20 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 	return peers
 }
 
+// anyPeerReportsHATakeover returns true if any connected peer has reported
+// HA_TAKEOVER as its own HA state in the most recent adjacency exchange.
+// This is used to determine whether a starting switch should yield and stay
+// in standby until the already-active peer's adjacency criteria converge.
+// Caller must hold a lock.
+func (n *Nxos) anyPeerReportsHATakeover() bool {
+	for _, mbr := range n.Ha.Members {
+		if mbr.Info.HaInfo != nil && mbr.Info.HaInfo.Ha == hav1.HA_STATE_HA_TAKEOVER {
+			return true
+		}
+	}
+	return false
+}
+
 // aggregatePeerStates returns the best-case peer service state and peer HA state
 // across all configured peers.
 // Caller must hold a lock.
@@ -823,6 +837,10 @@ func (n *Nxos) aggregatePeerStates() (PeerServiceState, bool) {
 }
 
 // deriveAgentHaState implements the state table from HA.md.
+// TAKEOVER is only returned when transitioning from an already-established HA
+// state (HA_READY, HA_TAKEOVER, or HA_SWITCHOVER). From HA_NOTREADY or NO_HA
+// (starting up / standalone), HA_NOTREADY is returned instead so that a newly
+// joining switch does not disrupt a peer that is already providing service.
 // Caller must hold a lock.
 func (n *Nxos) deriveAgentHaState() hav1.HA_STATE {
 	localReady := n.stableIsFunc()
@@ -834,9 +852,22 @@ func (n *Nxos) deriveAgentHaState() hav1.HA_STATE {
 	case localReady && peerSvc == PeerSvcUnknown:
 		return hav1.HA_STATE_HA_NOTREADY // standalone
 	case localReady && peerSvc == PeerSvcReady && !peerHAOk:
-		return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
+		// Only takeover if we were already in an established HA state.
+		// From HA_NOTREADY/NO_HA (startup), wait for criteria to converge.
+		switch n.Ha.NxStates.HaState {
+		case hav1.HA_STATE_HA_READY, hav1.HA_STATE_HA_TAKEOVER, hav1.HA_STATE_HA_SWITCHOVER:
+			return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
+		default:
+			return hav1.HA_STATE_HA_NOTREADY // starting up, wait for convergence
+		}
 	case localReady && peerSvc == PeerSvcNotReady:
-		return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
+		// Only takeover if we were already in an established HA state.
+		switch n.Ha.NxStates.HaState {
+		case hav1.HA_STATE_HA_READY, hav1.HA_STATE_HA_TAKEOVER, hav1.HA_STATE_HA_SWITCHOVER:
+			return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
+		default:
+			return hav1.HA_STATE_HA_NOTREADY // starting up, wait for convergence
+		}
 	case !localReady && peerSvc == PeerSvcUnknown:
 		return hav1.HA_STATE_HA_DEGRADED // unavailable
 	case !localReady && peerSvc == PeerSvcReady:
@@ -898,13 +929,17 @@ func (n *Nxos) haUpdateNxState(_ context.Context) {
 	}
 }
 
-// haEvaluateStandbyCrit checks whether this node (as a follower) should
-// inject or remove the HaCritHaStandby criteria.  When the follower detects
-// that peer HA criteria have failed but the peer's service is ready, the
-// leader should be active and the follower should become standby.
-// Injecting HaCritHaStandby = false causes isFunc to become false, which
-// makes deriveAgentHaState return HA_SWITCHOVER via the existing
-// !localReady && peerSvc == PeerSvcReady case.
+// haEvaluateStandbyCrit checks whether this node should inject or remove the
+// HaCritHaStandby criteria. Instead of using leader/follower designation, this
+// uses the peer's self-reported HA state from the adjacency exchange: if the
+// peer reports HA_TAKEOVER, it is already the active side and this node should
+// yield by injecting standby criteria until adjacency criteria converge.
+//
+// Tiebreaker: if both nodes report HA_TAKEOVER simultaneously (rare race), the
+// leader (higher IP) wins and does not inject standby.
+//
+// Injecting HaCritHaStandby = false causes IsFunc to become false, which makes
+// deriveAgentHaState return HA_SWITCHOVER via the !localReady && peerSvcReady case.
 //
 // This directly updates criteria and IsFunc without calling
 // recalculateIsFuncAndState to avoid recursion (haUpdateNxState is called
@@ -912,21 +947,22 @@ func (n *Nxos) haUpdateNxState(_ context.Context) {
 // Caller must hold the lock.
 func (n *Nxos) haEvaluateStandbyCrit() {
 	peerSvc, peerHAOk := n.aggregatePeerStates()
+	peerIsTakeover := n.anyPeerReportsHATakeover()
+	amTakeover := n.Ha.NxStates.HaState == hav1.HA_STATE_HA_TAKEOVER
 
-	// Follower should be standby when:
-	// - Not the leader
-	// - Peer service is ready (peer is healthy)
-	// - Peer HA criteria are NOT ok (membership/adjacency failure)
-	shouldBeStandby := !n.Ha.IsLeader && peerSvc == PeerSvcReady && !peerHAOk
+	// Yield to the peer that is already in TAKEOVER (active side), unless we are
+	// also in TAKEOVER and are the leader (tiebreaker: leader stays active).
+	shouldBeStandby := peerIsTakeover && peerSvc == PeerSvcReady && !peerHAOk &&
+		!(amTakeover && n.Ha.IsLeader)
 
 	_, hasStandby := n.Ha.Local.Criteria[HaCritHaStandby]
 
 	if shouldBeStandby && !hasStandby {
-		logger.GetLogger().Debug("Injecting standby criteria (follower yields to leader)")
+		logger.GetLogger().Debug("Injecting standby criteria (yielding to peer in TAKEOVER)")
 		n.Ha.Local.Criteria[HaCritHaStandby] = false
 		n.Ha.Local.IsFunc = n.computeIsFunc()
 	} else if !shouldBeStandby && hasStandby {
-		logger.GetLogger().Debug("Removing standby criteria (recovery or role change)")
+		logger.GetLogger().Debug("Removing standby criteria (recovery or convergence)")
 		delete(n.Ha.Local.Criteria, HaCritHaStandby)
 		n.Ha.Local.IsFunc = n.computeIsFunc()
 	}
@@ -941,10 +977,14 @@ func (n *Nxos) HaHandleNotify(ctx context.Context, peer string, haInfo *hav1.HaI
 
 	logger.GetLogger().Debug("HaHandleNotify", "peer", peer, "haInfo", haInfo)
 
-	if haInfo != nil && haInfo.Ha == hav1.HA_STATE_HA_TAKEOVER && !n.Ha.IsLeader {
-		// Leader is taking over — follower should become standby.
+	// Yield to a peer that reports HA_TAKEOVER (already the active side),
+	// unless we are also in TAKEOVER and are the leader (tiebreaker: leader wins).
+	amTakeover := n.Ha.NxStates.HaState == hav1.HA_STATE_HA_TAKEOVER
+	if haInfo != nil && haInfo.Ha == hav1.HA_STATE_HA_TAKEOVER &&
+		!(amTakeover && n.Ha.IsLeader) {
+		// Peer is taking over — inject standby so this node yields.
 		if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; !has {
-			logger.GetLogger().Debug("Notify: injecting standby criteria from leader takeover")
+			logger.GetLogger().Debug("Notify: injecting standby criteria (peer in TAKEOVER)")
 			n.Ha.Local.Criteria[HaCritHaStandby] = false
 			n.Ha.Local.IsFunc = n.computeIsFunc()
 			n.haUpdateNxState(ctx)

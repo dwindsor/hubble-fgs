@@ -304,6 +304,56 @@ func TestHaSetMbrInfo_LbModeMismatch(t *testing.T) {
 	}
 }
 
+// TestHaSetMbrInfo_PeerSvcFailure_MembershipStaysOk verifies that when a peer
+// reports SVC_FAILURE, MembershipOk remains true because service failure is
+// not a required criteria failure.
+func TestHaSetMbrInfo_PeerSvcFailure_MembershipStaysOk(t *testing.T) {
+	n := newTestNxos()
+	n.Ha.enabled = true
+	n.Ha.operUp = true
+	n.Ha.IsLeader = true
+	n.Model = "Nexus9000"
+	n.SwVer = "10.3.1"
+	n.CpaVer = "2.0.0"
+	n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_pinning
+
+	peer := "192.168.1.2"
+	n.SetHaPeer(peer, HaPeer{})
+	n.Ha.Adjacencies = map[string]HaAdj{peer: {Connected: true}}
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+		MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+	}
+
+	info := hav1.MbrInfo{
+		SysInfo: &hav1.SysInfo{
+			Model:  n.Model,
+			SwVer:  n.SwVer,
+			Cpa:    n.CpaVer,
+			LbMode: n.LbMode.String(),
+		},
+		HaInfo: &hav1.HaInfo{
+			Service: hav1.SERVICE_STATE_SVC_FAILURE,
+			Ha:      hav1.HA_STATE_HA_READY,
+		},
+		PolInfo: &hav1.PolInfo{},
+	}
+
+	result := n.HaSetMbrInfo(context.Background(), peer, info)
+
+	if !result.IsDel {
+		t.Error("IsDel should be true on peer service failure")
+	}
+	if result.IsRequiredCritFail {
+		t.Error("IsRequiredCritFail should be false on peer service failure")
+	}
+
+	// Membership should remain OK since service failure is not a required criteria failure.
+	pc := n.Ha.PeerCriteria[peer]
+	if !pc.MembershipOk {
+		t.Error("MembershipOk should remain true when peer reports SVC_FAILURE")
+	}
+}
+
 // newTestNxosForHA returns a minimal Nxos with HA state initialized for
 // deriveAgentHaState and standby criteria tests.
 func newTestNxosForHA(isLeader bool) *Nxos {
@@ -322,15 +372,17 @@ func newTestNxosForHA(isLeader bool) *Nxos {
 }
 
 // TestDeriveAgentHaState_BothReadyPeerHAFail_LeaderTakeover verifies that
-// when both peers are ready but HA criteria fail, the leader computes TAKEOVER.
+// when both peers are ready but HA criteria fail and HA was previously
+// established (HA_READY), the leader computes TAKEOVER.
 func TestDeriveAgentHaState_BothReadyPeerHAFail_LeaderTakeover(t *testing.T) {
-	n := newTestNxosForHA(true) // leader
+	n := newTestNxosForHA(true)                    // leader
+	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_READY // was previously established
 	peer := "10.0.0.2"
 	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // HA fail
 
-	// Leader should NOT get standby criteria injected.
+	// Leader should NOT get standby criteria injected (no peer in TAKEOVER).
 	n.haEvaluateStandbyCrit()
 	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
 		t.Error("Leader should not have HaCritHaStandby injected")
@@ -343,14 +395,19 @@ func TestDeriveAgentHaState_BothReadyPeerHAFail_LeaderTakeover(t *testing.T) {
 }
 
 // TestDeriveAgentHaState_BothReadyPeerHAFail_FollowerSwitchover verifies that
-// when both peers are ready but HA criteria fail, the follower gets standby
-// criteria injected and computes SWITCHOVER with SVC_FAILURE.
+// when the peer (leader) reports HA_TAKEOVER and HA criteria haven't converged,
+// the follower gets standby criteria injected and computes SWITCHOVER.
 func TestDeriveAgentHaState_BothReadyPeerHAFail_FollowerSwitchover(t *testing.T) {
 	n := newTestNxosForHA(false) // follower
 	peer := "10.0.0.2"
 	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // HA fail
+	// Peer (leader) reports HA_TAKEOVER — it's already the active side.
+	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_TAKEOVER,
+	}}}
 
 	// Follower should get standby criteria injected.
 	n.haEvaluateStandbyCrit()
@@ -375,8 +432,12 @@ func TestStandbyCrit_Recovery(t *testing.T) {
 	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 
-	// Initially: HA fail → standby injected
+	// Initially: HA fail + peer reports TAKEOVER → standby injected
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false}
+	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_TAKEOVER,
+	}}}
 	n.haEvaluateStandbyCrit()
 	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; !has {
 		t.Fatal("Expected standby criteria to be injected")
@@ -658,6 +719,163 @@ func TestResetPeerToUnknown_ClearsAllCriteria(t *testing.T) {
 	pc := n.Ha.PeerCriteria[peer]
 	if pc.MembershipOk || pc.PolicyOk || pc.KeepaliveOk || pc.BulkSyncOk {
 		t.Errorf("PeerCriteria should be all-false after reset, got %+v", pc)
+	}
+}
+
+// TestDeriveAgentHaState_StartupNoTakeover verifies that when a switch starts
+// up (HA_NOTREADY) and sees a peer that is service-ready but HA criteria are
+// not yet converged, it stays in HA_NOTREADY rather than going to TAKEOVER.
+func TestDeriveAgentHaState_StartupNoTakeover(t *testing.T) {
+	n := newTestNxosForHA(true) // leader
+	// NxStates.HaState defaults to NO_HA (zero value) = not yet established
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // not converged
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_NOTREADY {
+		t.Errorf("Startup leader state = %v, want HA_NOTREADY (not TAKEOVER)", state)
+	}
+}
+
+// TestDeriveAgentHaState_StartupNoTakeover_PeerNotReady verifies that when a
+// switch starts up and peer service is not-ready, it stays in HA_NOTREADY.
+func TestDeriveAgentHaState_StartupNoTakeover_PeerNotReady(t *testing.T) {
+	n := newTestNxosForHA(true) // leader
+	// NxStates.HaState defaults to NO_HA = not yet established
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcNotReady
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_NOTREADY {
+		t.Errorf("Startup leader state = %v, want HA_NOTREADY (not TAKEOVER)", state)
+	}
+}
+
+// TestDeriveAgentHaState_EstablishedThenFailure verifies that after HA was
+// established (HA_READY), a criteria failure correctly triggers TAKEOVER.
+func TestDeriveAgentHaState_EstablishedThenFailure(t *testing.T) {
+	n := newTestNxosForHA(true)                    // leader
+	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_READY // was previously active/active
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // criteria failed
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_TAKEOVER {
+		t.Errorf("Post-establishment failure state = %v, want HA_TAKEOVER", state)
+	}
+}
+
+// TestStandbyCrit_PeerTakeover_InjectsStandby verifies that when a starting
+// switch sees its peer reporting HA_TAKEOVER, standby criteria is injected.
+func TestStandbyCrit_PeerTakeover_InjectsStandby(t *testing.T) {
+	n := newTestNxosForHA(false) // follower (starting up)
+	// NxStates.HaState is NO_HA (default), not HA_TAKEOVER
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // not yet converged
+	// Peer reports it is already in TAKEOVER (was the active side before restart).
+	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_TAKEOVER,
+	}}}
+
+	n.haEvaluateStandbyCrit()
+
+	if v, has := n.Ha.Local.Criteria[HaCritHaStandby]; !has || v != false {
+		t.Error("Expected HaCritHaStandby = false to be injected")
+	}
+	if n.Ha.Local.IsFunc {
+		t.Error("IsFunc should be false after standby injection")
+	}
+}
+
+// TestStandbyCrit_BothStartingUp_NoStandby verifies that when both switches
+// are starting up (neither in TAKEOVER), no standby criteria is injected.
+func TestStandbyCrit_BothStartingUp_NoStandby(t *testing.T) {
+	n := newTestNxosForHA(false) // follower
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // not converged
+	// Peer reports HA_NOTREADY (also starting up, not TAKEOVER).
+	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_NOTREADY,
+	}}}
+
+	n.haEvaluateStandbyCrit()
+
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
+		t.Error("No standby should be injected when neither peer is in TAKEOVER")
+	}
+}
+
+// TestStandbyCrit_DualTakeover_LeaderWins verifies that when both switches
+// are in HA_TAKEOVER (rare race), the leader does not inject standby.
+func TestStandbyCrit_DualTakeover_LeaderWins(t *testing.T) {
+	n := newTestNxosForHA(true) // leader
+	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_TAKEOVER
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false}
+	// Peer also reports TAKEOVER.
+	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_TAKEOVER,
+	}}}
+
+	n.haEvaluateStandbyCrit()
+
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
+		t.Error("Leader should NOT inject standby in dual-TAKEOVER tiebreaker")
+	}
+}
+
+// TestStandbyCrit_DualTakeover_FollowerYields verifies that when both switches
+// are in HA_TAKEOVER, the follower yields (injects standby).
+func TestStandbyCrit_DualTakeover_FollowerYields(t *testing.T) {
+	n := newTestNxosForHA(false) // follower
+	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_TAKEOVER
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false}
+	// Peer also reports TAKEOVER.
+	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+		Ha:      hav1.HA_STATE_HA_TAKEOVER,
+	}}}
+
+	n.haEvaluateStandbyCrit()
+
+	if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; !has {
+		t.Error("Follower should inject standby in dual-TAKEOVER tiebreaker")
+	}
+}
+
+// TestDeriveAgentHaState_SwitchoverToTakeover verifies that a follower in
+// HA_SWITCHOVER (standby) correctly transitions to TAKEOVER when the leader
+// fails (SVC_FAILURE → PeerSvcNotReady) and standby is removed.
+func TestDeriveAgentHaState_SwitchoverToTakeover(t *testing.T) {
+	n := newTestNxosForHA(false) // follower, was in SWITCHOVER
+	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_SWITCHOVER
+
+	// Standby is removed (leader failed, peerSvc=NotReady → shouldBeStandby=false).
+	// Local IsFunc is restored.
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerSvcStates[peer] = PeerSvcNotReady // leader failed
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_TAKEOVER {
+		t.Errorf("SWITCHOVER→leader_fail state = %v, want HA_TAKEOVER", state)
 	}
 }
 
