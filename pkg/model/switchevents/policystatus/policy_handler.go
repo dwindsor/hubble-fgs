@@ -340,27 +340,36 @@ func (h *policyStatusHandler) convertPolicyBatchToPolicyStatus(policies []*Polic
 		// The failingConditions will have the 2 failingConditions:
 		//   -  failure from 1 agent,
 		//   -  and a timeout condition.
-
-		for ruleName, ruleResult := range policyResult.RuleResults {
+		ruleIndex := 1
+		for _, ruleResult := range policyResult.RuleResults {
 			for agentUID, agentResult := range ruleResult.AgentResults {
 				if !agentResult.IsSuccess {
 					failingConditions = append(failingConditions, &v1alpha.FailingCondition{
 						ConditionId: agentResult.Error.String(),
 						Severity:    h.convertErrorToSeverity(agentResult.Error),
-						Message:     fmt.Sprintf("Rule %s, Agent %s: %s", ruleName, agentUID, h.getErrorMessage(agentResult)),
+						Message:     fmt.Sprintf("Rule %d, Agent %s: %s", ruleIndex, agentUID, h.getErrorMessage(agentResult)),
 					})
 				}
 			}
+			ruleIndex++
 		}
 
 		// If some agents didn't respond for any rule, add timeout conditions
-		for ruleName, ruleResult := range policyResult.RuleResults {
-			if len(ruleResult.AgentResults) < policyResult.ExpectedCount {
+		// Aggregate message (if all rules have same issue)
+		if len(policyResult.RuleResults) > 1 {
+			// Check if all rules have the same timeout pattern
+			failingRuleCount := 0
+			for _, ruleResult := range policyResult.RuleResults {
+				if len(ruleResult.AgentResults) < policyResult.ExpectedCount {
+					failingRuleCount++
+				}
+			}
+			if failingRuleCount > 0 {
 				failingConditions = append(failingConditions, &v1alpha.FailingCondition{
 					ConditionId: "TIMEOUT_AGENT_RESPONSES",
 					Severity:    v1alpha.Severity_SEVERITY_MAJOR,
-					Message: fmt.Sprintf("Rule %s: Expected %d agents, received %d responses",
-						ruleName, policyResult.ExpectedCount, len(ruleResult.AgentResults)),
+					Message: fmt.Sprintf("%d rules: Expected %d agents. Did not receive responses from some agents",
+						failingRuleCount, policyResult.ExpectedCount),
 				})
 			}
 		}
