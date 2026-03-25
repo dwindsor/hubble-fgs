@@ -12,6 +12,7 @@ package nxos
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
@@ -537,6 +538,13 @@ func TestHaCheckAdjMbr_AdjTimeout_HaStateUpdated(t *testing.T) {
 	if derivedState != hav1.HA_STATE_HA_NOTREADY {
 		t.Errorf("derived HA state after adj timeout = %v, want HA_NOTREADY", derivedState)
 	}
+	// PeerCriteria must be fully reset so stale criteria don't linger.
+	n.RLock()
+	pc := n.Ha.PeerCriteria[peer]
+	n.RUnlock()
+	if pc.MembershipOk || pc.PolicyOk || pc.KeepaliveOk || pc.BulkSyncOk {
+		t.Errorf("PeerCriteria should be reset after adj timeout, got %+v", pc)
+	}
 }
 
 // TestDoUpdateHaConfig_StandbyKeepsFlowSync verifies that when the follower
@@ -625,4 +633,65 @@ func TestReconBatches_NoContest(t *testing.T) {
 	if len(batch2) != 2 {
 		t.Errorf("batch2 should have 2 entries, got %v", batch2)
 	}
+}
+
+// TestResetPeerToUnknown_ClearsAllCriteria verifies that resetPeerToUnknown
+// zeroes all PeerCriteria fields and sets PeerSvcStates to unknown.
+func TestResetPeerToUnknown_ClearsAllCriteria(t *testing.T) {
+	n := newTestNxosForHA(true)
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+
+	// Set all criteria passing and svc ready.
+	n.Ha.PeerSvcStates[peer] = PeerSvcReady
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+		MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+	}
+
+	n.Lock()
+	n.resetPeerToUnknown(peer)
+	n.Unlock()
+
+	if n.Ha.PeerSvcStates[peer] != PeerSvcUnknown {
+		t.Errorf("PeerSvcStates[peer] = %v, want PeerSvcUnknown", n.Ha.PeerSvcStates[peer])
+	}
+	pc := n.Ha.PeerCriteria[peer]
+	if pc.MembershipOk || pc.PolicyOk || pc.KeepaliveOk || pc.BulkSyncOk {
+		t.Errorf("PeerCriteria should be all-false after reset, got %+v", pc)
+	}
+}
+
+// TestShowHa_AgwKeepalive verifies the AGW Keepalive line in ShowHa output.
+func TestShowHa_AgwKeepalive(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("unknown svc state shows FAIL", func(t *testing.T) {
+		n := newTestNxosForHA(true)
+		peer := "10.0.0.2"
+		n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+		n.Ha.PeerSvcStates[peer] = PeerSvcUnknown
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+			MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+		}
+
+		out := n.ShowHa(ctx)
+		if !strings.Contains(out, "[FAIL] AGW Keepalive") {
+			t.Errorf("expected [FAIL] AGW Keepalive in output, got:\n%s", out)
+		}
+	})
+
+	t.Run("ready svc with keepalive OK shows OK", func(t *testing.T) {
+		n := newTestNxosForHA(true)
+		peer := "10.0.0.2"
+		n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+		n.Ha.PeerSvcStates[peer] = PeerSvcReady
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+			MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+		}
+
+		out := n.ShowHa(ctx)
+		if !strings.Contains(out, "[OK] AGW Keepalive") {
+			t.Errorf("expected [OK] AGW Keepalive in output, got:\n%s", out)
+		}
+	})
 }

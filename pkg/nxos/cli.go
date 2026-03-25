@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -152,20 +153,30 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 		status += "\n  Policy Revision: not checking"
 	}
 	status += "\n  Criteria:"
-	for crit, val := range n.Ha.Local.Criteria {
-		status += fmt.Sprintf("\n    [%s] %v", okOrFail(val), crit)
+	critKeys := make([]string, 0, len(n.Ha.Local.Criteria))
+	for crit := range n.Ha.Local.Criteria {
+		critKeys = append(critKeys, string(crit))
+	}
+	sort.Strings(critKeys)
+	for _, k := range critKeys {
+		status += fmt.Sprintf("\n    [%s] %v", okOrFail(n.Ha.Local.Criteria[HaCrit(k)]), k)
 	}
 
 	if len(n.Ha.DpuKeepalive) > 0 || len(n.Ha.DpuBulkSync) > 0 {
 		status += "\n  DPUs:"
-		dpuUIDs := make(map[string]struct{})
+		seen := make(map[string]struct{})
 		for uid := range n.Ha.DpuKeepalive {
-			dpuUIDs[uid] = struct{}{}
+			seen[uid] = struct{}{}
 		}
 		for uid := range n.Ha.DpuBulkSync {
-			dpuUIDs[uid] = struct{}{}
+			seen[uid] = struct{}{}
 		}
-		for uid := range dpuUIDs {
+		dpuUIDs := make([]string, 0, len(seen))
+		for uid := range seen {
+			dpuUIDs = append(dpuUIDs, uid)
+		}
+		sort.Strings(dpuUIDs)
+		for _, uid := range dpuUIDs {
 			bs := n.Ha.DpuBulkSync[uid]
 			status += fmt.Sprintf("\n    %v: [%s] Keepalive  [%s] Bulk Sync (local=%s peer=%s)",
 				uid, okOrFail(n.Ha.DpuKeepalive[uid]), okOrFail(bs.Done()),
@@ -186,9 +197,14 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 		}
 		status += fmt.Sprintf("\n  %v HA State: %v  IP Config OK: %v%s", ip, peer.State, peer.IpConfigOk, reason)
 		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
-			status += fmt.Sprintf("\n    [%s] Membership  [%s] Policy  [%s] Keepalive  [%s] Bulk Sync",
-				okOrFail(peerCrit.MembershipOk), okOrFail(peerCrit.PolicyOk),
+			status += fmt.Sprintf("\n    [%s] Policy  [%s] DPU Keepalive  [%s] DPU Bulk Sync",
+				okOrFail(peerCrit.PolicyOk),
 				okOrFail(peerCrit.KeepaliveOk), okOrFail(peerCrit.BulkSyncOk))
+			agwKeepalive := false
+			if ps, ok := n.Ha.PeerSvcStates[ip]; ok && ps != PeerSvcUnknown {
+				agwKeepalive = true
+			}
+			status += fmt.Sprintf("\n    [%s] Membership  [%s] AGW Keepalive", okOrFail(peerCrit.MembershipOk), okOrFail(agwKeepalive))
 		}
 	}
 

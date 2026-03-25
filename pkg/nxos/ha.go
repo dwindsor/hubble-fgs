@@ -228,8 +228,8 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 		// Peer stays in config so haSetup() will try to reconnect.
 		delete(n.Ha.Members, peer)
 
-		// Set peer service state to unknown since connectivity is lost
-		n.Ha.PeerSvcStates[peer] = PeerSvcUnknown
+		// Reset peer state and criteria since connectivity is lost
+		n.resetPeerToUnknown(peer)
 
 		// Set peer state to NA (not FAIL - this isn't a failure)
 		if haPeer, ok := n.GetHaPeer(peer); ok {
@@ -538,7 +538,7 @@ func (n *Nxos) haDisconnect(_ context.Context, peer string) {
 // Caller must hold n.Lock().
 func (n *Nxos) haDisconnectLocked(peer string) {
 	delete(n.Ha.Members, peer)
-	n.Ha.PeerSvcStates[peer] = PeerSvcUnknown
+	n.resetPeerToUnknown(peer)
 
 	if !n.Ha.IsLeader {
 		logger.GetLogger().Debug("haDisconnect: not leader, skip")
@@ -552,6 +552,15 @@ func (n *Nxos) haDisconnectLocked(peer string) {
 	}
 	adj.GrpcClient.Close()
 	delete(n.Ha.Adjacencies, peer)
+}
+
+// resetPeerToUnknown marks the peer's service state as unknown and clears all
+// peer HA criteria. Called on any connectivity loss to ensure stale criteria
+// do not influence HA state derivation or ShowHa output.
+// Caller must hold n.Lock().
+func (n *Nxos) resetPeerToUnknown(peer string) {
+	n.Ha.PeerSvcStates[peer] = PeerSvcUnknown
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{}
 }
 
 // haBuildRemovalMbrInfo builds member info for intentional HA removal.
@@ -1022,7 +1031,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 		if now-mbr.Epoch > haTimeout {
 			logger.GetLogger().Debug("Member timed out", "ip", ip)
 			delete(n.Ha.Members, ip)
-			n.Ha.PeerSvcStates[ip] = PeerSvcUnknown
+			n.resetPeerToUnknown(ip)
 			n.HaUpdatePtnr(ctx, ip, true)
 			changed = true
 		}
@@ -1031,7 +1040,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 		if now-adj.Epoch > haTimeout {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
 			delete(n.Ha.Adjacencies, ip)
-			n.Ha.PeerSvcStates[ip] = PeerSvcUnknown
+			n.resetPeerToUnknown(ip)
 			peer, ok := n.GetHaPeer(ip)
 			if ok {
 				peer.State = hav1.MBR_STATE_HA_FAIL
