@@ -31,3 +31,7 @@ compile_commands.json
 /tetragon-oci-hook-setup
 /tetragon-metrics-docs
 .DS_Store
+/agw
+/agwctl
+/fwa
+/fwactl
