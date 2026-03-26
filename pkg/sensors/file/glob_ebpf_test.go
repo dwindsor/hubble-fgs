@@ -29,6 +29,7 @@ import (
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sys/unix"
 
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -91,21 +92,30 @@ func initGlob(objFile string, patterns map[string][]int32) (*ebpf.Collection, er
 		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_literal' in collection")
 	}
 
-	gd.GenerateKnownLiteralsMap(knownLiteralsDataMap)
+	err = gd.GenerateKnownLiteralsMap(knownLiteralsDataMap)
+	if err != nil {
+		return nil, fmt.Errorf("runEbpfGlob: failed to call GenerateKnownLiteralsMap: %s", err)
+	}
 
 	isFinalsDataMap, ok := col.Maps["tg_glob_final"]
 	if !ok {
 		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_final' in collection")
 	}
 
-	gd.GenerateFinalStatesMap(isFinalsDataMap)
+	err = gd.GenerateFinalStatesMap(isFinalsDataMap)
+	if err != nil {
+		return nil, fmt.Errorf("runEbpfGlob: failed to call GenerateFinalStatesMap: %s", err)
+	}
 
 	globDfaDataMap, ok := col.Maps["tg_glob_dfa"]
 	if !ok {
 		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_dfa' in collection")
 	}
 
-	gd.GenerateStateTransitionsMap(globDfaDataMap, "")
+	err = gd.GenerateStateTransitionsMap(globDfaDataMap, "")
+	if err != nil {
+		return nil, fmt.Errorf("runEbpfGlob: failed to call GenerateStateTransitionsMap: %s", err)
+	}
 
 	return col, nil
 }
@@ -170,6 +180,49 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
 	}
 
 	return strOut.Res == 1, strOut.Dur, nil
+}
+
+func TestInitGlobSmallOpenFDLimit(t *testing.T) {
+	if !utils.SupportFmodRet() || !utils.SupportLSM() {
+		t.Skip("File monitoring patterns type requires fmod_ret and lsm programs")
+	}
+
+	var originalLimit unix.Rlimit
+	if err := unix.Getrlimit(unix.RLIMIT_NOFILE, &originalLimit); err != nil {
+		t.Fatalf("Getrlimit(RLIMIT_NOFILE): %v", err)
+	}
+
+	// set temporary low limit for open file descriptors
+	// to check for fd leaks
+	if err := unix.Setrlimit(unix.RLIMIT_NOFILE, &unix.Rlimit{
+		Cur: 128,
+		Max: 128,
+	}); err != nil {
+		t.Fatalf("Setrlimit(RLIMIT_NOFILE): %v", err)
+	}
+
+	t.Cleanup(func() {
+		if err := unix.Setrlimit(unix.RLIMIT_NOFILE, &originalLimit); err != nil {
+			t.Errorf("restore RLIMIT_NOFILE: %v", err)
+		}
+	})
+
+	// these require 273 states
+	allPatterns := map[string][]int32{
+		"*.TEMP":         {1},
+		"*.backup":       {1},
+		"*.bak":          {1},
+		"*.old":          {1},
+		"*.tmp.*":        {1},
+		"*/__pycache__*": {1},
+		"*/temp.*":       {1},
+	}
+
+	col, err := initGlob("lsm_test_glob.o", allPatterns)
+	if err != nil {
+		t.Fatalf("initGlob: %v", err)
+	}
+	defer col.Close()
 }
 
 func TestGlobFSMeBPF(t *testing.T) {
