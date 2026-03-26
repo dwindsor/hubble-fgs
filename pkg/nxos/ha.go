@@ -1643,11 +1643,17 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 	// Apply VRF reconciliation if needed
 	if len(recon) > 0 {
 		logger.GetLogger().Debug("HA reconcile VRFs:", "recon", recon)
-		n.setGlobalId(ctx, recon)
 		n.store(ctx, allocFname, n.Alloc)
 		err := n.doVRFPolicyMapUpdate()
 		if err != nil {
 			logger.GetLogger().Error("Failed to update VRF policy map after HA reconciliation", "error", err)
+		}
+		// Only program the switch if already in normal stage.
+		// During startup, setup() will program the correct GIDs via
+		// setServiceEndpointVrf() after setFwPolicyStateAll() establishes
+		// the service type on the switch.
+		if n.Stage == StageNormal {
+			n.setGlobalId(ctx, recon)
 		}
 	}
 
