@@ -111,10 +111,18 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(ctx contex
 	}
 }
 
-func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(ctx context.Context, _, newObj any) {
+func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(ctx context.Context, oldObj, newObj any) {
 	switch np := newObj.(type) {
 	case *isovalentv1.SmartSwitchNetworkPolicy:
 		if isStagingPolicy(np) {
+			return
+		}
+		if np.DeletionTimestamp != nil {
+			logger.GetLogger().Debug("updateNetworkPolicy: skipping update for policy being deleted", "network-policy-name", np.Name)
+			return
+		}
+		if oldNp, ok := oldObj.(*isovalentv1.SmartSwitchNetworkPolicy); ok && oldNp.Generation == np.Generation {
+			logger.GetLogger().Debug("updateNetworkPolicy: skipping metadata-only update", "network-policy-name", np.Name)
 			return
 		}
 		resourceID := NewResourceID(isovalentv1.SNPKindDefinition, np.Namespace, np.Name)
