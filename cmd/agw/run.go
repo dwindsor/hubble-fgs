@@ -223,7 +223,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		setupPrometheusPusher(ctx, waitGroup, agwAgent, metricsCollector)
 
 		// Create connection monitor for health checking
-		connMonitor := agw.NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager)
+		connMonitor := agw.NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager, agwAgent.Token.K8sControllerURL())
 		// TODO: Wait for configmap to be ready
 		ConfigMaps := []string{Config.ConfigMap}
 

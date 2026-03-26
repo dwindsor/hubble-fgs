@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/manager"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/isovalent/hubble-fgs/pkg/logexport"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/policystatus"
 
 	isovalentv1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
@@ -252,6 +253,10 @@ func isStagingPolicy(np *isovalentv1.SmartSwitchNetworkPolicy) bool {
 
 // reportPolicyFailure reports policy operation failure to timescape
 func (w *smartSwitchNetworkPolicyWatcher) reportPolicyValidationStatus(ctx context.Context, operation string, np *isovalentv1.SmartSwitchNetworkPolicy, policyName string, err error) {
+	if err != nil {
+		logger.GetLogger().Warn("policy validation error", "operation", operation, "policyName", policyName, "namespace", np.Namespace, "error", err, logexport.Export)
+	}
+
 	if w.policyStatusHandler == nil {
 		if err != nil {
 			logger.GetLogger().Warn("Policy status handler not set, cannot report policy status to timescape", "operation", operation, "policyName", np.Name, "namespace", np.Namespace, "resourceVersion", np.ResourceVersion, "error", err)

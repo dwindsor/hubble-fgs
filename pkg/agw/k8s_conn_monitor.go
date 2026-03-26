@@ -22,6 +22,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
+
+	"github.com/isovalent/hubble-fgs/pkg/logexport"
 )
 
 const (
@@ -49,16 +51,18 @@ type ConnectionMonitor struct {
 	agwAgent         AGWAgent
 	nxosMode         bool
 	manager          *manager.ControllerManager
+	controllerURL    string
 }
 
 // NewConnectionMonitor creates a new connection monitor
-func NewConnectionMonitor(agwAgent AGWAgent, nxosMode bool, mgr *manager.ControllerManager) *ConnectionMonitor {
+func NewConnectionMonitor(agwAgent AGWAgent, nxosMode bool, mgr *manager.ControllerManager, controllerURL string) *ConnectionMonitor {
 	return &ConnectionMonitor{
 		lastEventTime:    time.Now(),
 		connectionStatus: true, // Start assuming connection is up
 		agwAgent:         agwAgent,
 		nxosMode:         nxosMode,
 		manager:          mgr,
+		controllerURL:    controllerURL,
 		// failedAttempts will be zero-initialized automatically
 	}
 }
@@ -86,7 +90,11 @@ func (cm *ConnectionMonitor) SetConnectionStatus(ctx context.Context, status boo
 
 	// Only call AGWAgent if the status actually changed
 	if currentStatus != status && cm.agwAgent != nil {
-		logger.GetLogger().Info("Connection status changed", "from", currentStatus, "to", status)
+		if status {
+			logger.GetLogger().Info("controller connected", "controllerURL", cm.controllerURL, logexport.Export)
+		} else {
+			logger.GetLogger().Error("controller disconnected", "controllerURL", cm.controllerURL, logexport.Export)
+		}
 		cm.agwAgent.SetConnectionStatus(ctx, status, cm.nxosMode)
 	}
 }
@@ -191,7 +199,8 @@ func (cm *ConnectionMonitor) monitorConnection(ctx context.Context) {
 
 			if !connected {
 				failedCount := cm.incrementFailedAttempts()
-				logger.GetLogger().Warn("K8s controller connection failed",
+				logger.GetLogger().Warn("controller connection attempt failed",
+					"controllerURL", cm.controllerURL,
 					"attempts", failedCount,
 					"maxRetries", MAX_CONNECTION_RETRIES)
 
