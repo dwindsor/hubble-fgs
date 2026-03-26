@@ -12,6 +12,9 @@ on:
 jobs:
   amd64:
     uses: ./.github/workflows/kvm-gotests-arch.yaml
+    permissions:
+      contents: read
+      actions: read
     with:
       arch: amd64
       runner_label: ${{ vars.KVM_GH_RUNNER_AMD64 }}
@@ -23,6 +26,9 @@ jobs:
 
   arm64:
     uses: ./.github/workflows/kvm-gotests-arch.yaml
+    permissions:
+      contents: read
+      actions: read
     with:
       arch: arm64
       runner_label: ${{ vars.KVM_GH_RUNNER_ARM64 }}
