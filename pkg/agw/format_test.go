@@ -569,6 +569,7 @@ func TestFormatSwitchDestination(t *testing.T) {
 				"│ Destination:",
 				"│   • CIDR: 10.0.0.0/24",
 				"│   • Protocol: POLICY_PROTOCOL_TCP",
+				"│   • Port: 0-65535",
 			},
 		},
 		{
@@ -720,7 +721,7 @@ func TestFormatSwitchDestination(t *testing.T) {
 				"│ Destination:",
 				"│   • CIDR: 172.16.0.0/16",
 				"│   • Protocol: POLICY_PROTOCOL_TCP",
-				"│   • Port: 0",
+				"│   • Port: 0-65535",
 			},
 		},
 		{
