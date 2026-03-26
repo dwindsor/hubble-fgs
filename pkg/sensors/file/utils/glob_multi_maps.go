@@ -138,7 +138,7 @@ func (g GlobData) GetFinalStatesMapSize() int {
 }
 
 func (g GlobData) GenerateStateTransitionsMap(outerMap *ebpf.Map, pinPathPrefix string) error {
-	for i, s := range g.stateTransitions {
+	generateInnerMap := func(i int32, s map[int32]int32) error {
 		mapSize := uint32(len(s))
 		if mapSize == 0 {
 			mapSize = 1
@@ -175,6 +175,14 @@ func (g GlobData) GenerateStateTransitionsMap(outerMap *ebpf.Map, pinPathPrefix 
 
 		if err := outerMap.Update(i, uint32(innerMap.FD()), 0); err != nil {
 			return fmt.Errorf("failed to insert %s: %w", innerName, err)
+		}
+
+		return nil
+	}
+
+	for i, s := range g.stateTransitions {
+		if err := generateInnerMap(i, s); err != nil {
+			return fmt.Errorf("GenerateStateTransitionsMap: %w", err)
 		}
 	}
 	return nil
