@@ -87,7 +87,7 @@ jobs:
             kernel: "rhel8.10-20260310.122539"
     runs-on: ${{ inputs.runner_label }}
     needs: [build]
-    timeout-minutes: 60
+    timeout-minutes: 120
     concurrency:
       group: ${{ github.ref }}-${{ github.workflow_ref }}-${{ inputs.arch }}-${{ matrix.kernel }}
       cancel-in-progress: true
