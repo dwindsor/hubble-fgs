@@ -80,7 +80,7 @@ Helm chart for Tetragon Enterprise
 | splunk_hec.image.override | string | `nil` |  |
 | splunk_hec.image.pullPolicy | string | `"IfNotPresent"` |  |
 | splunk_hec.image.repository | string | `"quay.io/isovalent/opentelemetry-collector-contrib"` |  |
-| splunk_hec.image.tag | string | `"0.147.0"` |  |
+| splunk_hec.image.tag | string | `"0.148.0"` |  |
 | splunk_hec.index | string | `nil` |  |
 | splunk_hec.namespace | string | `nil` | Namespace to create the otel collector ConfigMaps in. Defaults to namespace of the Helm release. |
 | splunk_hec.resources.limits.cpu | string | `"500m"` |  |
