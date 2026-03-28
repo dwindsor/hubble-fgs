@@ -11,6 +11,8 @@
 package switchpolicy
 
 import (
+	"encoding/json"
+
 	isovalentv1alpha1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 )
 
@@ -26,4 +28,38 @@ const (
 	//
 	// The value is the name of the deployed policy to compare against.
 	AnnotationStaging = AnnotationPrefix + "/staging"
+
+	// AnnotationMeta contains metadata for the policy, including PolicyGroupId
+	AnnotationMeta = "cpc.isovalent.com/meta"
+
+	// DefaultPolicyGroupId is used when no policyGroupId is specified in annotations
+	DefaultPolicyGroupId = "NotFound"
 )
+
+// PolicyMeta represents the metadata structure in the cpc.isovalent.com/meta annotation
+type PolicyMeta struct {
+	PolicyGroupId string `json:"policyGroupId"`
+}
+
+// ExtractPolicyGroupId extracts the PolicyGroupId from the policy annotations
+func ExtractPolicyGroupId(annotations map[string]string) string {
+	if annotations == nil {
+		return DefaultPolicyGroupId
+	}
+
+	metaStr, exists := annotations[AnnotationMeta]
+	if !exists {
+		return DefaultPolicyGroupId
+	}
+
+	var meta PolicyMeta
+	if err := json.Unmarshal([]byte(metaStr), &meta); err != nil {
+		return DefaultPolicyGroupId
+	}
+
+	if meta.PolicyGroupId == "" {
+		return DefaultPolicyGroupId
+	}
+
+	return meta.PolicyGroupId
+}

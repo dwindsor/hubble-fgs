@@ -37,6 +37,11 @@ import (
 
 const (
 	POLICY_VALIDATION_ERROR = "POLICY_VALIDATION_ERROR"
+	// DefaultPolicyGroupId is used when no policyGroupId is specified in annotations
+	// This value matches switchpolicy.DefaultPolicyGroupId to avoid import cycles
+	DefaultPolicyGroupId = "NotFound"
+	// MaxPolicyGroupIdCacheSize limits the cache size to prevent memory leaks
+	MaxPolicyGroupIdCacheSize = 1000
 )
 
 type PolicyStatusHandler interface {
@@ -45,9 +50,13 @@ type PolicyStatusHandler interface {
 	// ReportPolicyStatus manually triggers a policy status report
 	ReportPolicyStatus(ctx context.Context) error
 	// ReportPolicyValidationStatus reports a policy validation failure or success
-	ReportPolicyValidationStatus(ctx context.Context, policyName string, namespace string, ruleName string, resourceVersion string, validationError error) error
+	ReportPolicyValidationStatus(ctx context.Context, policyName string, namespace string, ruleName string, resourceVersion string, policyGroupId string, validationError error) error
 	// SetClient sets the timescape client for this handler
 	SetClient(client types.Client)
+	// SetPolicyGroupId sets the PolicyGroupId for a specific policy
+	SetPolicyGroupId(policyName string, policyGroupId string)
+	// RemovePolicyGroupId removes the PolicyGroupId cache entry for a policy
+	RemovePolicyGroupId(policyName string)
 	// ProcessPolicyRuleEvent processes a policy rule event from StreamEvents
 	ProcessPolicyRuleEvent(ctx context.Context, agentUID string, ruleEvent *l3l4networkpolicyv1alpha.PolicyRuleEvent) error
 	// Update the expected agent count (dpus) from data provider
@@ -64,12 +73,14 @@ type PolicyStatusDataProvider struct {
 
 // policyStatusHandler implements PolicyStatusHandler
 type policyStatusHandler struct {
-	mu               sync.RWMutex
-	running          bool
-	stopCh           chan struct{}
-	client           types.Client
-	dataProvider     PolicyStatusDataProvider
-	policyAggregator *PolicyAggregator
+	mu                 sync.RWMutex
+	running            bool
+	stopCh             chan struct{}
+	client             types.Client
+	dataProvider       PolicyStatusDataProvider
+	policyAggregator   *PolicyAggregator
+	policyGroupIdCache map[string]string // policyName -> policyGroupId cache
+	cacheMu            sync.RWMutex      // separate mutex for cache operations
 }
 
 // NewPolicyStatusHandler creates a new policy status handler with default configuration
@@ -80,10 +91,11 @@ func NewPolicyStatusHandler(dataProvider PolicyStatusDataProvider) PolicyStatusH
 // NewPolicyStatusHandlerWithConfig creates a new policy status handler with custom configuration
 func NewPolicyStatusHandlerWithConfig(dataProvider PolicyStatusDataProvider, aggregationTimeout time.Duration, maxBatchSize int) PolicyStatusHandler {
 	handler := &policyStatusHandler{
-		running:      false,
-		stopCh:       make(chan struct{}),
-		client:       nil, // Client will be set when needed
-		dataProvider: dataProvider,
+		running:            false,
+		stopCh:             make(chan struct{}),
+		client:             nil, // Client will be set when needed
+		dataProvider:       dataProvider,
+		policyGroupIdCache: make(map[string]string),
 
 		// Default to 4 FWA agents, 1 minute timeout
 		policyAggregator: NewPolicyAggregator(DefaultExpectedAgentCount, aggregationTimeout, maxBatchSize),
@@ -216,6 +228,11 @@ func (h *policyStatusHandler) Stop(_ context.Context) {
 	h.policyAggregator.Stop()
 	close(h.stopCh) // Signal goroutines to stop
 
+	// Clear the PolicyGroupId cache
+	h.cacheMu.Lock()
+	h.policyGroupIdCache = make(map[string]string)
+	h.cacheMu.Unlock()
+
 	logger.GetLogger().Info("timescape: policy status handler stopped")
 }
 
@@ -279,6 +296,19 @@ func (h *policyStatusHandler) ProcessPolicyRuleEvent(_ context.Context, agentUID
 
 	// Pass to rule aggregator
 	h.policyAggregator.ProcessRuleEvent(agentUID, ruleEvent)
+
+	// Check if we have a cached PolicyGroupId for this policy and set it
+	h.cacheMu.RLock()
+	if policyGroupId, exists := h.policyGroupIdCache[ruleEvent.PolicyName]; exists {
+		h.cacheMu.RUnlock()
+		// Set PolicyGroupId in the aggregator for this policy
+		h.policyAggregator.SetPolicyGroupId(ruleEvent.PolicyName, policyGroupId)
+	} else {
+		h.cacheMu.RUnlock()
+		logger.GetLogger().Debug("timescape: no cached PolicyGroupId found for policy",
+			"policyName", ruleEvent.PolicyName)
+	}
+
 	return nil
 }
 
@@ -321,14 +351,21 @@ func (h *policyStatusHandler) convertPolicyBatchToPolicyStatus(policies []*Polic
 		// Extract namespace from PolicyName (kind/namespace/name)
 		namespace := h.extractNamespaceFromPolicyName(policyResult.PolicyName)
 
-		// Collect all rule names for this policy
-		var ruleNames []string
-		for ruleName := range policyResult.RuleResults {
-			ruleNames = append(ruleNames, ruleName)
-		}
+		// Use PolicyGroupId from annotations if available, otherwise use default value
+		policyNameForTimescape := DefaultPolicyGroupId
+		if policyResult.PolicyGroupId != "" {
+			policyNameForTimescape = policyResult.PolicyGroupId
 
-		// Create comma-separated rule names for the Name field
-		commaSeparatedRuleNames := strings.Join(ruleNames, ",")
+			// Remove PolicyGroupId from cache after using it to prevent cache growth
+			// This is safe because the policy aggregation is complete at this point
+			h.cacheMu.Lock()
+			delete(h.policyGroupIdCache, policyResult.PolicyName)
+			h.cacheMu.Unlock()
+
+			logger.GetLogger().Debug("timescape: removed PolicyGroupId from cache after use",
+				"policyName", policyResult.PolicyName,
+				"policyGroupId", policyResult.PolicyGroupId)
+		}
 
 		// Aggregate all failures across all rules in this policy
 		var failingConditions []*v1alpha.FailingCondition
@@ -377,10 +414,13 @@ func (h *policyStatusHandler) convertPolicyBatchToPolicyStatus(policies []*Polic
 		policyStatus := &v1alpha.PolicyStatus{
 			Type:              v1alpha.PolicyType_POLICY_TYPE_SMARTSWITCH_NETWORK_POLICY,
 			Id:                policyResult.PolicyName, // PolicyName (kind/namespace/name)
-			Name:              commaSeparatedRuleNames, // Comma-separated rule names
+			Name:              policyResult.Policy,     // Policy name
 			Namespace:         namespace,
 			Version:           policyResult.Version,
 			FailingConditions: failingConditions,
+		}
+		policyStatus.ExtraData = map[string]string{
+			"PolicyGroupId": policyNameForTimescape,
 		}
 
 		statuses = append(statuses, policyStatus)
@@ -448,18 +488,19 @@ func (h *policyStatusHandler) extractNamespaceFromPolicyName(policyName string) 
 
 // ReportPolicyValidationStatus reports a policy validation failure or success to timescape
 // This function is invoked to report AGW policy validation failure, when the policy is not sent to DPUs
-func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, policyName string, namespace string, ruleName string, resourceVersion string, validationError error) error {
+func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, policyName string, namespace string, ruleName string, resourceVersion string, policyGroupId string, validationError error) error {
 	isSuccess := validationError == nil
-	logger.GetLogger().Info("reporting policy validation to timescape",
+	logger.GetLogger().Debug("reporting policy validation to timescape",
 		"policyName", policyName,
 		"namespace", namespace,
 		"ruleName", ruleName,
 		"resourceVersion", resourceVersion,
+		"policyGroupId", policyGroupId,
 		"isSuccess", isSuccess,
 		"error", validationError)
 
 	// Create policy status with validation failure
-	policyStatus := h.createPolicyValidationStatus(policyName, namespace, ruleName, resourceVersion, validationError)
+	policyStatus := h.createPolicyValidationStatus(policyName, namespace, resourceVersion, policyGroupId, validationError)
 
 	// Create PolicyStatusUpdate
 	serialNumber := "unknown"
@@ -491,6 +532,13 @@ func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, 
 		return err
 	}
 
+	// Remove PolicyGroupId from cache after successful validation report to prevent cache growth
+	if policyGroupId != "" {
+		h.cacheMu.Lock()
+		delete(h.policyGroupIdCache, policyName)
+		h.cacheMu.Unlock()
+	}
+
 	logger.GetLogger().Debug("successfully reported policy validation result to timescape",
 		"policyName", policyName,
 		"resourceVersion", resourceVersion,
@@ -500,13 +548,25 @@ func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, 
 }
 
 // createPolicyValidationStatus creates a PolicyStatus for a validation failure or success
-func (h *policyStatusHandler) createPolicyValidationStatus(policyName string, namespace string, ruleName string, resourceVersion string, validationError error) *v1alpha.PolicyStatus {
+func (h *policyStatusHandler) createPolicyValidationStatus(policyName string, namespace string, resourceVersion string, policyGroupId string, validationError error) *v1alpha.PolicyStatus {
+	// Use policyGroupId if available, otherwise use default
+	policyGroupIdForTimescape := DefaultPolicyGroupId
+	if policyGroupId != "" {
+		policyGroupIdForTimescape = policyGroupId
+	}
+
+	// Extract just the policy name (third part) from the full "kind/namespace/name" path
+	extractedPolicyName := h.policyAggregator.extractPolicyNameFromPath(policyName)
+
 	policyStatus := &v1alpha.PolicyStatus{
 		Type:      v1alpha.PolicyType_POLICY_TYPE_SMARTSWITCH_NETWORK_POLICY,
-		Id:        policyName, // Full policy name (kind/namespace/name)
-		Name:      ruleName,
+		Id:        policyName,          // Full policy name (kind/namespace/name)
+		Name:      extractedPolicyName, // Just the policy name part
 		Namespace: namespace,
 		Version:   resourceVersion,
+	}
+	policyStatus.ExtraData = map[string]string{
+		"PolicyGroupId": policyGroupIdForTimescape,
 	}
 
 	// Only populate FailingConditions if there's an error (failure case)
@@ -522,4 +582,43 @@ func (h *policyStatusHandler) createPolicyValidationStatus(policyName string, na
 		policyStatus.FailingConditions = []*v1alpha.FailingCondition{failingCondition}
 	}
 	return policyStatus
+}
+
+// SetPolicyGroupId sets the PolicyGroupId for a specific policy and caches it
+func (h *policyStatusHandler) SetPolicyGroupId(policyName string, policyGroupId string) {
+	h.cacheMu.Lock()
+	defer h.cacheMu.Unlock()
+
+	// Enforce cache size limit to prevent unbounded growth
+	if len(h.policyGroupIdCache) >= MaxPolicyGroupIdCacheSize {
+		// Remove oldest entry (simple eviction strategy)
+		for k := range h.policyGroupIdCache {
+			delete(h.policyGroupIdCache, k)
+			logger.GetLogger().Debug("timescape: evicted PolicyGroupId from cache due to size limit",
+				"evictedPolicy", k, "cacheSize", len(h.policyGroupIdCache))
+			break
+		}
+	}
+
+	// Cache the PolicyGroupId for future use
+	h.policyGroupIdCache[policyName] = policyGroupId
+
+	// Set it in the aggregator if policy exists
+	if h.policyAggregator != nil {
+		h.policyAggregator.SetPolicyGroupId(policyName, policyGroupId)
+	}
+
+	logger.GetLogger().Debug("timescape: set PolicyGroupId",
+		"policyName", policyName,
+		"policyGroupId", policyGroupId)
+}
+
+// RemovePolicyGroupId removes the PolicyGroupId cache entry for a policy
+func (h *policyStatusHandler) RemovePolicyGroupId(policyName string) {
+	h.cacheMu.Lock()
+	defer h.cacheMu.Unlock()
+
+	delete(h.policyGroupIdCache, policyName)
+	logger.GetLogger().Debug("timescape: removed cached PolicyGroupId for policy",
+		"policyName", policyName)
 }

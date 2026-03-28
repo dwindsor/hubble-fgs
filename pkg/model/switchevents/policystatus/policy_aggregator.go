@@ -54,12 +54,18 @@ const (
 	DefaultBatchTimeout = 30 * time.Second // Force send batch after timeout
 )
 
-var ruleNameSuffixRegex = regexp.MustCompile(`/\d+$`)
+var (
+	ruleNameSuffixRegex = regexp.MustCompile(`/\d+$`)
+	// policyNameRegex captures the name part from "kind/namespace/name" format
+	policyNameRegex = regexp.MustCompile(`^[^/]+/[^/]+/(.+)$`)
+)
 
 // PolicyAggregationResult represents the aggregated result for an entire policy
 type PolicyAggregationResult struct {
-	PolicyName string // PolicyName is already in format "kind/namespace/name"
-	Version    string
+	PolicyName    string // PolicyName is already in format "kind/namespace/name"
+	Version       string
+	PolicyGroupId string // PolicyGroupId extracted from metadata annotations
+	Policy        string // Policy name
 	// normalizedRuleName -> rule result
 	RuleResults   map[string]*RuleAggregationResult
 	FirstSeen     time.Time
@@ -189,6 +195,31 @@ func (pa *PolicyAggregator) normalizeRuleName(ruleName string) string {
 	return normalized
 }
 
+// extractPolicyNameFromPath extracts the policy name from a path in format "kind/namespace/name"
+// Returns the name (third part) or the full string if the format is invalid
+func (pa *PolicyAggregator) extractPolicyNameFromPath(policyPath string) string {
+	if policyPath == "" {
+		return ""
+	}
+
+	// Use regex to extract the name part after the second slash
+	matches := policyNameRegex.FindStringSubmatch(policyPath)
+
+	// If regex matches, return the captured group (the name)
+	if len(matches) == 2 {
+		name := matches[1]
+		logger.GetLogger().Debug("extracted policy name from path using regex",
+			"policyPath", policyPath,
+			"extractedName", name)
+		return name
+	}
+
+	// Return original if format doesn't match expected pattern
+	logger.GetLogger().Error("policy path format invalid, expected 'kind/namespace/name'",
+		"policyPath", policyPath)
+	return policyPath
+}
+
 // ProcessRuleEvent processes a policy rule event and adds it to policy-level aggregation
 func (pa *PolicyAggregator) ProcessRuleEvent(agentUID string, ruleEvent *l3l4networkpolicyv1alpha.PolicyRuleEvent) {
 	policyName := ruleEvent.PolicyName // Already "kind/namespace/name"
@@ -204,6 +235,8 @@ func (pa *PolicyAggregator) ProcessRuleEvent(agentUID string, ruleEvent *l3l4net
 		policyResult = &PolicyAggregationResult{
 			PolicyName:    policyName,
 			Version:       ruleEvent.K8SResourceVersion,
+			PolicyGroupId: "", // Will be set by watcher
+			Policy:        pa.extractPolicyNameFromPath(policyName),
 			RuleResults:   make(map[string]*RuleAggregationResult),
 			FirstSeen:     now,
 			LastUpdated:   now,
@@ -434,5 +467,18 @@ func (pa *PolicyAggregator) cleanup() {
 			"policiesCount", len(policiesToDelete),
 			"cleanupInterval", pa.cleanupInterval,
 			"cutoffAge", CleanupCutoffAge)
+	}
+}
+
+// SetPolicyGroupId sets the PolicyGroupId for a specific policy
+func (pa *PolicyAggregator) SetPolicyGroupId(policyName string, policyGroupId string) {
+	pa.mu.Lock()
+	defer pa.mu.Unlock()
+
+	if policyResult, exists := pa.pendingPolicies[policyName]; exists {
+		policyResult.PolicyGroupId = policyGroupId
+		logger.GetLogger().Debug("timescape: set PolicyGroupId for policy",
+			"policyName", policyName,
+			"policyGroupId", policyGroupId)
 	}
 }

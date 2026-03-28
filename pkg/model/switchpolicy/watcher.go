@@ -80,6 +80,13 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(ctx contex
 			w.reportPolicyValidationStatus(ctx, "add-conversion", np, resourceID.String(), err)
 			return
 		}
+
+		// Extract PolicyGroupId from annotations
+		policyGroupId := ExtractPolicyGroupId(np.GetAnnotations())
+		if policyGroupId != "" && w.policyStatusHandler != nil {
+			// Set PolicyGroupId in the policy status handler's aggregator
+			w.policyStatusHandler.SetPolicyGroupId(resourceID.String(), policyGroupId)
+		}
 		var k8sRulesList K8sRulesList
 		for _, pol := range policies {
 			hash, err := pol.Hash()
@@ -147,6 +154,13 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(ctx con
 			w.reportPolicyValidationStatus(ctx, "update-conversion", np, resourceID.String(), err)
 			return
 		}
+
+		// Extract PolicyGroupId from annotations
+		policyGroupId := ExtractPolicyGroupId(np.GetAnnotations())
+		if policyGroupId != "" && w.policyStatusHandler != nil {
+			// Set PolicyGroupId in the policy status handler's aggregator
+			w.policyStatusHandler.SetPolicyGroupId(resourceID.String(), policyGroupId)
+		}
 		var k8sRulesList K8sRulesList
 		for _, pol := range policies {
 			hash, err := pol.Hash()
@@ -195,6 +209,12 @@ func (w *smartSwitchNetworkPolicyWatcher) deleteSmartSwitchNetworkPolicy(ctx con
 		}
 		resourceID := NewResourceID(isovalentv1.SNPKindDefinition, np.Namespace, np.Name)
 
+		// Extract PolicyGroupId and set it in the policy status handler
+		policyGroupId := ExtractPolicyGroupId(np.GetAnnotations())
+		if w.policyStatusHandler != nil && policyGroupId != "" {
+			w.policyStatusHandler.SetPolicyGroupId(resourceID.String(), policyGroupId)
+		}
+
 		err := w.policyHandler.DeletePolicy(resourceID, np.ResourceVersion)
 		if err != nil {
 			logger.GetLogger().Warn("SmartSwitchNetworkPolicy deletion failed", logfields.Error, err, "title", resourceID, "resource version", np.ResourceVersion)
@@ -207,6 +227,11 @@ func (w *smartSwitchNetworkPolicyWatcher) deleteSmartSwitchNetworkPolicy(ctx con
 			// Report deletion failure to timescape
 			w.reportPolicyValidationStatus(ctx, "delete", np, resourceID.String(), err)
 			return
+		}
+
+		// Remove the cached PolicyGroupId after successful deletion
+		if w.policyStatusHandler != nil {
+			w.policyStatusHandler.RemovePolicyGroupId(resourceID.String())
 		}
 
 		logger.GetLogger().Info("SmartSwitchNetworkPolicy successfully deleted", "title", resourceID, "resource version", np.ResourceVersion)
@@ -274,6 +299,7 @@ func (w *smartSwitchNetworkPolicyWatcher) reportPolicyValidationStatus(ctx conte
 
 	namespace := np.Namespace
 	resourceVersion := np.ResourceVersion
+	policyGroupId := ExtractPolicyGroupId(np.GetAnnotations())
 
 	// Use operation type as rule name for failure reporting
 	ruleName := fmt.Sprintf("%s-status", operation)
@@ -283,7 +309,7 @@ func (w *smartSwitchNetworkPolicyWatcher) reportPolicyValidationStatus(ctx conte
 		reportCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
-		reportErr := w.policyStatusHandler.ReportPolicyValidationStatus(reportCtx, policyName, namespace, ruleName, resourceVersion, err)
+		reportErr := w.policyStatusHandler.ReportPolicyValidationStatus(reportCtx, policyName, namespace, ruleName, resourceVersion, policyGroupId, err)
 
 		statusType := "success"
 		if err != nil {
