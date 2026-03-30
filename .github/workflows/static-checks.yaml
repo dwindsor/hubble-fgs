@@ -43,8 +43,7 @@ jobs:
       run: |
         set -x
         PR_FIRST_COMMIT=$(git rev-list --reverse origin/${{ github.event.pull_request.base.ref }}..HEAD | head -1)
-        git config --global submodule.recurse true
-        git rebase --exec "make -j$(nproc) tetragon-bpf DEBUG=1" $PR_FIRST_COMMIT^
+        git rebase --exec "make oss-init && make -j$(nproc) tetragon-bpf DEBUG=1" $PR_FIRST_COMMIT^
 
     - name: Failed commit during the build
       if: ${{ failure() }}
