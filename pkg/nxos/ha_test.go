@@ -1311,3 +1311,116 @@ func TestHaSetMbrInfo_PropagatesDebugFlags(t *testing.T) {
 		}
 	})
 }
+
+// TestHaSetMbrInfo_PolicyMismatchWhileWatching verifies that when a peer sends
+// MbrInfo with a policy revision that differs from the local watching revision,
+// the peer is marked HA_FAIL and MembershipOk remains true (policy mismatch is
+// not a required criteria failure).
+func TestHaSetMbrInfo_PolicyMismatchWhileWatching(t *testing.T) {
+	n := newTestNxos()
+	n.Ha.enabled = true
+	n.Ha.operUp = true
+	n.Ha.IsLeader = true
+	n.Ha.Watching = true
+	n.Ha.PolRev = "rev-local"
+	n.Model = "N9K"
+	n.SwVer = "10.3.1"
+	n.CpaVer = "2.0.0"
+	n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_pinning
+
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.Adjacencies[peer] = HaAdj{Connected: true}
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+		MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+	}
+
+	info := &hav1.MbrInfo{
+		SysInfo: &hav1.SysInfo{
+			Model:  n.Model,
+			SwVer:  n.SwVer,
+			Cpa:    n.CpaVer,
+			LbMode: n.LbMode.String(),
+		},
+		HaInfo: &hav1.HaInfo{
+			Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+			Ha:      hav1.HA_STATE_HA_READY,
+		},
+		PolInfo: &hav1.PolInfo{Revision: "rev-peer-different"},
+	}
+
+	result := n.HaSetMbrInfo(context.Background(), peer, info)
+
+	if !result.IsDel {
+		t.Error("IsDel should be true on policy revision mismatch while watching")
+	}
+	if result.IsRequiredCritFail {
+		t.Error("IsRequiredCritFail should be false: policy mismatch is not a required criteria failure")
+	}
+	if result.Reason == "" {
+		t.Error("Reason should be non-empty on policy revision mismatch")
+	}
+
+	haPeer, ok := n.GetHaPeer(peer)
+	if !ok {
+		t.Fatal("peer should still exist")
+	}
+	if haPeer.State != hav1.MBR_STATE_HA_FAIL {
+		t.Errorf("peer state = %v, want MBR_STATE_HA_FAIL", haPeer.State)
+	}
+
+	// MembershipOk should remain true since policy mismatch is not a required
+	// criteria failure (isRequiredCritFail=false keeps newMembership=true).
+	pc := n.Ha.PeerCriteria[peer]
+	if !pc.MembershipOk {
+		t.Error("MembershipOk should remain true on policy mismatch (not a required criteria failure)")
+	}
+}
+
+// TestHaSetMbrInfo_PolicyMismatchPreservesDebugFlags verifies that even when
+// the peer's MbrInfo triggers a policy revision mismatch, the debug flags
+// carried in that MbrInfo are still propagated to the local PeerCriteria.
+func TestHaSetMbrInfo_PolicyMismatchPreservesDebugFlags(t *testing.T) {
+	n := newTestNxos()
+	n.Ha.enabled = true
+	n.Ha.operUp = true
+	n.Ha.IsLeader = true
+	n.Ha.Watching = true
+	n.Ha.PolRev = "rev-local"
+	n.Model = "N9K"
+	n.SwVer = "10.3.1"
+	n.CpaVer = "2.0.0"
+	n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_pinning
+
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.Adjacencies[peer] = HaAdj{Connected: true}
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+		MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+	}
+
+	// Peer sends MbrInfo with a policy mismatch AND a debug membership failure set.
+	info := &hav1.MbrInfo{
+		SysInfo: &hav1.SysInfo{
+			Model:  n.Model,
+			SwVer:  n.SwVer,
+			Cpa:    n.CpaVer,
+			LbMode: n.LbMode.String(),
+		},
+		HaInfo: &hav1.HaInfo{
+			Service: hav1.SERVICE_STATE_SVC_SUCCESS,
+			Ha:      hav1.HA_STATE_HA_READY,
+		},
+		PolInfo:             &hav1.PolInfo{Revision: "rev-peer-different"},
+		DebugMembershipFail: true,
+	}
+
+	n.HaSetMbrInfo(context.Background(), peer, info)
+
+	// Debug flag should be propagated even though the policy mismatch caused
+	// an early isDel=true path (debug flag propagation runs after HaUpdatePtnr).
+	pc := n.Ha.PeerCriteria[peer]
+	if !pc.DebugMembershipFailRemote {
+		t.Error("DebugMembershipFailRemote should be set even on policy mismatch path")
+	}
+}

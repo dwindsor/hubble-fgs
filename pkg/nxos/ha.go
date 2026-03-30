@@ -756,10 +756,27 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	rsp, err := grpcClient.Adjacency(ctx, req)
 	if err != nil || rsp.Status == hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE {
 		logger.GetLogger().Error("Adjacency fails", logfields.Error, err)
-		// Always process MbrInfo from any failure response to detect criteria
-		// failures fast (NO_HA removal, required criteria mismatch, etc.).
 		if err == nil && rsp.MbrInfo != nil {
+			// Always process MbrInfo from any failure response to detect criteria
+			// failures fast (NO_HA removal, required criteria mismatch, etc.).
 			n.HaSetMbrInfo(ctx, peer, rsp.MbrInfo)
+		} else {
+			// No MbrInfo available (gRPC error or server omitted it).
+			// Mark peer as failed so stale HA_OK state doesn't persist and
+			// the switch is notified of the failure.
+			n.Lock()
+			if haPeer, ok := n.GetHaPeer(peer); ok && haPeer.State != hav1.MBR_STATE_HA_FAIL {
+				if err != nil {
+					haPeer.StateReason = fmt.Sprintf("adjacency RPC error: %v", err)
+				} else {
+					haPeer.StateReason = fmt.Sprintf("adjacency rejected: %s", rsp.Details)
+				}
+				haPeer.State = hav1.MBR_STATE_HA_FAIL
+				n.SetHaPeer(peer, haPeer)
+				n.setRemoteMbrState(ctx, peer)
+				n.haUpdateNxState(ctx)
+			}
+			n.Unlock()
 		}
 		return
 	}
@@ -769,6 +786,9 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	if watching && rsp.MbrInfo.PolInfo != nil && polRev != rsp.MbrInfo.PolInfo.Revision {
 		logger.GetLogger().Error("Adjacency policy revision mismatch while watching",
 			"localRev", polRev, "peerRev", rsp.MbrInfo.PolInfo.Revision)
+		// Process peer's MbrInfo so criteria, debug flags, and service state are
+		// updated on the leader even though the adjacency is being rejected.
+		n.HaSetMbrInfo(ctx, peer, rsp.MbrInfo)
 		n.Lock()
 		delete(n.Ha.Adjacencies, peer)
 		if haPeer, ok := n.GetHaPeer(peer); ok {
