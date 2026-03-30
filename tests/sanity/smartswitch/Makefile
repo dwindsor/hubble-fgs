@@ -165,8 +165,17 @@ launch-sim:
 	@echo "Launching DPU Sim using original launch_sas.sh script"
 	@# Kill any existing containers using DPU ports
 	@-docker kill $$(docker ps -a -q --filter expose=11357-11363/tcp) >/dev/null 2>&1 || true
-	@# Determine version from downloaded tarball
-	@ACTUAL_VER=$$(ls -1 /tmp/naples-docker-*.tgz 2>/dev/null | sed 's|/tmp/naples-docker-||; s|.tgz$$||' | sort -V | tail -1); \
+	@# Determine version: use SIM_VERSION if specified, otherwise pick newest tarball
+	@if [ "$(SIM_VERSION)" != "latest" ]; then \
+		ACTUAL_VER=$$(echo "$(SIM_VERSION)" | sed 's|^dpu/||' | sed 's/^v//'); \
+		if [ ! -f "/tmp/naples-docker-$$ACTUAL_VER.tgz" ]; then \
+			echo "❌ Tarball not found: /tmp/naples-docker-$$ACTUAL_VER.tgz"; \
+			echo "Run 'make pull-sim-image SIM_VERSION=$(SIM_VERSION)' first"; \
+			exit 1; \
+		fi; \
+	else \
+		ACTUAL_VER=$$(ls -1 /tmp/naples-docker-*.tgz 2>/dev/null | sed 's|/tmp/naples-docker-||; s|.tgz$$||' | sort -V | tail -1); \
+	fi; \
 	if [ -z "$$ACTUAL_VER" ]; then \
 		echo "❌ No DPU Sim tarball found in /tmp/"; \
 		echo "Run 'make pull-sim-image' first to download the tarball"; \
@@ -251,7 +260,17 @@ show-containers-status:
 launch-sim-multi:
 	@echo "Launching $(SIM_COUNT) DPU Sim container(s) using launch_sas.sh"
 	@-docker rm -f $$(docker ps -aq --filter "name=naples-") >/dev/null 2>&1 || true
-	@ACTUAL_VER=$$(ls -1 /tmp/naples-docker-*.tgz 2>/dev/null | sed 's|/tmp/naples-docker-||; s|.tgz$$||' | sort -V | tail -1); \
+	@# Determine version: use SIM_VERSION if specified, otherwise pick newest tarball
+	@if [ "$(SIM_VERSION)" != "latest" ]; then \
+		ACTUAL_VER=$$(echo "$(SIM_VERSION)" | sed 's|^dpu/||' | sed 's/^v//'); \
+		if [ ! -f "/tmp/naples-docker-$$ACTUAL_VER.tgz" ]; then \
+			echo "❌ Tarball not found: /tmp/naples-docker-$$ACTUAL_VER.tgz"; \
+			echo "Run 'make pull-sim-image SIM_VERSION=$(SIM_VERSION)' first"; \
+			exit 1; \
+		fi; \
+	else \
+		ACTUAL_VER=$$(ls -1 /tmp/naples-docker-*.tgz 2>/dev/null | sed 's|/tmp/naples-docker-||; s|.tgz$$||' | sort -V | tail -1); \
+	fi; \
 	if [ -z "$$ACTUAL_VER" ]; then \
 		echo "❌ No DPU Sim tarball found in /tmp/"; \
 		echo "Run 'make pull-sim-image' first to download the tarball"; \

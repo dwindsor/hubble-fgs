@@ -518,15 +518,18 @@ def parse_dpu_policies(dpu_output: str, policy_name: Optional[str] = None) -> Li
                     entry_protocols = port_entry.get("protocol", [])
                     
                     if port_low == 0 and port_high == 65535:
-                        # Full port range (0-65535) means no port restriction
+                        # Full port range (0-65535)
                         # Expand "any" to TCP, UDP, ICMP for proper comparison
                         if entry_protocols == ["any"]:
-                            proto_ports.append(ProtoPort(protocol="TCP", port=None))
-                            proto_ports.append(ProtoPort(protocol="UDP", port=None))
+                            proto_ports.append(ProtoPort(protocol="TCP", port=0, end_port=65535))
+                            proto_ports.append(ProtoPort(protocol="UDP", port=0, end_port=65535))
                             proto_ports.append(ProtoPort(protocol="ICMP", port=None))
                         else:
                             for proto in entry_protocols:
-                                proto_ports.append(ProtoPort(protocol=proto.upper(), port=None))
+                                if proto.lower() == "icmp":
+                                    proto_ports.append(ProtoPort(protocol=proto.upper(), port=None))
+                                else:
+                                    proto_ports.append(ProtoPort(protocol=proto.upper(), port=0, end_port=65535))
                     elif port_low is not None and port_low > 0:
                         if port_low == port_high:
                             for proto in entry_protocols:
