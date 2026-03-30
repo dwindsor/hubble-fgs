@@ -13,14 +13,17 @@
 package netpolstate
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/podhelpers"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stype "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -126,6 +129,25 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 	assert.NoError(t, err)
 
 	return podInfo
+}
+
+// fakeK8sReader is a mock implementation of client.Reader for testing
+type fakeK8sReader struct{}
+
+func (f *fakeK8sReader) Get(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
+	// For namespace lookups, return a basic namespace object
+	if ns, ok := obj.(*corev1.Namespace); ok {
+		ns.Name = key.Name
+		ns.Labels = map[string]string{
+			"kubernetes.io/metadata.name": key.Name,
+		}
+		return nil
+	}
+	return nil
+}
+
+func (f *fakeK8sReader) List(_ context.Context, _ client.ObjectList, _ ...client.ListOption) error {
+	return nil
 }
 
 // This tests assumes NSID space is incrementing every addPolicyFilter
