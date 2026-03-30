@@ -67,6 +67,8 @@ const (
 	CMD_HA_SHOW
 	CMD_HA_FAIL
 	CMD_HA_OK
+	CMD_HA_PEER_FAIL
+	CMD_HA_PEER_OK
 	CMD_SHOW_METRICS
 )
 
@@ -484,6 +486,30 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		nxos.Nexus.HaSetDebugFail(ctx, false)
 		response.ReturnCode = "ok"
 		response.Data = "Debug failure cleared - normal operation restored"
+
+	case CMD_HA_PEER_FAIL:
+		peer := data.Flags["peer"]
+		if peer == "" {
+			response.ReturnCode = "fail"
+			response.Data = "--peer is required"
+			return response, nil
+		}
+		membership := data.Flags["membership"] == "true"
+		adjacency := data.Flags["adjacency"] == "true"
+		nxos.Nexus.HaSetDebugPeerFail(ctx, peer, membership, adjacency)
+		response.ReturnCode = "ok"
+		response.Data = fmt.Sprintf("Debug peer failure injected for %s", peer)
+
+	case CMD_HA_PEER_OK:
+		peer := data.Flags["peer"]
+		if peer == "" {
+			response.ReturnCode = "fail"
+			response.Data = "--peer is required"
+			return response, nil
+		}
+		nxos.Nexus.HaSetDebugPeerOk(ctx, peer)
+		response.ReturnCode = "ok"
+		response.Data = fmt.Sprintf("Debug peer failure cleared for %s", peer)
 
 	default:
 		response.ReturnCode = "fail"

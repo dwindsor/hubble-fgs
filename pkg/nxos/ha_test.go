@@ -94,7 +94,7 @@ func TestHaReconcile_GidsInUseIntegrity(t *testing.T) {
 		},
 	}
 
-	n.HaReconcile(context.Background(), peer, info)
+	n.HaReconcile(context.Background(), peer, &info)
 
 	// Both GIDs must be correctly tracked.
 	if got, ok := n.GidsInUse[200]; !ok || got != "red" {
@@ -291,7 +291,7 @@ func TestHaSetMbrInfo_LbModeMismatch(t *testing.T) {
 		PolInfo: &hav1.PolInfo{},
 	}
 
-	result := n.HaSetMbrInfo(context.Background(), peer, info)
+	result := n.HaSetMbrInfo(context.Background(), peer, &info)
 
 	if !result.IsDel {
 		t.Error("IsDel should be true on LB mode mismatch")
@@ -338,7 +338,7 @@ func TestHaSetMbrInfo_PeerSvcFailure_MembershipStaysOk(t *testing.T) {
 		PolInfo: &hav1.PolInfo{},
 	}
 
-	result := n.HaSetMbrInfo(context.Background(), peer, info)
+	result := n.HaSetMbrInfo(context.Background(), peer, &info)
 
 	if !result.IsDel {
 		t.Error("IsDel should be true on peer service failure")
@@ -404,7 +404,7 @@ func TestDeriveAgentHaState_BothReadyPeerHAFail_FollowerSwitchover(t *testing.T)
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // HA fail
 	// Peer (leader) reports HA_TAKEOVER — it's already the active side.
-	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+	n.Ha.Members[peer] = HaMbr{Info: &hav1.MbrInfo{HaInfo: &hav1.HaInfo{
 		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
 		Ha:      hav1.HA_STATE_HA_TAKEOVER,
 	}}}
@@ -434,7 +434,7 @@ func TestStandbyCrit_Recovery(t *testing.T) {
 
 	// Initially: HA fail + peer reports TAKEOVER → standby injected
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false}
-	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+	n.Ha.Members[peer] = HaMbr{Info: &hav1.MbrInfo{HaInfo: &hav1.HaInfo{
 		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
 		Ha:      hav1.HA_STATE_HA_TAKEOVER,
 	}}}
@@ -524,8 +524,8 @@ func TestHaHandleNotify_Recovery(t *testing.T) {
 
 // TestHaUpdateCrit_InServiceFalse_SvcFailureDerived verifies that setting
 // HaCritInService=false causes stableIsFunc to return false and the derived
-// HA state to reflect a service failure (HA_NOTREADY when no peer, or
-// HA_SWITCHOVER when peer is ready).
+// HA state to reflect a local service failure (HA_UNAVAILABLE when peer is
+// ready, because InService failure is a hard local failure, not a standby yield).
 func TestHaUpdateCrit_InServiceFalse_SvcFailureDerived(t *testing.T) {
 	n := newTestNxosForHA(true) // leader
 	peer := "10.0.0.2"
@@ -549,9 +549,10 @@ func TestHaUpdateCrit_InServiceFalse_SvcFailureDerived(t *testing.T) {
 	if n.stableIsFunc() {
 		t.Error("stableIsFunc should be false after HaCritInService=false")
 	}
-	// Peer is ready → local should derive HA_SWITCHOVER (standby side).
-	if n.Ha.NxStates.HaState != hav1.HA_STATE_HA_SWITCHOVER {
-		t.Errorf("state after InService=false = %v, want HA_SWITCHOVER", n.Ha.NxStates.HaState)
+	// InService=false is a hard local service failure (not a standby yield).
+	// Peer is ready but local service failed → HA_UNAVAILABLE.
+	if n.Ha.NxStates.HaState != hav1.HA_STATE_HA_UNAVAILABLE {
+		t.Errorf("state after InService=false = %v, want HA_UNAVAILABLE", n.Ha.NxStates.HaState)
 	}
 }
 
@@ -678,6 +679,88 @@ func TestDoUpdateHaConfig_MissingInServiceDefaultsTrue(t *testing.T) {
 	}
 }
 
+// TestDoUpdateHaConfig_FlowSyncRequiresKeepalive verifies that flow_sync is
+// false when HA is fully configured and enabled but DPU keepalive is down.
+func TestDoUpdateHaConfig_FlowSyncRequiresKeepalive(t *testing.T) {
+	n := newTestNxosForHA(true)
+	n.Ha.configured = true
+	n.Ha.HaIp = "10.0.0.1"
+	n.SetHaPeer("10.0.0.2", HaPeer{IpConfigOk: true})
+
+	// Register a DPU with keepalive down.
+	n.Ha.DpuKeepalive = map[string]bool{"dpu1": false}
+
+	inService, ok := n.Ha.Local.Criteria[HaCritInService]
+	if !ok {
+		inService = true
+	}
+	enabled := n.GetHaConfigured() && n.GetHaOperUp() && inService
+	flowSync := enabled && n.GetHaEnabled() && n.aggregateDpuKeepalive()
+	if flowSync {
+		t.Error("flow_sync should be false when DPU keepalive is down")
+	}
+}
+
+// TestDoUpdateHaConfig_FlowSyncTrueWhenKeepaliveUp verifies that flow_sync is
+// true when HA is fully configured, enabled, and all DPU keepalives are up.
+func TestDoUpdateHaConfig_FlowSyncTrueWhenKeepaliveUp(t *testing.T) {
+	n := newTestNxosForHA(true)
+	n.Ha.configured = true
+	n.Ha.HaIp = "10.0.0.1"
+	n.SetHaPeer("10.0.0.2", HaPeer{IpConfigOk: true})
+
+	// All DPU keepalives up.
+	n.Ha.DpuKeepalive = map[string]bool{"dpu1": true, "dpu2": true}
+
+	inService, ok := n.Ha.Local.Criteria[HaCritInService]
+	if !ok {
+		inService = true
+	}
+	enabled := n.GetHaConfigured() && n.GetHaOperUp() && inService
+	flowSync := enabled && n.GetHaEnabled() && n.aggregateDpuKeepalive()
+	if !flowSync {
+		t.Error("flow_sync should be true when all DPU keepalives are up")
+	}
+}
+
+// TestDoUpdateHaConfig_FlowSyncSkipDpu verifies that flow_sync is true in
+// SkipDpu mode (no DPUs registered) for backward compatibility.
+func TestDoUpdateHaConfig_FlowSyncSkipDpu(t *testing.T) {
+	n := newTestNxosForHA(true)
+	n.Ha.configured = true
+	n.Ha.HaIp = "10.0.0.1"
+	n.SetHaPeer("10.0.0.2", HaPeer{IpConfigOk: true})
+	n.SkipDpu = true
+	// DpuKeepalive is nil/empty — aggregateDpuKeepalive returns SkipDpu (true).
+
+	inService, ok := n.Ha.Local.Criteria[HaCritInService]
+	if !ok {
+		inService = true
+	}
+	enabled := n.GetHaConfigured() && n.GetHaOperUp() && inService
+	flowSync := enabled && n.GetHaEnabled() && n.aggregateDpuKeepalive()
+	if !flowSync {
+		t.Error("flow_sync should be true in SkipDpu mode with no DPUs registered")
+	}
+}
+
+// TestUpdateAllPeerKeepalive_TriggersHaConfigUpdate verifies that when
+// keepalive state changes, updateAllPeerKeepalive calls updateHaConfig.
+// This is tested indirectly: inside a batch, updateHaConfig sets haConfigPending.
+func TestUpdateAllPeerKeepalive_TriggersHaConfigUpdate(t *testing.T) {
+	n := newTestNxosForHA(true)
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	n.Ha.PeerCriteria[peer] = HaPeerCriteria{KeepaliveOk: false}
+
+	n.beginHaConfigBatch()
+	n.updateAllPeerKeepalive(context.Background(), true)
+	if !n.haConfigPending {
+		t.Error("haConfigPending should be true: updateAllPeerKeepalive must call updateHaConfig on keepalive change")
+	}
+	n.endHaConfigBatch()
+}
+
 // TestReconBatches_NoContest verifies that when no GID is contested all
 // entries land in batch 2 and batch 1 is empty.
 func TestReconBatches_NoContest(t *testing.T) {
@@ -780,7 +863,7 @@ func TestStandbyCrit_PeerTakeover_InjectsStandby(t *testing.T) {
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // not yet converged
 	// Peer reports it is already in TAKEOVER (was the active side before restart).
-	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+	n.Ha.Members[peer] = HaMbr{Info: &hav1.MbrInfo{HaInfo: &hav1.HaInfo{
 		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
 		Ha:      hav1.HA_STATE_HA_TAKEOVER,
 	}}}
@@ -804,7 +887,7 @@ func TestStandbyCrit_BothStartingUp_NoStandby(t *testing.T) {
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false} // not converged
 	// Peer reports HA_NOTREADY (also starting up, not TAKEOVER).
-	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+	n.Ha.Members[peer] = HaMbr{Info: &hav1.MbrInfo{HaInfo: &hav1.HaInfo{
 		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
 		Ha:      hav1.HA_STATE_HA_NOTREADY,
 	}}}
@@ -826,7 +909,7 @@ func TestStandbyCrit_DualTakeover_LeaderWins(t *testing.T) {
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false}
 	// Peer also reports TAKEOVER.
-	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+	n.Ha.Members[peer] = HaMbr{Info: &hav1.MbrInfo{HaInfo: &hav1.HaInfo{
 		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
 		Ha:      hav1.HA_STATE_HA_TAKEOVER,
 	}}}
@@ -848,7 +931,7 @@ func TestStandbyCrit_DualTakeover_FollowerYields(t *testing.T) {
 	n.Ha.PeerSvcStates[peer] = PeerSvcReady
 	n.Ha.PeerCriteria[peer] = HaPeerCriteria{MembershipOk: false}
 	// Peer also reports TAKEOVER.
-	n.Ha.Members[peer] = HaMbr{Info: hav1.MbrInfo{HaInfo: &hav1.HaInfo{
+	n.Ha.Members[peer] = HaMbr{Info: &hav1.MbrInfo{HaInfo: &hav1.HaInfo{
 		Service: hav1.SERVICE_STATE_SVC_SUCCESS,
 		Ha:      hav1.HA_STATE_HA_TAKEOVER,
 	}}}
@@ -876,6 +959,33 @@ func TestDeriveAgentHaState_SwitchoverToTakeover(t *testing.T) {
 	state := n.deriveAgentHaState()
 	if state != hav1.HA_STATE_HA_TAKEOVER {
 		t.Errorf("SWITCHOVER→leader_fail state = %v, want HA_TAKEOVER", state)
+	}
+}
+
+// TestDeriveAgentHaState_NotReadyPeerUnknown_IsStandalone verifies that when local
+// service is not-ready and there is no peer connectivity, the agent HA state is
+// standalone (HA_NOTREADY), not unavailable. This matches HA.md row 5 which states
+// "ready / not-ready | unknown | no-ha | standalone".
+func TestDeriveAgentHaState_NotReadyPeerUnknown_IsStandalone(t *testing.T) {
+	n := newTestNxosForHA(true)
+	// Make local not-ready by failing DPU health (hard local service failure).
+	n.Ha.Local.Criteria[HaCritDpuHealth] = false
+	n.Ha.Local.IsFunc = false
+
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+	// No adjacency, no member info → peer service state remains PeerSvcUnknown.
+
+	state := n.deriveAgentHaState()
+	if state != hav1.HA_STATE_HA_NOTREADY {
+		t.Errorf("not-ready + unknown peer state = %v, want HA_NOTREADY (standalone)", state)
+	}
+
+	// Also verify derivePeerHaState returns PeerHaNoHa for unknown peer
+	// regardless of local service state.
+	peerHa := n.derivePeerHaState(peer)
+	if peerHa != PeerHaNoHa {
+		t.Errorf("derivePeerHaState with unknown peer = %v, want PeerHaNoHa", peerHa)
 	}
 }
 
@@ -910,6 +1020,294 @@ func TestShowHa_AgwKeepalive(t *testing.T) {
 		out := n.ShowHa(ctx)
 		if !strings.Contains(out, "[OK] AGW Keepalive") {
 			t.Errorf("expected [OK] AGW Keepalive in output, got:\n%s", out)
+		}
+	})
+}
+
+func TestHaSetDebugPeerFail(t *testing.T) {
+	ctx := context.Background()
+	peer := "10.0.0.2"
+
+	t.Run("membership debug fail", func(t *testing.T) {
+		n := newTestNxos()
+		n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+			MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+		}
+
+		n.HaSetDebugPeerFail(ctx, peer, true, false)
+
+		crit := n.Ha.PeerCriteria[peer]
+		if !crit.DebugMembershipFail {
+			t.Error("DebugMembershipFail should be true")
+		}
+		if crit.DebugAdjacencyFail {
+			t.Error("DebugAdjacencyFail should remain false")
+		}
+		if crit.MembershipIsOk() {
+			t.Error("MembershipIsOk() should return false with debug override")
+		}
+		if crit.IsOk() {
+			t.Error("IsOk() should return false with membership debug override")
+		}
+		if !crit.AdjacencyOk() {
+			t.Error("AdjacencyOk() should remain true")
+		}
+	})
+
+	t.Run("adjacency debug fail", func(t *testing.T) {
+		n := newTestNxos()
+		n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+			MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+		}
+
+		n.HaSetDebugPeerFail(ctx, peer, false, true)
+
+		crit := n.Ha.PeerCriteria[peer]
+		if crit.DebugMembershipFail {
+			t.Error("DebugMembershipFail should remain false")
+		}
+		if !crit.DebugAdjacencyFail {
+			t.Error("DebugAdjacencyFail should be true")
+		}
+		if !crit.MembershipIsOk() {
+			t.Error("MembershipIsOk() should remain true")
+		}
+		if crit.AdjacencyOk() {
+			t.Error("AdjacencyOk() should return false with debug override")
+		}
+		if crit.IsOk() {
+			t.Error("IsOk() should return false with adjacency debug override")
+		}
+	})
+
+	t.Run("peer-ok clears debug overrides", func(t *testing.T) {
+		n := newTestNxos()
+		n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+			MembershipOk:        true,
+			PolicyOk:            true,
+			KeepaliveOk:         true,
+			BulkSyncOk:          true,
+			DebugMembershipFail: true,
+			DebugAdjacencyFail:  true,
+		}
+
+		n.HaSetDebugPeerOk(ctx, peer)
+
+		crit := n.Ha.PeerCriteria[peer]
+		if crit.DebugMembershipFail {
+			t.Error("DebugMembershipFail should be cleared")
+		}
+		if crit.DebugAdjacencyFail {
+			t.Error("DebugAdjacencyFail should be cleared")
+		}
+		if !crit.IsOk() {
+			t.Error("IsOk() should return true after clearing debug overrides")
+		}
+	})
+}
+
+// TestHaPeerCriteria_RemoteDebugFlags verifies that DebugMembershipFailRemote and
+// DebugAdjacencyFailRemote (propagated from the peer via adjacency) have the same
+// effect as the locally-set counterparts on MembershipIsOk/AdjacencyOk/IsOk.
+func TestHaPeerCriteria_RemoteDebugFlags(t *testing.T) {
+	base := HaPeerCriteria{
+		MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+	}
+
+	t.Run("remote membership fail blocks MembershipIsOk", func(t *testing.T) {
+		crit := base
+		crit.DebugMembershipFailRemote = true
+		if crit.MembershipIsOk() {
+			t.Error("MembershipIsOk() should return false with DebugMembershipFailRemote")
+		}
+		if crit.IsOk() {
+			t.Error("IsOk() should return false with DebugMembershipFailRemote")
+		}
+		if !crit.AdjacencyOk() {
+			t.Error("AdjacencyOk() should remain true")
+		}
+	})
+
+	t.Run("remote adjacency fail blocks AdjacencyOk", func(t *testing.T) {
+		crit := base
+		crit.DebugAdjacencyFailRemote = true
+		if !crit.MembershipIsOk() {
+			t.Error("MembershipIsOk() should remain true")
+		}
+		if crit.AdjacencyOk() {
+			t.Error("AdjacencyOk() should return false with DebugAdjacencyFailRemote")
+		}
+		if crit.IsOk() {
+			t.Error("IsOk() should return false with DebugAdjacencyFailRemote")
+		}
+	})
+
+	t.Run("clearing remote flags restores IsOk", func(t *testing.T) {
+		crit := base
+		crit.DebugMembershipFailRemote = true
+		crit.DebugAdjacencyFailRemote = true
+		crit.DebugMembershipFailRemote = false
+		crit.DebugAdjacencyFailRemote = false
+		if !crit.IsOk() {
+			t.Error("IsOk() should return true after clearing remote flags")
+		}
+	})
+}
+
+// TestHaGetMbrInfo_IncludesLocalDebugFlags verifies that HaGetMbrInfo includes the
+// locally-set debug flags for the target peer so the peer can apply them as remote
+// overrides during the adjacency exchange.
+func TestHaGetMbrInfo_IncludesLocalDebugFlags(t *testing.T) {
+	n := newTestNxos()
+	n.Ha.enabled = true
+	n.Ha.operUp = true
+	n.Ha.HaIp = "10.0.0.1"
+	n.Model = "N9K"
+	n.SwVer = "10.3.1"
+	n.CpaVer = "2.0.0"
+	n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_pinning
+	n.Dpus = make(map[string]Dpu)
+
+	peer := "10.0.0.2"
+	n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+
+	t.Run("no debug flags when not set", func(t *testing.T) {
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{}
+		info := n.HaGetMbrInfo(context.Background(), peer, false)
+		if info == nil {
+			t.Fatal("MbrInfo should not be nil")
+		}
+		if info.DebugMembershipFail {
+			t.Error("DebugMembershipFail should be false when not set")
+		}
+		if info.DebugAdjacencyFail {
+			t.Error("DebugAdjacencyFail should be false when not set")
+		}
+	})
+
+	t.Run("membership debug flag included", func(t *testing.T) {
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{DebugMembershipFail: true}
+		info := n.HaGetMbrInfo(context.Background(), peer, false)
+		if info == nil {
+			t.Fatal("MbrInfo should not be nil")
+		}
+		if !info.DebugMembershipFail {
+			t.Error("DebugMembershipFail should be true in MbrInfo")
+		}
+		if info.DebugAdjacencyFail {
+			t.Error("DebugAdjacencyFail should be false")
+		}
+	})
+
+	t.Run("adjacency debug flag included", func(t *testing.T) {
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{DebugAdjacencyFail: true}
+		info := n.HaGetMbrInfo(context.Background(), peer, false)
+		if info == nil {
+			t.Fatal("MbrInfo should not be nil")
+		}
+		if info.DebugMembershipFail {
+			t.Error("DebugMembershipFail should be false")
+		}
+		if !info.DebugAdjacencyFail {
+			t.Error("DebugAdjacencyFail should be true in MbrInfo")
+		}
+	})
+}
+
+// TestHaSetMbrInfo_PropagatesDebugFlags verifies that when a peer's MbrInfo contains
+// debug failure flags, HaSetMbrInfo sets the corresponding remote flags on our side,
+// producing symmetric HA state without requiring a new RPC.
+func TestHaSetMbrInfo_PropagatesDebugFlags(t *testing.T) {
+	ctx := context.Background()
+	peer := "10.0.0.2"
+
+	newN := func() *Nxos {
+		n := newTestNxos()
+		n.Ha.enabled = true
+		n.Ha.operUp = true
+		n.Model = "N9K"
+		n.SwVer = "10.3.1"
+		n.CpaVer = "2.0.0"
+		n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_pinning
+		n.SetHaPeer(peer, HaPeer{IpConfigOk: true})
+		n.Ha.Adjacencies[peer] = HaAdj{Connected: true}
+		n.Ha.PeerCriteria[peer] = HaPeerCriteria{
+			MembershipOk: true, PolicyOk: true, KeepaliveOk: true, BulkSyncOk: true,
+		}
+		return n
+	}
+
+	goodInfo := func() *hav1.MbrInfo {
+		return &hav1.MbrInfo{
+			SysInfo: &hav1.SysInfo{Model: "N9K", SwVer: "10.3.1", Cpa: "2.0.0",
+				LbMode: model.Cisco_NX_OSDevice_Sas_LbModeType_pinning.String()},
+			HaInfo:  &hav1.HaInfo{Service: hav1.SERVICE_STATE_SVC_SUCCESS, Ha: hav1.HA_STATE_HA_READY},
+			PolInfo: &hav1.PolInfo{},
+		}
+	}
+
+	t.Run("peer membership fail sets remote flag", func(t *testing.T) {
+		n := newN()
+		info := goodInfo()
+		info.DebugMembershipFail = true
+
+		n.HaSetMbrInfo(ctx, peer, info)
+
+		crit := n.Ha.PeerCriteria[peer]
+		if !crit.DebugMembershipFailRemote {
+			t.Error("DebugMembershipFailRemote should be set")
+		}
+		if crit.DebugAdjacencyFailRemote {
+			t.Error("DebugAdjacencyFailRemote should remain false")
+		}
+		if crit.MembershipIsOk() {
+			t.Error("MembershipIsOk() should return false with remote flag")
+		}
+	})
+
+	t.Run("peer adjacency fail sets remote flag", func(t *testing.T) {
+		n := newN()
+		info := goodInfo()
+		info.DebugAdjacencyFail = true
+
+		n.HaSetMbrInfo(ctx, peer, info)
+
+		crit := n.Ha.PeerCriteria[peer]
+		if crit.DebugMembershipFailRemote {
+			t.Error("DebugMembershipFailRemote should remain false")
+		}
+		if !crit.DebugAdjacencyFailRemote {
+			t.Error("DebugAdjacencyFailRemote should be set")
+		}
+		if crit.AdjacencyOk() {
+			t.Error("AdjacencyOk() should return false with remote flag")
+		}
+	})
+
+	t.Run("peer clears debug flags via adjacency", func(t *testing.T) {
+		n := newN()
+		// Pre-set remote flags as if they were propagated earlier.
+		crit := n.Ha.PeerCriteria[peer]
+		crit.DebugMembershipFailRemote = true
+		crit.DebugAdjacencyFailRemote = true
+		n.Ha.PeerCriteria[peer] = crit
+
+		// Peer sends MbrInfo with debug flags cleared (peer-ok was run).
+		info := goodInfo()
+		n.HaSetMbrInfo(ctx, peer, info)
+
+		crit = n.Ha.PeerCriteria[peer]
+		if crit.DebugMembershipFailRemote {
+			t.Error("DebugMembershipFailRemote should be cleared")
+		}
+		if crit.DebugAdjacencyFailRemote {
+			t.Error("DebugAdjacencyFailRemote should be cleared")
+		}
+		if !crit.IsOk() {
+			t.Error("IsOk() should return true after remote flags cleared")
 		}
 	})
 }

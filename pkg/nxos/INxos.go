@@ -91,7 +91,7 @@ type HaAdj struct {
 }
 
 type HaMbr struct {
-	Info  hav1.MbrInfo
+	Info  *hav1.MbrInfo
 	Epoch int64 // in sec
 }
 
@@ -127,17 +127,44 @@ const (
 	PeerSvcNotReady                         // Peer reports SVC_FAILURE
 )
 
+// PeerHaState represents the joint HA state between local and peer, derived
+// from local service state, peer service state, and membership/adjacency criteria.
+// Values match the Peer HA State column in HA.md.
+type PeerHaState int
+
+const (
+	PeerHaNoHa        PeerHaState = iota // No connectivity / peer not configured
+	PeerHaOk                             // Membership + adjacency OK
+	PeerHaFail                           // Membership failure
+	PeerHaDegraded                       // Membership OK, adjacency failure or syncing
+	PeerHaUnavailable                    // Service failure (local or peer)
+)
+
 // HaPeerCriteria tracks the per-peer HA criteria (membership + adjacency).
 type HaPeerCriteria struct {
-	MembershipOk bool // All membership criteria pass (model, version, DPU count, LB mode)
-	PolicyOk     bool // Policy revision matches with this peer
-	KeepaliveOk  bool // All DPUs have keepalive up
-	BulkSyncOk   bool // All DPUs have bulk sync complete
+	MembershipOk              bool // All membership criteria pass (model, version, DPU count, LB mode)
+	PolicyOk                  bool // Policy revision matches with this peer
+	KeepaliveOk               bool // All DPUs have keepalive up
+	BulkSyncOk                bool // All DPUs have bulk sync complete
+	DebugMembershipFail       bool // Debug override: forces membership failure (locally set via CLI)
+	DebugAdjacencyFail        bool // Debug override: forces adjacency failure (locally set via CLI)
+	DebugMembershipFailRemote bool // Debug override propagated from peer via adjacency exchange
+	DebugAdjacencyFailRemote  bool // Debug override propagated from peer via adjacency exchange
+}
+
+// MembershipIsOk returns true if membership criteria pass and no debug override is set.
+func (c HaPeerCriteria) MembershipIsOk() bool {
+	return c.MembershipOk && !c.DebugMembershipFail && !c.DebugMembershipFailRemote
 }
 
 // IsOk returns true if all per-peer HA criteria pass (membership + adjacency).
 func (c HaPeerCriteria) IsOk() bool {
-	return c.MembershipOk && c.PolicyOk && c.KeepaliveOk && c.BulkSyncOk
+	return c.MembershipIsOk() && c.AdjacencyOk()
+}
+
+// AdjacencyOk returns true if all adjacency criteria pass (policy, keepalive, bulk sync).
+func (c HaPeerCriteria) AdjacencyOk() bool {
+	return c.PolicyOk && c.KeepaliveOk && c.BulkSyncOk && !c.DebugAdjacencyFail && !c.DebugAdjacencyFailRemote
 }
 
 type HaCrit string

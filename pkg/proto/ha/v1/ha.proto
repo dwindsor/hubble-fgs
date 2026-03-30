@@ -23,11 +23,12 @@ enum SERVICE_STATE {
 
 enum HA_STATE {
     NO_HA = 0;
-    HA_READY = 1;       // active/active (MO: ha-ready)
+    HA_READY = 1;       // active/active (MO: ha-ready or ha-degraded when peer HA is degraded)
     HA_NOTREADY = 2;    // standalone (MO: ha-not-ready)
     HA_SWITCHOVER = 3;  // active/standby standby side (MO: ha-switchover)
     HA_TAKEOVER = 4;    // active/standby active side (MO: ha-takeover)
-    HA_DEGRADED = 5;    // unavailable (MO: ha-degraded)
+    HA_DEGRADED = 5;    // deprecated: use HA_UNAVAILABLE
+    HA_UNAVAILABLE = 6; // unavailable (MO: ha-init)
 }
 
 enum MBR_STATE {
@@ -78,6 +79,8 @@ message MbrInfo {
     HaInfo ha_info = 3;
     repeated VrfInfo vrf_info = 4;
     repeated VlanInfo vlan_info = 5;
+    bool debug_membership_fail = 6; // sender has injected a membership failure for this peer
+    bool debug_adjacency_fail = 7;  // sender has injected an adjacency failure for this peer
 }
 
 message AdjRequest {

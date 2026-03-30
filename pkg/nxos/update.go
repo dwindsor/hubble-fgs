@@ -1137,13 +1137,9 @@ func (n *Nxos) setLocalSvcStateToFailure(ctx context.Context) error {
 }
 
 func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
-	peer, ok := n.GetHaPeer(ip)
-	if !ok {
-		logger.GetLogger().Error("Member missing")
-		return nil
-	}
+	logger.GetLogger().Debug("setRemoteMbrState", "ip", ip)
 
-	logger.GetLogger().Debug("setRemoteMbrState", "peer", peer.State)
+	peerHa := n.derivePeerHaState(ip)
 
 	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems{
 		HaPeerExtList: map[string]*model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{},
@@ -1153,18 +1149,22 @@ func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
 		IpAddr: &ip,
 	}
 
-	switch peer.State {
-	case hav1.MBR_STATE_HA_NA:
+	// Map 5-valued PeerHaState to 3-valued YANG SvcHaState.
+	// ha-degraded → ha-ok (still operational); ha-unavailable → ha-fail.
+	switch peerHa {
+	case PeerHaNoHa:
 		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_no_ha
-
-	case hav1.MBR_STATE_HA_OK:
+	case PeerHaOk, PeerHaDegraded:
 		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_ok
-
-	case hav1.MBR_STATE_HA_FAIL:
+	default: // PeerHaFail, PeerHaUnavailable
 		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
 	}
 
-	reason := truncateReason(peer.StateReason)
+	var stateReason string
+	if peer, ok := n.GetHaPeer(ip); ok {
+		stateReason = peer.StateReason
+	}
+	reason := truncateReason(stateReason)
 	list.SvcHaStateReason = &reason
 
 	items.HaPeerExtList[ip] = &list
@@ -1273,6 +1273,19 @@ func (n *Nxos) setRemoteStatesAdjDown(ctx context.Context, ip string) error {
 	return nil
 }
 
+// anyPeerHaDegraded returns true when any configured peer has a Peer HA State of
+// PeerHaDegraded (adjacency failure with both service states still ready).
+// Used to set the ha-degraded MO when the agent HA state is HA_READY (active/active).
+// Caller must hold a lock.
+func (n *Nxos) anyPeerHaDegraded() bool {
+	for ip := range n.GetHaPeers() {
+		if n.derivePeerHaState(ip) == PeerHaDegraded {
+			return true
+		}
+	}
+	return false
+}
+
 func (n *Nxos) setLocalHaState(ctx context.Context) error {
 	logger.GetLogger().Debug("setHaState", "state", n.Ha.NxStates.HaState)
 
@@ -1283,7 +1296,12 @@ func (n *Nxos) setLocalHaState(ctx context.Context) error {
 		return nil
 
 	case hav1.HA_STATE_HA_READY:
-		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_ready
+		// active/active: report ha-degraded MO when any peer has adjacency failure.
+		if n.anyPeerHaDegraded() {
+			items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_degraded
+		} else {
+			items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_ready
+		}
 
 	case hav1.HA_STATE_HA_NOTREADY:
 		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_not_ready
@@ -1294,8 +1312,11 @@ func (n *Nxos) setLocalHaState(ctx context.Context) error {
 	case hav1.HA_STATE_HA_TAKEOVER:
 		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_takeover
 
-	case hav1.HA_STATE_HA_DEGRADED:
-		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_degraded
+	case hav1.HA_STATE_HA_UNAVAILABLE:
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_init
+
+	case hav1.HA_STATE_HA_DEGRADED: // deprecated: backward compat for old peers
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_init
 	}
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
 		Format:        ygot.RFC7951,

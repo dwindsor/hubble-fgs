@@ -1186,6 +1186,7 @@ func (n *Nxos) updateAllPeerKeepalive(ctx context.Context, keepaliveOk bool) {
 	}
 	if changed {
 		n.recalculateIsFuncAndState(ctx)
+		n.updateHaConfig()
 	}
 }
 

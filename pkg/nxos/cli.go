@@ -101,12 +101,27 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 			return "active/standby (active)"
 		case hav1.HA_STATE_HA_SWITCHOVER:
 			return "active/standby (standby)"
-		case hav1.HA_STATE_HA_DEGRADED:
+		case hav1.HA_STATE_HA_UNAVAILABLE, hav1.HA_STATE_HA_DEGRADED:
 			return "unavailable"
 		case hav1.HA_STATE_NO_HA:
 			return "no-ha"
 		default:
 			return "unknown"
+		}
+	}
+
+	peerHaStateName := func(s PeerHaState) string {
+		switch s {
+		case PeerHaNoHa:
+			return "no-ha"
+		case PeerHaOk:
+			return "ha-ok"
+		case PeerHaFail:
+			return "ha-fail"
+		case PeerHaDegraded:
+			return "ha-degraded"
+		default: // PeerHaUnavailable
+			return "ha-unavailable"
 		}
 	}
 
@@ -128,10 +143,7 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 				peerSvc = "not-ready"
 			}
 		}
-		peerHA := "ha-fail"
-		if pc, ok := n.Ha.PeerCriteria[ip]; ok && pc.IsOk() {
-			peerHA = "ha-ok"
-		}
+		peerHA := peerHaStateName(n.derivePeerHaState(ip))
 		status += fmt.Sprintf("\n  Peer %v: Svc=%v  HA=%v", ip, peerSvc, peerHA)
 	}
 
@@ -195,7 +207,8 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 		if peer.StateReason != "" {
 			reason = fmt.Sprintf("  Reason: %v", peer.StateReason)
 		}
-		status += fmt.Sprintf("\n  %v HA State: %v  IP Config OK: %v%s", ip, peer.State, peer.IpConfigOk, reason)
+		peerHaStr := peerHaStateName(n.derivePeerHaState(ip))
+		status += fmt.Sprintf("\n  %v  Peer HA: %v  IP Config OK: %v%s", ip, peerHaStr, peer.IpConfigOk, reason)
 		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
 			status += fmt.Sprintf("\n    [%s] Policy  [%s] DPU Keepalive  [%s] DPU Bulk Sync",
 				okOrFail(peerCrit.PolicyOk),
@@ -204,7 +217,7 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 			if ps, ok := n.Ha.PeerSvcStates[ip]; ok && ps != PeerSvcUnknown {
 				agwKeepalive = true
 			}
-			status += fmt.Sprintf("\n    [%s] Membership  [%s] AGW Keepalive", okOrFail(peerCrit.MembershipOk), okOrFail(agwKeepalive))
+			status += fmt.Sprintf("\n    [%s] Membership  [%s] AGW Keepalive", okOrFail(peerCrit.MembershipIsOk()), okOrFail(agwKeepalive))
 		}
 	}
 

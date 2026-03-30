@@ -167,7 +167,7 @@ func (n *Nxos) doUpdateHaConfig() {
 		enabled = n.GetHaConfigured() && n.GetHaOperUp() && inService
 	}
 	var flow_sync bool
-	flow_sync = enabled && n.GetHaEnabled()
+	flow_sync = enabled && n.GetHaEnabled() && n.aggregateDpuKeepalive()
 
 	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_HA, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
 		haConfig := &v1alpha.HaConfig{}
@@ -198,14 +198,17 @@ func (n *Nxos) endHaConfigBatch() {
 	}
 }
 
-func (n *Nxos) HaSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo) MbrValidationResult {
+func (n *Nxos) HaSetMbrInfo(ctx context.Context, peer string, info *hav1.MbrInfo) MbrValidationResult {
 	n.Lock()
 	defer n.Unlock()
 
 	return n.haSetMbrInfo(ctx, peer, info)
 }
 
-func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo) MbrValidationResult {
+func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info *hav1.MbrInfo) MbrValidationResult {
+	if info == nil {
+		return MbrValidationResult{}
+	}
 	logger.GetLogger().Debug("haSetMbrInfo:", "peer", peer, "mbrInfo", info)
 
 	// Always compute and update the policy peer criterion regardless of
@@ -267,7 +270,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	mbr, ok := n.Ha.Members[peer]
 	if !ok {
 		notify = true
-	} else if info.HaInfo != nil && (mbr.Info.HaInfo == nil ||
+	} else if info.HaInfo != nil && (mbr.Info == nil || mbr.Info.HaInfo == nil ||
 		mbr.Info.HaInfo.Ha != info.HaInfo.Ha ||
 		mbr.Info.HaInfo.Service != info.HaInfo.Service) {
 		notify = true
@@ -382,6 +385,20 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 		}
 	}
 
+	// Propagate peer's locally-set debug flags as remote overrides on our side.
+	// This allows peer-fail on either switch to produce symmetric state without
+	// requiring a new RPC or a client connection from the follower.
+	if crit, ok := n.Ha.PeerCriteria[peer]; ok {
+		newMemRemote := info.DebugMembershipFail
+		newAdjRemote := info.DebugAdjacencyFail
+		if crit.DebugMembershipFailRemote != newMemRemote || crit.DebugAdjacencyFailRemote != newAdjRemote {
+			crit.DebugMembershipFailRemote = newMemRemote
+			crit.DebugAdjacencyFailRemote = newAdjRemote
+			n.Ha.PeerCriteria[peer] = crit
+			n.haUpdateNxState(ctx)
+		}
+	}
+
 	if notify {
 		n.setRemoteSvcState(ctx, peer)
 	}
@@ -389,7 +406,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	return MbrValidationResult{IsDel: isDel, Reason: haStateReason, IsRequiredCritFail: isRequiredCritFail}
 }
 
-func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.MbrInfo {
+func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) *hav1.MbrInfo {
 	logger.GetLogger().Debug("HaGetMbrInfo")
 
 	if isLock {
@@ -399,7 +416,7 @@ func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.
 
 	if !n.haIsEnabled(ctx, false) {
 		logger.GetLogger().Debug("skip getting local mbr info")
-		return hav1.MbrInfo{}
+		return nil
 	}
 
 	pol := hav1.PolInfo{
@@ -473,14 +490,19 @@ func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.
 		}
 		vlans = append(vlans, v)
 	}
-	info := hav1.MbrInfo{
+	info := &hav1.MbrInfo{
 		PolInfo:  &pol,
 		SysInfo:  &ver,
 		HaInfo:   &ha,
 		VrfInfo:  vrfs,
 		VlanInfo: vlans,
 	}
-
+	// Include locally-set debug failure flags for this peer so the peer can
+	// set reciprocal remote flags during the adjacency exchange.
+	if crit, ok := n.Ha.PeerCriteria[peer]; ok {
+		info.DebugMembershipFail = crit.DebugMembershipFail
+		info.DebugAdjacencyFail = crit.DebugAdjacencyFail
+	}
 	return info
 }
 
@@ -565,12 +587,15 @@ func (n *Nxos) resetPeerToUnknown(peer string) {
 
 // haBuildRemovalMbrInfo builds member info for intentional HA removal.
 // Caller should hold either n.RLock() or n.Lock().
-func (n *Nxos) haBuildRemovalMbrInfo(ctx context.Context, peer string) hav1.MbrInfo {
+func (n *Nxos) haBuildRemovalMbrInfo(ctx context.Context, peer string) *hav1.MbrInfo {
 	info := n.HaGetMbrInfo(ctx, peer, false)
-	if info.HaInfo == nil {
+	if info == nil || info.HaInfo == nil {
 		svcState := hav1.SERVICE_STATE_SVC_FAILURE
 		if n.stableIsFunc() {
 			svcState = hav1.SERVICE_STATE_SVC_SUCCESS
+		}
+		if info == nil {
+			info = &hav1.MbrInfo{}
 		}
 		info.HaInfo = &hav1.HaInfo{Service: svcState}
 	}
@@ -607,7 +632,7 @@ func (n *Nxos) haNotifyRemoval(ctx context.Context, peer string) {
 
 	req := &hav1.AdjRequest{
 		HaIp:    haIp,
-		MbrInfo: &info,
+		MbrInfo: info,
 	}
 	logger.GetLogger().Debug("Sending removal notification to peer", "peer", peer)
 	_, err := grpcClient.Adjacency(ctx, req)
@@ -646,7 +671,7 @@ func (n *Nxos) haNotifyServiceFailureLocked(ctx context.Context) {
 		}
 		req := &hav1.AdjRequest{
 			HaIp:    n.Ha.HaIp,
-			MbrInfo: &info,
+			MbrInfo: info,
 		}
 		logger.GetLogger().Debug("Sending service failure notification to peer", "peer", peer)
 		_, err := grpcClient.Adjacency(ctx, req)
@@ -679,7 +704,7 @@ func (n *Nxos) haNotifyRemovalLocked(ctx context.Context, peer string) {
 	info := n.haBuildRemovalMbrInfo(ctx, peer)
 	req := &hav1.AdjRequest{
 		HaIp:    n.Ha.HaIp,
-		MbrInfo: &info,
+		MbrInfo: info,
 	}
 	logger.GetLogger().Debug("Sending removal notification to peer", "peer", peer)
 	_, err := grpcClient.Adjacency(ctx, req)
@@ -725,7 +750,7 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	// 2. Make gRPC call WITHOUT holding any lock to prevent deadlock
 	req := &hav1.AdjRequest{
 		HaIp:    haIp,
-		MbrInfo: &info,
+		MbrInfo: info,
 	}
 	logger.GetLogger().Debug("Adjacency request:", "req", req)
 	rsp, err := grpcClient.Adjacency(ctx, req)
@@ -734,7 +759,7 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 		// Always process MbrInfo from any failure response to detect criteria
 		// failures fast (NO_HA removal, required criteria mismatch, etc.).
 		if err == nil && rsp.MbrInfo != nil {
-			n.HaSetMbrInfo(ctx, peer, *rsp.MbrInfo)
+			n.HaSetMbrInfo(ctx, peer, rsp.MbrInfo)
 		}
 		return
 	}
@@ -776,11 +801,11 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	n.Unlock()
 
 	// 5. Process peer member info (HaSetMbrInfo handles its own locking)
-	n.HaSetMbrInfo(ctx, peer, *rsp.MbrInfo)
+	n.HaSetMbrInfo(ctx, peer, rsp.MbrInfo)
 
 	// 6. Leader-side reconciliation: resolve alloc tracking against follower's state.
 	// HaReconcile takes its own write lock.
-	n.HaReconcile(ctx, peer, *rsp.MbrInfo)
+	n.HaReconcile(ctx, peer, rsp.MbrInfo)
 }
 
 func (n *Nxos) haGetPeers(_ context.Context) []string {
@@ -801,23 +826,104 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 // Caller must hold a lock.
 func (n *Nxos) anyPeerReportsHATakeover() bool {
 	for _, mbr := range n.Ha.Members {
-		if mbr.Info.HaInfo != nil && mbr.Info.HaInfo.Ha == hav1.HA_STATE_HA_TAKEOVER {
+		if mbr.Info != nil && mbr.Info.HaInfo != nil && mbr.Info.HaInfo.Ha == hav1.HA_STATE_HA_TAKEOVER {
 			return true
 		}
 	}
 	return false
 }
 
+// peerHaStateRank returns an ordering value for best-case aggregation.
+// Higher = better: ha-ok > ha-degraded > ha-fail > no-ha > ha-unavailable.
+func peerHaStateRank(s PeerHaState) int {
+	switch s {
+	case PeerHaOk:
+		return 4
+	case PeerHaDegraded:
+		return 3
+	case PeerHaFail:
+		return 2
+	case PeerHaNoHa:
+		return 1
+	default: // PeerHaUnavailable
+		return 0
+	}
+}
+
+// isLocalServiceFailure returns true when the local node is not-ready due to a
+// hard service failure rather than deliberate standby injection.  Only
+// HaCritHaStandby=false is considered "yielding/syncing"; every other failing
+// criterion (DpuHealth, DpuInSync, InService, DebugFail) is a service failure.
+// Caller must hold a lock.
+func (n *Nxos) isLocalServiceFailure() bool {
+	for crit, ok := range n.Ha.Local.Criteria {
+		if !ok && crit != HaCritHaStandby {
+			return true
+		}
+	}
+	return false
+}
+
+// derivePeerHaState returns the Peer HA State for a single peer per HA.md.
+// Core principle: service failures → ha-unavailable; membership failures → ha-fail.
+// Caller must hold a lock.
+func (n *Nxos) derivePeerHaState(peer string) PeerHaState {
+	localReady := n.stableIsFunc()
+
+	peerSvc, ok := n.Ha.PeerSvcStates[peer]
+	if !ok {
+		peerSvc = PeerSvcUnknown
+	}
+
+	crit, hasCrit := n.Ha.PeerCriteria[peer]
+
+	switch {
+	case peerSvc == PeerSvcUnknown:
+		// Per HA.md row 5: peer HA state is no-ha whenever peer is unknown,
+		// regardless of local service state.
+		return PeerHaNoHa
+
+	case localReady && peerSvc == PeerSvcReady:
+		if !hasCrit || !crit.MembershipIsOk() {
+			return PeerHaFail
+		}
+		if !crit.AdjacencyOk() {
+			return PeerHaDegraded
+		}
+		return PeerHaOk
+
+	case localReady && peerSvc == PeerSvcNotReady:
+		if !hasCrit || !crit.MembershipIsOk() {
+			return PeerHaFail
+		}
+		return PeerHaUnavailable // peer service failure, membership is fine
+
+	case !localReady && peerSvc == PeerSvcReady:
+		// Local service failure takes precedence over membership failure.
+		if n.isLocalServiceFailure() {
+			return PeerHaUnavailable
+		}
+		// Only HaCritHaStandby=false: yielding/syncing.
+		if !hasCrit || !crit.MembershipIsOk() {
+			return PeerHaFail
+		}
+		return PeerHaDegraded // syncing, membership ok
+
+	default: // !localReady && peerSvc == PeerSvcNotReady
+		return PeerHaUnavailable
+	}
+}
+
 // aggregatePeerStates returns the best-case peer service state and peer HA state
 // across all configured peers.
 // Caller must hold a lock.
-func (n *Nxos) aggregatePeerStates() (PeerServiceState, bool) {
+func (n *Nxos) aggregatePeerStates() (PeerServiceState, PeerHaState) {
 	if !n.haIsEnabled(context.Background(), false) || len(n.GetHaPeers()) == 0 {
-		return PeerSvcUnknown, false
+		return PeerSvcUnknown, PeerHaNoHa
 	}
 
 	bestPeerSvc := PeerSvcUnknown
-	peerHAOk := false
+	bestPeerHa := PeerHaUnavailable
 
 	for ip := range n.GetHaPeers() {
 		if peerSvc, ok := n.Ha.PeerSvcStates[ip]; ok {
@@ -828,52 +934,73 @@ func (n *Nxos) aggregatePeerStates() (PeerServiceState, bool) {
 			}
 		}
 
-		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok && peerCrit.IsOk() {
-			peerHAOk = true
+		peerHa := n.derivePeerHaState(ip)
+		if peerHaStateRank(peerHa) > peerHaStateRank(bestPeerHa) {
+			bestPeerHa = peerHa
 		}
 	}
 
-	return bestPeerSvc, peerHAOk
+	return bestPeerSvc, bestPeerHa
+}
+
+// deriveActiveStandbyActive returns HA_TAKEOVER when transitioning from an
+// already-established HA state, or HA_NOTREADY on startup so that a newly
+// joining switch does not disrupt a peer that is already providing service.
+// Caller must hold a lock.
+func (n *Nxos) deriveActiveStandbyActive() hav1.HA_STATE {
+	switch n.Ha.NxStates.HaState {
+	case hav1.HA_STATE_HA_READY, hav1.HA_STATE_HA_TAKEOVER, hav1.HA_STATE_HA_SWITCHOVER:
+		return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
+	default:
+		return hav1.HA_STATE_HA_NOTREADY // starting up, wait for convergence
+	}
 }
 
 // deriveAgentHaState implements the state table from HA.md.
-// TAKEOVER is only returned when transitioning from an already-established HA
-// state (HA_READY, HA_TAKEOVER, or HA_SWITCHOVER). From HA_NOTREADY or NO_HA
-// (starting up / standalone), HA_NOTREADY is returned instead so that a newly
-// joining switch does not disrupt a peer that is already providing service.
 // Caller must hold a lock.
 func (n *Nxos) deriveAgentHaState() hav1.HA_STATE {
 	localReady := n.stableIsFunc()
-	peerSvc, peerHAOk := n.aggregatePeerStates()
+	peerSvc, peerHa := n.aggregatePeerStates()
 
 	switch {
-	case localReady && peerSvc == PeerSvcReady && peerHAOk:
-		return hav1.HA_STATE_HA_READY // active/active
+	// active/active: local ready, peer ready, HA ok or degraded (adjacency only)
+	case localReady && peerSvc == PeerSvcReady && (peerHa == PeerHaOk || peerHa == PeerHaDegraded):
+		return hav1.HA_STATE_HA_READY
+
+	// active/standby (active): local ready, peer ready or not-ready, membership failure
+	// Transient: peer is still service-ready but membership criteria failed.
+	// Standby injection will make one side go not-ready; until then treat as TAKEOVER.
+	case localReady && peerSvc == PeerSvcReady && peerHa == PeerHaFail:
+		return n.deriveActiveStandbyActive()
+
+	// active/standby (active): local ready, peer not-ready, membership failure
+	case localReady && peerSvc == PeerSvcNotReady && peerHa == PeerHaFail:
+		return n.deriveActiveStandbyActive()
+
+	// standalone: local ready, peer not-ready due to peer service failure
+	case localReady && peerSvc == PeerSvcNotReady && peerHa == PeerHaUnavailable:
+		return hav1.HA_STATE_HA_NOTREADY
+
+	// standalone: local ready, no peer connectivity
 	case localReady && peerSvc == PeerSvcUnknown:
-		return hav1.HA_STATE_HA_NOTREADY // standalone
-	case localReady && peerSvc == PeerSvcReady && !peerHAOk:
-		// Only takeover if we were already in an established HA state.
-		// From HA_NOTREADY/NO_HA (startup), wait for criteria to converge.
-		switch n.Ha.NxStates.HaState {
-		case hav1.HA_STATE_HA_READY, hav1.HA_STATE_HA_TAKEOVER, hav1.HA_STATE_HA_SWITCHOVER:
-			return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
-		default:
-			return hav1.HA_STATE_HA_NOTREADY // starting up, wait for convergence
-		}
-	case localReady && peerSvc == PeerSvcNotReady:
-		// Only takeover if we were already in an established HA state.
-		switch n.Ha.NxStates.HaState {
-		case hav1.HA_STATE_HA_READY, hav1.HA_STATE_HA_TAKEOVER, hav1.HA_STATE_HA_SWITCHOVER:
-			return hav1.HA_STATE_HA_TAKEOVER // active/standby (active side)
-		default:
-			return hav1.HA_STATE_HA_NOTREADY // starting up, wait for convergence
-		}
-	case !localReady && peerSvc == PeerSvcUnknown:
-		return hav1.HA_STATE_HA_DEGRADED // unavailable
-	case !localReady && peerSvc == PeerSvcReady:
-		return hav1.HA_STATE_HA_SWITCHOVER // active/standby (standby side)
+		return hav1.HA_STATE_HA_NOTREADY
+
+	// active/standby (standby): local not-ready/syncing, peer ready
+	case !localReady && peerSvc == PeerSvcReady && (peerHa == PeerHaDegraded || peerHa == PeerHaFail):
+		return hav1.HA_STATE_HA_SWITCHOVER
+
+	// unavailable: local service failure, peer ready
+	case !localReady && peerSvc == PeerSvcReady && peerHa == PeerHaUnavailable:
+		return hav1.HA_STATE_HA_UNAVAILABLE
+
+	// unavailable: local not-ready, peer not-ready
 	case !localReady && peerSvc == PeerSvcNotReady:
-		return hav1.HA_STATE_HA_DEGRADED // unavailable
+		return hav1.HA_STATE_HA_UNAVAILABLE
+
+	// standalone: local not-ready, no peer connectivity (HA.md row 5)
+	case !localReady && peerSvc == PeerSvcUnknown:
+		return hav1.HA_STATE_HA_NOTREADY
+
 	default:
 		return hav1.HA_STATE_HA_NOTREADY
 	}
@@ -946,13 +1073,24 @@ func (n *Nxos) haUpdateNxState(_ context.Context) {
 // from recalculateIsFuncAndState).
 // Caller must hold the lock.
 func (n *Nxos) haEvaluateStandbyCrit() {
-	peerSvc, peerHAOk := n.aggregatePeerStates()
+	peerSvc, _ := n.aggregatePeerStates()
 	peerIsTakeover := n.anyPeerReportsHATakeover()
 	amTakeover := n.Ha.NxStates.HaState == hav1.HA_STATE_HA_TAKEOVER
 
-	// Yield to the peer that is already in TAKEOVER (active side), unless we are
-	// also in TAKEOVER and are the leader (tiebreaker: leader stays active).
-	shouldBeStandby := peerIsTakeover && peerSvc == PeerSvcReady && !peerHAOk &&
+	// Yield to the peer that is already in TAKEOVER (active side) when HA
+	// criteria have not yet converged. Use direct criteria check rather than
+	// derivePeerHaState to avoid a feedback loop: when standby is injected
+	// (!localReady), derivePeerHaState returns PeerHaDegraded, which would
+	// keep shouldBeStandby=true permanently. Checking raw peer criteria is
+	// independent of local state and breaks the cycle.
+	bestCritOk := false
+	for ip := range n.GetHaPeers() {
+		if crit, ok := n.Ha.PeerCriteria[ip]; ok && crit.IsOk() {
+			bestCritOk = true
+			break
+		}
+	}
+	shouldBeStandby := peerIsTakeover && peerSvc == PeerSvcReady && !bestCritOk &&
 		!(amTakeover && n.Ha.IsLeader)
 
 	_, hasStandby := n.Ha.Local.Criteria[HaCritHaStandby]
@@ -989,8 +1127,11 @@ func (n *Nxos) HaHandleNotify(ctx context.Context, peer string, haInfo *hav1.HaI
 			n.Ha.Local.IsFunc = n.computeIsFunc()
 			n.haUpdateNxState(ctx)
 		}
-	} else if haInfo != nil && (haInfo.Ha == hav1.HA_STATE_HA_READY || haInfo.Ha == hav1.HA_STATE_NO_HA) {
-		// Recovery or HA removal — clear standby criteria if present.
+	} else if haInfo != nil && (haInfo.Ha == hav1.HA_STATE_HA_READY ||
+		haInfo.Ha == hav1.HA_STATE_NO_HA ||
+		haInfo.Ha == hav1.HA_STATE_HA_UNAVAILABLE ||
+		haInfo.Ha == hav1.HA_STATE_HA_DEGRADED) { // HA_DEGRADED: backward compat for old peers
+		// Recovery, HA removal, or peer unavailable — clear standby criteria if present.
 		if _, has := n.Ha.Local.Criteria[HaCritHaStandby]; has {
 			logger.GetLogger().Debug("Notify: removing standby criteria on recovery")
 			delete(n.Ha.Local.Criteria, HaCritHaStandby)
@@ -1283,7 +1424,10 @@ func (n *Nxos) haCheckIsFuncHoldDown(ctx context.Context) {
 // criterion.  This is called unconditionally (even when HA is not enabled) so
 // that show_ha always reflects the correct policy status.
 // Caller must hold the lock.
-func (n *Nxos) computeAndUpdatePeerPolicy(ctx context.Context, peer string, info hav1.MbrInfo) {
+func (n *Nxos) computeAndUpdatePeerPolicy(ctx context.Context, peer string, info *hav1.MbrInfo) {
+	if info == nil {
+		return
+	}
 	var polOk bool
 	if n.Ha.Watching {
 		if info.PolInfo != nil && n.Ha.PolRev == info.PolInfo.Revision {
@@ -1365,7 +1509,7 @@ func (n *Nxos) recomputeAllPeerPolicyCrit(ctx context.Context) {
 // based on current watching state and member info.
 func (n *Nxos) computePolicyOkForPeer(peer string) bool {
 	mbr, ok := n.Ha.Members[peer]
-	if !ok {
+	if !ok || mbr.Info == nil {
 		return true // No member info yet, assume OK
 	}
 	if n.Ha.Watching {
@@ -1545,7 +1689,10 @@ func (n *Nxos) haSetLeader(ctx context.Context) {
 	logger.GetLogger().Debug("haSetLeader:", "isLeader", isLeader)
 }
 
-func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) {
+func (n *Nxos) HaReconcile(ctx context.Context, peer string, info *hav1.MbrInfo) {
+	if info == nil {
+		return
+	}
 	logger.GetLogger().Debug("HaReconcile:", "peer", peer, "mbrInfo", info)
 
 	n.Lock()
@@ -1751,7 +1898,7 @@ func (n *Nxos) TriggerHAReconciliation(ctx context.Context) {
 	enabled := n.haIsEnabled(ctx, false)
 	isLeader := n.Ha.IsLeader
 	peers := make([]string, 0)
-	memberInfos := make(map[string]hav1.MbrInfo)
+	memberInfos := make(map[string]*hav1.MbrInfo)
 	for peer, mbr := range n.Ha.Members {
 		peers = append(peers, peer)
 		memberInfos[peer] = mbr.Info
@@ -1812,6 +1959,38 @@ func (n *Nxos) NotifyPolRev(ctx context.Context, rev string) {
 		// Recompute policy status for all peers based on new revision
 		n.recomputeAllPeerPolicyCrit(ctx)
 	}
+}
+
+// HaSetDebugPeerFail injects debug override failure criteria for a specific peer.
+// membership=true forces MembershipIsOk() to return false.
+// adjacency=true forces AdjacencyOk() to return false.
+func (n *Nxos) HaSetDebugPeerFail(ctx context.Context, peer string, membership, adjacency bool) {
+	n.Lock()
+	defer n.Unlock()
+
+	logger.GetLogger().Info("HaSetDebugPeerFail", "peer", peer, "membership", membership, "adjacency", adjacency)
+	crit := n.Ha.PeerCriteria[peer]
+	if membership {
+		crit.DebugMembershipFail = true
+	}
+	if adjacency {
+		crit.DebugAdjacencyFail = true
+	}
+	n.Ha.PeerCriteria[peer] = crit
+	n.haUpdateNxState(ctx)
+}
+
+// HaSetDebugPeerOk clears all debug override failure criteria for a specific peer.
+func (n *Nxos) HaSetDebugPeerOk(ctx context.Context, peer string) {
+	n.Lock()
+	defer n.Unlock()
+
+	logger.GetLogger().Info("HaSetDebugPeerOk", "peer", peer)
+	crit := n.Ha.PeerCriteria[peer]
+	crit.DebugMembershipFail = false
+	crit.DebugAdjacencyFail = false
+	n.Ha.PeerCriteria[peer] = crit
+	n.haUpdateNxState(ctx)
 }
 
 // HaSetDebugFail injects or removes the debug override criteria.
