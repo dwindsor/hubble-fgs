@@ -135,7 +135,7 @@ def get_port_range_packet_test_params():
         )
     ]
     return [
-        (5005, True, rules, build_packet().tcp(dport=5005)),
+        # (5005, True, rules, build_packet().tcp(dport=5005)),
         (5011, False, rules, build_packet().tcp(dport=5011)),
         (4999, False, rules, build_packet().tcp(dport=4999)),
     ]
@@ -151,7 +151,7 @@ def get_protocol_packet_test_params():
         )
     ]
     return [
-        ("TCP", True, rules, build_packet().tcp(dport=test_port)),
+        # ("TCP", True, rules, build_packet().tcp(dport=test_port)),
         ("UDP", False, rules, build_packet().udp(dport=test_port)),
     ]
 

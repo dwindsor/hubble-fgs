@@ -150,6 +150,10 @@ class NetworkEndpoint:
         result = set()
         for proto, port, end_port in proto_ports:
             proto_lower = proto.lower()
+            # Normalize full port range (0-65535) to None (no restriction)
+            if port == 0 and end_port == 65535:
+                port = None
+                end_port = None
             if proto_lower == "any":
                 result.add(("tcp", port, end_port))
                 result.add(("udp", port, end_port))
