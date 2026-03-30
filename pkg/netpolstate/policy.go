@@ -457,7 +457,7 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 
 func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, error) {
 	calculatorRecords := []record.DatapathRecord{}
-	calculatorState := NewPolicyState()
+	calculatorState := state.CloneEmpty()
 	calculatorState.serviceMap = state.serviceMap
 
 	// Add Policy to calculator state
@@ -521,7 +521,7 @@ func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*Poli
 	newPolicy := append(currentPolicy, policies...)
 
 	// Recalculate records using new state with new policy.
-	postState := NewPolicyState()
+	postState := preState.CloneEmpty()
 	postState.localObjects = maps.Clone(preState.localObjects)
 	postState.remoteObjects = maps.Clone(preState.remoteObjects)
 	postState.serviceMap = preState.serviceMap

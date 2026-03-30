@@ -136,7 +136,6 @@ type PolicyState struct {
 	Reader sync.RWMutex
 
 	workloadID *workloadid.State
-
 	// Programmer for dataplane default to BPF
 	prog datapath.Interface
 	// k8sReader is used to read namespace labels from Kubernetes
@@ -175,6 +174,18 @@ func NewPolicyState() *PolicyState {
 	s.workloadID = workloadid.GetState()
 	s.prog = &datapath.BPFProgrammer{}
 
+	return s
+}
+
+func (state *PolicyState) CloneEmpty() *PolicyState {
+	s := NewPolicyState()
+
+	if state != nil {
+		// These should be passed to the new one
+		s.workloadID = state.workloadID
+		s.prog = state.prog
+		s.k8sReader = state.k8sReader
+	}
 	return s
 }
 
