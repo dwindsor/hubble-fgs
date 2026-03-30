@@ -37,8 +37,7 @@ jobs:
       run: |
         set -x
         PR_FIRST_COMMIT=$(git rev-list --reverse origin/${{ github.event.pull_request.base.ref }}..HEAD | head -1)
-        git config --global submodule.recurse true
-        git rebase --exec "make -j$(nproc) tetragon tetra tetragon-bpf tetragon-operator" $PR_FIRST_COMMIT^
+        git rebase --exec "make oss-init && make -j$(nproc) tetragon tetra tetragon-bpf tetragon-operator" $PR_FIRST_COMMIT^
 
     - name: Check if debug BPF program build works for every commit
       run: |
