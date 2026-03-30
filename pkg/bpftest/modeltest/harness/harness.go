@@ -26,7 +26,6 @@ import (
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/podhelpers"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/google/uuid"
@@ -45,6 +44,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
+	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 
 const clientCreateTimeout = 1 * time.Minute
@@ -263,23 +263,12 @@ func (harness *Harness) addPodState(tb testing.TB, podInfo *corev1.Pod) {
 		WorkloadObject: v1alpha1.WorkloadObjectMeta{},
 	})
 
-	state, err := policyfilter.GetState()
-	require.NoError(tb, err)
-
 	containerIDs := podhelpers.PodContainersIDs(podInfo)
-	containerInfo := podhelpers.PodContainersInfo(podInfo)
 	podID, err := uuid.Parse(string(podInfo.UID))
 	require.NoError(tb, err)
 
-	workloadMeta, kindMeta := podhelpers.GetWorkloadMetaFromPod(podInfo)
-	workload := workloadMeta.Name
-	kind := kindMeta.Kind
-
-	err = state.UpdatePod(policyfilter.PodID(podID), podInfo.Namespace, workload, kind, podInfo.Labels, containerIDs, containerInfo)
-	require.NoError(tb, err)
-
 	for _, containerID := range containerIDs {
-		harness.addCgroupIDForPodAndContainer(tb, podID, containerID)
+		harness.addCgroupIDForPodAndContainer(tb, podInfo, podID, containerID)
 	}
 
 	harness.fakeK8sWatcher.AddPod(podInfo)
@@ -288,8 +277,7 @@ func (harness *Harness) addPodState(tb testing.TB, podInfo *corev1.Pod) {
 // Unfortunately, this duplicates a lot of code in policyfilter/state.go, but
 // none of the methods used in policyfilter expose a way to look up a cgroup id
 // from a container id (and other than this test, they probably shouldn't).
-func (harness *Harness) addCgroupIDForPodAndContainer(tb testing.TB, podID uuid.UUID, containerID string) {
-
+func (harness *Harness) addCgroupIDForPodAndContainer(tb testing.TB, podInfo *corev1.Pod, podID uuid.UUID, containerID string) {
 	path, err := harness.fsscanner.FindContainerPath(types.UID(podID.String()), containerID)
 	if errors.Is(err, fsscan.ErrContainerPathWithoutMatchingPodID) {
 		tb.Logf("warning: FindCgroupID: found path without matching pod id, continuing. pod-id=%s container-id=%s", podID, containerID)
@@ -301,16 +289,20 @@ func (harness *Harness) addCgroupIDForPodAndContainer(tb testing.TB, podID uuid.
 	require.NoError(tb, err)
 
 	harness.cgmap.Add(podID, containerID, cgid)
+
+	// Populate the workloadid state so the application model can resolve
+	// cgroup IDs to namespace/workload metadata.
+	workloadMeta, workloadType := podhelpers.GetWorkloadMetaFromPod(podInfo)
+	err = workloadid.GetState().Update(workloadid.WorkloadMeta{
+		Workload:  workloadMeta.Name,
+		Namespace: podInfo.Namespace,
+		Kind:      workloadType.Kind,
+	}, workloadid.CgroupID(cgid))
+	require.NoError(tb, err)
 }
 
 func (harness *Harness) clearPodState(tb testing.TB, podInfo *corev1.Pod) {
-	state, err := policyfilter.GetState()
-	require.NoError(tb, err)
-
 	podID, err := uuid.Parse(string(podInfo.UID))
-	require.NoError(tb, err)
-
-	err = state.DelPod(policyfilter.PodID(podID))
 	require.NoError(tb, err)
 
 	harness.cgmap.Update(podID, []string{})
