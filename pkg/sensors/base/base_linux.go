@@ -89,9 +89,6 @@ func GetDefaultMaps() []*program.Map {
 	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
 		maps = append(maps, SyscallsMap)
 	}
-	if enterpriseOption.Config.EnableApplicationModel {
-		maps = append(maps, NsIDMap)
-	}
 	// The BPF ring buffer is available from v5.8, but rather than add another set of
 	// kernel-version-specific objects, let's set the gate at v5.11 as we already have
 	// objects for that version number. We can revisit this of course.

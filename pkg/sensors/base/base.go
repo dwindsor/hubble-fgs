@@ -189,7 +189,6 @@ var (
 	MatchBinariesGenMap      = program.MapBuilder(mbset.GenName, Execve)
 	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	SyscallsMap              = program.MapBuilder("tg_syscall_map", SysEnterProg)
-	NsIDMap                  = program.MapBuilder("tg_cgroup_namespace_map", Execve, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, Exit, ExitV511)
 )
 
 func setupSensor() {

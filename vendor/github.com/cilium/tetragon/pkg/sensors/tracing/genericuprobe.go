@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/ebpf"
 	lru "github.com/hashicorp/golang-lru/v2"
 
+	"github.com/cilium/tetragon/pkg/celbpf"
 	"github.com/cilium/tetragon/pkg/cgtracker"
 
 	"github.com/cilium/tetragon/pkg/asm"
@@ -191,6 +192,14 @@ func handleGenericUprobe(r *bytes.Reader) ([]observer.Event, error) {
 func loadSingleUprobeSensor(uprobeEntry *genericUprobe, args sensors.LoadProbeArgs) error {
 	load := args.Load
 
+	rewriteProg := make(map[string]func(prog *ebpf.ProgramSpec) error)
+	if entry := uprobeEntry.loadArgs.selectors.entry; entry != nil {
+		if celbpf.EnabledInBPF() {
+			rewriteProg["generic_uprobe_filter_arg"] = entry.CelExprFunctions().RewriteProg
+		}
+	}
+	load.RewriteProg = rewriteProg
+
 	// config_map data
 	var configData bytes.Buffer
 	binary.Write(&configData, binary.LittleEndian, uprobeEntry.loadArgs.config)
@@ -298,6 +307,16 @@ func loadMultiUprobeSensor(ids []idtable.EntryID, args sensors.LoadProbeArgs) er
 			return errors.New("failed to match id")
 		}
 
+		rewriteProg := make(map[string]func(prog *ebpf.ProgramSpec) error)
+
+		if entry := uprobeEntry.loadArgs.selectors.entry; entry != nil {
+			if celbpf.EnabledInBPF() {
+				rewriteProg["generic_uprobe_filter_arg"] = entry.CelExprFunctions().RewriteProg
+			}
+		}
+
+		load.RewriteProg = rewriteProg
+
 		// config_map data
 		var configData bytes.Buffer
 		binary.Write(&configData, binary.LittleEndian, uprobeEntry.loadArgs.config)
@@ -340,12 +359,12 @@ func loadMultiUprobeSensor(ids []idtable.EntryID, args sensors.LoadProbeArgs) er
 			attach = &program.MultiUprobeAttachSymbolsCookies{}
 		}
 
-		if uprobeEntry.symbol != "" {
+		if uprobeEntry.address != 0 {
+			attach.Addresses = append(attach.Addresses, uprobeEntry.address)
+		} else if uprobeEntry.symbol != "" {
 			symbol, offset := resolveSymbol(uprobeEntry.symbol)
 			attach.Symbols = append(attach.Symbols, symbol)
 			attach.Offsets = append(attach.Offsets, offset)
-		} else {
-			attach.Addresses = append(attach.Addresses, uprobeEntry.address)
 		}
 
 		if uprobeEntry.refCtrOffset != 0 {
@@ -385,6 +404,7 @@ type addUprobeIn struct {
 	sensorPath string
 	policyName string
 	useMulti   bool
+	celExprs   *selectors.CelExprFunctions
 }
 
 type uprobeHas struct {
@@ -403,15 +423,24 @@ func createGenericUprobeSensor(
 	var ids []idtable.EntryID
 	var err error
 	var has uprobeHas
+	var celExprs *selectors.CelExprFunctions
+
+	// use multi uprobe only if:
+	// - it's not disabled by spec option
+	// - there's support detected
+	useMulti := !polInfo.specOpts.DisableUprobeMulti && bpf.HasUprobeMulti()
+
+	if useMulti {
+		// if we are using multi-uprobe, CEL expressions are shared across all uprobes
+		celExprs = &selectors.CelExprFunctions{}
+	}
 
 	in := addUprobeIn{
 		sensorPath: name,
 		policyName: polInfo.name,
 
-		// use multi uprobe only if:
-		// - it's not disabled by spec option
-		// - there's support detected
-		useMulti: !polInfo.specOpts.DisableUprobeMulti && bpf.HasUprobeMulti(),
+		useMulti: useMulti,
+		celExprs: celExprs,
 	}
 
 	for _, uprobe := range spec.UProbes {
@@ -529,6 +558,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		Args:      spec.Args,
 		Data:      spec.Data,
 		IsUprobe:  true,
+		CelExprs:  in.celExprs,
 	})
 	if err != nil {
 		return nil, err
@@ -775,7 +805,31 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		return nil
 	}
 
-	if symbols != 0 {
+	f, err := elf.OpenSafeELFFile(spec.Path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	if symbols != 0 && f.IsStrippedPureGoBinary() {
+		tbl, err := f.Pclntab()
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse pclntab: %w", err)
+		}
+		for idx, sym := range spec.Symbols {
+			if err := checkSymbol(sym); err != nil {
+				return nil, fmt.Errorf("failed to parse symbol: %w", err)
+			}
+			off, ok := tbl.OffsetByName(sym)
+			if !ok {
+				return nil, fmt.Errorf("failed to resolve symbol: %w", err)
+			}
+			err = addUprobeEntry(sym, off, idx)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else if symbols != 0 {
 		for idx, sym := range spec.Symbols {
 			if err := checkSymbol(sym); err != nil {
 				return nil, fmt.Errorf("failed to parse symbol: %w", err)
@@ -793,12 +847,6 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 			}
 		}
 	} else if addrs != 0 {
-		f, err := elf.OpenSafeELFFile(spec.Path)
-		if err != nil {
-			return nil, err
-		}
-		defer f.Close()
-
 		for idx, addr := range spec.Addrs {
 			off, err := f.OffsetFromAddr(addr)
 			if err != nil {
@@ -950,11 +998,12 @@ func createUprobeSensorFromEntry(polInfo *policyInfo, uprobeEntry *genericUprobe
 
 	loadProgName, loadProgRetName := config.GenericUprobeObjs(false)
 
+	pinSymbol := strings.ReplaceAll(uprobeEntry.symbol, ".", "_")
 	load := program.Builder(
 		path.Join(option.Config.HubbleLib, loadProgName),
 		fmt.Sprintf("%s %s", uprobeEntry.path, uprobeEntry.symbol),
 		"uprobe/generic_uprobe",
-		fmt.Sprintf("%d-%s", uprobeEntry.tableId.ID, uprobeEntry.symbol),
+		fmt.Sprintf("%d-%s", uprobeEntry.tableId.ID, pinSymbol),
 		"generic_uprobe").
 		SetLoaderData(uprobeEntry).
 		SetPolicy(uprobeEntry.policyName)
@@ -997,7 +1046,7 @@ func createUprobeSensorFromEntry(polInfo *policyInfo, uprobeEntry *genericUprobe
 	}
 
 	if uprobeEntry.loadArgs.retprobe {
-		pinRetProg := fmt.Sprintf("%d-%s_return", uprobeEntry.tableId.ID, uprobeEntry.symbol)
+		pinRetProg := fmt.Sprintf("%d-%s_return", uprobeEntry.tableId.ID, pinSymbol)
 		loadret := program.Builder(
 			path.Join(option.Config.HubbleLib, loadProgRetName),
 			fmt.Sprintf("%s %s", uprobeEntry.path, uprobeEntry.symbol),
