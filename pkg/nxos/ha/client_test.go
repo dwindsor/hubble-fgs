@@ -137,9 +137,9 @@ func TestMockClient_NotConnected(t *testing.T) {
 
 // mockClient implements the Client interface for testing.
 type mockClient struct {
-	mu                sync.RWMutex
-	addr              string
-	connected         bool
+	mu            sync.RWMutex
+	addr          string
+	connected     bool
 	adjHandler    func(ctx context.Context, req *hav1.AdjRequest) (*hav1.AdjResponse, error)
 	notifyHandler func(ctx context.Context, req *hav1.NotifyRequest) (*hav1.NotifyResponse, error)
 }

@@ -29,13 +29,13 @@ import (
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
 
-// haPort returns the HA gRPC port derived from the device store's HSA port range.
+// haPort returns the HA gRPC port reserved from the device store's HSA port range.
 // Returns an error if the device store is not configured.
 func (m *manager) haPort() (uint16, error) {
 	if m.deviceStore == nil {
 		return 0, fmt.Errorf("device store not configured: cannot determine HA port")
 	}
-	return m.deviceStore.HSAPortLow(), nil
+	return m.deviceStore.ReservePort(device.HAService)
 }
 
 // isConfigReady returns true when all three prerequisites for HA activation are met:
@@ -386,6 +386,9 @@ func (m *manager) Run(ctx context.Context) error {
 		if err != nil {
 			serverCancel()
 			return fmt.Errorf("HA manager activation failed: %w", err)
+		}
+		if err := m.haStore.SetHaPort(serverCtx, port); err != nil {
+			logger.GetLogger().Warn("Failed to SET HA port to gNMI", "port", port, "error", err)
 		}
 		// Track the server goroutine so we can wait for it during shutdown.
 		var serverWg sync.WaitGroup

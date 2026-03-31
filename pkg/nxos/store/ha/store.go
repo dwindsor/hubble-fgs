@@ -37,6 +37,7 @@ type haStore struct {
 	enabled     string
 	switchState string
 	haIP        string
+	haPort      uint16
 	localState  types.HALocalState
 	peers       map[string]types.HAPeerState
 	callbacks   map[int]func(Event)
@@ -93,13 +94,14 @@ func NewStore(ctx context.Context, opts ...Option) Store {
 			s.enabled = state.Enabled
 			s.switchState = state.SwitchState
 			s.haIP = state.HaIP
+			s.haPort = state.HaPort
 			// Restore peer IPs as empty peer entries so the HA adjacency protocol
 			// can reconnect to known peers on startup. Full peer state is rebuilt at runtime.
 			for _, ip := range state.PeerIPs {
 				if _, exists := s.peers[ip]; !exists {
 					s.peers[ip] = types.HAPeerState{
-						IP:               ip,
-						MemberCriteria:   make(types.HACriteria),
+						IP:                ip,
+						MemberCriteria:    make(types.HACriteria),
 						AdjacencyCriteria: make(types.HACriteria),
 					}
 				}
@@ -133,6 +135,12 @@ func (s *haStore) HaIP() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.haIP
+}
+
+func (s *haStore) HaPort() uint16 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.haPort
 }
 
 func (s *haStore) Local() types.HALocalState {
@@ -250,6 +258,7 @@ func (s *haStore) persist(ctx context.Context) {
 		Enabled:     s.enabled,
 		SwitchState: s.switchState,
 		HaIP:        s.haIP,
+		HaPort:      s.haPort,
 	}
 	if len(s.peers) > 0 {
 		state.PeerIPs = make([]string, 0, len(s.peers))

@@ -77,6 +77,7 @@ type HAState struct {
 	Enabled     string   `json:"admin_state,omitempty"`
 	SwitchState string   `json:"oper_state,omitempty"`
 	HaIP        string   `json:"local_ip,omitempty"`
+	HaPort      uint16   `json:"ha_port,omitempty"`
 	PeerIPs     []string `json:"peer_ips,omitempty"`
 }
 

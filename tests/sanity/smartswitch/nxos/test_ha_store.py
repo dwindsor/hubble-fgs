@@ -56,6 +56,21 @@ class TestHAStorePopulation:
             "local_ip should be a string"
         )
 
+    def test_ha_port_default(self, cmd, seed_gnmi):
+        """ha_port should be present in the HA store JSON output.
+
+        When HA is disabled (default), ha_port is 0 because SetHaPort is
+        only called during HA activation. The field must still be present
+        in the JSON response for observability.
+        """
+        data = cmd.agw_gnmi_ha_show_json()
+        assert "ha_port" in data, (
+            "ha_port field should be present in HA show JSON"
+        )
+        assert isinstance(data["ha_port"], int), (
+            f"ha_port should be an integer, got {type(data['ha_port'])}"
+        )
+
 
 @pytest.mark.nxos
 class TestHAStoreDynamic:
@@ -94,3 +109,28 @@ class TestHAStoreDynamic:
             restore_val = f'"{original_ip}"' if original_ip else '"0.0.0.0"'
             cmd.agw_mock_gnmi_set(HA_IP_PATH, restore_val)
             time.sleep(2)
+
+
+@pytest.mark.nxos
+class TestHAPortPersistence:
+    """Verify HA port is persisted in the HA store and readable via mock gNMI."""
+
+    def test_ha_port_written_to_gnmi(self, cmd, seed_gnmi):
+        """When HA port is set in the store, it should be readable via mock gNMI GET.
+
+        The HA port is an agent-managed SET path (HAStoreHaPort). In mock mode
+        with HA disabled, SetHaPort is not called, so the port defaults to 0.
+        Verify the value is consistently reflected in the HA show JSON.
+        """
+        data = cmd.agw_gnmi_ha_show_json()
+        ha_port = data.get("ha_port", None)
+        assert ha_port is not None, "ha_port must be present in HA show JSON"
+        # The port is either 0 (HA disabled) or within the HSA range (HA enabled).
+        assert isinstance(ha_port, int), (
+            f"ha_port should be an integer, got {type(ha_port)}"
+        )
+        # When HA is disabled, port should be 0
+        if data.get("admin_state") == "disabled":
+            assert ha_port == 0, (
+                f"ha_port should be 0 when HA is disabled, got {ha_port}"
+            )

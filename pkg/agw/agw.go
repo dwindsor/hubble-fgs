@@ -77,18 +77,6 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	}
 	dpuHigh, _ := strconv.Atoi(highStr)
 
-	// AGW ports
-	lowStr, ok = os.LookupEnv("NX_HSA_PORT_START")
-	if !ok {
-		lowStr = "28672"
-	}
-	cpaLow, _ := strconv.Atoi(lowStr)
-	highStr, ok = os.LookupEnv("NX_HSA_PORT_END")
-	if !ok {
-		highStr = "29695"
-	}
-	cpaHigh, _ := strconv.Atoi(highStr)
-
 	// Adding config callbacks
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpuListener.SubscribeDpuConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, dpuListener.SubscribeConfig)
@@ -129,8 +117,6 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 		serviceMac:    mac,
 		dpuPortLow:    uint16(dpuLow),
 		dpuPortHigh:   uint16(dpuHigh),
-		cpaPortLow:    uint16(cpaLow),
-		cpaPortHigh:   uint16(cpaHigh),
 		enableNXOS:    enableNXOS,
 		nxosManager:   nxosManager,
 		dpuListener:   dpuListener,
@@ -184,8 +170,6 @@ type AgentGateway struct {
 	serviceMac  string
 	dpuPortLow  uint16
 	dpuPortHigh uint16
-	cpaPortLow  uint16
-	cpaPortHigh uint16
 	enableNXOS  bool // Flag to enable/disable NXOS integration
 
 	nxosManager      nxos.Manager // NXOS manager instance
@@ -218,19 +202,6 @@ func (agw *AgentGateway) SkipAuth() bool {
 
 func (agw *AgentGateway) KeepAliveInterval() int {
 	return agw.Cfg.Agent.KeepAliveInterval
-}
-
-// GetPort returns a port within the CPA port range for the specified service type
-func (agw *AgentGateway) GetPort(serviceType ServicePortType) uint16 {
-	offset, err := GetServicePortOffset(serviceType)
-	if err != nil {
-		logger.GetLogger().Warn("Unknown service type for port allocation", "service_type", serviceType, "error", err)
-		return agw.cpaPortLow
-	}
-	if (agw.cpaPortLow + offset) > agw.cpaPortHigh {
-		logger.GetLogger().Warn("Requested port for service exceeds CPA port range", "service_type", serviceType)
-	}
-	return agw.cpaPortLow + offset
 }
 
 // Get preferred outbound ip of this machine
@@ -1835,6 +1806,7 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 			OperState      string          `json:"oper_state"`
 			IsLeader       bool            `json:"is_leader"`
 			LocalIP        string          `json:"local_ip"`
+			HaPort         uint16          `json:"ha_port"`
 			Local          LocalData       `json:"local"`
 			Peers          map[string]bool `json:"peers"`
 			AnyPeerAdjOk   bool            `json:"any_peer_adj_ok"`
@@ -1845,6 +1817,7 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 			OperState:      haStore.SwitchState(),
 			IsLeader:       haStore.IsLeader(),
 			LocalIP:        haStore.HaIP(),
+			HaPort:         haStore.HaPort(),
 			Local:          localData,
 			Peers:          peersJSON,
 			AnyPeerAdjOk:   haStore.AnyPeerAdjacencyCriteriaOk(),
@@ -1868,6 +1841,7 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 	fmt.Fprintf(w, "Oper State:\t%s\n", haStore.SwitchState())
 	fmt.Fprintf(w, "Leader:\t%v\n", haStore.IsLeader())
 	fmt.Fprintf(w, "Local IP:\t%s\n", haStore.HaIP())
+	fmt.Fprintf(w, "HA Port:\t%d\n", haStore.HaPort())
 
 	fmt.Fprintln(w, "\n--- Local State ---")
 	fmt.Fprintf(w, "HA State:\t%s (%s) since %s\n", local.HaState, local.HaStateReason, formatEpoch(local.HaStateEpoch))

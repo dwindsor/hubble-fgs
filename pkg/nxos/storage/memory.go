@@ -140,6 +140,7 @@ func (ms *MemoryStorage) LoadHA(ctx context.Context) (*HAState, error) {
 		Enabled:     ms.ha.Enabled,
 		SwitchState: ms.ha.SwitchState,
 		HaIP:        ms.ha.HaIP,
+		HaPort:      ms.ha.HaPort,
 	}
 	if len(ms.ha.PeerIPs) > 0 {
 		state.PeerIPs = append([]string(nil), ms.ha.PeerIPs...)
@@ -156,6 +157,7 @@ func (ms *MemoryStorage) SaveHA(ctx context.Context, state *HAState) error {
 		Enabled:     state.Enabled,
 		SwitchState: state.SwitchState,
 		HaIP:        state.HaIP,
+		HaPort:      state.HaPort,
 	}
 	if len(state.PeerIPs) > 0 {
 		s.PeerIPs = append([]string(nil), state.PeerIPs...)

@@ -178,6 +178,11 @@ HA_IP_PATH = (
 # HA store — agent-managed SET paths
 # ---------------------------------------------------------------------------
 
+HA_PORT_PATH = (
+    "device:/System/sas-items/svc-items/svcinst-items/"
+    "SvcInstance-list[name=hypershield]/ha-items/ext-items/agentHaPort"
+)
+
 HA_LOCAL_SVC_STATE_PATH = (
     "device:/System/sas-items/svc-items/svcinst-items/"
     "SvcInstance-list[name=hypershield]/fwpolicystate-items/ext-items/localSvcState"

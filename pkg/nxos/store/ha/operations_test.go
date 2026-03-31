@@ -17,6 +17,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/mock"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 )
 
@@ -468,6 +469,75 @@ func TestUpdatePeerAdjacency_Disconnect_ClearsConnectionCriteria(t *testing.T) {
 	// AnyPeerMemberCriteriaFail should return true (map has entries, all false).
 	if !store.AnyPeerMemberCriteriaFail() {
 		t.Error("expected AnyPeerMemberCriteriaFail()=true after disconnect clears criteria")
+	}
+}
+
+func TestSetHaPort_SetsFieldAndCallsGnmiSet(t *testing.T) {
+	ctx := context.Background()
+	handler := mock.NewHandler()
+	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
+
+	const testPort uint16 = 28416
+	err := store.SetHaPort(ctx, testPort)
+	if err != nil {
+		t.Fatalf("SetHaPort failed: %v", err)
+	}
+
+	// Verify store field updated.
+	if got := store.HaPort(); got != testPort {
+		t.Errorf("expected HaPort()=%d, got %d", testPort, got)
+	}
+
+	// Verify gNMI SET was called with the port as a decimal string.
+	data := handler.GetAllData()
+	key := normalizeMockPath(paths.HAStoreHaPort)
+	want := fmt.Sprintf("%d", testPort)
+	if v, ok := data[key]; !ok || v != want {
+		t.Errorf("expected gNMI SET for HAStoreHaPort=%q, got %v (found=%v)", want, v, ok)
+	}
+}
+
+func TestSetHaPort_PersistsToStorage(t *testing.T) {
+	ctx := context.Background()
+	mem := storage.NewMemoryStorage()
+	store := NewStore(ctx, WithStorage(mem)).(*haStore)
+
+	const testPort uint16 = 28416
+	if err := store.SetHaPort(ctx, testPort); err != nil {
+		t.Fatalf("SetHaPort failed: %v", err)
+	}
+
+	state, err := mem.LoadHA(ctx)
+	if err != nil {
+		t.Fatalf("LoadHA failed: %v", err)
+	}
+	if state.HaPort != testPort {
+		t.Errorf("expected persisted HaPort=%d, got %d", testPort, state.HaPort)
+	}
+}
+
+func TestNewStore_LoadsHaPortFromStorage(t *testing.T) {
+	ctx := context.Background()
+	mem := storage.NewMemoryStorage()
+
+	const testPort uint16 = 28416
+	if err := mem.SaveHA(ctx, &storage.HAState{HaPort: testPort}); err != nil {
+		t.Fatalf("SaveHA failed: %v", err)
+	}
+
+	store := NewStore(ctx, WithStorage(mem))
+	if got := store.HaPort(); got != testPort {
+		t.Errorf("expected HaPort()=%d after load, got %d", testPort, got)
+	}
+}
+
+func TestSetHaPort_NoGnmiHandler(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+
+	// Without a gNMI handler, SetHaPort should succeed silently.
+	if err := store.SetHaPort(ctx, 28416); err != nil {
+		t.Errorf("expected no error without gNMI handler, got %v", err)
 	}
 }
 

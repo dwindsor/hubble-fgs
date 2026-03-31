@@ -24,6 +24,7 @@ type Reader interface {
 	Enabled() string
 	SwitchState() string
 	HaIP() string
+	HaPort() uint16
 
 	// Local sub-object access (returns deep copy via Copy())
 	Local() types.HALocalState
@@ -53,6 +54,7 @@ type Store interface {
 	SetEnabled(ctx context.Context, state string)
 	SetSwitchState(ctx context.Context, state string)
 	SetHaIP(ctx context.Context, ip string)
+	SetHaPort(ctx context.Context, port uint16) error
 
 	// Local sub-object mutations
 	SetLocal(ctx context.Context, local types.HALocalState)

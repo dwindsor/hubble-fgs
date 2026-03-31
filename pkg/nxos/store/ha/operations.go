@@ -46,6 +46,22 @@ func (s *haStore) SetHaIP(ctx context.Context, ip string) {
 	s.persist(ctx)
 }
 
+// SetHaPort persists the HA gRPC port and SETs it to NXOS via gNMI.
+// This is an outbound-only operation; the path is never subscribed.
+func (s *haStore) SetHaPort(ctx context.Context, port uint16) error {
+	s.mu.Lock()
+	s.haPort = port
+	handler := s.gnmiHandler
+	s.mu.Unlock()
+
+	s.persist(ctx)
+
+	if handler == nil {
+		return nil
+	}
+	return handler.Set(ctx, paths.HAStoreHaPort, fmt.Sprintf("%d", port))
+}
+
 func (s *haStore) SetLocal(ctx context.Context, local types.HALocalState) {
 	s.mu.Lock()
 	s.localState = local

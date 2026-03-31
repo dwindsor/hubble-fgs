@@ -80,6 +80,9 @@ type Store interface {
 	SetSystemState(ctx context.Context, systemState int)
 	DeleteSystemState(ctx context.Context) error
 
+	// ReservePort returns the port for the given service type within the HSA range.
+	ReservePort(serviceType ServicePortType) (uint16, error)
+
 	// SetGnmiHandler sets the gNMI handler for state synchronization.
 	// This is called after the gNMI handler is initialized.
 	SetGnmiHandler(handler gnmi.GnmiHandler)

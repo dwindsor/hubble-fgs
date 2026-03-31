@@ -100,6 +100,8 @@ const (
 	// Agent managed paths (set)
 	// -------------------------
 
+	// haStore.HaPort
+	HAStoreHaPort = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/agentHaPort"
 	// haStore.Local.SvcState
 	HAStoreLocalSvcState = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicystate-items/ext-items/localSvcState"
 	// haStore.Local.SvcStateReason
