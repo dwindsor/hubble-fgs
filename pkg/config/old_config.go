@@ -37,16 +37,9 @@ type Environment struct {
 	SkipAuth    bool
 	IsContainer bool
 
-	// Cert paths
-	ClientCa   string // Client CA cert path
-	ClientCert string // Client cert path
-	ClientKey  string // Client key path
-	ServerCa   string // Server CA cert path
-	ServerCert string // Server cert path
-	ServerKey  string // Server key path
-
 	// Local paths
 	TokenPath        string // Token path for storing and loading auth tokens
+	MTLSPath         string // MTLS path for storing and loading mTLS certificates
 	MountDir         string // Host mount directory if running in a container
 	BinaryDir        string // Hypershield binary directory path, acts as the root directory for service management
 	DataplaneService string // Dataplane service symlink name
@@ -193,9 +186,7 @@ func (c *Config) read() error {
 
 	// Environment
 	c.Env.TokenPath = c.file.GetString("control_plane.token_path")
-	c.Env.ClientCa = c.file.GetString("control_plane.ca_cert")
-	c.Env.ClientCert = c.file.GetString("control_plane.client_cert")
-	c.Env.ClientKey = c.file.GetString("control_plane.client_key")
+	c.Env.MTLSPath = c.file.GetString("control_plane.mtls_path")
 
 	// Controller
 	c.Controller.Debug = c.file.GetBool("control_plane.debug")
@@ -216,16 +207,9 @@ func (c *Config) read() error {
 }
 
 func (c *Config) setValues() error {
-	// Certs
-	c.file.Set("control_plane.ca_cert", c.Env.ClientCa)
-	c.file.Set("control_plane.client_cert", c.Env.ClientCert)
-	c.file.Set("control_plane.client_key", c.Env.ClientKey)
-	c.file.Set("control_plane.server_ca", c.Env.ServerCa)
-	c.file.Set("control_plane.server_cert", c.Env.ServerCert)
-	c.file.Set("control_plane.server_key", c.Env.ServerKey)
-
 	// Local paths
 	c.file.Set("control_plane.token_path", c.Env.TokenPath)
+	c.file.Set("control_plane.mtls_path", c.Env.MTLSPath)
 	c.file.Set("control_plane.binary_dir", c.Env.BinaryDir)
 	c.file.Set("control_plane.dataplane_service", c.Env.DataplaneService)
 	c.file.Set("control_plane.dataplane_dir", c.Env.DataplaneDir)

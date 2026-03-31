@@ -86,8 +86,9 @@ func TestNewHTTPTransport(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transport := NewHTTPTransport(tt.config)
+			transport, err := NewHTTPTransport(tt.config)
 
+			require.NoError(t, err)
 			require.NotNil(t, transport)
 			assert.Equal(t, tt.expectedName, transport.Name())
 			assert.NotNil(t, transport.client)
@@ -135,7 +136,8 @@ func TestHTTPTransport_PushBatch_SingleMessage(t *testing.T) {
 		EndpointURL: server.URL + "/push",
 		Timeout:     5 * time.Second,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	// Create test message
 	msg := types.Msg{
@@ -145,7 +147,7 @@ func TestHTTPTransport_PushBatch_SingleMessage(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := transport.PushBatch(ctx, []types.Msg{msg})
+	err = transport.PushBatch(ctx, []types.Msg{msg})
 	assert.NoError(t, err)
 }
 
@@ -180,7 +182,8 @@ func TestHTTPTransport_PushBatch_MultipleBatch(t *testing.T) {
 		EndpointURL: server.URL + "/push",
 		Timeout:     5 * time.Second,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	// Create test messages
 	msgs := []types.Msg{
@@ -197,7 +200,7 @@ func TestHTTPTransport_PushBatch_MultipleBatch(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := transport.PushBatch(ctx, msgs)
+	err = transport.PushBatch(ctx, msgs)
 	assert.NoError(t, err)
 }
 
@@ -252,7 +255,8 @@ func TestHTTPTransport_PushBatch_PolicyEvent(t *testing.T) {
 		EndpointURL: server.URL + "/push",
 		Timeout:     5 * time.Second,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	msg := types.Msg{
 		ID:       uuid.New().String(),
@@ -261,7 +265,7 @@ func TestHTTPTransport_PushBatch_PolicyEvent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := transport.PushBatch(ctx, []types.Msg{msg})
+	err = transport.PushBatch(ctx, []types.Msg{msg})
 	assert.NoError(t, err)
 }
 
@@ -292,7 +296,8 @@ func TestHTTPTransport_PushBatch_BasicAuth(t *testing.T) {
 		Password:    expectedPassword,
 		Timeout:     5 * time.Second,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	msg := types.Msg{
 		ID:       uuid.New().String(),
@@ -301,7 +306,7 @@ func TestHTTPTransport_PushBatch_BasicAuth(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := transport.PushBatch(ctx, []types.Msg{msg})
+	err = transport.PushBatch(ctx, []types.Msg{msg})
 	assert.NoError(t, err)
 }
 
@@ -310,10 +315,11 @@ func TestHTTPTransport_PushBatch_EmptyBatch(t *testing.T) {
 		EndpointURL: ENDPOINTURL,
 		Timeout:     5 * time.Second,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	ctx := context.Background()
-	err := transport.PushBatch(ctx, []types.Msg{})
+	err = transport.PushBatch(ctx, []types.Msg{})
 	assert.NoError(t, err) // Should return nil for empty batch
 }
 
@@ -349,7 +355,8 @@ func TestHTTPTransport_PushBatch_HTTPErrors(t *testing.T) {
 				EndpointURL: server.URL,
 				Timeout:     5 * time.Second,
 			}
-			transport := NewHTTPTransport(config)
+			transport, err := NewHTTPTransport(config)
+			require.NoError(t, err)
 
 			msg := types.Msg{
 				ID:       uuid.New().String(),
@@ -358,7 +365,7 @@ func TestHTTPTransport_PushBatch_HTTPErrors(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			err := transport.PushBatch(ctx, []types.Msg{msg})
+			err = transport.PushBatch(ctx, []types.Msg{msg})
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -382,7 +389,8 @@ func TestHTTPTransport_PushBatch_ContextCancellation(t *testing.T) {
 		EndpointURL: server.URL,
 		Timeout:     5 * time.Second,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	msg := types.Msg{
 		ID:       uuid.New().String(),
@@ -394,7 +402,7 @@ func TestHTTPTransport_PushBatch_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
-	err := transport.PushBatch(ctx, []types.Msg{msg})
+	err = transport.PushBatch(ctx, []types.Msg{msg})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "context deadline exceeded")
 }
@@ -405,7 +413,8 @@ func TestHTTPTransport_PushBatch_NetworkError(t *testing.T) {
 		EndpointURL: "http://127.0.0.1:99999", // Invalid port
 		Timeout:     1 * time.Second,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	msg := types.Msg{
 		ID:       uuid.New().String(),
@@ -414,7 +423,7 @@ func TestHTTPTransport_PushBatch_NetworkError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := transport.PushBatch(ctx, []types.Msg{msg})
+	err = transport.PushBatch(ctx, []types.Msg{msg})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "HTTP request failed")
 }
@@ -423,7 +432,8 @@ func TestHTTPTransport_Name(t *testing.T) {
 	config := types.HTTPTransportConfig{
 		EndpointURL: ENDPOINTURL,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	assert.Equal(t, ENDPOINTURL, transport.Name())
 }
@@ -447,19 +457,6 @@ func TestCreateOptimizedTransport(t *testing.T) {
 				assert.False(t, transport.DisableKeepAlives)
 				assert.False(t, transport.DisableCompression)
 				assert.True(t, transport.ForceAttemptHTTP2)
-			},
-		},
-		{
-			name: "tls_configuration",
-			config: types.HTTPTransportConfig{
-				InsecureSkipVerify: true,
-				ServerName:         "custom-server.com",
-			},
-			validate: func(t *testing.T, transport *http.Transport) {
-				require.NotNil(t, transport.TLSClientConfig)
-				assert.True(t, transport.TLSClientConfig.InsecureSkipVerify)
-				assert.Equal(t, "custom-server.com", transport.TLSClientConfig.ServerName)
-				assert.Equal(t, 10*time.Second, transport.TLSHandshakeTimeout)
 			},
 		},
 		{
@@ -495,7 +492,8 @@ func TestHTTPTransport_DoWithTrace(t *testing.T) {
 	config := types.HTTPTransportConfig{
 		EndpointURL: server.URL,
 	}
-	transport := NewHTTPTransport(config)
+	transport, err := NewHTTPTransport(config)
+	require.NoError(t, err)
 
 	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
 	require.NoError(t, err)

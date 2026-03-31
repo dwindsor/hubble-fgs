@@ -35,9 +35,7 @@ func TestConfig(t *testing.T) {
 		"control_plane": {
 			"agent_id": "a5db62e1-80dc-4bfb-86ae-78b9c28d063a",
 			"token": "test_token",
-			"ca_cert": "test_ca_cert",
-			"client_cert": "test_client_cert",
-			"client_key": "test_client_key",
+			"mtls_path": "/path/to/mtls",
 			"keepalive_interval": 60,
 			"pd_sock_file": "/path/to/pd_sock_file",
 			"dp_state_file": "/path/to/dp_state_file",
@@ -79,21 +77,16 @@ func TestConfig(t *testing.T) {
 	c.Controller.Url = URL
 	c.Agent.AgentId = AGENT
 	// Also manually construct the full URLs for Controller as they might not be formed if Url is set directly
-
 	// Verify the values read from the config file
 	expectedEnv := Environment{
 		// Otp:        OTP, // OTP is not stored in Env directly anymore, it's used to derive AgentId, TenantId, Controller.Url
-		ClientCa:   "test_ca_cert",
-		ClientCert: "test_client_cert",
-		ClientKey:  "test_client_key",
-		TokenPath:  "/opt/cisco/daf/etc/k8sauth_token", // Default value
+		MTLSPath:  "/path/to/mtls",
+		TokenPath: "/opt/cisco/daf/etc/k8sauth_token", // Default value
 	}
 	// Create a temporary Env struct for comparison, excluding fields not set by test or defaults we care about here
 	actualEnvForCompare := Environment{
-		ClientCa:   c.Env.ClientCa,
-		ClientCert: c.Env.ClientCert,
-		ClientKey:  c.Env.ClientKey,
-		TokenPath:  c.Env.TokenPath,
+		MTLSPath:  c.Env.MTLSPath,
+		TokenPath: c.Env.TokenPath,
 	}
 	if !reflect.DeepEqual(actualEnvForCompare, expectedEnv) {
 		t.Errorf("Unexpected value for Env: got %+v, want %+v", actualEnvForCompare, expectedEnv)
@@ -130,9 +123,7 @@ func TestConfig(t *testing.T) {
 	configData = []byte(`{
 		"control_plane": {
 			"token": "new_test_token_from_file",
-			"ca_cert": "new_test_ca_cert",
-			"client_cert": "new_test_client_cert",
-			"client_key": "new_test_client_key",
+			"mtls_path": "/path/to/new_mtls",
 			"keepalive_interval": 30,
 			"pd_sock_file": "/new_path/to/pd_sock_file",
 			"dp_state_file": "/new_path/to/dp_state_file",
@@ -164,15 +155,15 @@ func TestConfig(t *testing.T) {
 	if c.Agent.AgentId != AGENT {
 		t.Errorf("AgentId not updated correctly from OTP: got %s, want %s", c.Agent.AgentId, AGENT)
 	}
-	if c.Env.ClientCa != "new_test_ca_cert" {
-		t.Errorf("ClientCa not updated: got %s, want new_test_ca_cert", c.Env.ClientCa)
+	if c.Env.MTLSPath != "/path/to/new_mtls" {
+		t.Errorf("MTLSPath not updated: got %s, want /path/to/new_mtls", c.Env.MTLSPath)
 	}
 
 	// Save the configuration. The token used for AgentId, TenantId, Controller.Url will be derived from HYPERSHIELD_TOKEN env var if set.
 	// To test saving a specific token to the file, we'd typically unset HYPERSHIELD_TOKEN or ensure c.file.Set("control_plane.token", ...) is called before Save.
 	// For this test, we'll assume HYPERSHIELD_TOKEN (OTP) is still set and its derived values are saved.
 	// We will change a non-token field to verify Save() writes it.
-	c.Env.ClientKey = "saved_client_key"
+	c.Env.MTLSPath = "saved_mtls_path"
 	err = c.Save()
 	if err != nil {
 		t.Fatalf("Failed to save configuration: %v", err)
@@ -182,7 +173,7 @@ func TestConfig(t *testing.T) {
 	// Unset HYPERSHIELD_TOKEN to ensure we load the token from the file if it was saved.
 	// However, current Save() logic prioritizes env var for deriving AgentId etc.
 	// The "control_plane.token" in the file itself might not be updated by Save() if HYPERSHIELD_TOKEN is set.
-	// Let's focus on checking the ClientKey we explicitly changed.
+	// Let's focus on checking the MTLSPath we explicitly changed.
 
 	// Create a new config instance to read fresh from file
 	c2 := &Config{}
@@ -191,8 +182,8 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("Failed to init new config for save check: %v", err)
 	}
 
-	if c2.Env.ClientKey != "saved_client_key" {
-		t.Errorf("Unexpected value for ClientKey after Save and Reload: got %s, want saved_client_key", c2.Env.ClientKey)
+	if c2.Env.MTLSPath != "saved_mtls_path" {
+		t.Errorf("Unexpected value for MTLSPath after Save and Reload: got %s, want saved_mtls_path", c2.Env.MTLSPath)
 	}
 
 	// Test that if HYPERSHIELD_TOKEN is NOT set, the token from file is used (if present)

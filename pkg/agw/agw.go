@@ -40,6 +40,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logexport"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
+	"github.com/isovalent/hubble-fgs/pkg/mtls"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	"github.com/isovalent/hubble-fgs/pkg/token"
@@ -143,6 +144,7 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	agw := &AgentGateway{
 		Cfg:           &config.Config{},
 		Token:         token.GetAgentToken(),
+		MTLS:          mtls.GetMTLSCertificates(),
 		StartupTime:   startupTime,
 		serviceMac:    mac,
 		dpuPortLow:    uint16(dpuLow),
@@ -186,6 +188,7 @@ type AgentGateway struct {
 
 	Cfg   *config.Config
 	Token *token.AgentToken
+	MTLS  *mtls.MTLSCertificates
 
 	serviceMac  string
 	dpuPortLow  uint16
@@ -270,6 +273,9 @@ func (agw *AgentGateway) Config(_ context.Context, path string) error {
 	agw.AgentId = agw.Cfg.Agent.AgentId
 	// HACK for cpa container scheduling/resource issue
 	agw.Cfg.Agent.KeepAliveInterval = 10
+
+	// Initialize mTLS certificate path after config is loaded
+	agw.InitializeMTLS()
 
 	return nil
 }
@@ -498,6 +504,37 @@ func (agw *AgentGateway) tryLoadK8sAuth() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// InitializeMTLS initializes the mutual TLS (mTLS) configuration for the AgentGateway.
+//
+// Returns true if mTLS initialization is successful, false otherwise.
+// Logs appropriate error messages when initialization fails due to:
+// - Uninitialized MTLS certificates handler
+// - Missing or empty mTLS path configuration
+// - Failure to configure the certificate path
+func (agw *AgentGateway) InitializeMTLS() bool {
+	if agw.MTLS == nil {
+		logger.GetLogger().Error("mTLS certificates handler not initialized")
+		return false
+	}
+
+	if agw.Cfg == nil || agw.Cfg.Env.MTLSPath == "" {
+		logger.GetLogger().Error("mTLS path is not configured in AGW config")
+		return false
+	}
+
+	// Configure the mTLS path from config using the mtls package function
+	if err := agw.MTLS.ConfigureCertificatePath(agw.Cfg.Env.MTLSPath); err != nil {
+		logger.GetLogger().Error("failed to configure mTLS certificate path",
+			logfields.Error, err,
+			"configuredPath", agw.Cfg.Env.MTLSPath)
+		return false
+	}
+
+	logger.GetLogger().Info("mTLS certificates path configured from AGW config",
+		"path", agw.Cfg.Env.MTLSPath)
+	return true
 }
 
 func (agw *AgentGateway) WaitForInService(ctx context.Context) {

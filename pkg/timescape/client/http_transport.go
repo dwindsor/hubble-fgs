@@ -37,24 +37,28 @@ type HTTPTransport struct {
 // NewHTTPTransport creates a new HTTP transport with the given configuration
 // It automatically chooses between BasicAuth and mTLS based on the UseMTLS flag
 func NewHTTPTransport(config types.HTTPTransportConfig) (*HTTPTransport, error) {
-	logger.GetLogger().Info("NewHTTPTransport called",
-		"UseMTLS", config.UseMTLS,
-		"EndpointURL", config.EndpointURL)
-
 	if config.UseMTLS {
-		return NewHTTPTransportWithMTLS(config)
+		return HttpTransportWithMTLS(config)
 	}
-	return NewHTTPTransportWithBasicAuth(config), nil
+	return HttpTransportWithBasicAuth(config), nil
 }
 
-// NewHTTPTransportWithBasicAuth creates a new HTTP transport with BasicAuth support
-func NewHTTPTransportWithBasicAuth(config types.HTTPTransportConfig) *HTTPTransport {
+// HttpTransportWithBasicAuth creates a new HTTP transport with BasicAuth support
+func HttpTransportWithBasicAuth(config types.HTTPTransportConfig) *HTTPTransport {
+	logger.GetLogger().Info("HttpTransportWithBasicAuth: creating HTTP transport with BasicAuth")
 	if config.Timeout == 0 {
 		config.Timeout = types.DefaultHTTPRequestTimeout
 	}
 
 	// Create HTTP transport with connection pooling and keep-alive
 	transport := createOptimizedTransport(config)
+	if len(config.EndpointURL) > 8 && config.EndpointURL[:8] == "https://" {
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: config.InsecureSkipVerify, // Use config setting
+			ServerName:         "",
+		}
+		transport.TLSHandshakeTimeout = types.DefaultTLSHandshakeTimeout
+	}
 
 	client := &http.Client{
 		Timeout:   config.Timeout,
@@ -67,8 +71,9 @@ func NewHTTPTransportWithBasicAuth(config types.HTTPTransportConfig) *HTTPTransp
 	}
 }
 
-// NewHTTPTransportWithMTLS creates a new HTTP transport with mTLS support for external AGW clients
-func NewHTTPTransportWithMTLS(config types.HTTPTransportConfig) (*HTTPTransport, error) {
+// HttpTransportWithMTLS creates a new HTTP transport with mTLS support for external AGW clients
+func HttpTransportWithMTLS(config types.HTTPTransportConfig) (*HTTPTransport, error) {
+	logger.GetLogger().Info("HttpTransportWithMTLS: creating HTTP transport with mTLS authentication")
 	if config.Timeout == 0 {
 		config.Timeout = types.DefaultHTTPRequestTimeout
 	}
@@ -218,7 +223,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	}
 
 	// Log the full payload for debugging
-	logger.GetLogger().Info("HTTP transport payload",
+	logger.GetLogger().Debug("HTTP transport payload",
 		"count", len(msgs),
 		"endpoint", h.config.EndpointURL,
 		"payload", string(reqBody),
@@ -252,7 +257,6 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 
 	if err != nil {
 		return fmt.Errorf("HTTP request failed: %w", err)
-
 	}
 	defer resp.Body.Close()
 
@@ -268,7 +272,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	}
 
 	// Log successful HTTP response
-	logger.GetLogger().Info("transport push successful",
+	logger.GetLogger().Debug("transport push successful",
 		"status_code", resp.StatusCode,
 		"status", resp.Status,
 		"count", len(msgs),
@@ -284,7 +288,7 @@ func (h *HTTPTransport) addAuthentication(req *http.Request) error {
 	if h.config.UseMTLS {
 		// For mTLS, authentication is handled via TLS client certificates
 		// The client certificate is already configured in the transport's TLS config
-		logger.GetLogger().Info("Using mTLS authentication")
+		logger.GetLogger().Debug("Using mTLS authentication")
 		return nil
 	}
 
@@ -292,7 +296,7 @@ func (h *HTTPTransport) addAuthentication(req *http.Request) error {
 	if h.config.Username != "" && h.config.Password != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(h.config.Username + ":" + h.config.Password))
 		req.Header.Set("Authorization", "Basic "+auth)
-		logger.GetLogger().Info("Using BasicAuth authentication")
+		logger.GetLogger().Debug("Using BasicAuth authentication")
 		return nil
 	}
 

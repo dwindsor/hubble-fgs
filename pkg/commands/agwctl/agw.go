@@ -438,16 +438,56 @@ func printTimescapeConfigTable(response string) {
 			result.WriteString(endpoint)
 			result.WriteString("\n")
 		}
+		// Authentication method display
+		if useBasicAuth, ok := serverInfo["use_basic_auth"].(bool); ok {
+			result.WriteString("  Use BasicAuth: ")
+			fmt.Fprintf(&result, "%t", useBasicAuth)
+			result.WriteString("\n")
+		}
 		if username, ok := serverInfo["username"].(string); ok {
-			result.WriteString("  Username:       ")
+			result.WriteString("    Username:       ")
 			result.WriteString(username)
 			result.WriteString("\n")
 		}
 		if password, ok := serverInfo["password"].(string); ok {
-			result.WriteString("  Password:      ")
+			result.WriteString("    Password:       ")
 			result.WriteString(password)
 			result.WriteString("\n")
 		}
+
+		if useMTLS, ok := serverInfo["use_mtls"].(bool); ok {
+			result.WriteString("  Use mTLS:      ")
+			fmt.Fprintf(&result, "%t", useMTLS)
+			result.WriteString("\n")
+		}
+
+		// mTLS configuration display with redaction
+		if mtlsIssuerGroup, ok := serverInfo["mtls_issuer_group"].(string); ok {
+			result.WriteString("    mTLS Issuer Group: ")
+			result.WriteString(mtlsIssuerGroup)
+			result.WriteString("\n")
+		}
+		if mtlsIssuerKind, ok := serverInfo["mtls_issuer_kind"].(string); ok {
+			result.WriteString("    mTLS Issuer Kind:  ")
+			result.WriteString(mtlsIssuerKind)
+			result.WriteString("\n")
+		}
+		if mtlsIssuerName, ok := serverInfo["mtls_issuer_name"].(string); ok {
+			result.WriteString("    mTLS Issuer Name:  ")
+			result.WriteString(mtlsIssuerName)
+			result.WriteString("\n")
+		}
+		if mtlsCASecretName, ok := serverInfo["mtls_ca_secret_name"].(string); ok {
+			result.WriteString("    mTLS CA Secret:    ")
+			result.WriteString(mtlsCASecretName)
+			result.WriteString("\n")
+		}
+		if mtlsCANamespace, ok := serverInfo["mtls_ca_secret_namespace"].(string); ok {
+			result.WriteString("    mTLS CA Namespace: ")
+			result.WriteString(mtlsCANamespace)
+			result.WriteString("\n")
+		}
+
 		if protocol, ok := serverInfo["protocol"].(string); ok {
 			result.WriteString("  Protocol:      ")
 			result.WriteString(protocol)

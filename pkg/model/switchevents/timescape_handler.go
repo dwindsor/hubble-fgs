@@ -154,12 +154,12 @@ func GetGlobalPolicyStatusHandler() policystatus.PolicyStatusHandler {
 }
 
 func SetGlobalPolicyStatusHandler(handler policystatus.PolicyStatusHandler) {
-	logger.GetLogger().Info("SetGlobalPolicyStatusHandler called", "handler_not_nil", handler != nil)
+	logger.GetLogger().Debug("SetGlobalPolicyStatusHandler called", "handler_not_nil", handler != nil)
 	handlerMu.Lock()
 	defer handlerMu.Unlock()
 
 	if globalTimescapeHandler != nil {
-		logger.GetLogger().Info("Global timescape handler found, setting policy status handler on it")
+		logger.GetLogger().Debug("Global timescape handler found, setting policy status handler on it")
 		if th, ok := globalTimescapeHandler.(*TimescapeHandler); ok {
 			th.policyStatusHandler = handler
 			logger.GetLogger().Info("Successfully set policy status handler on global timescape handler")
@@ -220,7 +220,7 @@ func (h *TimescapeHandler) ReportPolicyStatus(ctx context.Context) error {
 //
 // It blocks until the context is cancelled, at which point it gracefully shuts down the handler
 // and closes the client connection.
-func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, controllerManager *manager.ControllerManager) error {
+func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, _ *manager.ControllerManager) error {
 	// Get configuration from the config manager
 	config := CurrentTimescapeConfig()
 	if config == nil {
@@ -247,10 +247,6 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, controll
 		Password:    config.Password,
 		EndpointURL: config.Endpoint,
 		UseMTLS:     config.UseMTLS,
-
-		// mTLS configuration fields
-		MTLSCASecretName:      config.MTLSCASecretName,
-		MTLSCASecretNamespace: config.MTLSCASecretNamespace,
 
 		InsecureSkipVerify: types.DefaultInsecureSkipVerify,                       // Skip verification (development)
 		Timeout:            time.Duration(config.RequestTimeoutSec) * time.Second, // Use config value or default
@@ -360,10 +356,8 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, controll
 
 	// Set the policy status handler from the timescape setup on the DPU listener
 	// Do this synchronously to avoid race conditions with incoming policy events
-	logger.GetLogger().Debug("Setting up policy status handler on DPU listener")
 	policyStatusHandler := GetGlobalPolicyStatusHandler()
 	if policyStatusHandler != nil {
-		logger.GetLogger().Info("Policy status handler obtained from global timescape handler")
 		// Access the DPU listener through the AgentGateway and set the handler
 		dpuListener := agw.GetDPUListener()
 		if dpuListener != nil {

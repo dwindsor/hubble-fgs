@@ -1,9 +1,6 @@
 {
   "control_plane": {
     "binary_dir": "",
-    "ca_cert": "/tmp/cert/ctrlr-ca-cert.pem",
-    "client_cert": "/tmp/cert/agent-cert.pem",
-    "client_key": "/tmp/cert/agent-key.pem",
     "configure_script": "",
     "dataplane_binary": "",
     "dataplane_dir": "",
@@ -19,6 +16,7 @@
     "temp_dir": "",
     "token": "token123",
     "token_path": "/iox_data/k8s_apiserver_token",
+    "mtls_path": "/iox_data/mtls_certs",
     "verification_duration": 60
   },
   "dataplane": {

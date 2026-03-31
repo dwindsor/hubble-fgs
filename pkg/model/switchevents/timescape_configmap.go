@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
 
@@ -88,7 +89,7 @@ func SubscribeTimescapeConfig(oldConfig, newConfig *v1alpha.ConfigObject) error 
 
 		// New Config Added
 		// Convert protobuf config to our internal TimescapeConfig struct
-		internalConfig := convertProtobufToInternalConfig(timescapeConfig, setupContext, setupAgw, setupEnableNxos)
+		internalConfig := convertProtobufToInternalConfig(setupContext, timescapeConfig)
 
 		// Update the configuration
 		configManager := GetTimescapeConfigManager()
@@ -145,18 +146,18 @@ func checkForConfigMapName(oldConfig, newConfig *v1alpha.ConfigObject) bool {
 // 1. ConfigMap contains protobuf TimescapeConfig with mTLS.enabled = true
 // 2. This function extracts mTLS configuration and populates internal TimescapeConfig
 // 3. Sets UseMTLS = true and populates CA configuration from defaults
-// 4. Runtime values (SerialNumber, Namespace, ServiceIP) are populated later by enhanceMTLSConfig()
+// 4. Runtime values (SerialNumber, Namespace, ServiceIP) are populated later by setMTLSConfig()
 // 5. The internal config flows to HTTPTransportConfig in timescape_handler.go
 //
 // ConfigMap Fields Extracted:
 // - mTLS enabled flag from protobuf
-// - Only default CA Secret configuration (not runtime-specific values)
+// - CA Secret and IssuerRef configuration
 //
 // Runtime Fields (NOT from ConfigMap):
-// - MTLSSerialNumber: Set from AGW context at runtime
-// - MTLSNamespace: Set from runtime environment
-// - MTLSServiceIP: Set by caller when needed
-func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig, ctx context.Context, agw *agw.AgentGateway, enableNXOS bool) *TimescapeConfig {
+// - SerialNumber: Set from nxos context if available, otherwise "unknown"
+// - Namespace: Set from Service Account token
+// - ServiceIP: Set from nxos context
+func convertProtobufToInternalConfig(ctx context.Context, pbConfig *v1alpha.TimescapeConfig) *TimescapeConfig {
 	config := &TimescapeConfig{
 		ClientEnabled:        true, // Enable client when ConfigMap is present
 		Host:                 pbConfig.GetHost(),
@@ -207,18 +208,16 @@ func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig, ctx cont
 		config.UseMTLS = false
 		config.Username = basicAuth.GetUsername()
 		config.Password = basicAuth.GetPassword()
-		logger.GetLogger().Debug("timescape: configured BasicAuth authentication",
+		logger.GetLogger().Info("timescape: configured BasicAuth authentication",
 			"username", config.Username,
-			"hasPassword", config.Password != "")
+			"hasPassword", config.Password != "",
+			"useBasicAuth", config.UseBasicAuth,
+			"useMTLS", config.UseMTLS)
 	} else if mtls := pbConfig.GetMtls(); mtls != nil {
 		config.UseBasicAuth = false
 		config.UseMTLS = mtls.GetEnabled()
-		config.Username = "" // mTLS doesn't use username/password
+		config.Username = ""
 		config.Password = ""
-
-		logger.GetLogger().Info("timescape: configuring mTLS authentication from ConfigMap",
-			"mtlsEnabled", mtls.GetEnabled(),
-			"useMTLS", config.UseMTLS)
 
 		// Extract Certificate Manager configuration (MTLSCertManager)
 		if cm := mtls.GetCertmanager(); cm != nil {
@@ -226,10 +225,6 @@ func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig, ctx cont
 				config.MTLSIssuerGroup = issuerRef.GetGroup()
 				config.MTLSIssuerKind = issuerRef.GetKind()
 				config.MTLSIssuerName = issuerRef.GetName()
-				logger.GetLogger().Debug("timescape: extracted certificate manager config",
-					"issuerGroup", config.MTLSIssuerGroup,
-					"issuerKind", config.MTLSIssuerKind,
-					"issuerName", config.MTLSIssuerName)
 			}
 		}
 
@@ -237,23 +232,12 @@ func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig, ctx cont
 		if ca := mtls.GetManagedCa(); ca != nil {
 			config.MTLSCASecretName = ca.GetSecretName()
 			config.MTLSCASecretNamespace = ca.GetSecretNamespace()
-			logger.GetLogger().Debug("timescape: extracted client CA config",
-				"caSecretName", config.MTLSCASecretName,
-				"caSecretNamespace", config.MTLSCASecretNamespace)
 		}
 
 		// Apply enhanced mTLS configuration with runtime values
 		if err := setMTLSConfig(ctx, config, setupAgw, setupEnableNxos); err != nil {
-			logger.GetLogger().Warn("Failed to set enhanced mTLS configuration", "error", err)
+			logger.GetLogger().Warn("failed to set mTLS configuration", "error", err)
 		}
-
-		logger.GetLogger().Info("timescape: configured comprehensive mTLS authentication",
-			"enabled", config.UseMTLS,
-			"issuerGroup", config.MTLSIssuerGroup,
-			"issuerKind", config.MTLSIssuerKind,
-			"issuerName", config.MTLSIssuerName,
-			"caSecretName", config.MTLSCASecretName,
-			"caSecretNamespace", config.MTLSCASecretNamespace)
 	} else {
 		logger.GetLogger().Warn("timescape: no authentication method configured")
 	}
@@ -261,14 +245,8 @@ func convertProtobufToInternalConfig(pbConfig *v1alpha.TimescapeConfig, ctx cont
 	return config
 }
 
-// setMTLSConfig populates comprehensive mTLS configuration fields from proto MTLSConfig
-// This function extracts the complete mTLS configuration from the protobuf structure
-// and populates all enhanced mTLS fields in the internal TimescapeConfig.
-//
-// Fields populated from proto MTLSConfig:
-// - Certificate Manager configuration (issuer_group, kind, issuer_name)
-// - Client CA configuration (ca_secret_name, ca_secret_namespace)
-// - mTLS enabled flag
+// setMTLSConfig populates mTLS configuration fields from proto MTLSConfig
+// and gets the K8s certificates from on-prem controller
 //
 // Fields populated from runtime/defaults:
 // - Serial number from AGW context
@@ -280,7 +258,6 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 	}
 
 	if agw == nil {
-		logger.GetLogger().Warn("AGW not available, cannot populate mTLS serial number")
 		return fmt.Errorf("AGW context not available for mTLS configuration")
 	}
 
@@ -291,45 +268,31 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 	}
 
 	// Service Account Namespace
-	saNamespace := ""
-	serviceIp := ""
+	saNamespace := "hypershield"
 	if agw.Token != nil {
 		saNamespace = agw.Token.K8sNamespace()
-	} else {
-		// TODO
-		logger.GetLogger().Warn("AGW token not available, cannot populate Service Account namespace for mTLS configuration")
-		saNamespace = "hypershield" // Fallback namespace
 	}
 
-	// Fallback for missing service IP (required for mTLS certificate SAN)
+	// Get service IP from AGW
+	serviceIp := agw.GetServiceIp()
+	// For test containers where nxos is not present, uncomment the below line
+	// serviceIp = "127.0.0.1" // use localhost
 	if serviceIp == "" {
-		logger.GetLogger().Warn("Service IP not available from AGW, using default for mTLS certificate")
-		// Temporary fallback IP for local testing - in production, this should be properly set
-		serviceIp = "171.70.188.33" // Fallback IP for certificate SAN
-		// return nil
+		// Fail if service IP is not available, since it's critical for certificate generation
+		return fmt.Errorf("timescape: service IP not available for mTLS configuration")
 	}
 
 	// Certificate Manager Configuration
 	if config.MTLSIssuerGroup == "" || config.MTLSIssuerKind == "" || config.MTLSIssuerName == "" {
 		// No certificate manager config from proto
 		return fmt.Errorf("mTLS enabled but certificate IssuerName missing from ConfigMap")
-	} else {
-		logger.GetLogger().Info("timescape: using certificate manager from ConfigMap",
-			"issuerGroup", config.MTLSIssuerGroup,
-			"issuerKind", config.MTLSIssuerKind,
-			"issuerName", config.MTLSIssuerName)
 	}
 
 	// Client CA Configuration
-	// Use ConfigMap values if available, otherwise apply intelligent defaults
 	if config.MTLSCASecretName == "" || config.MTLSCASecretNamespace == "" {
 		return fmt.Errorf("mTLS enabled but client CA Secret configuration missing from ConfigMap")
 	}
-	logger.GetLogger().Info("timescape: using client CA from ConfigMap",
-		"caSecretName", config.MTLSCASecretName,
-		"caSecretNamespace", config.MTLSCASecretNamespace)
-
-	logger.GetLogger().Info("comprehensive mTLS configuration applied",
+	logger.GetLogger().Info("timescape: mTLS configuration applied",
 		"enabled", config.UseMTLS,
 		"serialNumber", serialNumber,
 		"namespace", saNamespace,
@@ -340,20 +303,52 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 		"caSecretName", config.MTLSCASecretName,
 		"caSecretNamespace", config.MTLSCASecretNamespace)
 
+	// Load the certificate if they are present in persistence file
+	if loadMTLSCertificates() {
+		logger.GetLogger().Info("timescape: mTLS certificates loaded successfully, mTLS authentication will be used")
+		return nil
+	}
+
 	// Create mTLS client configuration for certificate manager
 	clientConfig := mtls.NewClientConfig(serialNumber, saNamespace,
 		serviceIp, config.MTLSCASecretName, config.MTLSCASecretNamespace, config.MTLSIssuerName, config.MTLSIssuerGroup, config.MTLSIssuerKind)
 	if clientConfig == nil {
-		logger.GetLogger().Error("Failed to create mTLS client configuration")
-		return fmt.Errorf("failed to create mTLS client configuration")
+		return fmt.Errorf("timescape: failed to create mTLS client configuration")
 	}
 
 	// Create certificate manager
 	certManager := mtls.GetCertificateManagerInstance(setupControllerManager, clientConfig)
 	if certManager == nil {
-		logger.GetLogger().Error("Failed to create mTLS certificate manager")
-		return fmt.Errorf("failed to create mTLS certificate manager")
+		return fmt.Errorf("timescape: failed to create mTLS certificate manager")
 	}
 
 	return certManager.CompleteCertificateFlow(ctx)
+}
+
+// LoadMTLSCertificates attempts to load mTLS certificates from the configured path.
+// It tries to load existing certificates first, and if they don't exist or are invalid,
+// it logs a warning but doesn't fail since mTLS certificates are optional.
+// Returns true if certificates are loaded successfully, false otherwise.
+func loadMTLSCertificates() bool {
+	// Try loading existing certificates
+	mtlsCerts := mtls.GetMTLSCertificates()
+	if mtlsCerts == nil {
+		logger.GetLogger().Warn("mTLS certificates not available, mTLS authentication will not be used")
+		return false
+	}
+	loaded, err := mtlsCerts.Load()
+	if err != nil {
+		logger.GetLogger().Warn("timescape: failed to load mTLS certificates from file",
+			logfields.Error, err,
+			"path", mtlsCerts.CertsPath())
+		return false
+	}
+
+	if !loaded {
+		logger.GetLogger().Info("timescape: mTLS certificate file not found, certificates not loaded",
+			"path", mtlsCerts.CertsPath())
+		return false
+	}
+
+	return true
 }

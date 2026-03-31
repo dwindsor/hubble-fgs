@@ -20,15 +20,19 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/manager"
-	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	certificatesv1 "k8s.io/api/certificates/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/manager"
+
+	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 )
 
 // Certificate approval timeout constants
@@ -104,11 +108,12 @@ func buildSignerName(kind, group, name string) string {
 	}
 	// Handle cert-manager issuers with kind.group/name format
 	if kind != "" && group != "" && name != "" {
-		if kind == "Issuer" {
+		switch kind {
+		case "Issuer":
 			kind = "issuers"
-		} else if kind == "ClusterIssuer" {
+		case "ClusterIssuer":
 			kind = "clusterissuers"
-		} else {
+		default:
 			logger.GetLogger().Error("Unsupported issuer kind for signer name", "kind", kind)
 			return ""
 		}
@@ -138,7 +143,7 @@ func setClientConfig(serialNumber, namespace, serviceIP, caSecretName, caNamespa
 	if ip := net.ParseIP(serviceIP); ip != nil {
 		ipAddresses = append(ipAddresses, ip)
 	} else {
-		logger.GetLogger().Warn("Invalid service IP address provided", "serviceIP", serviceIP)
+		logger.GetLogger().Warn("invalid service IP address provided", "serviceIP", serviceIP)
 	}
 
 	return &ClientConfig{
@@ -165,7 +170,7 @@ func setClientConfig(serialNumber, namespace, serviceIP, caSecretName, caNamespa
 func NewClientConfig(serialNumber, namespace, serviceIP, caSecretName, caSecretNamespace, mtlsIssuerName, mtlsIssuerGroup, mtlsIssuerKind string) *ClientConfig {
 	signerName := buildSignerName(mtlsIssuerKind, mtlsIssuerGroup, mtlsIssuerName)
 	if signerName == "" {
-		logger.GetLogger().Error("Failed to build signer name for mTLS client configuration")
+		logger.GetLogger().Error("failed to build signer name for mTLS client configuration")
 		return nil
 	}
 
@@ -186,14 +191,14 @@ func (cm *CertificateManager) getKubeClient() kubernetes.Interface {
 	// Get the rest config from the controller-runtime manager
 	config := cm.controllerMgr.Manager.GetConfig()
 	if config == nil {
-		logger.GetLogger().Error("Failed to get rest config from ControllerManager")
+		logger.GetLogger().Error("failed to get rest config from ControllerManager")
 		return nil
 	}
 
 	// Create a Kubernetes clientset from the config
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		logger.GetLogger().Error("Failed to create Kubernetes clientset from config", "error", err)
+		logger.GetLogger().Error("failed to create Kubernetes clientset from config", "error", err)
 		return nil
 	}
 
@@ -208,7 +213,7 @@ func GetCertificateManagerInstance(controller *manager.ControllerManager, config
 			controllerMgr: controller,
 			clientConfig:  config,
 		}
-		logger.GetLogger().Debug("Created singleton CertificateManager instance")
+		logger.GetLogger().Debug("created singleton CertificateManager instance")
 	})
 	return certificateManagerInstance
 }
@@ -230,14 +235,13 @@ func UpdateCertificateManagerConfig(controller *manager.ControllerManager, confi
 	if certificateManagerInstance != nil {
 		certificateManagerInstance.controllerMgr = controller
 		certificateManagerInstance.clientConfig = config
-		logger.GetLogger().Debug("Updated singleton CertificateManager configuration")
-		// Sharmila: Revisit when the mtls specific configuration changes.
+		logger.GetLogger().Debug("updated singleton CertificateManager configuration")
 	}
 }
 
 // GenerateKeyPair generates a new RSA private key
 func (cm *CertificateManager) GenerateKeyPair() error {
-	logger.GetLogger().Info("Generating RSA private key", "keySize", cm.clientConfig.KeySize)
+	logger.GetLogger().Info("generating RSA private key", "keySize", cm.clientConfig.KeySize)
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, cm.clientConfig.KeySize)
 	if err != nil {
@@ -245,7 +249,7 @@ func (cm *CertificateManager) GenerateKeyPair() error {
 	}
 
 	cm.clientPrivateKey = privateKey
-	logger.GetLogger().Info("Successfully generated private key")
+	logger.GetLogger().Debug("successfully generated private key")
 	return nil
 }
 
@@ -255,9 +259,9 @@ func (cm *CertificateManager) CreateCSR() ([]byte, error) {
 		return nil, fmt.Errorf("private key not generated")
 	}
 
-	logger.GetLogger().Info("Creating Certificate Signing Request", "commonName", cm.clientConfig.CommonName)
+	logger.GetLogger().Info("creating mTLS Certificate Signing Request", "commonName", cm.clientConfig.CommonName)
 
-	logger.GetLogger().Info("Debug: CSR configuration",
+	logger.GetLogger().Debug("CSR configuration",
 		"signerName", cm.clientConfig.SignerName,
 		"csrName", cm.clientConfig.CSRName,
 		"namespace", cm.clientConfig.Namespace)
@@ -285,13 +289,13 @@ func (cm *CertificateManager) CreateCSR() ([]byte, error) {
 		Bytes: csrDER,
 	})
 
-	logger.GetLogger().Debug("Created CSR", "csrLength", len(csrPEM))
+	logger.GetLogger().Debug("created CSR", "csrLength", len(csrPEM))
 	return csrPEM, nil
 }
 
 // SubmitCSRToKubernetes submits the CSR to Kubernetes API server
 func (cm *CertificateManager) SubmitCSRToKubernetes(ctx context.Context, csrPEM []byte) error {
-	logger.GetLogger().Info("Submitting CSR to Kubernetes", "csrName", cm.clientConfig.CSRName)
+	logger.GetLogger().Info("submitting CSR to Kubernetes", "csrName", cm.clientConfig.CSRName)
 
 	// Get Kubernetes client and validate it's available
 	kubeClient := cm.getKubeClient()
@@ -317,27 +321,56 @@ func (cm *CertificateManager) SubmitCSRToKubernetes(ctx context.Context, csrPEM 
 		},
 	}
 
-	logger.GetLogger().Debug("Created CSR object", "signerName", cm.clientConfig.SignerName, "usages", cm.clientConfig.Usages)
+	logger.GetLogger().Debug("created CSR object", "signerName", cm.clientConfig.SignerName, "usages", cm.clientConfig.Usages)
 
 	// Add timeout to prevent hanging
 	submitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	// Submit CSR with timeout
-	logger.GetLogger().Debug("Calling Kubernetes API to create CSR...")
+	logger.GetLogger().Debug("calling Kubernetes API to create CSR...")
 	result, err := kubeClient.CertificatesV1().CertificateSigningRequests().Create(submitCtx, csr, metav1.CreateOptions{})
 	if err != nil {
-		logger.GetLogger().Error("Failed to create CSR", "error", err, "csrName", cm.clientConfig.CSRName)
+		// Check if CSR already exists
+		if kerrors.IsAlreadyExists(err) {
+			logger.GetLogger().Info("CSR already exists, checking existing CSR status", "csrName", cm.clientConfig.CSRName)
+
+			// Get the existing CSR to check its status
+			existingCSR, getErr := kubeClient.CertificatesV1().CertificateSigningRequests().Get(submitCtx, cm.clientConfig.CSRName, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("failed to create CSR: %w", err)
+			}
+
+			// Check if the existing CSR is already approved and issued
+			if len(existingCSR.Status.Certificate) > 0 {
+				// Continue with the existing CSR
+				logger.GetLogger().Info("existing CSR is already approved and issued, using existing certificate")
+				return nil
+			}
+
+			// For denied CSRs or other conflicts, return error to trigger retry at higher level
+			for _, condition := range existingCSR.Status.Conditions {
+				if condition.Type == certificatesv1.CertificateDenied {
+					logger.GetLogger().Warn("existing CSR was denied", "reason", condition.Message)
+					return fmt.Errorf("existing CSR was denied: %s", condition.Message)
+				}
+			}
+
+			// CSR exists but not yet processed - we can continue with it
+			logger.GetLogger().Info("existing CSR is pending, will wait for approval")
+			return nil
+		}
+
 		return fmt.Errorf("failed to create CSR: %w", err)
 	}
 
-	logger.GetLogger().Info("Successfully submitted CSR to Kubernetes", "csrName", result.Name, "uid", result.UID)
+	logger.GetLogger().Info("successfully submitted CSR to Kubernetes", "csrName", result.Name, "uid", result.UID)
 	return nil
 }
 
 // WaitForCertificateApproval waits for the CSR to be approved and signed
 func (cm *CertificateManager) WaitForCertificateApproval(ctx context.Context, timeout time.Duration) error {
-	logger.GetLogger().Info("Waiting for certificate approval", "timeout", timeout)
+	logger.GetLogger().Info("waiting for certificate approval", "timeout", timeout)
 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -348,7 +381,7 @@ func (cm *CertificateManager) WaitForCertificateApproval(ctx context.Context, ti
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for certificate approval: %w", ctx.Err())
+			return fmt.Errorf("timeout waiting for mTLS certificate approval: %w", ctx.Err())
 		case <-ticker.C:
 			// Get Kubernetes client and validate it's available
 			kubeClient := cm.getKubeClient()
@@ -359,24 +392,24 @@ func (cm *CertificateManager) WaitForCertificateApproval(ctx context.Context, ti
 
 			csr, err := kubeClient.CertificatesV1().CertificateSigningRequests().Get(ctx, cm.clientConfig.CSRName, metav1.GetOptions{})
 			if err != nil {
-				logger.GetLogger().Warn("Failed to get CSR status", "error", err)
+				logger.GetLogger().Warn("failed to get mTLS CSR status", "error", err)
 				continue
 			}
 
 			// Check if CSR is approved and certificate is available
 			if len(csr.Status.Certificate) > 0 {
-				logger.GetLogger().Info("Certificate approved and signed")
+				logger.GetLogger().Info("mTLS certificate approved and signed")
 				return cm.processCertificate(csr.Status.Certificate)
 			}
 
 			// Check for denial
 			for _, condition := range csr.Status.Conditions {
 				if condition.Type == certificatesv1.CertificateDenied {
-					return fmt.Errorf("certificate request denied: %s", condition.Message)
+					return fmt.Errorf("mTLS certificate request denied: %s", condition.Message)
 				}
 			}
 
-			logger.GetLogger().Debug("Certificate not yet approved, waiting...")
+			logger.GetLogger().Debug("mTLS certificate not yet approved, waiting...")
 		}
 	}
 }
@@ -386,17 +419,17 @@ func (cm *CertificateManager) processCertificate(certPEM []byte) error {
 	// Decode PEM certificate
 	block, _ := pem.Decode(certPEM)
 	if block == nil {
-		return fmt.Errorf("failed to decode certificate PEM")
+		return fmt.Errorf("failed to decode mTLS certificate PEM")
 	}
 
 	// Parse certificate
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return fmt.Errorf("failed to parse certificate: %w", err)
+		return fmt.Errorf("failed to parse mTLS certificate: %w", err)
 	}
 
 	cm.clientCertificate = cert
-	logger.GetLogger().Info("Successfully processed signed certificate",
+	logger.GetLogger().Info("successfully processed signed mTLS certificate",
 		"subject", cert.Subject.String(),
 		"notAfter", cert.NotAfter,
 		"serialNumber", cert.SerialNumber.String())
@@ -415,14 +448,13 @@ func (cm *CertificateManager) FetchCACertificateFromSecret(ctx context.Context) 
 
 // fetchCACertificateFromSecret is a private helper that uses the provided kubeClient
 func (cm *CertificateManager) fetchCACertificateFromSecret(ctx context.Context, kubeClient kubernetes.Interface) error {
-	logger.GetLogger().Info("Fetching CA certificate from Secret",
+	logger.GetLogger().Info("fetching mTLS CA certificate from Secret",
 		"namespace", cm.clientConfig.CaNamespace,
 		"secretName", cm.clientConfig.CaSecretName)
 
 	// Get the Timescape CA certificate from the Timescape CA k8s secret
 	timescapeCaSecret, err := kubeClient.CoreV1().Secrets(cm.clientConfig.CaNamespace).Get(ctx, cm.clientConfig.CaSecretName, metav1.GetOptions{})
 	if err != nil {
-		logger.GetLogger().Error("Failed to get Timescape CA k8s secret", "error", err, "namespace", cm.clientConfig.CaNamespace, "secretName", cm.clientConfig.CaSecretName)
 		return fmt.Errorf("failed to get Timescape CA k8s secret %v/%v: %w", cm.clientConfig.CaNamespace, cm.clientConfig.CaSecretName, err)
 	}
 
@@ -436,38 +468,100 @@ func (cm *CertificateManager) fetchCACertificateFromSecret(ctx context.Context, 
 
 // LoadCACertificate loads the CA certificate for server verification
 func (cm *CertificateManager) LoadCACertificate(caCertPEM []byte) error {
-	logger.GetLogger().Info("Loading CA certificate for server verification")
+	logger.GetLogger().Info("loading mTLS CA certificate for server verification")
 
 	// Decode PEM certificate
 	block, _ := pem.Decode(caCertPEM)
 	if block == nil {
-		return fmt.Errorf("failed to decode CA certificate PEM")
+		return fmt.Errorf("failed to decode mTLS CA certificate PEM")
 	}
 
 	// Parse certificate
 	caCert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return fmt.Errorf("failed to parse CA certificate: %w", err)
+		return fmt.Errorf("failed to parse mTLS CA certificate: %w", err)
 	}
 
 	cm.caCert = caCert
-	logger.GetLogger().Info("Successfully loaded CA certificate",
+	logger.GetLogger().Info("successfully loaded mTLS CA certificate",
 		"subject", caCert.Subject.String(),
 		"notAfter", caCert.NotAfter)
 
 	return nil
 }
 
+// persistCertificates saves the client certificate, private key, and CA certificate to persistent storage
+// using the MTLSCertificates singleton for file-based persistence
+func (cm *CertificateManager) persistCertificates() error {
+	if cm.clientPrivateKey == nil || cm.clientCertificate == nil {
+		return fmt.Errorf("mTLS certificates not available for persistence")
+	}
+
+	// Get the MTLS persistence singleton
+	mtlsCerts := GetMTLSCertificates()
+	if mtlsCerts == nil {
+		return fmt.Errorf("mTLS certificates persistence not available")
+	}
+
+	// Convert private key to PEM format
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(cm.clientPrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to marshal mTLS private key: %w", err)
+	}
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyBytes,
+	})
+
+	// Convert client certificate to PEM format
+	clientCertPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cm.clientCertificate.Raw,
+	})
+
+	// Convert CA certificate to PEM format (if available)
+	var caCertPEM []byte
+	if cm.caCert != nil {
+		caCertPEM = pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: cm.caCert.Raw,
+		})
+	} else {
+		logger.GetLogger().Warn("mTLS CA certificate not available, persisting without CA cert")
+		// Use empty PEM for CA cert if not available
+		caCertPEM = []byte("")
+	}
+
+	// Validate the certificate-key pair before persistence
+	_, err = tls.X509KeyPair(clientCertPEM, privateKeyPEM)
+	if err != nil {
+		return fmt.Errorf("invalid mTLS certificate-key pair for persistence: %w", err)
+	}
+
+	// Persist all certificates
+	err = mtlsCerts.SetAndPersistCertificates(
+		string(clientCertPEM),
+		string(privateKeyPEM),
+		string(caCertPEM),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to persist mTLS certificates: %w", err)
+	}
+
+	logger.GetLogger().Info("successfully persisted mTLS certificates to file")
+	return nil
+}
+
 // GetTLSConfig returns a TLS configuration for mTLS client authentication
 func (cm *CertificateManager) GetTLSConfig() (*tls.Config, error) {
 	if cm.clientPrivateKey == nil {
-		return nil, fmt.Errorf("private key not available")
+		return nil, fmt.Errorf("mTLS private key not available")
 	}
 	if cm.clientCertificate == nil {
-		return nil, fmt.Errorf("certificate not available")
+		return nil, fmt.Errorf("mTLS certificate not available")
 	}
 
-	// Create TLS certificate from private key and certificate
+	// Create mTLS certificate from private key and certificate
 	tlsCert := tls.Certificate{
 		Certificate: [][]byte{cm.clientCertificate.Raw},
 		PrivateKey:  cm.clientPrivateKey,
@@ -486,40 +580,90 @@ func (cm *CertificateManager) GetTLSConfig() (*tls.Config, error) {
 		tlsConfig.RootCAs = certPool
 	}
 
-	logger.GetLogger().Info("Created TLS config for mTLS authentication")
+	logger.GetLogger().Info("created mTLS config for authentication")
 	return tlsConfig, nil
 }
 
 // CompleteCertificateFlow performs the complete certificate generation and approval flow
 func (cm *CertificateManager) CompleteCertificateFlow(ctx context.Context) error {
-	return cm.completeCertificateFlow(ctx, false)
+	return cm.completeCertificateFlowWithRetry(ctx, false, 3) // Allow up to 3 attempts for CSR creation
+}
+
+// completeCertificateFlowWithRetry performs the complete certificate flow with retry logic for CSR conflicts
+func (cm *CertificateManager) completeCertificateFlowWithRetry(ctx context.Context, isRenewal bool, maxAttempts int) error {
+	var lastErr error
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		logger.GetLogger().Debug("mTLS certificate flow attempt", "attempt", attempt, "maxAttempts", maxAttempts)
+
+		err := cm.completeCertificateFlow(ctx, isRenewal)
+		if err == nil {
+			if attempt > 1 {
+				logger.GetLogger().Info("mTLS certificate flow succeeded after retry", "attempt", attempt)
+			}
+			return nil // Success
+		}
+
+		lastErr = err
+
+		// Check if this is a retryable error (CSR conflicts, denials)
+		if kerrors.IsAlreadyExists(err) || strings.Contains(err.Error(), "denied") {
+			logger.GetLogger().Warn("mTLS certificate flow failed with retryable error",
+				"error", err, "attempt", attempt, "maxAttempts", maxAttempts)
+
+			if attempt < maxAttempts {
+				// Clean up existing CSR before retry to avoid conflicts
+				if cleanupErr := cm.cleanupOldCSR(ctx); cleanupErr != nil {
+					logger.GetLogger().Error("failed to cleanup existing mTLS CSR during retry", "error", cleanupErr)
+				} else {
+					logger.GetLogger().Info("cleaned up existing mTLS CSR for retry", "csrName", cm.clientConfig.CSRName)
+				}
+
+				// Wait a short time before retry to avoid rapid recreation conflicts
+				select {
+				case <-ctx.Done():
+					return fmt.Errorf("mTLS context cancelled during retry: %w", ctx.Err())
+				case <-time.After(time.Duration(attempt) * 2 * time.Second): // Exponential backoff
+					continue
+				}
+			}
+		} else {
+			// Non-retryable error, fail immediately
+			logger.GetLogger().Error("mTLS certificate flow failed with non-retryable error", "error", err)
+			return err
+		}
+	}
+
+	return fmt.Errorf("mTLS certificate flow failed after %d attempts: %w", maxAttempts, lastErr)
 }
 
 // completeCertificateFlow performs the complete certificate generation and approval flow
 // The isRenewal parameter controls timeout and CSR naming behavior
 func (cm *CertificateManager) completeCertificateFlow(ctx context.Context, isRenewal bool) error {
 	if isRenewal {
-		logger.GetLogger().Info("Starting certificate renewal flow")
-		// Update CSR name to avoid conflicts during renewal
-		cm.clientConfig.CSRName = fmt.Sprintf("agw-client-%s-%d", cm.clientConfig.SerialNumber, time.Now().Unix())
+		logger.GetLogger().Info("starting mTLS certificate renewal flow")
 	} else {
-		logger.GetLogger().Info("Starting complete certificate flow")
+		logger.GetLogger().Info("starting complete mTLS certificate flow")
 	}
 
-	// Step 1: Generate key pair
-	if err := cm.GenerateKeyPair(); err != nil {
-		return fmt.Errorf("key generation failed: %w", err)
+	// Step 1: Generate key pair (only if not already generated)
+	if cm.clientPrivateKey == nil {
+		if err := cm.GenerateKeyPair(); err != nil {
+			return fmt.Errorf("mTLS key generation failed: %w", err)
+		}
+	} else {
+		logger.GetLogger().Debug("using existing mTLS private key for certificate flow")
 	}
 
 	// Step 2: Create CSR
 	csrPEM, err := cm.CreateCSR()
 	if err != nil {
-		return fmt.Errorf("CSR creation failed: %w", err)
+		return fmt.Errorf("mTLS CSR creation failed: %w", err)
 	}
 
 	// Step 3: Submit CSR to Kubernetes
 	if err := cm.SubmitCSRToKubernetes(ctx, csrPEM); err != nil {
-		return fmt.Errorf("CSR submission failed: %w", err)
+		return fmt.Errorf("mTLS CSR submission failed: %w", err)
 	}
 
 	// Step 4: Wait for approval (longer timeout for renewal)
@@ -529,19 +673,26 @@ func (cm *CertificateManager) completeCertificateFlow(ctx context.Context, isRen
 	}
 
 	if err := cm.WaitForCertificateApproval(ctx, timeout); err != nil {
-		return fmt.Errorf("certificate approval failed: %w", err)
+		return fmt.Errorf("mTLS certificate approval failed: %w", err)
 	}
 
 	// Step 5: Fetch CA certificate from Secret
 	if err := cm.FetchCACertificateFromSecret(ctx); err != nil {
-		logger.GetLogger().Warn("Failed to fetch CA certificate from Secret", "error", err)
+		logger.GetLogger().Warn("failed to fetch mTLS CA certificate from Secret", "error", err)
 		// Continue without CA cert - mTLS will work but server verification may be limited
 	}
 
+	// Step 6: Persist the obtained certificates
+	if err := cm.persistCertificates(); err != nil {
+		logger.GetLogger().Error("failed to persist mTLS certificates", "error", err)
+		// Don't fail the flow - certificates are still in memory and functional
+	}
+
+	// Persist the obtained certificate, private key an CA cert
 	if isRenewal {
-		logger.GetLogger().Info("Certificate renewal flow successful")
+		logger.GetLogger().Info("mTLS certificate renewal flow successful")
 	} else {
-		logger.GetLogger().Info("Complete certificate flow successful")
+		logger.GetLogger().Info("Complete mTLS certificate flow successful")
 		// Start renewal monitoring after successful certificate acquisition (only for initial flow)
 		cm.StartRenewalMonitoring(ctx)
 	}
@@ -565,18 +716,18 @@ func (cm *CertificateManager) NeedsAutoRenewal() bool {
 		return true
 	}
 
-	autoRenewalThreshold := 5 * 24 * time.Hour // 5 days
+	autoRenewalThreshold := 3 * 24 * time.Hour // 3 days
 	return time.Until(cm.clientCertificate.NotAfter) < autoRenewalThreshold
 }
 
 // StartRenewalMonitoring starts the background certificate renewal monitoring
-// It checks daily if the certificate needs renewal (within 5 days of expiry)
+// It checks daily if the certificate needs renewal (within 3 days of expiry)
 func (cm *CertificateManager) StartRenewalMonitoring(ctx context.Context) {
 	cm.renewalMutex.Lock()
 	defer cm.renewalMutex.Unlock()
 
 	if cm.renewalRunning {
-		logger.GetLogger().Debug("Certificate renewal monitoring already running")
+		logger.GetLogger().Debug("mTLS certificate renewal monitoring already running")
 		return
 	}
 
@@ -584,10 +735,10 @@ func (cm *CertificateManager) StartRenewalMonitoring(ctx context.Context) {
 	cm.renewalRunning = true
 
 	go cm.renewalMonitorLoop(ctx)
-	logger.GetLogger().Info("Started certificate renewal monitoring")
+	logger.GetLogger().Info("started mTLS certificate renewal monitoring")
 }
 
-// StopRenewalMonitoring stops the background certificate renewal monitoring
+// StopRenewalMonitoring stops the background mTLS certificate renewal monitoring
 func (cm *CertificateManager) StopRenewalMonitoring() {
 	cm.renewalMutex.Lock()
 	defer cm.renewalMutex.Unlock()
@@ -598,7 +749,7 @@ func (cm *CertificateManager) StopRenewalMonitoring() {
 
 	close(cm.renewalStopCh)
 	cm.renewalRunning = false
-	logger.GetLogger().Info("Stopped certificate renewal monitoring")
+	logger.GetLogger().Info("stopped mTLS certificate renewal monitoring")
 }
 
 // renewalMonitorLoop runs the renewal monitoring in a background goroutine
@@ -609,10 +760,10 @@ func (cm *CertificateManager) renewalMonitorLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.GetLogger().Debug("Certificate renewal monitoring stopped due to context cancellation")
+			logger.GetLogger().Debug("mTLS certificate renewal monitoring stopped due to context cancellation")
 			return
 		case <-cm.renewalStopCh:
-			logger.GetLogger().Debug("Certificate renewal monitoring stopped")
+			logger.GetLogger().Debug("mTLS certificate renewal monitoring stopped")
 			return
 		case <-ticker.C:
 			cm.checkAndRenewCertificate(ctx)
@@ -626,40 +777,40 @@ func (cm *CertificateManager) checkAndRenewCertificate(ctx context.Context) {
 		return
 	}
 
-	logger.GetLogger().Info("Certificate needs renewal, initiating renewal process",
+	logger.GetLogger().Info("mTLS certificate needs renewal, initiating renewal process",
 		"currentExpiry", cm.clientCertificate.NotAfter,
 		"daysUntilExpiry", time.Until(cm.clientCertificate.NotAfter).Hours()/24)
 
 	// Clean up old CSR if it exists
 	if err := cm.cleanupOldCSR(ctx); err != nil {
-		logger.GetLogger().Warn("Failed to cleanup old CSR, continuing with renewal", "error", err)
+		logger.GetLogger().Warn("failed to cleanup old CSR, continuing with renewal", "error", err)
 	}
 
 	// Perform certificate renewal
 	if err := cm.renewCertificate(ctx); err != nil {
-		logger.GetLogger().Error("Certificate renewal failed", "error", err)
+		logger.GetLogger().Error("mTLS certificate renewal failed", "error", err)
 		// Continue monitoring, will try again next day
 		return
 	}
 
-	logger.GetLogger().Info("Certificate renewal completed successfully",
+	logger.GetLogger().Info("mTLS certificate renewal completed successfully",
 		"newExpiry", cm.clientCertificate.NotAfter)
 
 	// Trigger AGW restart after successful renewal
-	cm.restartAgwAfterRenewal(ctx)
+	cm.restartAgwAfterRenewal()
 }
 
 // renewCertificate performs the complete certificate renewal process
 func (cm *CertificateManager) renewCertificate(ctx context.Context) error {
-	// Use the shared certificate flow with renewal-specific behavior
-	return cm.completeCertificateFlow(ctx, true)
+	// Use the shared certificate flow with retry and renewal-specific behavior
+	return cm.completeCertificateFlowWithRetry(ctx, true, 3)
 }
 
 // cleanupOldCSR removes any existing CSR to avoid conflicts during renewal
 func (cm *CertificateManager) cleanupOldCSR(ctx context.Context) error {
 	kubeClient := cm.getKubeClient()
 	if kubeClient == nil {
-		logger.GetLogger().Warn("Cannot cleanup old CSR: kubernetes client not available")
+		logger.GetLogger().Warn("cannot cleanup old CSR: kubernetes client not available")
 		return nil // Don't fail renewal for this
 	}
 
@@ -667,20 +818,18 @@ func (cm *CertificateManager) cleanupOldCSR(ctx context.Context) error {
 	err := kubeClient.CertificatesV1().CertificateSigningRequests().Delete(ctx, cm.clientConfig.CSRName, metav1.DeleteOptions{})
 	if err != nil {
 		// Log but don't fail - CSR might not exist
-		logger.GetLogger().Debug("Could not delete old CSR (may not exist)", "csrName", cm.clientConfig.CSRName, "error", err)
+		logger.GetLogger().Debug("could not delete old CSR (may not exist)", "csrName", cm.clientConfig.CSRName, "error", err)
 	}
 
 	return nil
 }
 
-// restartAgwAfterRenewal triggers an AGW restart after successful certificate renewal
-func (cm *CertificateManager) restartAgwAfterRenewal(ctx context.Context) error {
-	logger.GetLogger().Info("Initiating AGW restart after certificate renewal")
+// restartAgwAfterRenewal triggers an AGW restart after successful mTLS certificate renewal
+func (cm *CertificateManager) restartAgwAfterRenewal() error {
+	logger.GetLogger().Info("restartAgwAfterRenewal: AGW restart after mTLS certificate renewal")
 
 	// Use the shutdown manager to trigger a restart with exit code 200
 	// This will cause the init script to restart the AGW process
 	shutdown.TriggerShutdown(shutdown.RestartExitCode)
-
-	logger.GetLogger().Info("AGW restart triggered successfully")
 	return nil
 }

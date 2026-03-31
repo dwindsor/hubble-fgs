@@ -318,14 +318,21 @@ func GetConfigForDisplay() map[string]interface{} {
 	config := map[string]interface{}{
 		"client_status": "Disabled",
 		"server_info": map[string]interface{}{
-			"endpoint_url":           "N/A",
-			"username":               "N/A",
-			"password":               "N/A",
-			"connection_timeout_sec": "N/A",
-			"request_timeout_sec":    "N/A",
-			"max_retries":            "N/A",
-			"max_batch_size":         "N/A",
-			"batch_timeout_ms":       "N/A",
+			"endpoint_url":             "N/A",
+			"username":                 "N/A",
+			"password":                 "N/A",
+			"use_basic_auth":           "N/A",
+			"use_mtls":                 "N/A",
+			"mtls_issuer_group":        "N/A",
+			"mtls_issuer_kind":         "N/A",
+			"mtls_issuer_name":         "N/A",
+			"mtls_ca_secret_name":      "N/A",
+			"mtls_ca_secret_namespace": "N/A",
+			"connection_timeout_sec":   "N/A",
+			"request_timeout_sec":      "N/A",
+			"max_retries":              "N/A",
+			"max_batch_size":           "N/A",
+			"batch_timeout_ms":         "N/A",
 		},
 	}
 
@@ -345,8 +352,6 @@ func GetConfigForDisplay() map[string]interface{} {
 		if !ok {
 			serverInfo = map[string]interface{}{
 				"endpoint_url": "N/A",
-				"username":     "N/A",
-				"password":     "N/A",
 			}
 			config["server_info"] = serverInfo
 		}
@@ -360,6 +365,27 @@ func GetConfigForDisplay() map[string]interface{} {
 		// Do not reveal whether a password is configured; just indicate that it is not displayed.
 		if tcm.config.Password != "" {
 			serverInfo["password"] = "[redacted]"
+		}
+
+		// Add authentication method indicators
+		serverInfo["use_basic_auth"] = tcm.config.UseBasicAuth
+		serverInfo["use_mtls"] = tcm.config.UseMTLS
+
+		// Add mTLS configuration with redaction for sensitive fields
+		if tcm.config.MTLSIssuerGroup != "" {
+			serverInfo["mtls_issuer_group"] = tcm.config.MTLSIssuerGroup
+		}
+		if tcm.config.MTLSIssuerKind != "" {
+			serverInfo["mtls_issuer_kind"] = tcm.config.MTLSIssuerKind
+		}
+		if tcm.config.MTLSIssuerName != "" {
+			serverInfo["mtls_issuer_name"] = tcm.config.MTLSIssuerName
+		}
+		if tcm.config.MTLSCASecretName != "" {
+			serverInfo["mtls_ca_secret_name"] = "[redacted]"
+		}
+		if tcm.config.MTLSCASecretNamespace != "" {
+			serverInfo["mtls_ca_secret_namespace"] = tcm.config.MTLSCASecretNamespace
 		}
 
 		serverInfo["connection_timeout_sec"] = tcm.config.ConnectionTimeoutSec
