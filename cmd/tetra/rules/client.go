@@ -42,6 +42,7 @@ func NewClient() (*ClientWithContext, error) {
 		common.ResolveServerAddress(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
 	)
 	if err != nil {
 		return nil, err

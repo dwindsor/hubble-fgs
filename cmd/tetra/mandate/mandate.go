@@ -47,6 +47,7 @@ func statusCmd() *cobra.Command {
 			conn, err := grpc.NewClient(common.ResolveServerAddress(),
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
 			)
 			if err != nil {
 				return err
@@ -114,6 +115,7 @@ func refreshCmd() *cobra.Command {
 			conn, err := grpc.NewClient(common.ResolveServerAddress(),
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
 			)
 			if err != nil {
 				return err
@@ -148,6 +150,7 @@ func setURLCmd() *cobra.Command {
 			conn, err := grpc.NewClient(common.ResolveServerAddress(),
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
 			)
 			if err != nil {
 				return err

@@ -52,6 +52,7 @@ func NewApplicationModelClient(ctx context.Context) (*ApplicationModelClient, er
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(common.RetryPolicy(common.Retries)),
 		grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client with address %s: %w", address, err)
@@ -95,6 +96,7 @@ func NewConnectedModelClient(ctx context.Context) (*ConnectedModelClient, error)
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(common.RetryPolicy(common.Retries)),
 		grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client with address %s: %w", address, err)
