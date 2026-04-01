@@ -13,8 +13,11 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then apt-get install -y libelf-dev zlib1g-dev crossbuild-essential-$TARGETARCH; \
     else apt-get install -y libelf-dev zlib1g-dev; fi
 RUN ldconfig /usr/local/
+COPY go.mod go.sum Makefile Makefile.defs ./
+COPY vendor/ vendor/
 COPY . ./
-RUN if [ $BUILDARCH != $TARGETARCH ]; \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    if [ $BUILDARCH != $TARGETARCH ]; \
     then make agw agwctl TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
     else make agw agwctl TARGET_ARCH=$TARGETARCH; fi
 RUN apt-get update \
