@@ -122,7 +122,7 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 	}
 
 	// Conditions: maximum of 127 labels plus the last zero: 128 iterations. The
-	// data should have at least 3 remaning bytes at anytime, one for the
+	// data should have at least 3 remaining bytes at anytime, one for the
 	// length, one for the char for the last zero. Total length will remain
 	// under 255 chars.
 	//
