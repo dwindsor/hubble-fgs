@@ -182,7 +182,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
-				Dns:  "localhost",
+				Dns:  "localhost.",
 			},
 			Port: 0,
 		},
@@ -216,7 +216,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
-				Dns:  "localhost",
+				Dns:  "localhost.",
 			},
 			Port: 0,
 		},

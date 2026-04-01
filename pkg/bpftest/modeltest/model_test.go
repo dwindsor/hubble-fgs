@@ -89,7 +89,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				Timeout: 10 * time.Second,
 				ConnectionChecks: model.ConnectionChecks{
 					&model.DNSConnectionCheck{
-						Names: []string{"localhost"},
+						Names: []string{"localhost."},
 						Port:  model.UInt64Exactly(8080),
 						Stats: model.StatsCheck{
 							TxBytes: model.UInt64GreaterThan(0),
@@ -122,7 +122,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				Timeout: 10 * time.Second,
 				ConnectionChecks: model.ConnectionChecks{
 					&model.DNSConnectionCheck{
-						Names: []string{"localhost"},
+						Names: []string{"localhost."},
 						Port:  model.UInt64Exactly(9999),
 						Stats: model.StatsCheck{
 							// Exact lengths as reported

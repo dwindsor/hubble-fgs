@@ -64,6 +64,8 @@ const (
 	// The IPToID index 0 is reserved for the (default) host map.
 	MaxNumberOfPods   = 1024
 	DefaultInnerMapID = 0
+
+	localhostFQDN = "localhost."
 )
 
 type IpMap struct {
@@ -142,7 +144,7 @@ func PopulateDomainMapsWithLocalhost() error {
 
 	// Update the domain maps (direct and reverse using DomainMap)
 	dnsDomainMap := DomainMap{}
-	err = dnsDomainMap.Update("localhost", id)
+	err = dnsDomainMap.Update(localhostFQDN, id)
 	if err != nil {
 		return fmt.Errorf("failed updating the domain<->ID maps with localhost: %w", err)
 	}
@@ -157,7 +159,7 @@ func createOrGetLocalhostID() (uint64, error) {
 	userspaceEndpointCache := endpoint.MustGet()
 	id, err := userspaceEndpointCache.AddEndpoint(endpoint.Endpoint{
 		Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
-		Dns:  "localhost",
+		Dns:  localhostFQDN,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to add the localhost endpoint: %w", err)
