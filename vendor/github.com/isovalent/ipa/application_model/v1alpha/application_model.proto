@@ -289,6 +289,8 @@ message ApplicationConnection {
   ConnectionStats stats = 2;
   // Policy information associated with the connection
   NetworkPolicy policy = 3;
+  // Network protocol of the connection at the L3/L4 layer.
+  common.net.v1alpha.IPProtocol protocol = 4;
 }
 
 message ConnectionStats {

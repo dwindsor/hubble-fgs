@@ -15,6 +15,7 @@
 package v1alpha
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -759,7 +760,7 @@ var File_graph_v1alpha_edge_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\n" +
-	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\"\xe4\x03\n" +
+	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\x1a\x1bbuf/validate/validate.proto\"\xe4\x03\n" +
 	"\x04Edge\x124\n" +
 	"\x05basic\x18\x01 \x01(\v2\x1c.graph.v1alpha.EdgeTypeBasicH\x00R\x05basic\x12V\n" +
 	"\x11network_telemetry\x18\x02 \x01(\v2'.graph.v1alpha.EdgeTypeNetworkTelemetryH\x00R\x10networkTelemetry\x12V\n" +
@@ -768,7 +769,7 @@ const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\fl7_telemetry\x18\x04 \x01(\v2\".graph.v1alpha.EdgeTypeL7TelemetryH\x00R\vl7Telemetry\x12\\\n" +
 	"\x13multicast_telemetry\x18\x05 \x01(\v2).graph.v1alpha.EdgeTypeMulticastTelemetryH\x00R\x12multicastTelemetryB\x06\n" +
 	"\x04type\"\x0f\n" +
-	"\rEdgeTypeBasic\"\xb4\x04\n" +
+	"\rEdgeTypeBasic\"\xb6\a\n" +
 	"\x18EdgeTypeNetworkTelemetry\x12C\n" +
 	"\x1enetwork_transmit_packets_total\x18\x01 \x01(\x04R\x1bnetworkTransmitPacketsTotal\x12?\n" +
 	"\x1cnetwork_transmit_bytes_total\x18\x02 \x01(\x04R\x19networkTransmitBytesTotal\x12=\n" +
@@ -777,7 +778,9 @@ const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\x1dnetwork_receive_packets_total\x18\x04 \x01(\x04R\x1anetworkReceivePacketsTotal\x12=\n" +
 	"\x1bnetwork_receive_bytes_total\x18\x05 \x01(\x04R\x18networkReceiveBytesTotal\x12;\n" +
 	"\x1anetwork_receive_drop_total\x18\x06 \x01(\x04R\x17networkReceiveDropTotal\x12H\n" +
-	"!network_receive_drop_policy_total\x18\b \x01(\x04R\x1dnetworkReceiveDropPolicyTotal\"\xcd\x03\n" +
+	"!network_receive_drop_policy_total\x18\b \x01(\x04R\x1dnetworkReceiveDropPolicyTotal:\xff\x02\xbaH\xfb\x02\x1a\xbd\x01\n" +
+	"#network_transmit_drop_policy_subset\x12Inetwork_transmit_drop_policy_total must be <= network_transmit_drop_total\x1aKthis.network_transmit_drop_policy_total <= this.network_transmit_drop_total\x1a\xb8\x01\n" +
+	"\"network_receive_drop_policy_subset\x12Gnetwork_receive_drop_policy_total must be <= network_receive_drop_total\x1aIthis.network_receive_drop_policy_total <= this.network_receive_drop_total\"\xf6\x04\n" +
 	"\x18EdgeTypeRoutingTelemetry\x126\n" +
 	"\x17routing_forwarded_total\x18\x01 \x01(\x04R\x15routingForwardedTotal\x122\n" +
 	"\x15routing_dropped_total\x18\x02 \x01(\x04R\x13routingDroppedTotal\x12?\n" +
@@ -786,7 +789,8 @@ const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\x13routing_audit_total\x18\x04 \x01(\x04R\x11routingAuditTotal\x128\n" +
 	"\x18routing_redirected_total\x18\x05 \x01(\x04R\x16routingRedirectedTotal\x120\n" +
 	"\x14routing_traced_total\x18\x06 \x01(\x04R\x12routingTracedTotal\x128\n" +
-	"\x18routing_translated_total\x18\a \x01(\x04R\x16routingTranslatedTotal\"\xa6\x01\n" +
+	"\x18routing_translated_total\x18\a \x01(\x04R\x16routingTranslatedTotal:\xa6\x01\xbaH\xa2\x01\x1a\x9f\x01\n" +
+	"\x1drouting_dropped_policy_subset\x12=routing_dropped_policy_total must be <= routing_dropped_total\x1a?this.routing_dropped_policy_total <= this.routing_dropped_total\"\xa6\x01\n" +
 	"\x13EdgeTypeL4Telemetry\x122\n" +
 	"\x15tcp_retransmits_total\x18\x01 \x01(\x04R\x13tcpRetransmitsTotal\x121\n" +
 	"\x15tcp_zero_window_total\x18\x02 \x01(\x04R\x12tcpZeroWindowTotal\x12(\n" +
@@ -794,10 +798,10 @@ const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\x13EdgeTypeL7Telemetry\x12.\n" +
 	"\x13http_requests_total\x18\x01 \x01(\x04R\x11httpRequestsTotal\x127\n" +
 	"\x18http_server_errors_total\x18\x02 \x01(\x04R\x15httpServerErrorsTotal\x127\n" +
-	"\x18http_client_errors_total\x18\x03 \x01(\x04R\x15httpClientErrorsTotal\"\x91\x04\n" +
+	"\x18http_client_errors_total\x18\x03 \x01(\x04R\x15httpClientErrorsTotal\"\xa9\b\n" +
 	"\x1aEdgeTypeMulticastTelemetry\x12D\n" +
 	"\x1fsequence_number_gap_count_total\x18\x01 \x01(\x04R\x1bsequenceNumberGapCountTotal\x12\x8d\x01\n" +
-	"\x1ffeeder_receiver_delay_histogram\x18\x02 \x01(\v2F.graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogramR\x1cfeederReceiverDelayHistogram\x1a\x9c\x02\n" +
+	"\x1ffeeder_receiver_delay_histogram\x18\x02 \x01(\v2F.graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogramR\x1cfeederReceiverDelayHistogram\x1a\xb4\x06\n" +
 	"\x1cFeederReceiverDelayHistogram\x12\x1f\n" +
 	"\vcount_total\x18\x01 \x01(\x04R\n" +
 	"countTotal\x12\x1b\n" +
@@ -806,7 +810,11 @@ const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	" \x01(\x04R\x10bucketLe1msTotal\x12/\n" +
 	"\x14bucket_le_10ms_total\x18\x14 \x01(\x04R\x11bucketLe10msTotal\x121\n" +
 	"\x15bucket_le_100ms_total\x18\x1e \x01(\x04R\x12bucketLe100msTotal\x12+\n" +
-	"\x12bucket_le_1s_total\x18( \x01(\x04R\x0fbucketLe1sTotalB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\x12bucket_le_1s_total\x18( \x01(\x04R\x0fbucketLe1sTotal:\x95\x04\xbaH\x91\x04\x1a\x85\x01\n" +
+	"\x17bucket_le_1ms_monotonic\x123bucket_le_1ms_total must be <= bucket_le_10ms_total\x1a5this.bucket_le_1ms_total <= this.bucket_le_10ms_total\x1a\x8a\x01\n" +
+	"\x18bucket_le_10ms_monotonic\x125bucket_le_10ms_total must be <= bucket_le_100ms_total\x1a7this.bucket_le_10ms_total <= this.bucket_le_100ms_total\x1a\x87\x01\n" +
+	"\x19bucket_le_100ms_monotonic\x123bucket_le_100ms_total must be <= bucket_le_1s_total\x1a5this.bucket_le_100ms_total <= this.bucket_le_1s_total\x1ap\n" +
+	"\x16bucket_le_1s_monotonic\x12)bucket_le_1s_total must be <= count_total\x1a+this.bucket_le_1s_total <= this.count_totalB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_edge_proto_rawDescOnce sync.Once

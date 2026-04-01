@@ -787,6 +787,13 @@ export declare type ApplicationConnection = Message<"application_model.v1alpha.A
    * @generated from field: application_model.v1alpha.NetworkPolicy policy = 3;
    */
   policy?: NetworkPolicy;
+
+  /**
+   * Network protocol of the connection at the L3/L4 layer.
+   *
+   * @generated from field: common.net.v1alpha.IPProtocol protocol = 4;
+   */
+  protocol: IPProtocol;
 };
 
 /**

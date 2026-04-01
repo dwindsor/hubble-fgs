@@ -1192,22 +1192,38 @@ func (agw *AgentGateway) LoadSyslog(_ context.Context, syslog string) error {
 		Configs: make(map[string]*v1alpha.LogConfig),
 	}
 	for _, logConfig := range logList {
-		syslogConfig.Configs[logConfig.Id] = &v1alpha.LogConfig{
+		logConfigProto := &v1alpha.LogConfig{
 			Id:          logConfig.Id,
 			Name:        logConfig.Name,
 			Description: logConfig.Description,
 			Host:        logConfig.Config.Host,
 			Port:        logConfig.Config.Port,
-			Mode:        logConfig.Config.Mode,
+			Protocol:    logConfig.Config.Proto,
 			Tls:         logConfig.Config.Tls,
-			Token:       logConfig.Secrets.Token,
-			Username:    logConfig.Secrets.Username,
-			Password:    logConfig.Secrets.Password,
-			Ca:          logConfig.Secrets.CA,
-			Cert:        logConfig.Secrets.Cert,
-			Key:         logConfig.Secrets.Key,
-			KeyPassword: logConfig.Secrets.KeyPassword,
 		}
+
+		// Set authentication based on available credentials
+		if logConfig.Secrets.Token != "" {
+			// Use token-based authentication
+			logConfigProto.Auth = &v1alpha.LogConfig_Token{
+				Token: &v1alpha.Token{
+					Token: logConfig.Secrets.Token,
+				},
+			}
+		} else if logConfig.Secrets.Username != "" && logConfig.Secrets.Password != "" {
+			// Use BasicAuth
+			logConfigProto.Auth = &v1alpha.LogConfig_BasicAuth{
+				BasicAuth: &v1alpha.BasicAuth{
+					Username: logConfig.Secrets.Username,
+					Password: logConfig.Secrets.Password,
+				},
+			}
+		} else {
+			// TODO: Add mTLS configuration when supported
+			logger.GetLogger().Debug("mTLS authentication configuration not yet implemented", "logConfigId", logConfig.Id)
+		}
+
+		syslogConfig.Configs[logConfig.Id] = logConfigProto
 	}
 
 	// Store the validated configuration in the repository
@@ -1336,12 +1352,12 @@ func validateLogConfig(id string, config LogConfigData) (LogConfigData, error) {
 		return config, errors.New("invalid port: must be between 1 and 65535")
 	}
 
-	// Check mode
-	if config.Config.Mode == "" {
-		return config, errors.New("log mode is required")
+	// Check protocol
+	if config.Config.Proto == "" {
+		return config, errors.New("log protocol is required")
 	}
-	if strings.ToLower(config.Config.Mode) != "tcp" && strings.ToLower(config.Config.Mode) != "udp" {
-		return config, errors.New("invalid mode: must be 'tcp' or 'udp'")
+	if strings.ToLower(config.Config.Proto) != "tcp" && strings.ToLower(config.Config.Proto) != "udp" {
+		return config, errors.New("invalid protocol: must be 'tcp' or 'udp'")
 	}
 
 	return config, nil

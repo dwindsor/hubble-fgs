@@ -225,8 +225,11 @@ message DpuConfig {
 
 // Object to store log export configuration
 message LogConfig {
+  // Configuration id
   string id = 1;
+  // Configuration name
   string name = 2;
+  // Configuration description
   string description = 3;
 
   // IPv4 only
@@ -234,25 +237,19 @@ message LogConfig {
   // Collector target port
   string port = 5;
   // Protocol, only TCP or UDP
-  string mode = 6;
-  // Turns TLS on or off
+  string protocol = 6;
+  // Turns TLS/HTTPS on or off
   bool tls = 7;
 
-  // Secret/Auth fields are only relevant if TLS is true
-  // Token for Splunk or Timescape
-  string token = 8;
-  // Username for Splunk or Timescape
-  string username = 9;
-  // Password for Splunk or Timescape
-  string password = 10;
-  // CA cert as a string
-  string ca = 11;
-  // Client cert as a string
-  string cert = 12;
-  // Client private key as a string
-  string key = 13;
-  // Key password to apply to the persisted client private key
-  string key_password = 14;
+  // Authentication configuration (exactly one should be configured)
+  oneof auth {
+    // BasicAuth configuration
+    BasicAuth basic_auth = 8;
+    // mTLS configuration
+    MTLSConfig mtls = 9;
+    // Token based configuration
+    Token token = 10;
+  }
 }
 
 // Object to store a list of syslog configuration
@@ -324,8 +321,14 @@ message NetworkConfig {
   repeated Vrf vrfs = 2;
 }
 
-// BasicAuth configuration for Timescape
-message TimescapeBasicAuth {
+// Token configuration
+message Token {
+  // Access token
+  string token = 1;
+}
+
+// BasicAuth configuration
+message BasicAuth {
   // Username for BasicAuth
   string username = 1;
   // Password for BasicAuth
@@ -417,7 +420,7 @@ message TimescapeConfig {
   // Authentication configuration (exactly one should be configured)
   oneof auth {
     // BasicAuth configuration
-    TimescapeBasicAuth basic_auth = 14;
+    BasicAuth basic_auth = 14;
     // mTLS configuration
     MTLSConfig mtls = 15;
   }

@@ -480,16 +480,22 @@ export declare const DpuConfigSchema: GenMessage<DpuConfig>;
  */
 export declare type LogConfig = Message<"l3l4networkpolicy.v1alpha.LogConfig"> & {
   /**
+   * Configuration id
+   *
    * @generated from field: string id = 1;
    */
   id: string;
 
   /**
+   * Configuration name
+   *
    * @generated from field: string name = 2;
    */
   name: string;
 
   /**
+   * Configuration description
+   *
    * @generated from field: string description = 3;
    */
   description: string;
@@ -511,66 +517,47 @@ export declare type LogConfig = Message<"l3l4networkpolicy.v1alpha.LogConfig"> &
   /**
    * Protocol, only TCP or UDP
    *
-   * @generated from field: string mode = 6;
+   * @generated from field: string protocol = 6;
    */
-  mode: string;
+  protocol: string;
 
   /**
-   * Turns TLS on or off
+   * Turns TLS/HTTPS on or off
    *
    * @generated from field: bool tls = 7;
    */
   tls: boolean;
 
   /**
-   * Secret/Auth fields are only relevant if TLS is true
-   * Token for Splunk or Timescape
+   * Authentication configuration (exactly one should be configured)
    *
-   * @generated from field: string token = 8;
+   * @generated from oneof l3l4networkpolicy.v1alpha.LogConfig.auth
    */
-  token: string;
-
-  /**
-   * Username for Splunk or Timescape
-   *
-   * @generated from field: string username = 9;
-   */
-  username: string;
-
-  /**
-   * Password for Splunk or Timescape
-   *
-   * @generated from field: string password = 10;
-   */
-  password: string;
-
-  /**
-   * CA cert as a string
-   *
-   * @generated from field: string ca = 11;
-   */
-  ca: string;
-
-  /**
-   * Client cert as a string
-   *
-   * @generated from field: string cert = 12;
-   */
-  cert: string;
-
-  /**
-   * Client private key as a string
-   *
-   * @generated from field: string key = 13;
-   */
-  key: string;
-
-  /**
-   * Key password to apply to the persisted client private key
-   *
-   * @generated from field: string key_password = 14;
-   */
-  keyPassword: string;
+  auth: {
+    /**
+     * BasicAuth configuration
+     *
+     * @generated from field: l3l4networkpolicy.v1alpha.BasicAuth basic_auth = 8;
+     */
+    value: BasicAuth;
+    case: "basicAuth";
+  } | {
+    /**
+     * mTLS configuration
+     *
+     * @generated from field: l3l4networkpolicy.v1alpha.MTLSConfig mtls = 9;
+     */
+    value: MTLSConfig;
+    case: "mtls";
+  } | {
+    /**
+     * Token based configuration
+     *
+     * @generated from field: l3l4networkpolicy.v1alpha.Token token = 10;
+     */
+    value: Token;
+    case: "token";
+  } | { case: undefined; value?: undefined };
 };
 
 /**
@@ -808,11 +795,31 @@ export declare type NetworkConfig = Message<"l3l4networkpolicy.v1alpha.NetworkCo
 export declare const NetworkConfigSchema: GenMessage<NetworkConfig>;
 
 /**
- * BasicAuth configuration for Timescape
+ * Token configuration
  *
- * @generated from message l3l4networkpolicy.v1alpha.TimescapeBasicAuth
+ * @generated from message l3l4networkpolicy.v1alpha.Token
  */
-export declare type TimescapeBasicAuth = Message<"l3l4networkpolicy.v1alpha.TimescapeBasicAuth"> & {
+export declare type Token = Message<"l3l4networkpolicy.v1alpha.Token"> & {
+  /**
+   * Access token
+   *
+   * @generated from field: string token = 1;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.Token.
+ * Use `create(TokenSchema)` to create a new message.
+ */
+export declare const TokenSchema: GenMessage<Token>;
+
+/**
+ * BasicAuth configuration
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.BasicAuth
+ */
+export declare type BasicAuth = Message<"l3l4networkpolicy.v1alpha.BasicAuth"> & {
   /**
    * Username for BasicAuth
    *
@@ -829,10 +836,10 @@ export declare type TimescapeBasicAuth = Message<"l3l4networkpolicy.v1alpha.Time
 };
 
 /**
- * Describes the message l3l4networkpolicy.v1alpha.TimescapeBasicAuth.
- * Use `create(TimescapeBasicAuthSchema)` to create a new message.
+ * Describes the message l3l4networkpolicy.v1alpha.BasicAuth.
+ * Use `create(BasicAuthSchema)` to create a new message.
  */
-export declare const TimescapeBasicAuthSchema: GenMessage<TimescapeBasicAuth>;
+export declare const BasicAuthSchema: GenMessage<BasicAuth>;
 
 /**
  * Kubernetes CA (Certificate Authority) information
@@ -1077,9 +1084,9 @@ export declare type TimescapeConfig = Message<"l3l4networkpolicy.v1alpha.Timesca
     /**
      * BasicAuth configuration
      *
-     * @generated from field: l3l4networkpolicy.v1alpha.TimescapeBasicAuth basic_auth = 14;
+     * @generated from field: l3l4networkpolicy.v1alpha.BasicAuth basic_auth = 14;
      */
-    value: TimescapeBasicAuth;
+    value: BasicAuth;
     case: "basicAuth";
   } | {
     /**

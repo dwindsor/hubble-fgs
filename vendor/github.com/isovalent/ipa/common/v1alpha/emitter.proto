@@ -12,15 +12,35 @@ syntax = "proto3";
 
 package common.v1alpha;
 
+import "buf/validate/validate.proto";
+
 option go_package = "github.com/isovalent/ipa/common/v1alpha";
 
 // Emitter identifies the source that emits some data.
 message Emitter {
+  option (buf.validate.message).cel = {
+    id: "name_capitalized"
+    message: "name must start with an uppercase letter"
+    expression: "size(this.name) == 0 || this.name.matches('^[A-Z]')"
+  };
+  option (buf.validate.message).cel = {
+    id: "name_not_all_uppercase"
+    message: "name must not be all uppercase (e.g., 'Hubble', not 'HUBBLE')"
+    expression: "size(this.name) == 0 || this.name != this.name.upperAscii()"
+  };
+  option (buf.validate.message).cel = {
+    id: "version_no_v_prefix"
+    message: "version must not contain a 'v' prefix"
+    expression: "size(this.version) == 0 || !this.version.startsWith('v')"
+  };
   // name identifies the emitter.
   // The name should be capitalized ("Hubble", not "hubble" nor "HUBBLE").
-  string name = 1;
+  string name = 1 [(buf.validate.field).required = true];
   // version identifies the emitter version.
   // The version should not contain a 'v' prefix as sometimes seen ("1.19.0",
   // not "v1.19.0").
-  string version = 2;
+  string version = 2 [(buf.validate.field) = {
+    ignore: IGNORE_IF_ZERO_VALUE
+    string: {pattern: "^[0-9]"}
+  }];
 }

@@ -12,8 +12,6 @@ package fluentbit
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
@@ -39,7 +37,7 @@ func AddLogConfig(fbc FluentBitConfig, typ v1alpha.ConfigType, logCfg *v1alpha.L
 	switch typ {
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG:
 		logOutput = DefaultDpSyslogOutput()
-		logOutput.Properties["mode"] = logCfg.Mode
+		logOutput.Properties["mode"] = logCfg.Protocol
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
 		return fbc, fmt.Errorf("ipfix fluentbit support not implemented")
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
@@ -94,58 +92,34 @@ func RemoveLogConfig(fbc FluentBitConfig, id string) FluentBitConfig {
 // Adds TLS properties to an output section in place
 // Files are created in the FLB_SSH_DIR directory for the secrets
 // Returns error if any file operations fail
-func AddTlsOutputProperties(output *OutputSection, id string, logConfig *v1alpha.LogConfig) error {
-	// Creating field for splunk token
-	if logConfig.Token != "" {
-		output.Properties["splunk_token"] = logConfig.Token
+func AddTlsOutputProperties(output *OutputSection, _ string, logConfig *v1alpha.LogConfig) error {
+	// Handle authentication based on the oneof auth field
+	switch auth := logConfig.Auth.(type) {
+	case *v1alpha.LogConfig_Token:
+		// Creating field for splunk token
+		if auth.Token != nil && auth.Token.Token != "" {
+			output.Properties["splunk_token"] = auth.Token.Token
+		}
+	case *v1alpha.LogConfig_BasicAuth:
+		// Creating fields for basic username and password
+		if auth.BasicAuth != nil {
+			if auth.BasicAuth.Username != "" {
+				output.Properties["http_user"] = auth.BasicAuth.Username
+			}
+			if auth.BasicAuth.Password != "" {
+				output.Properties["http_passwd"] = auth.BasicAuth.Password
+			}
+		}
+	case *v1alpha.LogConfig_Mtls:
+		// mTLS configuration - certificates will be handled by cert manager
+		// For now, just enable TLS
+		output.Properties["tls"] = "On"
 	}
 
-	// Creating fields for basic username and password
-	if logConfig.Username != "" {
-		output.Properties["http_user"] = logConfig.Username
-	}
-	if logConfig.Password != "" {
-		output.Properties["http_passwd"] = logConfig.Password
+	// Enable TLS if configured
+	if logConfig.Tls {
+		output.Properties["tls"] = "On"
 	}
 
-	// Making sure the .ssh directory for hypershield exists
-	err := os.MkdirAll(FLB_SSH_DIR, 0700)
-	if err != nil {
-		return err
-	}
-	output.Properties["tls.ca_path"] = FLB_SSH_DIR
-
-	// Creating local files to store any certificates
-	caFile := id + ".ca"
-	certFile := id + ".cert"
-	keyFile := id + ".key"
-	if logConfig.Ca != "" {
-		err = os.WriteFile(filepath.Join(FLB_SSH_DIR, caFile), []byte(logConfig.Ca), 0644)
-		if err != nil {
-			return err
-		}
-		output.Properties["tls.ca_file"] = filepath.Join(FLB_SSH_DIR, caFile)
-		output.Properties["tls"] = "On"
-	}
-	if logConfig.Cert != "" {
-		err = os.WriteFile(filepath.Join(FLB_SSH_DIR, certFile), []byte(logConfig.Cert), 0644)
-		if err != nil {
-			return err
-		}
-		output.Properties["tls.crt_file"] = filepath.Join(FLB_SSH_DIR, certFile)
-		output.Properties["tls"] = "On"
-	}
-	if logConfig.Key != "" {
-		err = os.WriteFile(filepath.Join(FLB_SSH_DIR, keyFile), []byte(logConfig.Key), 0600)
-		if err != nil {
-			return err
-		}
-		output.Properties["tls.key_file"] = filepath.Join(FLB_SSH_DIR, keyFile)
-		output.Properties["tls"] = "On"
-	}
-	if logConfig.KeyPassword != "" {
-		output.Properties["tls.key_passwd"] = logConfig.KeyPassword
-		output.Properties["tls"] = "On"
-	}
 	return nil
 }

@@ -38,9 +38,9 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id1",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "127.0.0.1",
-					Port: "514",
-					Mode: "tcp",
+					Host:  "127.0.0.1",
+					Port:  "514",
+					Proto: "tcp",
 				},
 			},
 			errMsg: "",
@@ -51,9 +51,9 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id2",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "192.168.1.1",
-					Port: "1514",
-					Mode: "udp",
+					Host:  "192.168.1.1",
+					Port:  "1514",
+					Proto: "udp",
 				},
 			},
 			errMsg: "",
@@ -64,9 +64,9 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id3",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "not-an-ip",
-					Port: "514",
-					Mode: "tcp",
+					Host:  "not-an-ip",
+					Port:  "514",
+					Proto: "tcp",
 				},
 			},
 			errMsg: "invalid host: must be a valid IPv4 address",
@@ -77,9 +77,9 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id4",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "127.0.0.1",
-					Port: "abc",
-					Mode: "tcp",
+					Host:  "127.0.0.1",
+					Port:  "abc",
+					Proto: "tcp",
 				},
 			},
 			errMsg: "invalid port: must be a valid integer",
@@ -90,9 +90,9 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id5",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "127.0.0.1",
-					Port: "70000",
-					Mode: "tcp",
+					Host:  "127.0.0.1",
+					Port:  "70000",
+					Proto: "tcp",
 				},
 			},
 			errMsg: "invalid port: must be between 1 and 65535",
@@ -103,12 +103,12 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id6",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "127.0.0.1",
-					Port: "514",
-					Mode: "foo",
+					Host:  "127.0.0.1",
+					Port:  "514",
+					Proto: "foo",
 				},
 			},
-			errMsg: "invalid mode: must be 'tcp' or 'udp'",
+			errMsg: "invalid protocol: must be 'tcp' or 'udp'",
 		},
 		{
 			name: "Empty type",
@@ -116,9 +116,9 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id7",
 				Type: "",
 				Config: LogConfigDataConfig{
-					Host: "127.0.0.1",
-					Port: "514",
-					Mode: "tcp",
+					Host:  "127.0.0.1",
+					Port:  "514",
+					Proto: "tcp",
 				},
 			},
 			errMsg: "log type is required",
@@ -129,9 +129,9 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id8",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "",
-					Port: "514",
-					Mode: "tcp",
+					Host:  "",
+					Port:  "514",
+					Proto: "tcp",
 				},
 			},
 			errMsg: "invalid host: must be a valid IPv4 address",
@@ -142,25 +142,25 @@ func TestValidateLogConfigValidAndInvalidCases(t *testing.T) {
 				Id:   "id9",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "127.0.0.1",
-					Port: "",
-					Mode: "tcp",
+					Host:  "127.0.0.1",
+					Port:  "",
+					Proto: "tcp",
 				},
 			},
 			errMsg: "invalid port: must be a valid integer",
 		},
 		{
-			name: "Empty mode",
+			name: "Empty protocol",
 			cfg: LogConfigData{
 				Id:   "id10",
 				Type: LogTypeSyslog,
 				Config: LogConfigDataConfig{
-					Host: "127.0.0.1",
-					Port: "514",
-					Mode: "",
+					Host:  "127.0.0.1",
+					Port:  "514",
+					Proto: "",
 				},
 			},
-			errMsg: "log mode is required",
+			errMsg: "log protocol is required",
 		},
 	}
 	for _, tc := range cases {
@@ -207,7 +207,7 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "127.0.0.1",
 						"port": "514",
-						"mode": "tcp"
+						"protocol": "tcp"
 					},
 					"secrets": {}
 				}
@@ -224,7 +224,7 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "192.168.1.1",
 						"port": "1514",
-						"mode": "udp"
+						"protocol": "udp"
 					},
 					"secrets": {}
 				}
@@ -241,7 +241,7 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "127.0.0.1",
 						"port": "514",
-						"mode": "tcp"
+						"protocol": "tcp"
 					},
 					"secrets": {}
 				}
@@ -257,7 +257,7 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "127.0.0.1",
 						"port": "514",
-						"mode": "tcp"
+						"protocol": "tcp"
 					},
 					"secrets": {}
 				}
@@ -274,7 +274,7 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "not-an-ip",
 						"port": "514",
-						"mode": "tcp"
+						"protocol": "tcp"
 					},
 					"secrets": {}
 				}
@@ -291,7 +291,7 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "127.0.0.1",
 						"port": "abc",
-						"mode": "tcp"
+						"protocol": "tcp"
 					},
 					"secrets": {}
 				}
@@ -308,7 +308,7 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "127.0.0.1",
 						"port": "70000",
-						"mode": "tcp"
+						"protocol": "tcp"
 					},
 					"secrets": {}
 				}
@@ -325,13 +325,13 @@ func TestLoadSyslogCases(t *testing.T) {
 					"config": {
 						"host": "127.0.0.1",
 						"port": "514",
-						"mode": "foo"
+						"protocol": "foo"
 					},
 					"secrets": {}
 				}
 			}`,
 			expectErr: true,
-			errMsg:    "invalid mode: must be 'tcp' or 'udp'",
+			errMsg:    "invalid protocol: must be 'tcp' or 'udp'",
 		},
 		{
 			name:      "Empty config object",
@@ -367,36 +367,59 @@ func TestShowSyslogNoConfig(t *testing.T) {
 }
 
 func TestShowSyslogWithConfig(t *testing.T) {
-	agw := &AgentGateway{}
-	// Load a valid syslog config
-	input := `{
-		"sys1": {
-			"id": "sys1",
-			"type": "syslog",
-			"config": {
-				"host": "127.0.0.1",
-				"port": "514",
-				"mode": "tcp"
-			},
-			"secrets": {
-				"token": "tok",
-				"username": "user",
-				"password": "pass",
-				"ca": "ca",
-				"cert": "cert",
-				"key": "key",
-				"key_password": "keypass"
+	t.Run("Token Authentication", func(t *testing.T) {
+		agw := &AgentGateway{}
+		// Load a valid syslog config with token auth
+		input := `{
+			"sys1": {
+				"id": "sys1",
+				"type": "syslog",
+				"config": {
+					"host": "127.0.0.1",
+					"port": "514",
+					"protocol": "tcp"
+				},
+				"secrets": {
+					"token": "tok"
+				}
 			}
-		}
-	}`
-	err := agw.LoadSyslog(context.Background(), input)
-	require.NoError(t, err)
-	out, err := agw.ShowSyslog(context.Background())
-	require.NoError(t, err)
-	require.Contains(t, out, `"host": "127.0.0.1"`)
-	require.Contains(t, out, `"port": "514"`)
-	require.Contains(t, out, `"token": "tok"`)
-	require.Contains(t, out, `"username": "user"`)
+		}`
+		err := agw.LoadSyslog(context.Background(), input)
+		require.NoError(t, err)
+		out, err := agw.ShowSyslog(context.Background())
+		require.NoError(t, err)
+		require.Contains(t, out, `"host": "127.0.0.1"`)
+		require.Contains(t, out, `"port": "514"`)
+		require.Contains(t, out, `"token": "tok"`)
+	})
+
+	t.Run("Basic Authentication", func(t *testing.T) {
+		agw := &AgentGateway{}
+		// Load a valid syslog config with basic auth
+		input := `{
+			"sys2": {
+				"id": "sys2",
+				"type": "syslog",
+				"config": {
+					"host": "192.168.1.1",
+					"port": "1514",
+					"protocol": "udp"
+				},
+				"secrets": {
+					"username": "user",
+					"password": "pass"
+				}
+			}
+		}`
+		err := agw.LoadSyslog(context.Background(), input)
+		require.NoError(t, err)
+		out, err := agw.ShowSyslog(context.Background())
+		require.NoError(t, err)
+		require.Contains(t, out, `"host": "192.168.1.1"`)
+		require.Contains(t, out, `"port": "1514"`)
+		require.Contains(t, out, `"username": "user"`)
+		require.Contains(t, out, `"password": "pass"`)
+	})
 }
 
 func TestLoadSyslogDeleteConfig(t *testing.T) {
@@ -409,7 +432,7 @@ func TestLoadSyslogDeleteConfig(t *testing.T) {
 			"config": {
 				"host": "127.0.0.1",
 				"port": "514",
-				"mode": "tcp"
+				"protocol": "tcp"
 			},
 			"secrets": {}
 		}

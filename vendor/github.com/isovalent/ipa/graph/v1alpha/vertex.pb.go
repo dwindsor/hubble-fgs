@@ -15,6 +15,7 @@
 package v1alpha
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1alpha "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	v1alpha1 "github.com/isovalent/ipa/common/net/v1alpha"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -613,14 +614,14 @@ var File_graph_v1alpha_vertex_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\n" +
-	"\x1agraph/v1alpha/vertex.proto\x12\rgraph.v1alpha\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\"\xfb\x01\n" +
+	"\x1agraph/v1alpha/vertex.proto\x12\rgraph.v1alpha\x1a\x1bbuf/validate/validate.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\"\xfb\x01\n" +
 	"\x06Vertex\x12G\n" +
 	"\n" +
 	"kubernetes\x18\x01 \x01(\v2%.graph.v1alpha.VertexFamilyKubernetesH\x00R\n" +
 	"kubernetes\x12Q\n" +
 	"\x0enetwork_device\x18\x02 \x01(\v2(.graph.v1alpha.VertexFamilyNetworkDeviceH\x00R\rnetworkDevice\x12K\n" +
 	"\fworld_entity\x18\x03 \x01(\v2&.graph.v1alpha.VertexFamilyWorldEntityH\x00R\vworldEntityB\b\n" +
-	"\x06family\"\x83\x06\n" +
+	"\x06family\"\xeb\b\n" +
 	"\x16VertexFamilyKubernetes\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\tR\x03uid\x12J\n" +
 	"\rresource_kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR\fresourceKind\x12)\n" +
@@ -633,37 +634,45 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\x0econtainer_name\x18\t \x01(\tR\rcontainerName\x12G\n" +
 	"\fservice_kind\x18\n" +
 	" \x01(\x0e2$.common.k8s.type.v1alpha.ServiceKindR\vserviceKind\x12J\n" +
-	"\rworkload_kind\x18\v \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\fworkloadKind\x12\x0e\n" +
-	"\x02ip\x18\f \x01(\tR\x02ip\x12\x12\n" +
-	"\x04port\x18\r \x01(\rR\x04port\x12?\n" +
+	"\rworkload_kind\x18\v \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\fworkloadKind\x12\x1a\n" +
+	"\x02ip\x18\f \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02p\x01R\x02ip\x12 \n" +
+	"\x04port\x18\r \x01(\rB\f\xbaH\t\xd8\x01\x01*\x04\x18\xff\xff\x03R\x04port\x12?\n" +
 	"\vip_protocol\x18\x0f \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\n" +
 	"ipProtocol\x124\n" +
 	"\x16application_model_uuid\x18\x0e \x01(\tR\x14applicationModelUuid\x12%\n" +
 	"\x0einterface_name\x18\x10 \x01(\tR\rinterfaceName\x12D\n" +
-	"\tmulticast\x18\x11 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast\"\x8b\x03\n" +
+	"\tmulticast\x18\x11 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast:\xcb\x02\xbaH\xc7\x02\x1a\x9e\x01\n" +
+	"\x19service_kind_when_service\x12Dservice_kind must be set when resource_kind is RESOURCE_KIND_SERVICE\x1a;int(this.resource_kind) != 2 || int(this.service_kind) != 0\x1a\xa3\x01\n" +
+	"\x1bworkload_kind_when_workload\x12Fworkload_kind must be set when resource_kind is RESOURCE_KIND_WORKLOAD\x1a<int(this.resource_kind) != 1 || int(this.workload_kind) != 0\"\xb4\x03\n" +
 	"\x19VertexFamilyNetworkDevice\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
-	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +
-	"\x04port\x18\x03 \x01(\rR\x04port\x12?\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
+	"\x02ip\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02p\x01R\x02ip\x12 \n" +
+	"\x04port\x18\x03 \x01(\rB\f\xbaH\t\xd8\x01\x01*\x04\x18\xff\xff\x03R\x04port\x12?\n" +
 	"\vip_protocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\n" +
 	"ipProtocol\x121\n" +
 	"\x14application_protocol\x18\x05 \x01(\tR\x13applicationProtocol\x12\x1b\n" +
-	"\tvlan_name\x18\a \x01(\tR\bvlanName\x12\x17\n" +
-	"\avlan_id\x18\b \x01(\rR\x06vlanId\x12\x19\n" +
+	"\tvlan_name\x18\a \x01(\tR\bvlanName\x12&\n" +
+	"\avlan_id\x18\b \x01(\rB\r\xbaH\n" +
+	"\xd8\x01\x01*\x05\x18\xfe\x1f(\x01R\x06vlanId\x12\x19\n" +
 	"\bvrf_name\x18\t \x01(\tR\avrfName\x12%\n" +
 	"\x0einterface_name\x18\n" +
 	" \x01(\tR\rinterfaceName\x12D\n" +
-	"\tmulticast\x18\v \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticastJ\x04\b\x06\x10\a\"\xdf\x01\n" +
+	"\tmulticast\x18\v \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticastJ\x04\b\x06\x10\a\"\xf9\x01\n" +
 	"\x17VertexFamilyWorldEntity\x12\x19\n" +
-	"\bdns_name\x18\x01 \x01(\tR\adnsName\x12\x0e\n" +
-	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +
-	"\x04port\x18\x03 \x01(\rR\x04port\x12?\n" +
+	"\bdns_name\x18\x01 \x01(\tR\adnsName\x12\x1a\n" +
+	"\x02ip\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02p\x01R\x02ip\x12 \n" +
+	"\x04port\x18\x03 \x01(\rB\f\xbaH\t\xd8\x01\x01*\x04\x18\xff\xff\x03R\x04port\x12?\n" +
 	"\vip_protocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\n" +
 	"ipProtocol\x12D\n" +
-	"\tmulticast\x18\x05 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast\"Q\n" +
+	"\tmulticast\x18\x05 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast\"\xeb\x06\n" +
 	"\x17VertexPropertyMulticast\x12\x1b\n" +
-	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12\x19\n" +
-	"\bgroup_ip\x18\x02 \x01(\tR\agroupIpB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12%\n" +
+	"\bgroup_ip\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02p\x01R\agroupIp:\x8b\x06\xbaH\x87\x06\x1a\x84\x06\n" +
+	"\x18multicast_group_ip_range\x12Ngroup_ip must be a valid multicast address (IPv4: 224.0.0.0/4, IPv6: ff00::/8)\x1a\x97\x05this.group_ip == '' || this.group_ip.startsWith('224.') || this.group_ip.startsWith('225.') || this.group_ip.startsWith('226.') || this.group_ip.startsWith('227.') || this.group_ip.startsWith('228.') || this.group_ip.startsWith('229.') || this.group_ip.startsWith('230.') || this.group_ip.startsWith('231.') || this.group_ip.startsWith('232.') || this.group_ip.startsWith('233.') || this.group_ip.startsWith('234.') || this.group_ip.startsWith('235.') || this.group_ip.startsWith('236.') || this.group_ip.startsWith('237.') || this.group_ip.startsWith('238.') || this.group_ip.startsWith('239.') || this.group_ip.startsWith('ff') || this.group_ip.startsWith('FF')B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_vertex_proto_rawDescOnce sync.Once

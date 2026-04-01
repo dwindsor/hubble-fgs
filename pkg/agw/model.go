@@ -31,18 +31,19 @@ type LogConfigData struct {
 }
 
 type LogConfigDataConfig struct {
-	Host string `json:"host"`
-	Port string `json:"port"`
-	Mode string `json:"mode"` // "tcp" or "udp"
-	Tls  bool   `json:"tls"`
+	Host  string `json:"host"`
+	Port  string `json:"port"`
+	Proto string `json:"protocol"` // "tcp" or "udp"
+	Tls   bool   `json:"tls"`
 }
 
 type LogConfigDataSecrets struct {
-	Token       string `json:"token"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	CA          string `json:"ca"`
-	Cert        string `json:"cert"`
-	Key         string `json:"key"`
-	KeyPassword string `json:"keyPassword"` // Not necessary??
+	Token                 string `json:"token"`
+	Username              string `json:"username"`
+	Password              string `json:"password"`
+	MTLSIssuerGroup       string `json:"mtlsIssuerGroup"`
+	MTLSIssuerKind        string `json:"mtlsIssuerKind"`
+	MTLSIssuerName        string `json:"mtlsIssuerName"`
+	MTLSCASecretName      string `json:"mtlsCASecretName"`
+	MTLSCASecretNamespace string `json:"mtlsCASecretNamespace"`
 }

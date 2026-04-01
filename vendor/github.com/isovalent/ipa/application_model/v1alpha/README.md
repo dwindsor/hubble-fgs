@@ -579,6 +579,7 @@ WARNING for consumers: numbers are arbitrary.
 | destination | [Destination](#application_model-v1alpha-Destination) |  | Destination information associated with the connection |
 | stats | [ConnectionStats](#application_model-v1alpha-ConnectionStats) |  | Statistics associated with the connection |
 | policy | [NetworkPolicy](#application_model-v1alpha-NetworkPolicy) |  | Policy information associated with the connection |
+| protocol | [common.net.v1alpha.IPProtocol](#common-net-v1alpha-IPProtocol) |  | Network protocol of the connection at the L3/L4 layer. |
 
 
 

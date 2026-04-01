@@ -92,7 +92,7 @@ func SetupTimescapeFromCLI(ctx context.Context, agwAgent *agw.AgentGateway, enab
 				BatchTimeoutMs: 0,
 				// Authentication using oneof field pattern
 				Auth: &v1alpha.TimescapeConfig_BasicAuth{
-					BasicAuth: &v1alpha.TimescapeBasicAuth{
+					BasicAuth: &v1alpha.BasicAuth{
 						Username: TIMESCAPE_USERNAME,
 						Password: trimmedPassword,
 					},

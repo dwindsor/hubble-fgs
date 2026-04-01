@@ -1347,33 +1347,29 @@ func (x *DpuConfig) GetSwitchName() string {
 
 // Object to store log export configuration
 type LogConfig struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Configuration id
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Configuration name
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Configuration description
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	// IPv4 only
 	Host string `protobuf:"bytes,4,opt,name=host,proto3" json:"host,omitempty"`
 	// Collector target port
 	Port string `protobuf:"bytes,5,opt,name=port,proto3" json:"port,omitempty"`
 	// Protocol, only TCP or UDP
-	Mode string `protobuf:"bytes,6,opt,name=mode,proto3" json:"mode,omitempty"`
-	// Turns TLS on or off
+	Protocol string `protobuf:"bytes,6,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	// Turns TLS/HTTPS on or off
 	Tls bool `protobuf:"varint,7,opt,name=tls,proto3" json:"tls,omitempty"`
-	// Secret/Auth fields are only relevant if TLS is true
-	// Token for Splunk or Timescape
-	Token string `protobuf:"bytes,8,opt,name=token,proto3" json:"token,omitempty"`
-	// Username for Splunk or Timescape
-	Username string `protobuf:"bytes,9,opt,name=username,proto3" json:"username,omitempty"`
-	// Password for Splunk or Timescape
-	Password string `protobuf:"bytes,10,opt,name=password,proto3" json:"password,omitempty"`
-	// CA cert as a string
-	Ca string `protobuf:"bytes,11,opt,name=ca,proto3" json:"ca,omitempty"`
-	// Client cert as a string
-	Cert string `protobuf:"bytes,12,opt,name=cert,proto3" json:"cert,omitempty"`
-	// Client private key as a string
-	Key string `protobuf:"bytes,13,opt,name=key,proto3" json:"key,omitempty"`
-	// Key password to apply to the persisted client private key
-	KeyPassword   string `protobuf:"bytes,14,opt,name=key_password,json=keyPassword,proto3" json:"key_password,omitempty"`
+	// Authentication configuration (exactly one should be configured)
+	//
+	// Types that are valid to be assigned to Auth:
+	//
+	//	*LogConfig_BasicAuth
+	//	*LogConfig_Mtls
+	//	*LogConfig_Token
+	Auth          isLogConfig_Auth `protobuf_oneof:"auth"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1443,9 +1439,9 @@ func (x *LogConfig) GetPort() string {
 	return ""
 }
 
-func (x *LogConfig) GetMode() string {
+func (x *LogConfig) GetProtocol() string {
 	if x != nil {
-		return x.Mode
+		return x.Protocol
 	}
 	return ""
 }
@@ -1457,54 +1453,64 @@ func (x *LogConfig) GetTls() bool {
 	return false
 }
 
-func (x *LogConfig) GetToken() string {
+func (x *LogConfig) GetAuth() isLogConfig_Auth {
 	if x != nil {
-		return x.Token
+		return x.Auth
 	}
-	return ""
+	return nil
 }
 
-func (x *LogConfig) GetUsername() string {
+func (x *LogConfig) GetBasicAuth() *BasicAuth {
 	if x != nil {
-		return x.Username
+		if x, ok := x.Auth.(*LogConfig_BasicAuth); ok {
+			return x.BasicAuth
+		}
 	}
-	return ""
+	return nil
 }
 
-func (x *LogConfig) GetPassword() string {
+func (x *LogConfig) GetMtls() *MTLSConfig {
 	if x != nil {
-		return x.Password
+		if x, ok := x.Auth.(*LogConfig_Mtls); ok {
+			return x.Mtls
+		}
 	}
-	return ""
+	return nil
 }
 
-func (x *LogConfig) GetCa() string {
+func (x *LogConfig) GetToken() *Token {
 	if x != nil {
-		return x.Ca
+		if x, ok := x.Auth.(*LogConfig_Token); ok {
+			return x.Token
+		}
 	}
-	return ""
+	return nil
 }
 
-func (x *LogConfig) GetCert() string {
-	if x != nil {
-		return x.Cert
-	}
-	return ""
+type isLogConfig_Auth interface {
+	isLogConfig_Auth()
 }
 
-func (x *LogConfig) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
+type LogConfig_BasicAuth struct {
+	// BasicAuth configuration
+	BasicAuth *BasicAuth `protobuf:"bytes,8,opt,name=basic_auth,json=basicAuth,proto3,oneof"`
 }
 
-func (x *LogConfig) GetKeyPassword() string {
-	if x != nil {
-		return x.KeyPassword
-	}
-	return ""
+type LogConfig_Mtls struct {
+	// mTLS configuration
+	Mtls *MTLSConfig `protobuf:"bytes,9,opt,name=mtls,proto3,oneof"`
 }
+
+type LogConfig_Token struct {
+	// Token based configuration
+	Token *Token `protobuf:"bytes,10,opt,name=token,proto3,oneof"`
+}
+
+func (*LogConfig_BasicAuth) isLogConfig_Auth() {}
+
+func (*LogConfig_Mtls) isLogConfig_Auth() {}
+
+func (*LogConfig_Token) isLogConfig_Auth() {}
 
 // Object to store a list of syslog configuration
 // CONFIG_TYPE_LOG_SYSLOG
@@ -1991,31 +1997,29 @@ func (x *NetworkConfig) GetVrfs() []*Vrf {
 	return nil
 }
 
-// BasicAuth configuration for Timescape
-type TimescapeBasicAuth struct {
+// Token configuration
+type Token struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Username for BasicAuth
-	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	// Password for BasicAuth
-	Password      string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	// Access token
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *TimescapeBasicAuth) Reset() {
-	*x = TimescapeBasicAuth{}
+func (x *Token) Reset() {
+	*x = Token{}
 	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *TimescapeBasicAuth) String() string {
+func (x *Token) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*TimescapeBasicAuth) ProtoMessage() {}
+func (*Token) ProtoMessage() {}
 
-func (x *TimescapeBasicAuth) ProtoReflect() protoreflect.Message {
+func (x *Token) ProtoReflect() protoreflect.Message {
 	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2027,19 +2031,67 @@ func (x *TimescapeBasicAuth) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TimescapeBasicAuth.ProtoReflect.Descriptor instead.
-func (*TimescapeBasicAuth) Descriptor() ([]byte, []int) {
+// Deprecated: Use Token.ProtoReflect.Descriptor instead.
+func (*Token) Descriptor() ([]byte, []int) {
 	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *TimescapeBasicAuth) GetUsername() string {
+func (x *Token) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+// BasicAuth configuration
+type BasicAuth struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Username for BasicAuth
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	// Password for BasicAuth
+	Password      string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BasicAuth) Reset() {
+	*x = BasicAuth{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BasicAuth) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BasicAuth) ProtoMessage() {}
+
+func (x *BasicAuth) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BasicAuth.ProtoReflect.Descriptor instead.
+func (*BasicAuth) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *BasicAuth) GetUsername() string {
 	if x != nil {
 		return x.Username
 	}
 	return ""
 }
 
-func (x *TimescapeBasicAuth) GetPassword() string {
+func (x *BasicAuth) GetPassword() string {
 	if x != nil {
 		return x.Password
 	}
@@ -2060,7 +2112,7 @@ type MTLSClientCA struct {
 
 func (x *MTLSClientCA) Reset() {
 	*x = MTLSClientCA{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[21]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2072,7 +2124,7 @@ func (x *MTLSClientCA) String() string {
 func (*MTLSClientCA) ProtoMessage() {}
 
 func (x *MTLSClientCA) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[21]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2085,7 +2137,7 @@ func (x *MTLSClientCA) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MTLSClientCA.ProtoReflect.Descriptor instead.
 func (*MTLSClientCA) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{21}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *MTLSClientCA) GetSecretName() string {
@@ -2117,7 +2169,7 @@ type IssuerRef struct {
 
 func (x *IssuerRef) Reset() {
 	*x = IssuerRef{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[22]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2129,7 +2181,7 @@ func (x *IssuerRef) String() string {
 func (*IssuerRef) ProtoMessage() {}
 
 func (x *IssuerRef) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[22]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2142,7 +2194,7 @@ func (x *IssuerRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IssuerRef.ProtoReflect.Descriptor instead.
 func (*IssuerRef) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{22}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *IssuerRef) GetGroup() string {
@@ -2188,7 +2240,7 @@ type MTLSCertManager struct {
 
 func (x *MTLSCertManager) Reset() {
 	*x = MTLSCertManager{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[23]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2200,7 +2252,7 @@ func (x *MTLSCertManager) String() string {
 func (*MTLSCertManager) ProtoMessage() {}
 
 func (x *MTLSCertManager) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[23]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2213,7 +2265,7 @@ func (x *MTLSCertManager) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MTLSCertManager.ProtoReflect.Descriptor instead.
 func (*MTLSCertManager) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{23}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *MTLSCertManager) GetIssuerRef() *IssuerRef {
@@ -2242,7 +2294,7 @@ type MTLSConfig struct {
 
 func (x *MTLSConfig) Reset() {
 	*x = MTLSConfig{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2254,7 +2306,7 @@ func (x *MTLSConfig) String() string {
 func (*MTLSConfig) ProtoMessage() {}
 
 func (x *MTLSConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2267,7 +2319,7 @@ func (x *MTLSConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MTLSConfig.ProtoReflect.Descriptor instead.
 func (*MTLSConfig) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{24}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *MTLSConfig) GetEnabled() bool {
@@ -2357,7 +2409,7 @@ type TimescapeConfig struct {
 
 func (x *TimescapeConfig) Reset() {
 	*x = TimescapeConfig{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2369,7 +2421,7 @@ func (x *TimescapeConfig) String() string {
 func (*TimescapeConfig) ProtoMessage() {}
 
 func (x *TimescapeConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2382,7 +2434,7 @@ func (x *TimescapeConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimescapeConfig.ProtoReflect.Descriptor instead.
 func (*TimescapeConfig) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{25}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *TimescapeConfig) GetId() string {
@@ -2483,7 +2535,7 @@ func (x *TimescapeConfig) GetAuth() isTimescapeConfig_Auth {
 	return nil
 }
 
-func (x *TimescapeConfig) GetBasicAuth() *TimescapeBasicAuth {
+func (x *TimescapeConfig) GetBasicAuth() *BasicAuth {
 	if x != nil {
 		if x, ok := x.Auth.(*TimescapeConfig_BasicAuth); ok {
 			return x.BasicAuth
@@ -2507,7 +2559,7 @@ type isTimescapeConfig_Auth interface {
 
 type TimescapeConfig_BasicAuth struct {
 	// BasicAuth configuration
-	BasicAuth *TimescapeBasicAuth `protobuf:"bytes,14,opt,name=basic_auth,json=basicAuth,proto3,oneof"`
+	BasicAuth *BasicAuth `protobuf:"bytes,14,opt,name=basic_auth,json=basicAuth,proto3,oneof"`
 }
 
 type TimescapeConfig_Mtls struct {
@@ -2545,7 +2597,7 @@ type ConfigObject struct {
 
 func (x *ConfigObject) Reset() {
 	*x = ConfigObject{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2557,7 +2609,7 @@ func (x *ConfigObject) String() string {
 func (*ConfigObject) ProtoMessage() {}
 
 func (x *ConfigObject) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2570,7 +2622,7 @@ func (x *ConfigObject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigObject.ProtoReflect.Descriptor instead.
 func (*ConfigObject) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{26}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ConfigObject) GetType() ConfigType {
@@ -2727,7 +2779,7 @@ type StreamDatapathConfigRequest struct {
 
 func (x *StreamDatapathConfigRequest) Reset() {
 	*x = StreamDatapathConfigRequest{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[27]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2739,7 +2791,7 @@ func (x *StreamDatapathConfigRequest) String() string {
 func (*StreamDatapathConfigRequest) ProtoMessage() {}
 
 func (x *StreamDatapathConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[27]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2752,7 +2804,7 @@ func (x *StreamDatapathConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamDatapathConfigRequest.ProtoReflect.Descriptor instead.
 func (*StreamDatapathConfigRequest) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{27}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *StreamDatapathConfigRequest) GetAgentUid() string {
@@ -2772,7 +2824,7 @@ type StreamDatapathConfigResponse struct {
 
 func (x *StreamDatapathConfigResponse) Reset() {
 	*x = StreamDatapathConfigResponse{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[28]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2784,7 +2836,7 @@ func (x *StreamDatapathConfigResponse) String() string {
 func (*StreamDatapathConfigResponse) ProtoMessage() {}
 
 func (x *StreamDatapathConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[28]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2797,7 +2849,7 @@ func (x *StreamDatapathConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamDatapathConfigResponse.ProtoReflect.Descriptor instead.
 func (*StreamDatapathConfigResponse) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{28}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *StreamDatapathConfigResponse) GetOper() ConfigOperation {
@@ -2838,7 +2890,7 @@ type PolicyRuleEvent struct {
 
 func (x *PolicyRuleEvent) Reset() {
 	*x = PolicyRuleEvent{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[29]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2850,7 +2902,7 @@ func (x *PolicyRuleEvent) String() string {
 func (*PolicyRuleEvent) ProtoMessage() {}
 
 func (x *PolicyRuleEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[29]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2863,7 +2915,7 @@ func (x *PolicyRuleEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyRuleEvent.ProtoReflect.Descriptor instead.
 func (*PolicyRuleEvent) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{29}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PolicyRuleEvent) GetRuleName() string {
@@ -2929,7 +2981,7 @@ type HAStatusEvent struct {
 
 func (x *HAStatusEvent) Reset() {
 	*x = HAStatusEvent{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[30]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2941,7 +2993,7 @@ func (x *HAStatusEvent) String() string {
 func (*HAStatusEvent) ProtoMessage() {}
 
 func (x *HAStatusEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[30]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2954,7 +3006,7 @@ func (x *HAStatusEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HAStatusEvent.ProtoReflect.Descriptor instead.
 func (*HAStatusEvent) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{30}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *HAStatusEvent) GetPeer() string {
@@ -2998,7 +3050,7 @@ type StreamEvent struct {
 
 func (x *StreamEvent) Reset() {
 	*x = StreamEvent{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[31]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3010,7 +3062,7 @@ func (x *StreamEvent) String() string {
 func (*StreamEvent) ProtoMessage() {}
 
 func (x *StreamEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[31]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3023,7 +3075,7 @@ func (x *StreamEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamEvent.ProtoReflect.Descriptor instead.
 func (*StreamEvent) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{31}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *StreamEvent) GetAgentUid() string {
@@ -3094,7 +3146,7 @@ type StreamEventsRequest struct {
 
 func (x *StreamEventsRequest) Reset() {
 	*x = StreamEventsRequest{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[32]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3106,7 +3158,7 @@ func (x *StreamEventsRequest) String() string {
 func (*StreamEventsRequest) ProtoMessage() {}
 
 func (x *StreamEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[32]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3119,7 +3171,7 @@ func (x *StreamEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamEventsRequest.ProtoReflect.Descriptor instead.
 func (*StreamEventsRequest) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{32}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *StreamEventsRequest) GetEvents() []*StreamEvent {
@@ -3137,7 +3189,7 @@ type StreamEventsResponse struct {
 
 func (x *StreamEventsResponse) Reset() {
 	*x = StreamEventsResponse{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[33]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3149,7 +3201,7 @@ func (x *StreamEventsResponse) String() string {
 func (*StreamEventsResponse) ProtoMessage() {}
 
 func (x *StreamEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[33]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3162,7 +3214,7 @@ func (x *StreamEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamEventsResponse.ProtoReflect.Descriptor instead.
 func (*StreamEventsResponse) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{33}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{34}
 }
 
 var File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto protoreflect.FileDescriptor
@@ -3234,23 +3286,21 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x05ha_ip\x18\x06 \x01(\tB\x02\x18\x01R\x04haIp\x12#\n" +
 	"\rserial_number\x18\a \x01(\tR\fserialNumber\x12\x1f\n" +
 	"\vswitch_name\x18\b \x01(\tR\n" +
-	"switchName\"\xc6\x02\n" +
+	"switchName\"\xed\x02\n" +
 	"\tLogConfig\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
 	"\x04host\x18\x04 \x01(\tR\x04host\x12\x12\n" +
-	"\x04port\x18\x05 \x01(\tR\x04port\x12\x12\n" +
-	"\x04mode\x18\x06 \x01(\tR\x04mode\x12\x10\n" +
-	"\x03tls\x18\a \x01(\bR\x03tls\x12\x14\n" +
-	"\x05token\x18\b \x01(\tR\x05token\x12\x1a\n" +
-	"\busername\x18\t \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\n" +
-	" \x01(\tR\bpassword\x12\x0e\n" +
-	"\x02ca\x18\v \x01(\tR\x02ca\x12\x12\n" +
-	"\x04cert\x18\f \x01(\tR\x04cert\x12\x10\n" +
-	"\x03key\x18\r \x01(\tR\x03key\x12!\n" +
-	"\fkey_password\x18\x0e \x01(\tR\vkeyPassword\"\xc6\x01\n" +
+	"\x04port\x18\x05 \x01(\tR\x04port\x12\x1a\n" +
+	"\bprotocol\x18\x06 \x01(\tR\bprotocol\x12\x10\n" +
+	"\x03tls\x18\a \x01(\bR\x03tls\x12E\n" +
+	"\n" +
+	"basic_auth\x18\b \x01(\v2$.l3l4networkpolicy.v1alpha.BasicAuthH\x00R\tbasicAuth\x12;\n" +
+	"\x04mtls\x18\t \x01(\v2%.l3l4networkpolicy.v1alpha.MTLSConfigH\x00R\x04mtls\x128\n" +
+	"\x05token\x18\n" +
+	" \x01(\v2 .l3l4networkpolicy.v1alpha.TokenH\x00R\x05tokenB\x06\n" +
+	"\x04auth\"\xc6\x01\n" +
 	"\x0fLogConfigSyslog\x12Q\n" +
 	"\aconfigs\x18\x01 \x03(\v27.l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntryR\aconfigs\x1a`\n" +
 	"\fConfigsEntry\x12\x10\n" +
@@ -3288,8 +3338,10 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"z\n" +
 	"\rNetworkConfig\x125\n" +
 	"\x05vlans\x18\x01 \x03(\v2\x1f.l3l4networkpolicy.v1alpha.VlanR\x05vlans\x122\n" +
-	"\x04vrfs\x18\x02 \x03(\v2\x1e.l3l4networkpolicy.v1alpha.VrfR\x04vrfs\"L\n" +
-	"\x12TimescapeBasicAuth\x12\x1a\n" +
+	"\x04vrfs\x18\x02 \x03(\v2\x1e.l3l4networkpolicy.v1alpha.VrfR\x04vrfs\"\x1d\n" +
+	"\x05Token\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"C\n" +
+	"\tBasicAuth\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"Z\n" +
 	"\fMTLSClientCA\x12\x1f\n" +
@@ -3309,7 +3361,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\vcertmanager\x18\x02 \x01(\v2*.l3l4networkpolicy.v1alpha.MTLSCertManagerR\vcertmanager\x12H\n" +
 	"\n" +
 	"managed_ca\x18\x03 \x01(\v2'.l3l4networkpolicy.v1alpha.MTLSClientCAH\x00R\tmanagedCaB\v\n" +
-	"\tca_config\"\xcb\x04\n" +
+	"\tca_config\"\xc2\x04\n" +
 	"\x0fTimescapeConfig\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -3326,9 +3378,9 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	" \x01(\rR\x14connectionTimeoutSec\x12.\n" +
 	"\x13request_timeout_sec\x18\v \x01(\rR\x11requestTimeoutSec\x12$\n" +
 	"\x0emax_batch_size\x18\f \x01(\rR\fmaxBatchSize\x12(\n" +
-	"\x10batch_timeout_ms\x18\r \x01(\rR\x0ebatchTimeoutMs\x12N\n" +
+	"\x10batch_timeout_ms\x18\r \x01(\rR\x0ebatchTimeoutMs\x12E\n" +
 	"\n" +
-	"basic_auth\x18\x0e \x01(\v2-.l3l4networkpolicy.v1alpha.TimescapeBasicAuthH\x00R\tbasicAuth\x12;\n" +
+	"basic_auth\x18\x0e \x01(\v2$.l3l4networkpolicy.v1alpha.BasicAuthH\x00R\tbasicAuth\x12;\n" +
 	"\x04mtls\x18\x0f \x01(\v2%.l3l4networkpolicy.v1alpha.MTLSConfigH\x00R\x04mtlsB\x06\n" +
 	"\x04auth\"\xb9\x06\n" +
 	"\fConfigObject\x129\n" +
@@ -3439,7 +3491,7 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP() []byte
 }
 
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	(PolicyProtocol)(0),                     // 0: l3l4networkpolicy.v1alpha.PolicyProtocol
 	(PolicyAction)(0),                       // 1: l3l4networkpolicy.v1alpha.PolicyAction
@@ -3470,25 +3522,26 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	(*Vlan)(nil),                            // 26: l3l4networkpolicy.v1alpha.Vlan
 	(*Vrf)(nil),                             // 27: l3l4networkpolicy.v1alpha.Vrf
 	(*NetworkConfig)(nil),                   // 28: l3l4networkpolicy.v1alpha.NetworkConfig
-	(*TimescapeBasicAuth)(nil),              // 29: l3l4networkpolicy.v1alpha.TimescapeBasicAuth
-	(*MTLSClientCA)(nil),                    // 30: l3l4networkpolicy.v1alpha.MTLSClientCA
-	(*IssuerRef)(nil),                       // 31: l3l4networkpolicy.v1alpha.IssuerRef
-	(*MTLSCertManager)(nil),                 // 32: l3l4networkpolicy.v1alpha.MTLSCertManager
-	(*MTLSConfig)(nil),                      // 33: l3l4networkpolicy.v1alpha.MTLSConfig
-	(*TimescapeConfig)(nil),                 // 34: l3l4networkpolicy.v1alpha.TimescapeConfig
-	(*ConfigObject)(nil),                    // 35: l3l4networkpolicy.v1alpha.ConfigObject
-	(*StreamDatapathConfigRequest)(nil),     // 36: l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
-	(*StreamDatapathConfigResponse)(nil),    // 37: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
-	(*PolicyRuleEvent)(nil),                 // 38: l3l4networkpolicy.v1alpha.PolicyRuleEvent
-	(*HAStatusEvent)(nil),                   // 39: l3l4networkpolicy.v1alpha.HAStatusEvent
-	(*StreamEvent)(nil),                     // 40: l3l4networkpolicy.v1alpha.StreamEvent
-	(*StreamEventsRequest)(nil),             // 41: l3l4networkpolicy.v1alpha.StreamEventsRequest
-	(*StreamEventsResponse)(nil),            // 42: l3l4networkpolicy.v1alpha.StreamEventsResponse
-	nil,                                     // 43: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
-	nil,                                     // 44: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
-	nil,                                     // 45: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
-	nil,                                     // 46: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
-	(*timestamppb.Timestamp)(nil),           // 47: google.protobuf.Timestamp
+	(*Token)(nil),                           // 29: l3l4networkpolicy.v1alpha.Token
+	(*BasicAuth)(nil),                       // 30: l3l4networkpolicy.v1alpha.BasicAuth
+	(*MTLSClientCA)(nil),                    // 31: l3l4networkpolicy.v1alpha.MTLSClientCA
+	(*IssuerRef)(nil),                       // 32: l3l4networkpolicy.v1alpha.IssuerRef
+	(*MTLSCertManager)(nil),                 // 33: l3l4networkpolicy.v1alpha.MTLSCertManager
+	(*MTLSConfig)(nil),                      // 34: l3l4networkpolicy.v1alpha.MTLSConfig
+	(*TimescapeConfig)(nil),                 // 35: l3l4networkpolicy.v1alpha.TimescapeConfig
+	(*ConfigObject)(nil),                    // 36: l3l4networkpolicy.v1alpha.ConfigObject
+	(*StreamDatapathConfigRequest)(nil),     // 37: l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+	(*StreamDatapathConfigResponse)(nil),    // 38: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+	(*PolicyRuleEvent)(nil),                 // 39: l3l4networkpolicy.v1alpha.PolicyRuleEvent
+	(*HAStatusEvent)(nil),                   // 40: l3l4networkpolicy.v1alpha.HAStatusEvent
+	(*StreamEvent)(nil),                     // 41: l3l4networkpolicy.v1alpha.StreamEvent
+	(*StreamEventsRequest)(nil),             // 42: l3l4networkpolicy.v1alpha.StreamEventsRequest
+	(*StreamEventsResponse)(nil),            // 43: l3l4networkpolicy.v1alpha.StreamEventsResponse
+	nil,                                     // 44: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	nil,                                     // 45: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	nil,                                     // 46: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	nil,                                     // 47: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	(*timestamppb.Timestamp)(nil),           // 48: google.protobuf.Timestamp
 }
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
 	0,  // 0: l3l4networkpolicy.v1alpha.PolicyPorts.protocol:type_name -> l3l4networkpolicy.v1alpha.PolicyProtocol
@@ -3501,56 +3554,59 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
 	12, // 7: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.policy:type_name -> l3l4networkpolicy.v1alpha.PolicyRule
 	17, // 8: l3l4networkpolicy.v1alpha.ReportStatusRequest.status:type_name -> l3l4networkpolicy.v1alpha.ReportStatus
 	3,  // 9: l3l4networkpolicy.v1alpha.ReportStatus.type:type_name -> l3l4networkpolicy.v1alpha.AgentType
-	47, // 10: l3l4networkpolicy.v1alpha.ReportStatus.last_dpu_restart:type_name -> google.protobuf.Timestamp
-	47, // 11: l3l4networkpolicy.v1alpha.ReportStatus.last_dataplane_restart:type_name -> google.protobuf.Timestamp
-	47, // 12: l3l4networkpolicy.v1alpha.ReportStatus.last_fwa_crash_time:type_name -> google.protobuf.Timestamp
-	43, // 13: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
-	44, // 14: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
-	45, // 15: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
-	46, // 16: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
-	24, // 17: l3l4networkpolicy.v1alpha.HaConfig.peers:type_name -> l3l4networkpolicy.v1alpha.HaPeer
-	26, // 18: l3l4networkpolicy.v1alpha.NetworkConfig.vlans:type_name -> l3l4networkpolicy.v1alpha.Vlan
-	27, // 19: l3l4networkpolicy.v1alpha.NetworkConfig.vrfs:type_name -> l3l4networkpolicy.v1alpha.Vrf
-	31, // 20: l3l4networkpolicy.v1alpha.MTLSCertManager.issuer_ref:type_name -> l3l4networkpolicy.v1alpha.IssuerRef
-	32, // 21: l3l4networkpolicy.v1alpha.MTLSConfig.certmanager:type_name -> l3l4networkpolicy.v1alpha.MTLSCertManager
-	30, // 22: l3l4networkpolicy.v1alpha.MTLSConfig.managed_ca:type_name -> l3l4networkpolicy.v1alpha.MTLSClientCA
-	29, // 23: l3l4networkpolicy.v1alpha.TimescapeConfig.basic_auth:type_name -> l3l4networkpolicy.v1alpha.TimescapeBasicAuth
-	33, // 24: l3l4networkpolicy.v1alpha.TimescapeConfig.mtls:type_name -> l3l4networkpolicy.v1alpha.MTLSConfig
-	4,  // 25: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
-	5,  // 26: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
-	18, // 27: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
-	20, // 28: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
-	21, // 29: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
-	22, // 30: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
-	23, // 31: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
-	25, // 32: l3l4networkpolicy.v1alpha.ConfigObject.config_ha:type_name -> l3l4networkpolicy.v1alpha.HaConfig
-	28, // 33: l3l4networkpolicy.v1alpha.ConfigObject.network_config:type_name -> l3l4networkpolicy.v1alpha.NetworkConfig
-	34, // 34: l3l4networkpolicy.v1alpha.ConfigObject.config_timescape:type_name -> l3l4networkpolicy.v1alpha.TimescapeConfig
-	6,  // 35: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
-	35, // 36: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
-	7,  // 37: l3l4networkpolicy.v1alpha.PolicyRuleEvent.error:type_name -> l3l4networkpolicy.v1alpha.PolicyRuleError
-	8,  // 38: l3l4networkpolicy.v1alpha.HAStatusEvent.status:type_name -> l3l4networkpolicy.v1alpha.HAStatus
-	47, // 39: l3l4networkpolicy.v1alpha.StreamEvent.timestamp:type_name -> google.protobuf.Timestamp
-	38, // 40: l3l4networkpolicy.v1alpha.StreamEvent.rule:type_name -> l3l4networkpolicy.v1alpha.PolicyRuleEvent
-	39, // 41: l3l4networkpolicy.v1alpha.StreamEvent.ha_status:type_name -> l3l4networkpolicy.v1alpha.HAStatusEvent
-	40, // 42: l3l4networkpolicy.v1alpha.StreamEventsRequest.events:type_name -> l3l4networkpolicy.v1alpha.StreamEvent
-	19, // 43: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	19, // 44: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	19, // 45: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	19, // 46: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	13, // 47: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
-	15, // 48: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
-	36, // 49: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
-	41, // 50: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:input_type -> l3l4networkpolicy.v1alpha.StreamEventsRequest
-	14, // 51: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
-	16, // 52: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
-	37, // 53: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
-	42, // 54: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:output_type -> l3l4networkpolicy.v1alpha.StreamEventsResponse
-	51, // [51:55] is the sub-list for method output_type
-	47, // [47:51] is the sub-list for method input_type
-	47, // [47:47] is the sub-list for extension type_name
-	47, // [47:47] is the sub-list for extension extendee
-	0,  // [0:47] is the sub-list for field type_name
+	48, // 10: l3l4networkpolicy.v1alpha.ReportStatus.last_dpu_restart:type_name -> google.protobuf.Timestamp
+	48, // 11: l3l4networkpolicy.v1alpha.ReportStatus.last_dataplane_restart:type_name -> google.protobuf.Timestamp
+	48, // 12: l3l4networkpolicy.v1alpha.ReportStatus.last_fwa_crash_time:type_name -> google.protobuf.Timestamp
+	30, // 13: l3l4networkpolicy.v1alpha.LogConfig.basic_auth:type_name -> l3l4networkpolicy.v1alpha.BasicAuth
+	34, // 14: l3l4networkpolicy.v1alpha.LogConfig.mtls:type_name -> l3l4networkpolicy.v1alpha.MTLSConfig
+	29, // 15: l3l4networkpolicy.v1alpha.LogConfig.token:type_name -> l3l4networkpolicy.v1alpha.Token
+	44, // 16: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	45, // 17: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	46, // 18: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	47, // 19: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	24, // 20: l3l4networkpolicy.v1alpha.HaConfig.peers:type_name -> l3l4networkpolicy.v1alpha.HaPeer
+	26, // 21: l3l4networkpolicy.v1alpha.NetworkConfig.vlans:type_name -> l3l4networkpolicy.v1alpha.Vlan
+	27, // 22: l3l4networkpolicy.v1alpha.NetworkConfig.vrfs:type_name -> l3l4networkpolicy.v1alpha.Vrf
+	32, // 23: l3l4networkpolicy.v1alpha.MTLSCertManager.issuer_ref:type_name -> l3l4networkpolicy.v1alpha.IssuerRef
+	33, // 24: l3l4networkpolicy.v1alpha.MTLSConfig.certmanager:type_name -> l3l4networkpolicy.v1alpha.MTLSCertManager
+	31, // 25: l3l4networkpolicy.v1alpha.MTLSConfig.managed_ca:type_name -> l3l4networkpolicy.v1alpha.MTLSClientCA
+	30, // 26: l3l4networkpolicy.v1alpha.TimescapeConfig.basic_auth:type_name -> l3l4networkpolicy.v1alpha.BasicAuth
+	34, // 27: l3l4networkpolicy.v1alpha.TimescapeConfig.mtls:type_name -> l3l4networkpolicy.v1alpha.MTLSConfig
+	4,  // 28: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
+	5,  // 29: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
+	18, // 30: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
+	20, // 31: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
+	21, // 32: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
+	22, // 33: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
+	23, // 34: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
+	25, // 35: l3l4networkpolicy.v1alpha.ConfigObject.config_ha:type_name -> l3l4networkpolicy.v1alpha.HaConfig
+	28, // 36: l3l4networkpolicy.v1alpha.ConfigObject.network_config:type_name -> l3l4networkpolicy.v1alpha.NetworkConfig
+	35, // 37: l3l4networkpolicy.v1alpha.ConfigObject.config_timescape:type_name -> l3l4networkpolicy.v1alpha.TimescapeConfig
+	6,  // 38: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
+	36, // 39: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
+	7,  // 40: l3l4networkpolicy.v1alpha.PolicyRuleEvent.error:type_name -> l3l4networkpolicy.v1alpha.PolicyRuleError
+	8,  // 41: l3l4networkpolicy.v1alpha.HAStatusEvent.status:type_name -> l3l4networkpolicy.v1alpha.HAStatus
+	48, // 42: l3l4networkpolicy.v1alpha.StreamEvent.timestamp:type_name -> google.protobuf.Timestamp
+	39, // 43: l3l4networkpolicy.v1alpha.StreamEvent.rule:type_name -> l3l4networkpolicy.v1alpha.PolicyRuleEvent
+	40, // 44: l3l4networkpolicy.v1alpha.StreamEvent.ha_status:type_name -> l3l4networkpolicy.v1alpha.HAStatusEvent
+	41, // 45: l3l4networkpolicy.v1alpha.StreamEventsRequest.events:type_name -> l3l4networkpolicy.v1alpha.StreamEvent
+	19, // 46: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	19, // 47: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	19, // 48: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	19, // 49: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	13, // 50: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
+	15, // 51: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
+	37, // 52: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+	42, // 53: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:input_type -> l3l4networkpolicy.v1alpha.StreamEventsRequest
+	14, // 54: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
+	16, // 55: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
+	38, // 56: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+	43, // 57: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:output_type -> l3l4networkpolicy.v1alpha.StreamEventsResponse
+	54, // [54:58] is the sub-list for method output_type
+	50, // [50:54] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() }
@@ -3558,14 +3614,19 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() {
 	if File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto != nil {
 		return
 	}
-	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24].OneofWrappers = []any{
-		(*MTLSConfig_ManagedCa)(nil),
+	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[10].OneofWrappers = []any{
+		(*LogConfig_BasicAuth)(nil),
+		(*LogConfig_Mtls)(nil),
+		(*LogConfig_Token)(nil),
 	}
 	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25].OneofWrappers = []any{
+		(*MTLSConfig_ManagedCa)(nil),
+	}
+	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26].OneofWrappers = []any{
 		(*TimescapeConfig_BasicAuth)(nil),
 		(*TimescapeConfig_Mtls)(nil),
 	}
-	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26].OneofWrappers = []any{
+	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[27].OneofWrappers = []any{
 		(*ConfigObject_ConfigDpu)(nil),
 		(*ConfigObject_ConfigLogSyslog)(nil),
 		(*ConfigObject_ConfigLogIpfix)(nil),
@@ -3575,7 +3636,7 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() {
 		(*ConfigObject_NetworkConfig)(nil),
 		(*ConfigObject_ConfigTimescape)(nil),
 	}
-	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[31].OneofWrappers = []any{
+	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[32].OneofWrappers = []any{
 		(*StreamEvent_Rule)(nil),
 		(*StreamEvent_HaStatus)(nil),
 	}
@@ -3585,7 +3646,7 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc), len(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc)),
 			NumEnums:      9,
-			NumMessages:   38,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

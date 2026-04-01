@@ -44,7 +44,7 @@ var (
 		EnableNXOS:             true,
 		DPUServerAddress:       "0.0.0.0:8880",
 		GopsAddr:               "localhost:8118",
-		ConfigMap:              "smartswitch-config",
+		ConfigMap:              "smartswitch-log-config",
 		VrfMap:                 []string{},
 		Debug:                  false,
 		K8sServiceAccountAuth:  viper.GetString(keyK8sServiceAccountAuth),

@@ -4,6 +4,7 @@
 ## Table of Contents
 
 - [l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto](#l3l4networkpolicy_v1alpha_l3l4networkpolicy-proto)
+    - [BasicAuth](#l3l4networkpolicy-v1alpha-BasicAuth)
     - [ConfigObject](#l3l4networkpolicy-v1alpha-ConfigObject)
     - [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig)
     - [HAStatusEvent](#l3l4networkpolicy-v1alpha-HAStatusEvent)
@@ -38,8 +39,8 @@
     - [StreamEventsResponse](#l3l4networkpolicy-v1alpha-StreamEventsResponse)
     - [Streaml3l4NetworkPolicyRequest](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest)
     - [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse)
-    - [TimescapeBasicAuth](#l3l4networkpolicy-v1alpha-TimescapeBasicAuth)
     - [TimescapeConfig](#l3l4networkpolicy-v1alpha-TimescapeConfig)
+    - [Token](#l3l4networkpolicy-v1alpha-Token)
     - [Vlan](#l3l4networkpolicy-v1alpha-Vlan)
     - [Vrf](#l3l4networkpolicy-v1alpha-Vrf)
   
@@ -63,6 +64,22 @@
 <p align="right"><a href="#top">Top</a></p>
 
 ## l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto
+
+
+
+<a name="l3l4networkpolicy-v1alpha-BasicAuth"></a>
+
+### BasicAuth
+BasicAuth configuration
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| username | [string](#string) |  | Username for BasicAuth |
+| password | [string](#string) |  | Password for BasicAuth |
+
+
+
 
 
 
@@ -210,20 +227,16 @@ Object to store log export configuration
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| description | [string](#string) |  |  |
+| id | [string](#string) |  | Configuration id |
+| name | [string](#string) |  | Configuration name |
+| description | [string](#string) |  | Configuration description |
 | host | [string](#string) |  | IPv4 only |
 | port | [string](#string) |  | Collector target port |
-| mode | [string](#string) |  | Protocol, only TCP or UDP |
-| tls | [bool](#bool) |  | Turns TLS on or off |
-| token | [string](#string) |  | Secret/Auth fields are only relevant if TLS is true Token for Splunk or Timescape |
-| username | [string](#string) |  | Username for Splunk or Timescape |
-| password | [string](#string) |  | Password for Splunk or Timescape |
-| ca | [string](#string) |  | CA cert as a string |
-| cert | [string](#string) |  | Client cert as a string |
-| key | [string](#string) |  | Client private key as a string |
-| key_password | [string](#string) |  | Key password to apply to the persisted client private key |
+| protocol | [string](#string) |  | Protocol, only TCP or UDP |
+| tls | [bool](#bool) |  | Turns TLS/HTTPS on or off |
+| basic_auth | [BasicAuth](#l3l4networkpolicy-v1alpha-BasicAuth) |  | BasicAuth configuration |
+| mtls | [MTLSConfig](#l3l4networkpolicy-v1alpha-MTLSConfig) |  | mTLS configuration |
+| token | [Token](#l3l4networkpolicy-v1alpha-Token) |  | Token based configuration |
 
 
 
@@ -675,22 +688,6 @@ StreamEventsRequest is a client-to-server streaming message containing events to
 
 
 
-<a name="l3l4networkpolicy-v1alpha-TimescapeBasicAuth"></a>
-
-### TimescapeBasicAuth
-BasicAuth configuration for Timescape
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| username | [string](#string) |  | Username for BasicAuth |
-| password | [string](#string) |  | Password for BasicAuth |
-
-
-
-
-
-
 <a name="l3l4networkpolicy-v1alpha-TimescapeConfig"></a>
 
 ### TimescapeConfig
@@ -713,8 +710,23 @@ CONFIG_TYPE_TIMESCAPE
 | request_timeout_sec | [uint32](#uint32) |  | Request timeout in seconds |
 | max_batch_size | [uint32](#uint32) |  | Batching configuration for message processing Maximum number of messages to batch together (default: 1, max: 3, recommended: 2) |
 | batch_timeout_ms | [uint32](#uint32) |  | Batch timeout in milliseconds (force send batch after timeout, default: 30000ms) |
-| basic_auth | [TimescapeBasicAuth](#l3l4networkpolicy-v1alpha-TimescapeBasicAuth) |  | BasicAuth configuration |
+| basic_auth | [BasicAuth](#l3l4networkpolicy-v1alpha-BasicAuth) |  | BasicAuth configuration |
 | mtls | [MTLSConfig](#l3l4networkpolicy-v1alpha-MTLSConfig) |  | mTLS configuration |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-Token"></a>
+
+### Token
+Token configuration
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  | Access token |
 
 
 

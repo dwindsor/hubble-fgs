@@ -14,13 +14,14 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import { file_buf_validate_validate } from "../../buf/validate/validate_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file common/v1alpha/emitter.proto.
  */
 export const file_common_v1alpha_emitter: GenFile = /*@__PURE__*/
-  fileDesc("Chxjb21tb24vdjFhbHBoYS9lbWl0dGVyLnByb3RvEg5jb21tb24udjFhbHBoYSIoCgdFbWl0dGVyEgwKBG5hbWUYASABKAkSDwoHdmVyc2lvbhgCIAEoCUIpWidnaXRodWIuY29tL2lzb3ZhbGVudC9pcGEvY29tbW9uL3YxYWxwaGFiBnByb3RvMw");
+  fileDesc("Chxjb21tb24vdjFhbHBoYS9lbWl0dGVyLnByb3RvEg5jb21tb24udjFhbHBoYSLLAwoHRW1pdHRlchIUCgRuYW1lGAEgASgJQga6SAPIAQESIQoHdmVyc2lvbhgCIAEoCUIQukgN2AEBcggyBl5bMC05XTqGA7pIggMacQoQbmFtZV9jYXBpdGFsaXplZBIobmFtZSBtdXN0IHN0YXJ0IHdpdGggYW4gdXBwZXJjYXNlIGxldHRlchozc2l6ZSh0aGlzLm5hbWUpID09IDAgfHwgdGhpcy5uYW1lLm1hdGNoZXMoJ15bQS1aXScpGpQBChZuYW1lX25vdF9hbGxfdXBwZXJjYXNlEj1uYW1lIG11c3Qgbm90IGJlIGFsbCB1cHBlcmNhc2UgKGUuZy4sICdIdWJibGUnLCBub3QgJ0hVQkJMRScpGjtzaXplKHRoaXMubmFtZSkgPT0gMCB8fCB0aGlzLm5hbWUgIT0gdGhpcy5uYW1lLnVwcGVyQXNjaWkoKRp2ChN2ZXJzaW9uX25vX3ZfcHJlZml4EiV2ZXJzaW9uIG11c3Qgbm90IGNvbnRhaW4gYSAndicgcHJlZml4GjhzaXplKHRoaXMudmVyc2lvbikgPT0gMCB8fCAhdGhpcy52ZXJzaW9uLnN0YXJ0c1dpdGgoJ3YnKUIpWidnaXRodWIuY29tL2lzb3ZhbGVudC9pcGEvY29tbW9uL3YxYWxwaGFiBnByb3RvMw", [file_buf_validate_validate]);
 
 /**
  * Emitter identifies the source that emits some data.

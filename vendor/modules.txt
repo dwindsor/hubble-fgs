@@ -1,3 +1,6 @@
+# buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1
+## explicit; go 1.23
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate
 # cel.dev/expr v0.25.1
 ## explicit; go 1.23.0
 cel.dev/expr
@@ -1158,7 +1161,7 @@ github.com/inconshreveable/mousetrap
 # github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 => ./pkg/k8s-enterprise
 ## explicit; go 1.26.0
 github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/client
-# github.com/isovalent/ipa v1.19.0-pre.8.0.20260325135811-c5c0f5dadc22
+# github.com/isovalent/ipa v1.19.0-pre.9.0.20260401201544-0e0e8ceabd7a
 ## explicit; go 1.24.0
 github.com/isovalent/ipa/application_model/v1alpha
 github.com/isovalent/ipa/common/k8s/type/v1alpha

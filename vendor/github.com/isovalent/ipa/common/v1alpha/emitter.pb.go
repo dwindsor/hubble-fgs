@@ -17,6 +17,7 @@
 package v1alpha
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -93,10 +94,13 @@ var File_common_v1alpha_emitter_proto protoreflect.FileDescriptor
 
 const file_common_v1alpha_emitter_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccommon/v1alpha/emitter.proto\x12\x0ecommon.v1alpha\"7\n" +
-	"\aEmitter\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\tR\aversionB)Z'github.com/isovalent/ipa/common/v1alphab\x06proto3"
+	"\x1ccommon/v1alpha/emitter.proto\x12\x0ecommon.v1alpha\x1a\x1bbuf/validate/validate.proto\"\xda\x03\n" +
+	"\aEmitter\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12*\n" +
+	"\aversion\x18\x02 \x01(\tB\x10\xbaH\r\xd8\x01\x01r\b2\x06^[0-9]R\aversion:\x86\x03\xbaH\x82\x03\x1aq\n" +
+	"\x10name_capitalized\x12(name must start with an uppercase letter\x1a3size(this.name) == 0 || this.name.matches('^[A-Z]')\x1a\x94\x01\n" +
+	"\x16name_not_all_uppercase\x12=name must not be all uppercase (e.g., 'Hubble', not 'HUBBLE')\x1a;size(this.name) == 0 || this.name != this.name.upperAscii()\x1av\n" +
+	"\x13version_no_v_prefix\x12%version must not contain a 'v' prefix\x1a8size(this.version) == 0 || !this.version.startsWith('v')B)Z'github.com/isovalent/ipa/common/v1alphab\x06proto3"
 
 var (
 	file_common_v1alpha_emitter_proto_rawDescOnce sync.Once

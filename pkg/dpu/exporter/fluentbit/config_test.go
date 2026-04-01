@@ -11,8 +11,6 @@
 package fluentbit
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -44,11 +42,11 @@ func TestAddLogConfig(t *testing.T) {
 			fbc:  DefaultBaseConfig(),
 			typ:  v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
 			logCfg: &v1alpha.LogConfig{
-				Id:   "test-syslog",
-				Host: "192.168.1.100",
-				Port: "514",
-				Mode: "udp",
-				Tls:  false,
+				Id:       "test-syslog",
+				Host:     "192.168.1.100",
+				Port:     "514",
+				Protocol: "udp",
+				Tls:      false,
 			},
 			wantErr:     false,
 			outputCount: 1,
@@ -80,12 +78,14 @@ func TestAddLogConfig(t *testing.T) {
 				Id:       "test-syslog-tls",
 				Host:     "secure.example.com",
 				Port:     "6514",
-				Mode:     "tcp",
+				Protocol: "tcp",
 				Tls:      true,
-				Ca:       "test-ca-content",
-				Username: "testuser",
-				Password: "testpass",
-				Token:    "splunk-token-123",
+				Auth: &v1alpha.LogConfig_BasicAuth{
+					BasicAuth: &v1alpha.BasicAuth{
+						Username: "testuser",
+						Password: "testpass",
+					},
+				},
 			},
 			wantErr:     false,
 			outputCount: 1,
@@ -151,10 +151,10 @@ func TestAddLogConfig(t *testing.T) {
 			fbc:  DefaultBaseConfig(),
 			typ:  v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
 			logCfg: &v1alpha.LogConfig{
-				Id:   "",
-				Host: "",
-				Port: "",
-				Mode: "",
+				Id:       "",
+				Host:     "",
+				Port:     "",
+				Protocol: "",
 			},
 			wantErr:     false,
 			outputCount: 1,
@@ -193,10 +193,10 @@ func TestAddLogConfig(t *testing.T) {
 			},
 			typ: v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
 			logCfg: &v1alpha.LogConfig{
-				Id:   "new-output",
-				Host: "new.example.com",
-				Port: "514",
-				Mode: "tcp",
+				Id:       "new-output",
+				Host:     "new.example.com",
+				Port:     "514",
+				Protocol: "tcp",
 			},
 			wantErr:     false,
 			outputCount: 2,
@@ -486,25 +486,25 @@ func TestRemoveLogConfig(t *testing.T) {
 	}
 }
 
-// TestAddLogConfigTLSFileCreation tests that TLS files are actually created on disk
-func TestAddLogConfigTLSFileCreation(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	originalSSHDir := FLB_SSH_DIR
-	FLB_SSH_DIR = tempDir
-	defer func() {
-		FLB_SSH_DIR = originalSSHDir
-	}()
-
+// TestAddLogConfigMTLSCertManager tests that mTLS configuration with cert-manager is handled correctly
+func TestAddLogConfigMTLSCertManager(t *testing.T) {
 	logCfg := &v1alpha.LogConfig{
-		Id:          "tls-test",
-		Host:        "secure.example.com",
-		Port:        "6514",
-		Tls:         true,
-		Ca:          "test-ca-content",
-		Cert:        "test-cert-content",
-		Key:         "test-key-content",
-		KeyPassword: "test-key-password",
+		Id:   "mtls-test",
+		Host: "secure.example.com",
+		Port: "6514",
+		Tls:  true,
+		Auth: &v1alpha.LogConfig_Mtls{
+			Mtls: &v1alpha.MTLSConfig{
+				Enabled: true,
+				Certmanager: &v1alpha.MTLSCertManager{
+					IssuerRef: &v1alpha.IssuerRef{
+						Group: "cert-manager.io",
+						Kind:  "ClusterIssuer",
+						Name:  "test-issuer",
+					},
+				},
+			},
+		},
 	}
 
 	fbc := DefaultBaseConfig()
@@ -513,50 +513,21 @@ func TestAddLogConfigTLSFileCreation(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	// Check that files were created
-	caFile := filepath.Join(tempDir, "tls-test.ca")
-	certFile := filepath.Join(tempDir, "tls-test.cert")
-	keyFile := filepath.Join(tempDir, "tls-test.key")
-
-	if _, err := os.Stat(caFile); os.IsNotExist(err) {
-		t.Errorf("CA file was not created: %s", caFile)
-	}
-	if _, err := os.Stat(certFile); os.IsNotExist(err) {
-		t.Errorf("Cert file was not created: %s", certFile)
-	}
-	if _, err := os.Stat(keyFile); os.IsNotExist(err) {
-		t.Errorf("Key file was not created: %s", keyFile)
-	}
-
-	// Check file contents
-	caContent, _ := os.ReadFile(caFile)
-	if string(caContent) != "test-ca-content" {
-		t.Errorf("CA file content mismatch")
-	}
-
-	certContent, _ := os.ReadFile(certFile)
-	if string(certContent) != "test-cert-content" {
-		t.Errorf("Cert file content mismatch")
-	}
-
-	keyContent, _ := os.ReadFile(keyFile)
-	if string(keyContent) != "test-key-content" {
-		t.Errorf("Key file content mismatch")
-	}
-
-	// Check that TLS properties were set correctly
+	// Check that TLS is enabled
 	output := result.Pipeline.Outputs[0]
-	if output.Properties["tls.ca_file"] != caFile {
-		t.Errorf("Expected tls.ca_file to be %s, got %s", caFile, output.Properties["tls.ca_file"])
+	if output.Properties["tls"] != "On" {
+		t.Errorf("Expected tls to be 'On', got %s", output.Properties["tls"])
 	}
-	if output.Properties["tls.crt_file"] != certFile {
-		t.Errorf("Expected tls.crt_file to be %s, got %s", certFile, output.Properties["tls.crt_file"])
+
+	// With cert-manager, certificate files are not created by this function
+	// They will be managed by cert-manager and mounted via Kubernetes secrets
+
+	// Verify basic output properties
+	if output.Name != "syslog" {
+		t.Errorf("Expected output name to be 'syslog', got %s", output.Name)
 	}
-	if output.Properties["tls.key_file"] != keyFile {
-		t.Errorf("Expected tls.key_file to be %s, got %s", keyFile, output.Properties["tls.key_file"])
-	}
-	if output.Properties["tls.key_passwd"] != "test-key-password" {
-		t.Errorf("Expected tls.key_passwd to be 'test-key-password', got %s", output.Properties["tls.key_passwd"])
+	if output.Alias != "mtls-test" {
+		t.Errorf("Expected output alias to be 'mtls-test', got %s", output.Alias)
 	}
 }
 

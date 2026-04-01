@@ -10,6 +10,8 @@ syntax = "proto3";
 
 package graph.v1alpha;
 
+import "buf/validate/validate.proto";
+
 option go_package = "github.com/isovalent/ipa/graph/v1alpha";
 
 // An edge represents aggregatable properties of a given connection.
@@ -38,6 +40,16 @@ message EdgeTypeBasic {}
 // EdgeTypeNetworkTelemetry provides telemetry information regarding a network
 // connection.
 message EdgeTypeNetworkTelemetry {
+  option (buf.validate.message).cel = {
+    id: "network_transmit_drop_policy_subset"
+    message: "network_transmit_drop_policy_total must be <= network_transmit_drop_total"
+    expression: "this.network_transmit_drop_policy_total <= this.network_transmit_drop_total"
+  };
+  option (buf.validate.message).cel = {
+    id: "network_receive_drop_policy_subset"
+    message: "network_receive_drop_policy_total must be <= network_receive_drop_total"
+    expression: "this.network_receive_drop_policy_total <= this.network_receive_drop_total"
+  };
   // network_transmit_packets_total is the number of packets transferred.
   uint64 network_transmit_packets_total = 1;
   // network_transmit_bytes_total is the number of bytes transferred.
@@ -65,6 +77,11 @@ message EdgeTypeNetworkTelemetry {
 // EdgeTypeRoutingTelemetry provides telemetry information regarding routing
 // decisions.
 message EdgeTypeRoutingTelemetry {
+  option (buf.validate.message).cel = {
+    id: "routing_dropped_policy_subset"
+    message: "routing_dropped_policy_total must be <= routing_dropped_total"
+    expression: "this.routing_dropped_policy_total <= this.routing_dropped_total"
+  };
   // routing_forwarded_total is the number of network flows that have been
   // forwarded to the next processing entity.
   uint64 routing_forwarded_total = 1;
@@ -141,6 +158,26 @@ message EdgeTypeMulticastTelemetry {
   // count_total field can be used instead.
   // Prometheus docs: https://prometheus.io/docs/concepts/metric_types/#histogram.
   message FeederReceiverDelayHistogram {
+    option (buf.validate.message).cel = {
+      id: "bucket_le_1ms_monotonic"
+      message: "bucket_le_1ms_total must be <= bucket_le_10ms_total"
+      expression: "this.bucket_le_1ms_total <= this.bucket_le_10ms_total"
+    };
+    option (buf.validate.message).cel = {
+      id: "bucket_le_10ms_monotonic"
+      message: "bucket_le_10ms_total must be <= bucket_le_100ms_total"
+      expression: "this.bucket_le_10ms_total <= this.bucket_le_100ms_total"
+    };
+    option (buf.validate.message).cel = {
+      id: "bucket_le_100ms_monotonic"
+      message: "bucket_le_100ms_total must be <= bucket_le_1s_total"
+      expression: "this.bucket_le_100ms_total <= this.bucket_le_1s_total"
+    };
+    option (buf.validate.message).cel = {
+      id: "bucket_le_1s_monotonic"
+      message: "bucket_le_1s_total must be <= count_total"
+      expression: "this.bucket_le_1s_total <= this.count_total"
+    };
     // count_total is the total number of observations. Use this to interpret
     // the upper bound bucket (le="+Inf") in higher level calculations.
     uint64 count_total = 1;
