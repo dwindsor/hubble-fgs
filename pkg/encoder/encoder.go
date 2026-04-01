@@ -118,6 +118,32 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		info := p.colorer.Cyan.Sprint(icmp.IcmpType, " (", icmp.IcmpTypeValue, ")")
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s", event, processInfo, destination, info, dns), caps), nil
 
+	case *tetragon.GetEventsResponse_ProcessIgmpJoin:
+		igmp := response.GetProcessIgmpJoin()
+		if igmp.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		event := p.colorer.Blue.Sprintf("🤝 %-7s", "igmp-join")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, igmp.Process)
+		destination := p.colorer.Cyan.Sprint(igmp.InterfaceName, " ", igmp.SourceIp, "=>", igmp.GroupIp)
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, destination), caps), nil
+
+	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
+		igmp := response.GetProcessIgmpLeave()
+		if igmp.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		event := p.colorer.Blue.Sprintf("👋 %-7s", "igmp-leave")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, igmp.Process)
+		destination := p.colorer.Cyan.Sprint(igmp.InterfaceName, " ", igmp.SourceIp, " X ", igmp.GroupIp)
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, destination), caps), nil
+
+	case *tetragon.GetEventsResponse_IgmpMembershipReport:
+		igmp := response.GetIgmpMembershipReport()
+		event := p.colorer.Blue.Sprintf("📝 %-7s", "igmp-membership-report")
+		destination := p.colorer.Cyan.Sprint(igmp.InterfaceName, " ", igmp.SourceIp, "=>", igmp.GroupIp)
+		return fmt.Sprintf("%s %s", event, destination), nil
+
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		processInfo := ""
 		caps := ""
