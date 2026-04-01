@@ -39,6 +39,8 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/common"
@@ -105,6 +107,17 @@ func ktimeToTime(kt uint64) *time.Time {
 type Server struct {
 	tetragon.UnimplementedProcessModelServiceServer
 	appModelV1.UnimplementedApplicationModelServiceServer
+
+	// This holds mappings from cgroup id to cgroup tracker id outside of the
+	// ebpf map tg_cgtracker_map. We need to hold a separate mapping because the
+	// application model includes information for exited processes, while
+	// tg_cgtracker_map deletes entries when the cgroup is removed.
+	cgTrackerIdCache *lru.Cache[uint64, uint64]
+
+	// Similarly, this holds mappings from cgroup id to container id. We *don't*
+	// need to actually hold mappings between container ids and container
+	// information, as the pod accessor keeps its own cache of deleted pods.
+	containerIdCache *lru.Cache[uint64, string]
 }
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
@@ -341,7 +354,10 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	return resp, nil
 }
 
-func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, error) {
+func getProcessModel(namespaces []string,
+	debug bool,
+	cgTrackerIdCache *lru.Cache[uint64, uint64],
+	containerIdCache *lru.Cache[uint64, string]) ([]*types.ProcessModel, error) {
 	start := time.Now()
 	defer func() {
 		appmodelmetrics.RecordDuration(appmodelmetrics.PhaseGetProcessModel, float64(time.Since(start).Microseconds()))
@@ -739,11 +755,18 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		var cgroupid uint64
 
 		if ossoption.Config.EnableCgTrackerID {
-			err = cgTrackerMap.Lookup(&val.CgroupID, &cgroupid)
-			if err != nil {
-				// This can happen for host processes that are not in any cgroup
-				logger.GetLogger().Debug("Failed to look up cgroup tracker id for process", logfields.Error, err, "cgroupid", val.CgroupID)
-				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupCgroup)
+			var ok bool
+
+			cgroupid, ok = cgTrackerIdCache.Get(val.CgroupID)
+			if !ok {
+				err = cgTrackerMap.Lookup(&val.CgroupID, &cgroupid)
+				if err != nil {
+					// This can happen for host processes that are not in any cgroup
+					logger.GetLogger().Debug("Failed to look up cgroup tracker id for process", logfields.Error, err, "cgroupid", val.CgroupID)
+					appmodelmetrics.RecordLookupError(appmodelmetrics.LookupCgroup)
+				} else {
+					cgTrackerIdCache.Add(val.CgroupID, cgroupid)
+				}
 			}
 		} else {
 			cgroupid = val.CgroupID
@@ -819,7 +842,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 		if cgroupid != 0 {
 			logger.GetLogger().Debug("Looking up container info", "binary", selfBin, "args", selfArgs, "cgroupid", cgroupid)
-			cid, found := getContainerID(cgroupid)
+			cid, found := getContainerID(cgroupid, containerIdCache)
 			if found && cid != "" {
 				containerInfo = &types.ContainerInfo{}
 
@@ -930,7 +953,7 @@ func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]
 	if !option.Config.EnableApplicationModel {
 		return nil, ErrApplicationModelNotEnabled
 	}
-	return GetProcessModel(ns, debug)
+	return getProcessModel(ns, debug, s.cgTrackerIdCache, s.containerIdCache)
 }
 
 func (s *Server) GetApplicationModel(ctx context.Context, nsFilter map[string]bool) (*appModelV1.ApplicationModelEvent, error) {
@@ -1067,5 +1090,25 @@ func NewServer(enableBpfId bool) (*Server, error) {
 		EnableBpfId: enableBpfId,
 	}
 	err := configureSettings(cfg)
-	return &Server{}, err
+
+	if err != nil {
+		return nil, err
+	}
+
+	cgTrackerIdCacheInstance, err := lru.New[uint64, uint64](option.Config.ProcessTreeCacheSize)
+	if err != nil {
+		logger.GetLogger().Error("Failed to create LRU cache for cgroup tracker IDs", logfields.Error, err)
+		return nil, err
+	}
+
+	containerIdCacheInstance, err := lru.New[uint64, string](option.Config.ProcessTreeCacheSize)
+	if err != nil {
+		logger.GetLogger().Error("Failed to create LRU cache for container IDs", logfields.Error, err)
+		return nil, err
+	}
+
+	return &Server{
+		cgTrackerIdCache: cgTrackerIdCacheInstance,
+		containerIdCache: containerIdCacheInstance,
+	}, err
 }

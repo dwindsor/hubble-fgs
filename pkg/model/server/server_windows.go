@@ -16,6 +16,6 @@ func initContainerIDMap() error {
 	return nil
 }
 
-func getContainerID(cgroupid uint64) (string, bool) {
+func getContainerID(cgroupid uint64, dummy any) (string, bool) {
 	return "", false
 }

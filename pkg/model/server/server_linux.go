@@ -14,6 +14,7 @@ package server
 
 import (
 	"github.com/cilium/tetragon/pkg/cgidmap"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 var cgmap cgidmap.Map
@@ -28,6 +29,14 @@ func initContainerIDMap() error {
 	return nil
 }
 
-func getContainerID(cgroupid uint64) (string, bool) {
-	return cgmap.Get(cgroupid)
+func getContainerID(cgroupid uint64, deletedContainerIdCache *lru.Cache[uint64, string]) (string, bool) {
+	cid, ok := deletedContainerIdCache.Get(cgroupid)
+	if !ok {
+		cid, ok = cgmap.Get(cgroupid)
+		if ok {
+			deletedContainerIdCache.Add(cgroupid, cid)
+		}
+	}
+
+	return cid, ok
 }

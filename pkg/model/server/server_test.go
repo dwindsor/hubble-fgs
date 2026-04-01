@@ -274,7 +274,11 @@ func TestProcessTree(t *testing.T) {
 			// Add a small delay here to account for any races when fetching the application model.
 			time.Sleep(1 * time.Second)
 
-			res, err := server.GetProcessModel([]string{}, false)
+			srv, err := server.DefaultNewServer()
+			if err != nil {
+				t.Fatalf("DefaultNewServer error: %s", err)
+			}
+			res, err := srv.GetProcessModel(ctx, []string{}, false)
 			if err != nil {
 				t.Fatalf("getProcessModel error: %s", err)
 			}
