@@ -65,15 +65,17 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 		// can directly use name[name_offset - 1] that minimize the number of
 		// instructions but it doesn't work on older ones.
 		name_offset--;
+
+		// Adding the dot after the label
+		if (!skip)
+			name[name_offset++] = '.';
+
 		if (label_length == 0) {
 			if (!skip)
 				name[name_offset] = '\0';
 			// Remember that caller should add the last zero byte to the offset
 			return 0;
 		}
-		// Adding the dot after the label
-		if (!skip)
-			name[name_offset++] = '.';
 	}
 
 	// Copy one byte at a time
