@@ -115,8 +115,22 @@ func toDestination(d *v1alpha1.NetworkDestination) (types.TetragonNetworkDestina
 	var svcRef *types.TetragonServiceRef
 
 	if len(d.FQDN) > 0 {
+		// Normalize FQDN: ensure trailing dot to match BPF DNS parser
+		// output. The DNS parsers (BPF and userspace) produces domain
+		// names with trailing dots (e.g., "google.com."), so policy
+		// FQDNs must also have trailing dots for endpoint cache
+		// matching to work correctly.
+		fqdns := make([]string, 0, len(d.FQDN))
+		for _, entry := range d.FQDN {
+			fqdn := entry
+			if !strings.HasSuffix(fqdn, ".") {
+				fqdn = fqdn + "."
+			}
+			fqdns = append(fqdns, fqdn)
+		}
+
 		f = &types.TetragonNetworkFQDN{
-			Names: d.FQDN,
+			Names: fqdns,
 		}
 	} else {
 		f = nil
