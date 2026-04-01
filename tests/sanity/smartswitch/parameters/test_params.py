@@ -123,10 +123,13 @@ def get_port_proto_test_params():
 
 def get_port_range_packet_test_params():
     port_min, port_max = 5000, 5010
+    vlan_id = 1
     rules = [
         create_rule(
             source_cidr="0.0.0.0/0",
             dest_cidr="0.0.0.0/0",
+            source_vlan=vlan_id,
+            dest_vlan=vlan_id,
             dest_proto_ports=[
                 ("TCP", port_min, port_max),
                 ("UDP", port_min, port_max),
@@ -135,24 +138,27 @@ def get_port_range_packet_test_params():
         )
     ]
     return [
-        # (5005, True, rules, build_packet().tcp(dport=5005)),
-        (5011, False, rules, build_packet().tcp(dport=5011)),
-        (4999, False, rules, build_packet().tcp(dport=4999)),
+        (5005, True, rules, build_packet().tcp(dport=5005, vlan=vlan_id)),
+        (5011, False, rules, build_packet().tcp(dport=5011, vlan=vlan_id)),
+        (4999, False, rules, build_packet().tcp(dport=4999, vlan=vlan_id)),
     ]
 
 
 def get_protocol_packet_test_params():
     test_port = 8080
+    vlan_id = 1
     rules = [
         create_rule(
             source_cidr="0.0.0.0/0",
             dest_cidr="0.0.0.0/0",
+            source_vlan=vlan_id,
+            dest_vlan=vlan_id,
             dest_proto_ports=[("TCP", None)],
         )
     ]
     return [
-        # ("TCP", True, rules, build_packet().tcp(dport=test_port)),
-        ("UDP", False, rules, build_packet().udp(dport=test_port)),
+        ("TCP", True, rules, build_packet().tcp(dport=test_port, vlan=vlan_id)),
+        ("UDP", False, rules, build_packet().udp(dport=test_port, vlan=vlan_id)),
     ]
 
 
@@ -180,6 +186,7 @@ CIDR_CONFIGS = [
 
 def get_cidr_source_packet_test_params():
     """Test parameters for source CIDR mask enforcement."""
+    vlan_id = 1
     params = []
     for config in CIDR_CONFIGS:
         cidr = config["cidr"]
@@ -187,13 +194,15 @@ def get_cidr_source_packet_test_params():
             create_rule(
                 source_cidr=cidr,
                 dest_cidr="0.0.0.0/0",
+                source_vlan=vlan_id,
+                dest_vlan=vlan_id,
                 dest_proto_ports=[("TCP", None), ("UDP", None), ("ICMP", None)],
             )
         ]
         packets = [
-            (config["before"], build_packet().tcp(src_ip=config["before"])),
-            (config["inside"], build_packet().tcp(src_ip=config["inside"])),
-            (config["after"], build_packet().tcp(src_ip=config["after"])),
+            (config["before"], build_packet().tcp(src_ip=config["before"], vlan=vlan_id)),
+            (config["inside"], build_packet().tcp(src_ip=config["inside"], vlan=vlan_id)),
+            (config["after"], build_packet().tcp(src_ip=config["after"], vlan=vlan_id)),
         ]
         params.append((cidr, rules, packets))
     return params
@@ -201,6 +210,7 @@ def get_cidr_source_packet_test_params():
 
 def get_cidr_dest_packet_test_params():
     """Test parameters for destination CIDR mask enforcement."""
+    vlan_id = 1
     params = []
     for config in CIDR_CONFIGS:
         cidr = config["cidr"]
@@ -208,13 +218,15 @@ def get_cidr_dest_packet_test_params():
             create_rule(
                 source_cidr="0.0.0.0/0",
                 dest_cidr=cidr,
+                source_vlan=vlan_id,
+                dest_vlan=vlan_id,
                 dest_proto_ports=[("TCP", None), ("UDP", None), ("ICMP", None)],
             )
         ]
         packets = [
-            (config["before"], build_packet().tcp(dst_ip=config["before"])),
-            (config["inside"], build_packet().tcp(dst_ip=config["inside"])),
-            (config["after"], build_packet().tcp(dst_ip=config["after"])),
+            (config["before"], build_packet().tcp(dst_ip=config["before"], vlan=vlan_id)),
+            (config["inside"], build_packet().tcp(dst_ip=config["inside"], vlan=vlan_id)),
+            (config["after"], build_packet().tcp(dst_ip=config["after"], vlan=vlan_id)),
         ]
         params.append((cidr, rules, packets))
     return params
@@ -234,10 +246,13 @@ def get_cidr_combined_packet_test_params():
     src_cidr = CIDR_CONFIGS[0]  # 10.0.0.0/8
     dest_cidr = CIDR_CONFIGS[1]  # 192.168.0.0/16
 
+    vlan_id = 1
     rules = [
         create_rule(
             source_cidr=src_cidr["cidr"],
             dest_cidr=dest_cidr["cidr"],
+            source_vlan=vlan_id,
+            dest_vlan=vlan_id,
             dest_proto_ports=[("TCP", None), ("UDP", None), ("ICMP", None)],
         )
     ]
@@ -245,17 +260,17 @@ def get_cidr_combined_packet_test_params():
     packets = [
         (
             "src_allowed_dest_blocked",
-            build_packet().tcp(src_ip=src_cidr["inside"], dst_ip=dest_cidr["before"]),
+            build_packet().tcp(src_ip=src_cidr["inside"], dst_ip=dest_cidr["before"], vlan=vlan_id),
             False,
         ),
         (
             "src_blocked_dest_allowed",
-            build_packet().tcp(src_ip=src_cidr["before"], dst_ip=dest_cidr["inside"]),
+            build_packet().tcp(src_ip=src_cidr["before"], dst_ip=dest_cidr["inside"], vlan=vlan_id),
             False,
         ),
         (
             "both_allowed",
-            build_packet().tcp(src_ip=src_cidr["inside"], dst_ip=dest_cidr["inside"]),
+            build_packet().tcp(src_ip=src_cidr["inside"], dst_ip=dest_cidr["inside"], vlan=vlan_id),
             True,
         ),
     ]

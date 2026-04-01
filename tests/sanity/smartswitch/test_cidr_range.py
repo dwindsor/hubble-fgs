@@ -42,6 +42,9 @@ def test_cidr_source_enforcement(cmd, cidr, rules, packets):
     sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
     allure.dynamic.title(f"Source CIDR test on two DPUs: {cidr}")
 
+    with allure.step(f"Disable inter-VRF on DPU '{sim1_name}'"):
+        cmd.sim_disable_inter_vrf(sim_container_name=sim1_name)
+
     with allure.step(f"Apply source CIDR policy for {cidr}"):
         _, policy_file = generate_policy_for_test(policy_name, rules)
         result = cmd.agw_add_policy(str(policy_file))
@@ -136,6 +139,9 @@ def test_cidr_dest_enforcement(cmd, cidr, rules, packets):
     sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
     sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
     allure.dynamic.title(f"Dest CIDR test on two DPUs: {cidr}")
+
+    with allure.step(f"Disable inter-VRF on DPU '{sim1_name}'"):
+        cmd.sim_disable_inter_vrf(sim_container_name=sim1_name)
 
     with allure.step(f"Apply destination CIDR policy for {cidr}"):
         _, policy_file = generate_policy_for_test(policy_name, rules)
@@ -237,6 +243,9 @@ def test_cidr_combined_enforcement(cmd, cidr_combo, rules, packets):
     sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
     sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
     allure.dynamic.title(f"Combined CIDR test on two DPUs: {cidr_combo}")
+
+    with allure.step(f"Disable inter-VRF on DPU '{sim1_name}'"):
+        cmd.sim_disable_inter_vrf(sim_container_name=sim1_name)
 
     with allure.step(f"Apply combined source+destination CIDR policy"):
         _, policy_file = generate_policy_for_test(policy_name, rules)

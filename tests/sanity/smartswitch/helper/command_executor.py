@@ -413,3 +413,10 @@ class CommandExecutor:
                 logger.info(f"VRF {vrf_id} already exists on {container.name}, skipping")
                 return f"VRF {vrf_id} already exists"
             raise
+    
+    def sim_disable_inter_vrf(self, sim_container_name: Optional[str] = None):
+        container = self._get_sim_container_by_name(sim_container_name)
+        return self._exec_in_container(
+            container,
+            DPCTL.DISABLE_INTER_VRF.value
+        )

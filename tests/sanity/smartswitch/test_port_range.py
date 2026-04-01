@@ -90,6 +90,9 @@ def test_port_range_enforcement(cmd, test_port, is_transmitted, rules, pkt):
     sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
     sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
 
+    with allure.step(f"Disable inter-VRF on DPU '{sim1_name}'"):
+        cmd.sim_disable_inter_vrf(sim_container_name=sim1_name)
+
     with allure.step("Generate and apply policy"):
         policy, policy_file = generate_policy_for_test(policy_name, rules)
         result = cmd.agw_add_policy(str(policy_file))
@@ -154,6 +157,9 @@ def test_protocol_enforcement(cmd, protocol, is_transmitted, rules, pkt):
     sim1_name, sim2_name = cmd.get_two_sim_container_names()
     sim1_port0, sim1_port1 = cmd.get_sim_host_uplink_ports(sim1_name)
     sim2_port0, sim2_port1 = cmd.get_sim_host_uplink_ports(sim2_name)
+
+    with allure.step(f"Disable inter-VRF on DPU '{sim1_name}'"):
+        cmd.sim_disable_inter_vrf(sim_container_name=sim1_name)
 
     with allure.step("Generate and apply policy allowing only TCP"):
         policy, policy_file = generate_policy_for_test(policy_name, rules)

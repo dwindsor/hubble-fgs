@@ -67,3 +67,5 @@ class DPCTL(Enum):
     VRF_MAP_SHOW = "dpctl hs vrf show-map"
     VRF_ADD = "dpctl hs vrf add {}"
     VRF_DEL = "dpctl hs vrf del {}"
+    ENABLE_INTER_VRF = "dpctl hs vrf enable"
+    DISABLE_INTER_VRF = "dpctl hs vrf disable"
