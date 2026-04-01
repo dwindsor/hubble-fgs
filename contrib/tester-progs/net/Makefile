@@ -1,7 +1,7 @@
 
 GCC ?= gcc
 
-PROGS = tcp_server tcp_client rawsock
+PROGS = tcp_server tcp_client rawsock igmpquery
 
 all: $(PROGS)
 
@@ -13,6 +13,9 @@ tcp_client: tcp_client.c
 
 rawsock: rawsock.c
 	$(GCC) -Wall -o rawsock rawsock.c
+
+igmpquery: igmpquery.c
+	$(GCC) -Wall -static -o igmpquery igmpquery.c -lnet
 
 .PHONY: clean
 clean:
