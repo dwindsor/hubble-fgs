@@ -22,7 +22,7 @@ jobs:
         bind9-dnsutils libcap-dev libaio-dev liburing-dev libelf-dev
         iptables software-properties-common netcat-openbsd socat
         iproute2 net-tools pahole clang lld llvm libc6-dev-i386
-        gcc-multilib
+        gcc-multilib libnet1 libnet1-dev
 
   arm64:
     uses: ./.github/workflows/kvm-gotests-arch.yaml
@@ -37,4 +37,4 @@ jobs:
         iptables software-properties-common netcat-openbsd socat
         iproute2 net-tools pahole clang lld llvm
         gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
-        libc6-dev-armhf-cross build-essential
+        libc6-dev-armhf-cross build-essential libnet1 libnet1-dev
