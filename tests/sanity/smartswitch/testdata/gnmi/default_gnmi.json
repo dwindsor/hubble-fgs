@@ -64,8 +64,7 @@
               "ext-items": {
                 "admissionStatus": "success",
                 "connectionStatus": "success",
-                "rejectReason": "",
-                "version": ""
+                "rejectReason": ""
               }
             },
             "sagent-items": {

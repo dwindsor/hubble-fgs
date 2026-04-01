@@ -38,6 +38,7 @@ class TestDeviceStorePopulation:
           - DeviceStoreServiceIP     -> service_ip
           - DeviceStoreInService     -> in_service, in_service_state
           - DeviceStoreLoadBalancingMode -> lb_mode
+          - CPAVersion (agent build version) -> cpa_version
         """
         data = cmd.agw_gnmi_device_show_json()
         assert data is not None, "Device show JSON should not be None"
@@ -62,6 +63,9 @@ class TestDeviceStorePopulation:
         )
         assert data.get("lb_mode") == "symmetric_hash", (
             f"lb_mode: expected 'symmetric_hash', got '{data.get('lb_mode')}'"
+        )
+        assert data.get("cpa_version"), (
+            f"cpa_version should be non-empty (agent build version), got '{data.get('cpa_version')}'"
         )
 
 

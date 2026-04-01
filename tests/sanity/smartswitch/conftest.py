@@ -9,6 +9,7 @@
 #  permission is obtained from Isovalent Inc.
 
 import os
+import signal
 import pytest
 import logging
 from pathlib import Path
@@ -97,6 +98,29 @@ def pytest_addoption(parser):
     )
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    """Enforce @pytest.mark.timeout(seconds) via SIGALRM.
+
+    Only effective on Unix (macOS/Linux). Silently ignored on Windows.
+    """
+    marker = item.get_closest_marker("timeout")
+    if marker and hasattr(signal, "SIGALRM"):
+        seconds = marker.args[0] if marker.args else 0
+        if seconds > 0:
+            def _timeout_handler(signum, frame):
+                pytest.fail(f"Test timed out after {seconds}s")
+            signal.signal(signal.SIGALRM, _timeout_handler)
+            signal.alarm(seconds)
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_teardown(item, nextitem):
+    """Cancel any pending SIGALRM after each test."""
+    if hasattr(signal, "SIGALRM"):
+        signal.alarm(0)
+
+
 def pytest_configure(config):
     agw_container = config.getoption("--agw-container", default=None)
 
@@ -106,30 +130,6 @@ def pytest_configure(config):
 
     effective = os.environ.get('AGW_CONTAINER', 'agw')
     logger.info(f"Test configuration: agw_container={effective}")
-
-
-@pytest.fixture(scope="session")
-def ha_cmd_leader(config) -> CommandExecutor:
-    cfg = TestingConfig()
-    cfg.agw_container_name = config.agw_leader_name
-    executor = CommandExecutor(cfg)
-    try:
-        executor.agw_health()
-    except Exception:
-        pytest.skip("agw-leader not available")
-    return executor
-
-
-@pytest.fixture(scope="session")
-def ha_cmd_follower(config) -> CommandExecutor:
-    cfg = TestingConfig()
-    cfg.agw_container_name = config.agw_follower_name
-    executor = CommandExecutor(cfg)
-    try:
-        executor.agw_health()
-    except Exception:
-        pytest.skip("agw-follower not available")
-    return executor
 
 
 @pytest.fixture(scope="session")

@@ -44,7 +44,7 @@ class AGWCTL(Enum):
     VRF_SHOW = "vrf show"
     VLAN_SHOW = "vlan show"
     DPU_SHOW_GNMI = "dpu show"       # "DPU_SHOW_GNMI" avoids collision with SHOW_DPU
-    HA_SHOW_GNMI = "ha show"         # "HA_SHOW_GNMI" avoids collision with SHOW_HA
+    HA_SHOW_GNMI = "ha show"
     DEVICE_SHOW = "device show"
     POLICIES_INFO = "policies info"
     POLICIES_TRANSLATE = "policies translate"
@@ -58,7 +58,7 @@ class AGWCTL(Enum):
 
     # New store subcommands
     HA_PEERS_GNMI = "ha peers show"
-    HA_CRITERIA_SHOW_GNMI = "ha criteria show"
+    HA_INFO = "ha info"
 
     # VRF/VLAN subcommands
     VRF_LIST = "vrf list"
@@ -67,9 +67,14 @@ class AGWCTL(Enum):
     VLAN_LIST = "vlan list"
     VLAN_INFO = "vlan info --name {}"
 
-    # HA debug criteria commands
-    HA_CRITERIA_FAIL = "ha criteria fail"
-    HA_CRITERIA_OK = "ha criteria ok"
+    # Mock gNMI log command (requires NX-OS mock mode)
+    MOCK_GNMI_LOG = "mock gnmi log"
+
+    # HA debug commands
+    HA_DEBUG_FAIL = "ha debug fail"
+    HA_DEBUG_OK = "ha debug ok"
+    HA_DEBUG_PEER_FAIL = "ha debug peer-fail"
+    HA_DEBUG_PEER_OK = "ha debug peer-ok"
 
 
 class FWACTL(Enum):

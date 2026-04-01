@@ -9,14 +9,19 @@
 #  permission is obtained from Isovalent Inc.
 
 .PHONY: help \
-        install-test-dependencies run-all-tests run-nxos-tests \
+        install-test-dependencies run-all-tests run-nxos-tests run-ha-tests \
         run-tests-with-allure show-allure-report run-specific-test \
         clean-test-artifacts \
-        launch-containers build-agw-image pull-sim-image launch-agw configure-network shutdown-containers \
-        launch-sim attach-sim attach-agw show-containers-status \
-        launch-containers-multi launch-sim-multi configure-network-multi shutdown-containers-multi show-containers-status-multi \
-        create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token teardown-kind-cluster \
-        create-ha-network remove-ha-network launch-ha-agw shutdown-ha-containers show-ha-status run-ha-tests
+        build-agw-image pull-sim-image \
+        launch-agw launch-sim launch-sim-multi launch-ha-agw \
+        launch-containers launch-containers-multi \
+        configure-network configure-network-multi \
+        attach-agw attach-sim \
+        shutdown shutdown-containers shutdown-containers-multi status \
+        show-containers-status show-containers-status-multi \
+        create-ha-network remove-ha-network \
+        shutdown-ha-containers show-ha-status \
+        create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token teardown-kind-cluster
 
 # Configuration
 REPO_ROOT := $(shell cd ../../.. && pwd)
@@ -73,68 +78,65 @@ help:
 	@echo "AGW/FWA Sanity Test Framework"
 	@echo "=============================="
 	@echo ""
-	@echo "Container Targets:"
-	@echo "  launch-containers          - Full stack: build AGW + pull DPU + kind cluster + run all"
-	@echo "  launch-containers-multi    - Full stack with N DPU SIMs (SIM_COUNT=N)"
-	@echo "  shutdown-containers        - Stop AGW + DPU + delete kind cluster"
-	@echo "  shutdown-containers-multi  - Stop AGW + all DPU SIMs + delete kind cluster"
-	@echo "  show-containers-status     - Show status and health of all containers"
-	@echo "  show-containers-status-multi - Show status/health for AGW and all SIMs"
+	@echo "Container Lifecycle:"
+	@echo "  launch-agw              - AGW with K8s infra (kind + Prometheus + Timescape)"
+	@echo "  launch-ha-agw           - Dual AGW HA containers (ha-net, NX-OS mock enabled)"
+	@echo "  launch-sim              - Single DPU Sim container"
+	@echo "  launch-sim-multi        - Multiple DPU Sim containers (SIM_COUNT=N)"
+	@echo "  launch-containers       - Full stack: single AGW + SIM + network config"
+	@echo "  launch-containers-multi - Full stack: single AGW + N SIMs + network config"
+	@echo "  shutdown                - Stop all containers and clean up networks"
+	@echo "  shutdown-ha-containers  - Stop HA containers and remove HA network"
+	@echo "  show-ha-status          - Show status of HA containers"
+	@echo "  status                  - Show status and health of running containers"
 	@echo ""
-	@echo "Individual Targets:"
-	@echo "  build-agw-image            - Build AGW Docker image"
-	@echo "  launch-agw                 - Set up K8s infra and start AGW container"
-	@echo "  attach-agw                 - Attach to running AGW container"
-	@echo "  pull-sim-image             - Download DPU Sim tarball from GitHub releases"
-	@echo "  launch-sim                 - Launch single DPU Sim container"
-	@echo "  launch-sim-multi           - Launch multiple DPU Sim containers (SIM_COUNT)"
-	@echo "  attach-sim                 - Attach to running DPU Sim container"
-	@echo "  configure-network          - Configure host IP and DPU interface"
+	@echo "Build:"
+	@echo "  build-agw-image         - Build AGW test image"
+	@echo "  pull-sim-image          - Download DPU Sim tarball from GitHub releases"
 	@echo ""
-	@echo "K8s Infrastructure (used automatically by launch-agw):"
-	@echo "  create-kind-cluster        - Create kind cluster"
-	@echo "  deploy-crds                - Deploy SmartSwitchNetworkPolicy CRDs"
-	@echo "  deploy-prometheus          - Deploy Prometheus remote-write receiver"
-	@echo "  deploy-timescape           - Deploy Hubble Timescape via Helm chart"
-	@echo "  generate-sa-token          - Create ServiceAccount and generate token"
-	@echo "  teardown-kind-cluster      - Delete kind cluster only"
+	@echo "K8s Infrastructure (used by launch-agw):"
+	@echo "  create-kind-cluster     - Create kind cluster"
+	@echo "  deploy-crds             - Deploy SmartSwitchNetworkPolicy CRDs"
+	@echo "  deploy-prometheus       - Deploy Prometheus remote-write receiver"
+	@echo "  deploy-timescape        - Deploy Hubble Timescape via Helm chart"
+	@echo "  generate-sa-token       - Create ServiceAccount and generate token"
+	@echo "  teardown-kind-cluster   - Delete kind cluster only"
 	@echo ""
-	@echo "Test Targets:"
-	@echo "  install-test-dependencies  - Create venv and install Python packages"
-	@echo "  run-all-tests              - Execute all sanity tests"
-	@echo "  run-nxos-tests             - Execute NX-OS mock mode tests (mark: nxos)"
-	@echo "  run-tests-with-allure      - Execute all tests and generate Allure report"
-	@echo "  show-allure-report         - Open Allure report in browser"
-	@echo "  run-specific-test          - Run specific test (TEST=test_file::test_name)"
+	@echo "Tests:"
+	@echo "  run-all-tests           - All sanity tests"
+	@echo "  run-nxos-tests          - NX-OS mock store/trigger tests (single AGW)"
+	@echo "  run-ha-tests            - HA dual-AGW tests"
+	@echo "  run-specific-test       - Run specific test (TEST=test_file::test_name)"
+	@echo "  run-tests-with-allure   - Run all tests and generate Allure report"
+	@echo "  show-allure-report      - Open Allure report in browser"
 	@echo ""
 	@echo "Utility:"
-	@echo "  clean-test-artifacts       - Remove venv, reports, and cache files"
+	@echo "  install-test-dependencies - Create venv and install Python packages"
+	@echo "  clean-test-artifacts    - Remove venv, reports, and cache files"
+	@echo "  attach-agw              - Attach shell to AGW container"
+	@echo "  attach-sim              - Attach shell to DPU Sim container"
+	@echo "  configure-network       - Configure host IP and DPU interface (single SIM)"
+	@echo "  configure-network-multi - Configure host IP and DPU interfaces (multi SIM)"
 	@echo ""
 	@echo "Configuration:"
-	@echo "  SIM_VERSION=v1.32.0        - Specific release version (default: latest)"
-	@echo "  SIM_COUNT=2                - Number of SIMs for *-multi targets (default: 2)"
-	@echo "  GITHUB_REPO=org/repo       - GitHub repository (default: cisco-hypershield/hs-dpu-pensando)"
-	@echo "  APPLY_ROUTE=1              - Enable DPU bridge routing (default: 0)"
+	@echo "  SIM_VERSION=v1.32.0     - Specific release version (default: latest)"
+	@echo "  SIM_COUNT=2             - Number of SIMs for *-multi targets (default: 2)"
+	@echo "  GITHUB_REPO=org/repo    - GitHub repository (default: cisco-hypershield/hs-dpu-pensando)"
+	@echo "  APPLY_ROUTE=1           - Enable DPU bridge routing (default: 0)"
 	@echo ""
 	@echo "Required Environment Variables (for K8s infra targets):"
-	@echo "  TIMESCAPE_PASSWORD         - Timescape push API password"
-	@echo "  PROMETHEUS_PASSWORD        - Prometheus basic auth password"
+	@echo "  TIMESCAPE_PASSWORD      - Timescape push API password"
+	@echo "  PROMETHEUS_PASSWORD     - Prometheus basic auth password"
 	@echo ""
-	@echo "HA Targets:"
-	@echo "  launch-ha-agw              - Start dual-AGW containers on ha-net (DPU-less HA)"
-	@echo "  shutdown-ha-containers     - Stop HA containers and remove ha-net"
-	@echo "  show-ha-status             - Show HA container health"
-	@echo "  run-ha-tests               - Run pytest -m ha"
+	@echo "Quick Start (integration):"
+	@echo "  make launch-containers && make install-test-dependencies && make run-all-tests"
 	@echo ""
-	@echo "Quick Start:"
-	@echo "  make launch-containers             - Start full stack (AGW + DPU + K8s)"
-	@echo "  make install-test-dependencies     - Install test dependencies"
-	@echo "  make run-all-tests                 - Run tests"
-	@echo "  make shutdown-containers           - Stop everything"
+	@echo "Quick Start (HA):"
+	@echo "  make launch-ha-agw && make install-test-dependencies && make run-ha-tests"
 
 
 # ============================================================================
-# AGW Targets
+# Build
 # ============================================================================
 
 build-agw-image:
@@ -181,10 +183,6 @@ launch-agw: create-kind-cluster deploy-crds deploy-prometheus deploy-timescape g
 	echo "  Prometheus: https://$$KIND_NODE_IP:30090/api/v1/write"; \
 	echo "  Timescape:  https://$$KIND_NODE_IP:$$TIMESCAPE_NODEPORT/push"
 
-attach-agw:
-	@echo "Attaching to AGW container: agw"
-	@docker exec -it agw sh
-
 # ============================================================================
 # DPU Sim Targets
 # ============================================================================
@@ -221,6 +219,42 @@ pull-sim-image:
 		echo "❌ GitHub CLI 'gh' not found. Please install it first"; \
 		exit 1; \
 	fi
+
+
+# ============================================================================
+# Container Lifecycle
+# ============================================================================
+
+create-ha-network:
+	@docker network create --subnet=$(HA_SUBNET) $(HA_NETWORK) 2>/dev/null || echo "Network already exists"
+
+remove-ha-network:
+	@-docker network rm $(HA_NETWORK) 2>/dev/null || true
+
+# HA containers run with NX-OS mock mode active (no NX_AGENT_IGNORE_MODULES).
+# Both nodes require 'Phase:' in show_status for ha/ tests to run.
+launch-ha-agw: create-ha-network
+	@echo "Starting HA AGW containers (DPU-less, NX-OS mock enabled)..."
+	@-docker rm -f $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) >/dev/null 2>&1 || true
+	@docker run -d --name $(AGW_LEADER_NAME) --network $(HA_NETWORK) --ip $(AGW_LEADER_IP) \
+		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
+		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
+		-e AGW_DEBUG="true" \
+		-e AGW_HA_PEER_IP="$(AGW_FOLLOWER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_LEADER_IP)" \
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		$(AGW_IMAGE)
+	@docker run -d --name $(AGW_FOLLOWER_NAME) --network $(HA_NETWORK) --ip $(AGW_FOLLOWER_IP) \
+		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
+		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
+		-e AGW_DEBUG="true" \
+		-e AGW_HA_PEER_IP="$(AGW_LEADER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_FOLLOWER_IP)" \
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		$(AGW_IMAGE)
+	@echo "HA AGW containers started (leader=$(AGW_LEADER_NAME) @ $(AGW_LEADER_IP), follower=$(AGW_FOLLOWER_NAME) @ $(AGW_FOLLOWER_IP))"
 
 launch-sim:
 	@echo "Launching DPU Sim using original launch_sas.sh script"
@@ -265,16 +299,9 @@ launch-sim:
 		exit 1; \
 	fi
 
-attach-sim:
-	@echo "Attaching to DPU Sim container: $(DSC_INSTANCE)"
-	@docker exec -it $(DSC_INSTANCE) bash
-
 # ============================================================================
 # Container Management Targets
 # ============================================================================
-
-launch-containers: build-agw-image pull-sim-image launch-sim launch-agw configure-network show-containers-status
-	@echo "Stack ready"
 
 shutdown-containers:
 	@echo "Stopping containers and K8s infrastructure..."
@@ -283,21 +310,6 @@ shutdown-containers:
 	@-kind delete cluster --name $(KIND_CLUSTER_NAME) 2>/dev/null || true
 	@-rm -f $(KIND_KUBECONFIG) /tmp/$(KIND_CLUSTER_NAME)-agw-token /tmp/$(KIND_CLUSTER_NAME)-timescape-nodeport
 	@echo "✅ All containers and kind cluster stopped"
-
-configure-network:
-	@echo "Configuring host IP alias $(HOST_AGW_IP) (Ubuntu)"
-	@sh -c 'if ! ip addr show lo | grep -q "$(HOST_AGW_IP)"; then sudo ip addr add $(HOST_AGW_IP)/32 dev lo; else echo "IP already configured"; fi'
-	@if [ "$(APPLY_ROUTE)" = "1" ]; then \
-		echo "Configuring DPU route to AGW IP via Docker bridge"; \
-		BRIDGE_IP=$$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}'); \
-		docker exec $(DSC_INSTANCE) ip route add $(HOST_AGW_IP) via $$BRIDGE_IP 2>/dev/null || echo "Route already exists"; \
-	else \
-		echo "Skipping DPU bridge route (APPLY_ROUTE=0)"; \
-	fi
-	@echo "Creating DPU mgmt alias int_mnic0 to satisfy FWA (idempotent)"
-	@docker exec $(DSC_INSTANCE) sh -c 'ip link show int_mnic0 >/dev/null 2>&1 || ip link add int_mnic0 type dummy'
-	@docker exec $(DSC_INSTANCE) sh -c 'ip addr show dev int_mnic0 | grep -q "127.0.0.1/32" || ip addr add 127.0.0.1/32 dev int_mnic0'
-	@docker exec $(DSC_INSTANCE) sh -c 'ip link set int_mnic0 up || true'
 
 show-containers-status:
 	@echo "Container Status:"
@@ -392,6 +404,85 @@ launch-sim-multi:
 		exit 1; \
 	fi
 
+launch-containers: build-agw-image pull-sim-image launch-sim launch-agw configure-network status
+	@echo "Stack ready"
+
+launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-agw configure-network-multi status
+	@echo "Multi-SIM stack ready"
+
+# ============================================================================
+# Status & Shutdown (handle any combination of running containers)
+# ============================================================================
+
+status:
+	@echo "Container Status:"
+	@docker ps --filter "name=agw" --filter "name=naples-" \
+		--format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers running"
+	@echo ""
+	@echo "Health Checks:"
+	@for C in agw $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME); do \
+		if docker ps --filter "name=$$C" --format "{{.Names}}" | grep -qx "$$C"; then \
+			docker exec $$C ./agwctl health >/dev/null 2>&1 \
+				&& echo "  ✅ $$C: healthy" \
+				|| echo "  ❌ $$C: unhealthy"; \
+		fi; \
+	done
+	@DPU_CONTAINERS="$$(docker ps --filter "name=naples-" --format "{{.Names}}")"; \
+	if [ -n "$$DPU_CONTAINERS" ]; then \
+		for C in $$DPU_CONTAINERS; do \
+			docker exec "$$C" pgrep -f "pds_dp_app" >/dev/null 2>&1 \
+				&& echo "  ✅ $$C: dataplane running" \
+				|| echo "  ❌ $$C: dataplane not running"; \
+		done; \
+	fi
+
+shutdown:
+	@echo "Stopping all containers..."
+	@# Single AGW and HA containers
+	@for C in agw $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME); do \
+		if docker ps -a --filter "name=$$C" --format "{{.Names}}" | grep -qx "$$C"; then \
+			echo "  Removing $$C"; \
+			docker rm -f $$C >/dev/null 2>&1 || true; \
+		fi; \
+	done
+	@# DPU Sim containers (single and multi)
+	@SIM_CONTAINERS="$$(docker ps -a --filter "name=naples-" --format "{{.Names}}")"; \
+	if [ -n "$$SIM_CONTAINERS" ]; then \
+		echo "  Removing DPU Sim containers: $$SIM_CONTAINERS"; \
+		docker rm -f $$SIM_CONTAINERS >/dev/null 2>&1 || true; \
+	fi
+	@# Clean up host SIM interfaces
+	@for IFACE in $$(ip -o link show 2>/dev/null | awk -F': ' '{print $$2}' | sed 's/@.*//' | grep -E '^sim[0-9]+-(eth1-1|eth1-2|dsc0)$$' || true); do \
+		echo "  Deleting interface $$IFACE"; \
+		sudo ip link delete "$$IFACE" >/dev/null 2>&1 || true; \
+	done
+	@# Remove HA network if it exists
+	@if docker network ls --format "{{.Name}}" | grep -q "^$(HA_NETWORK)$$"; then \
+		echo "  Removing network $(HA_NETWORK)"; \
+		docker network rm $(HA_NETWORK) >/dev/null 2>&1 || true; \
+	fi
+	@echo "✅ Shutdown complete"
+
+
+# ============================================================================
+# Network Configuration
+# ============================================================================
+
+configure-network:
+	@echo "Configuring host IP alias $(HOST_AGW_IP) (Ubuntu)"
+	@sh -c 'if ! ip addr show lo | grep -q "$(HOST_AGW_IP)"; then sudo ip addr add $(HOST_AGW_IP)/32 dev lo; else echo "IP already configured"; fi'
+	@if [ "$(APPLY_ROUTE)" = "1" ]; then \
+		echo "Configuring DPU route to AGW IP via Docker bridge"; \
+		BRIDGE_IP=$$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}'); \
+		docker exec $(DSC_INSTANCE) ip route add $(HOST_AGW_IP) via $$BRIDGE_IP 2>/dev/null || echo "Route already exists"; \
+	else \
+		echo "Skipping DPU bridge route (APPLY_ROUTE=0)"; \
+	fi
+	@echo "Creating DPU mgmt alias int_mnic0 to satisfy FWA (idempotent)"
+	@docker exec $(DSC_INSTANCE) sh -c 'ip link show int_mnic0 >/dev/null 2>&1 || ip link add int_mnic0 type dummy'
+	@docker exec $(DSC_INSTANCE) sh -c 'ip addr show dev int_mnic0 | grep -q "127.0.0.1/32" || ip addr add 127.0.0.1/32 dev int_mnic0'
+	@docker exec $(DSC_INSTANCE) sh -c 'ip link set int_mnic0 up || true'
+
 configure-network-multi:
 	@echo "Configuring host IP alias $(HOST_AGW_IP) (Ubuntu)"
 	@sh -c 'if ! ip addr show lo | grep -q "$(HOST_AGW_IP)"; then sudo ip addr add $(HOST_AGW_IP)/32 dev lo; else echo "IP already configured"; fi'
@@ -460,9 +551,6 @@ shutdown-containers-multi:
 		sudo ip link delete "$$IFACE" >/dev/null 2>&1 || true; \
 	done
 	@echo "✅ All containers and kind cluster stopped"
-
-launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-agw configure-network-multi show-containers-status-multi
-	@echo "Multi-SIM stack ready"
 
 # ============================================================================
 # K8s Infrastructure Targets (prerequisites of launch-agw)
@@ -600,37 +688,6 @@ teardown-kind-cluster:
 # HA Targets (leader = lowest IP, wins election per ha/manager.go)
 # ============================================================================
 
-create-ha-network:
-	@docker network create --subnet=$(HA_SUBNET) $(HA_NETWORK) 2>/dev/null || echo "Network already exists"
-
-remove-ha-network:
-	@-docker network rm $(HA_NETWORK) 2>/dev/null || true
-
-launch-ha-agw: create-ha-network
-	@echo "Starting HA AGW containers (DPU-less)..."
-	@-docker rm -f $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) >/dev/null 2>&1 || true
-	@docker run -d --name $(AGW_LEADER_NAME) --network $(HA_NETWORK) --ip $(AGW_LEADER_IP) \
-		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
-		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
-		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
-		-e AGW_DEBUG="true" \
-		-e NX_AGENT_IGNORE_MODULES="1" \
-		-e AGW_HA_PEER_IP="$(AGW_FOLLOWER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_LEADER_IP)" \
-		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
-		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
-		$(AGW_IMAGE)
-	@docker run -d --name $(AGW_FOLLOWER_NAME) --network $(HA_NETWORK) --ip $(AGW_FOLLOWER_IP) \
-		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
-		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
-		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
-		-e AGW_DEBUG="true" \
-		-e NX_AGENT_IGNORE_MODULES="1" \
-		-e AGW_HA_PEER_IP="$(AGW_LEADER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_FOLLOWER_IP)" \
-		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
-		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
-		$(AGW_IMAGE)
-	@echo "HA AGW containers started (leader=$(AGW_LEADER_NAME), follower=$(AGW_FOLLOWER_NAME))"
-
 shutdown-ha-containers:
 	@-docker rm -f $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) >/dev/null 2>&1 || true
 	@$(MAKE) remove-ha-network
@@ -644,11 +701,17 @@ show-ha-status:
 			docker exec $$c ./agwctl health >/dev/null 2>&1 && echo "  $$c: healthy" || echo "  $$c: unhealthy"; \
 		else echo "  $$c: not running"; fi; done
 
-run-ha-tests:
-	AGW_CONTAINER=$(AGW_LEADER_NAME) AGW_LEADER=$(AGW_LEADER_NAME) AGW_FOLLOWER=$(AGW_FOLLOWER_NAME) $(PYTEST) -v -m ha
+attach-agw:
+	@echo "Attaching to AGW container: agw"
+	@docker exec -it agw sh
+
+attach-sim:
+	@echo "Attaching to DPU Sim container: $(DSC_INSTANCE)"
+	@docker exec -it $(DSC_INSTANCE) bash
+
 
 # ============================================================================
-# Test Targets
+# Tests
 # ============================================================================
 
 install-test-dependencies:
@@ -670,13 +733,16 @@ run-all-tests:
 run-nxos-tests:
 	$(PYTEST) -v nxos/
 
+run-ha-tests:
+	AGW_CONTAINER=$(AGW_LEADER_NAME) AGW_LEADER=$(AGW_LEADER_NAME) AGW_FOLLOWER=$(AGW_FOLLOWER_NAME) \
+	$(PYTEST) -v -m ha ha/
+
 run-tests-with-allure:
 	$(PYTEST) -v --alluredir=allure-results
 
 show-allure-report:
 	allure serve allure-results
 
-# Run specific test
 run-specific-test:
 	@if [ -z "$(TEST)" ]; then \
 		echo "Usage: make run-specific-test TEST=test_policy.py::test_agw_health"; \
@@ -684,8 +750,9 @@ run-specific-test:
 		$(PYTEST) -v $(TEST); \
 	fi
 
+
 # ============================================================================
-# Utility Targets
+# Utility
 # ============================================================================
 
 clean-test-artifacts:

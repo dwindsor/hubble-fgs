@@ -254,14 +254,6 @@ class CommandExecutor:
             f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_STATUS.value}"
         )
 
-    def agw_show_ha(self) -> str:
-        """Show AGW HA state"""
-        container = self._get_agw_container()
-        return self._exec_in_container(
-            container,
-            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_HA.value}"
-        )
-
     def agw_show_gid(self) -> str:
         """Show AGW GID allocations"""
         container = self._get_agw_container()
@@ -473,8 +465,8 @@ class CommandExecutor:
         envelope = json.loads(output)
         return envelope.get("data", envelope)
 
-    def agw_gnmi_ha_peers_json(self) -> dict:
-        """Show HA peers via gNMI in JSON format (agwctl ha peers show --json)"""
+    def agw_ha_peers_show_json(self) -> dict:
+        """Show HA peers detail via gNMI in JSON format (agwctl ha peers show)"""
         container = self._get_agw_container()
         output = self._exec_in_container(
             container,
@@ -663,20 +655,96 @@ class CommandExecutor:
             f"{TestingConfig.AGWCTL_PATH} {AGWCTL.MOCK_GNMI_DELETE.value.format(path)}"
         )
 
-    def agw_ha_criteria_fail(self) -> str:
+    def agw_mock_gnmi_log(self, n: int = 0, path: str = None, prefix: str = None, operation: str = None) -> str:
+        """Read the mock gNMI transaction log with optional filters.
+
+        Args:
+            n: Show only the last N entries (0 = all).
+            path: Filter by exact path match.
+            prefix: Filter by path prefix match.
+            operation: Filter by operation (get, set, delete, set_notify, etc.).
+        """
+        container = self._get_agw_container()
+        cmd_parts = [TestingConfig.AGWCTL_PATH, AGWCTL.MOCK_GNMI_LOG.value]
+        if n:
+            cmd_parts.append(f"-n {n}")
+        if path:
+            cmd_parts.append(f"--path {path}")
+        if prefix:
+            cmd_parts.append(f"--prefix {prefix}")
+        if operation:
+            cmd_parts.append(f"--operation {operation}")
+        return self._exec_in_container(container, " ".join(cmd_parts))
+
+    def agw_mock_gnmi_log_json(self, n: int = 0, path: str = None, prefix: str = None, operation: str = None) -> list:
+        """Read the mock gNMI transaction log as parsed JSON list."""
+        container = self._get_agw_container()
+        cmd_parts = [TestingConfig.AGWCTL_PATH, "--json", AGWCTL.MOCK_GNMI_LOG.value]
+        if n:
+            cmd_parts.append(f"-n {n}")
+        if path:
+            cmd_parts.append(f"--path {path}")
+        if prefix:
+            cmd_parts.append(f"--prefix {prefix}")
+        if operation:
+            cmd_parts.append(f"--operation {operation}")
+        output = self._exec_in_container(container, " ".join(cmd_parts))
+        envelope = json.loads(output)
+        data = envelope.get("data", envelope)
+        if isinstance(data, list):
+            return data
+        return data.get("entries", [])
+
+    def agw_ha_info(self) -> str:
+        """Show HA configuration info (agwctl ha info)"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_INFO.value}"
+        )
+
+    def agw_ha_info_json(self) -> dict:
+        """Show HA configuration info in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.HA_INFO.value}"
+        )
+        envelope = json.loads(output)
+        return envelope.get("data", envelope)
+
+    def agw_ha_debug_fail(self) -> str:
         """Set the debug_override HA criterion to false, forcing ha-switchover"""
         container = self._get_agw_container()
         return self._exec_in_container(
             container,
-            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_CRITERIA_FAIL.value}"
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_DEBUG_FAIL.value}"
         )
 
-    def agw_ha_criteria_ok(self) -> str:
+    def agw_ha_debug_ok(self) -> str:
         """Set the debug_override HA criterion to true, restoring normal evaluation"""
         container = self._get_agw_container()
         return self._exec_in_container(
             container,
-            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_CRITERIA_OK.value}"
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_DEBUG_OK.value}"
+        )
+
+    def agw_ha_debug_peer_fail(self, peer: str, membership: bool = False, adjacency: bool = False) -> str:
+        """Inject a debug failure for a peer's membership or adjacency criteria"""
+        container = self._get_agw_container()
+        flag = "--membership" if membership else "--adjacency"
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_DEBUG_PEER_FAIL.value} --peer {peer} {flag}"
+        )
+
+    def agw_ha_debug_peer_ok(self, peer: str, membership: bool = False, adjacency: bool = False) -> str:
+        """Clear a debug failure for a peer's membership or adjacency criteria"""
+        container = self._get_agw_container()
+        flag = "--membership" if membership else "--adjacency"
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.HA_DEBUG_PEER_OK.value} --peer {peer} {flag}"
         )
 
     def get_container_logs(self, container_name: str, tail_lines: int = 50) -> str:
