@@ -33,14 +33,38 @@ jobs:
       run: |
         if [ "$RUNNER_ARCH" == "X64" ]; then
           sudo apt-get update
-          sudo apt-get -y install libc6-dev-i386
+          sudo apt-get -y install libc6-dev-i386 gh
+        fi
+
+    - name: Install socat x86
+      env:
+        GH_TOKEN: ${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}
+      run: |
+        if [ "$RUNNER_ARCH" == "X64" ]; then
+          gh --repo isovalent/socat release download tag-1.8.1.1 -O ~/socat -p socat-x86
+          sudo chmod a+x ~/socat
+          sudo ln -s ~/socat /usr/bin
+          which socat
+          socat -V
         fi
 
     - name: Install dependencies ARM
       run: |
         if [ "$RUNNER_ARCH" == "ARM64" ]; then
           sudo apt-get update
-          sudo apt-get -y install gcc-arm-linux-gnueabihf
+          sudo apt-get -y install gcc-arm-linux-gnueabihf gh
+        fi
+
+    - name: Install socat ARM
+      env:
+        GH_TOKEN: ${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}
+      run: |
+        if [ "$RUNNER_ARCH" == "ARM64" ]; then
+          gh --repo isovalent/socat release download tag-1.8.1.1 -O ~/socat -p socat-arm
+          sudo chmod a+x ~/socat
+          sudo ln -s ~/socat /usr/bin
+          which socat
+          socat -V
         fi
 
     - name: Run go tests
@@ -49,7 +73,7 @@ jobs:
       run: |
         docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
         sudo apt update -y
-        sudo apt install libelf-dev netcat-openbsd netcat-traditional socat libcap-dev libaio-dev liburing-dev iproute2 net-tools pahole llvm libnet1 libnet1-dev
+        sudo apt install libelf-dev netcat-openbsd netcat-traditional libcap-dev libaio-dev liburing-dev iproute2 net-tools pahole llvm libnet1 libnet1-dev
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
         sudo sed -i '/secure_path/d' /etc/sudoers

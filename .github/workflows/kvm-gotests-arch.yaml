@@ -12,6 +12,13 @@ on:
       apt_packages:
         required: true
         type: string
+      socat_filename:
+        required: true
+        type: string
+    secrets:
+      ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES:
+        description: 'Our secret token'
+        required: true
 
 jobs:
   build:
@@ -36,6 +43,15 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y ${{ inputs.apt_packages }}
+      - name: Install socat
+        env:
+          GH_TOKEN: ${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}
+        run: |
+          gh --repo isovalent/socat release download tag-1.8.1.1 -O ~/socat -p ${{ inputs.socat_filename }}
+          sudo chmod a+x ~/socat
+          sudo ln -s ~/socat /usr/bin
+          which socat
+          socat -V
       - name: Build
         env:
           GOPATH: /home/runner/work/tetragon/tetragon/go

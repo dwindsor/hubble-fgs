@@ -20,9 +20,12 @@ jobs:
       runner_label: ${{ vars.KVM_GH_RUNNER_AMD64 }}
       apt_packages: >-
         bind9-dnsutils libcap-dev libaio-dev liburing-dev libelf-dev
-        iptables software-properties-common netcat-openbsd socat
+        iptables software-properties-common netcat-openbsd
         iproute2 net-tools pahole clang lld llvm libc6-dev-i386
-        gcc-multilib libnet1 libnet1-dev
+        gcc-multilib libnet1 libnet1-dev gh
+      socat_filename: socat-x86
+    secrets:
+      ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES: ${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}
 
   arm64:
     uses: ./.github/workflows/kvm-gotests-arch.yaml
@@ -34,7 +37,10 @@ jobs:
       runner_label: ${{ vars.KVM_GH_RUNNER_ARM64 }}
       apt_packages: >-
         bind9-dnsutils libcap-dev libaio-dev liburing-dev libelf-dev
-        iptables software-properties-common netcat-openbsd socat
+        iptables software-properties-common netcat-openbsd
         iproute2 net-tools pahole clang lld llvm
         gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
-        libc6-dev-armhf-cross build-essential libnet1 libnet1-dev
+        libc6-dev-armhf-cross build-essential libnet1 libnet1-dev gh
+      socat_filename: socat-arm
+    secrets:
+      ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES: ${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}
