@@ -266,7 +266,7 @@ func (fb *AcceleratedFluentbitExporter) RefreshConfig(oldCfg *v1alpha.ConfigObje
 		fb.Fluentbit.NpuPortLow = dpuConfig.PortLow
 		fb.Fluentbit.NpuPortHigh = dpuConfig.PortHigh
 		return nil
-	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
+	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
 		// Switching on config type
 		var oldLogConfigs map[string]*v1alpha.LogConfig
 		var newLogConfigs map[string]*v1alpha.LogConfig
@@ -277,13 +277,6 @@ func (fb *AcceleratedFluentbitExporter) RefreshConfig(oldCfg *v1alpha.ConfigObje
 			}
 			if newCfg != nil {
 				newLogConfigs = newCfg.GetConfigLogSyslog().Configs
-			}
-		case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
-			if oldCfg != nil {
-				oldLogConfigs = oldCfg.GetConfigLogIpfix().Configs
-			}
-			if newCfg != nil {
-				newLogConfigs = newCfg.GetConfigLogIpfix().Configs
 			}
 		case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
 			if oldCfg != nil {

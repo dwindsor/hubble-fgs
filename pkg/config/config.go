@@ -75,8 +75,6 @@ func compareConfigObjects(a, b *v1alpha.ConfigObject) bool {
 		return cmp.Equal(a.GetConfigDpu(), b.GetConfigDpu(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG:
 		return cmp.Equal(a.GetConfigLogSyslog(), b.GetConfigLogSyslog(), protocmp.Transform())
-	case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
-		return cmp.Equal(a.GetConfigLogIpfix(), b.GetConfigLogIpfix(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
 		return cmp.Equal(a.GetConfigLogTimescape(), b.GetConfigLogTimescape(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:

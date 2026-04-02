@@ -532,14 +532,12 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		if err != nil {
 			return err
 		}
-	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
+	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
 		// Switching on config type
 		var logConfigs map[string]*v1alpha.LogConfig
 		switch cfg.Type {
 		case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG:
 			logConfigs = cfg.GetConfigLogSyslog().Configs
-		case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
-			logConfigs = cfg.GetConfigLogIpfix().Configs
 		case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
 			logConfigs = cfg.GetConfigLogTimescape().Configs
 		case v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:

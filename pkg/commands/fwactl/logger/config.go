@@ -81,8 +81,6 @@ any existing logger configuration.  It is in the format:
 			typ = v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE
 		case "splunk":
 			typ = v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK
-		case "ipfix":
-			typ = v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX
 		default:
 			return fmt.Errorf("could not create config, unknown type %s", CONFIG_TYPE)
 		}
@@ -113,6 +111,6 @@ any existing logger configuration.  It is in the format:
 
 func init() {
 	loggerConfigCmd.PersistentFlags().StringVar(&SERVICE_MAC, "mac", "00:0c:0c:0c:0c:0c", "sets the service mac address")
-	loggerConfigCmd.PersistentFlags().StringVar(&CONFIG_TYPE, "type", "syslog", "sets log configuration type [syslog, timescape, ipfix, splunk]")
+	loggerConfigCmd.PersistentFlags().StringVar(&CONFIG_TYPE, "type", "syslog", "sets log configuration type [syslog, timescape, splunk]")
 	LoggerCmd.AddCommand(loggerConfigCmd)
 }

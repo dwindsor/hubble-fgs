@@ -180,17 +180,6 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigSyslog", target)
-	case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
-		logConfig := obj.GetConfigLogIpfix()
-		if logConfig == nil {
-			return fmt.Errorf("config is nil")
-		}
-		targetPtr, ok := target.(*v1alpha.LogConfigIpfix)
-		if ok {
-			proto.Merge(targetPtr, logConfig)
-			return nil
-		}
-		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigIpfix", target)
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
 		logConfig := obj.GetConfigLogTimescape()
 		if logConfig == nil {

@@ -33,7 +33,7 @@ require (
 	github.com/google/gops v0.3.29
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.19.0-pre.9.0.20260401201544-0e0e8ceabd7a
+	github.com/isovalent/ipa v1.19.0-pre.12.0.20260402172528-0281250ffa22
 	github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260212220503-f8352aa1affd
 	github.com/joho/godotenv v1.5.1
 	github.com/mennanov/fieldmask-utils v1.1.4
@@ -67,7 +67,7 @@ require (
 	golang.org/x/sys v0.42.0
 	golang.org/x/time v0.15.0
 	google.golang.org/api v0.273.1
-	google.golang.org/grpc v1.79.3
+	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.35.3

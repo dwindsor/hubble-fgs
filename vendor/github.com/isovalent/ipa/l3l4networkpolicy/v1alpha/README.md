@@ -7,14 +7,15 @@
     - [BasicAuth](#l3l4networkpolicy-v1alpha-BasicAuth)
     - [ConfigObject](#l3l4networkpolicy-v1alpha-ConfigObject)
     - [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig)
+    - [FlowExportConfig](#l3l4networkpolicy-v1alpha-FlowExportConfig)
+    - [FlowExportConfigIpfix](#l3l4networkpolicy-v1alpha-FlowExportConfigIpfix)
+    - [FlowExportConfigIpfix.ConfigsEntry](#l3l4networkpolicy-v1alpha-FlowExportConfigIpfix-ConfigsEntry)
     - [HAStatusEvent](#l3l4networkpolicy-v1alpha-HAStatusEvent)
     - [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig)
     - [HaPeer](#l3l4networkpolicy-v1alpha-HaPeer)
     - [IssuerRef](#l3l4networkpolicy-v1alpha-IssuerRef)
     - [L3L4NetworkSubject](#l3l4networkpolicy-v1alpha-L3L4NetworkSubject)
     - [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig)
-    - [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix)
-    - [LogConfigIpfix.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigIpfix-ConfigsEntry)
     - [LogConfigSplunk](#l3l4networkpolicy-v1alpha-LogConfigSplunk)
     - [LogConfigSplunk.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSplunk-ConfigsEntry)
     - [LogConfigSyslog](#l3l4networkpolicy-v1alpha-LogConfigSyslog)
@@ -95,7 +96,7 @@ ConfigObject is a generic config object, which can be extended by adding additio
 | source | [ConfigSource](#l3l4networkpolicy-v1alpha-ConfigSource) |  | Source of the config, helpful when managing local and remote configurations. |
 | config_dpu | [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig) |  |  |
 | config_log_syslog | [LogConfigSyslog](#l3l4networkpolicy-v1alpha-LogConfigSyslog) |  |  |
-| config_log_ipfix | [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix) |  |  |
+| config_flow_export_ipfix | [FlowExportConfigIpfix](#l3l4networkpolicy-v1alpha-FlowExportConfigIpfix) |  |  |
 | config_log_timescape | [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape) |  |  |
 | config_log_splunk | [LogConfigSplunk](#l3l4networkpolicy-v1alpha-LogConfigSplunk) |  |  |
 | config_ha | [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig) |  |  |
@@ -124,6 +125,56 @@ CONFIG_TYPE_DPU
 | ha_ip | [string](#string) |  | **Deprecated.** DEPRECATED |
 | serial_number | [string](#string) |  | Serial number of the switch |
 | switch_name | [string](#string) |  | Name of the switch |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-FlowExportConfig"></a>
+
+### FlowExportConfig
+FlowExportConfig contains the configuration for a flow export collector.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Configuration id |
+| name | [string](#string) |  | Configuration name |
+| description | [string](#string) |  | Configuration description |
+| host | [string](#string) |  | IPv4 only |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-FlowExportConfigIpfix"></a>
+
+### FlowExportConfigIpfix
+Object to store a list of ipfix flow export configuration
+CONFIG_TYPE_FLOW_EXPORT_IPFIX = 9
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| configs | [FlowExportConfigIpfix.ConfigsEntry](#l3l4networkpolicy-v1alpha-FlowExportConfigIpfix-ConfigsEntry) | repeated |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-FlowExportConfigIpfix-ConfigsEntry"></a>
+
+### FlowExportConfigIpfix.ConfigsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [FlowExportConfig](#l3l4networkpolicy-v1alpha-FlowExportConfig) |  |  |
 
 
 
@@ -237,38 +288,6 @@ Object to store log export configuration
 | basic_auth | [BasicAuth](#l3l4networkpolicy-v1alpha-BasicAuth) |  | BasicAuth configuration |
 | mtls | [MTLSConfig](#l3l4networkpolicy-v1alpha-MTLSConfig) |  | mTLS configuration |
 | token | [Token](#l3l4networkpolicy-v1alpha-Token) |  | Token based configuration |
-
-
-
-
-
-
-<a name="l3l4networkpolicy-v1alpha-LogConfigIpfix"></a>
-
-### LogConfigIpfix
-Object to store a list of ipfix configuration
-CONFIG_TYPE_LOG_IPFIX
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| configs | [LogConfigIpfix.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigIpfix-ConfigsEntry) | repeated |  |
-
-
-
-
-
-
-<a name="l3l4networkpolicy-v1alpha-LogConfigIpfix-ConfigsEntry"></a>
-
-### LogConfigIpfix.ConfigsEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig) |  |  |
 
 
 
@@ -817,12 +836,13 @@ ConfigObject.
 | CONFIG_TYPE_UNSPECIFIED | 0 | Unspecified or unknown config type |
 | CONFIG_TYPE_DPU | 1 | DPU configuration |
 | CONFIG_TYPE_LOG_SYSLOG | 2 | Log export syslog configuration |
-| CONFIG_TYPE_LOG_IPFIX | 3 | Log export IPFIX configuration |
+| CONFIG_TYPE_LOG_IPFIX | 3 | Deprecated: use CONFIG_TYPE_FLOW_EXPORT_IPFIX instead. |
 | CONFIG_TYPE_LOG_TIMESCAPE | 4 | Log export timescape configuration |
 | CONFIG_TYPE_LOG_SPLUNK | 5 | Log export splunk configuration |
 | CONFIG_TYPE_HA | 6 | HA configuration |
 | CONFIG_TYPE_NETWORK | 7 | Network configuration |
 | CONFIG_TYPE_TIMESCAPE | 8 | Timescape ingestor configuration |
+| CONFIG_TYPE_FLOW_EXPORT_IPFIX | 9 | Flow export IPFIX configuration |
 
 
 

@@ -160,14 +160,26 @@ func (msg *LogConfigSyslog) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *LogConfigIpfix) MarshalJSON() ([]byte, error) {
+func (msg *FlowExportConfig) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{
 		UseProtoNames: true,
 	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *LogConfigIpfix) UnmarshalJSON(b []byte) error {
+func (msg *FlowExportConfig) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *FlowExportConfigIpfix) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{
+		UseProtoNames: true,
+	}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *FlowExportConfigIpfix) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 

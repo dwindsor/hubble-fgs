@@ -14,7 +14,6 @@ package agw
 
 const (
 	LogTypeSyslog    = "syslog"
-	LogTypeIpfix     = "ipfix"
 	LogTypeTimescape = "timescape"
 	LogTypeSplunk    = "splunk"
 )

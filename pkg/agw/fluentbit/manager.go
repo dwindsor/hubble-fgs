@@ -35,7 +35,7 @@ import (
 
 // Manager manages the FluentBit configuration for the AGW-local
 // FluentBit instance. It writes a YAML config to configPath whenever
-// log export destinations change (syslog, ipfix, timescape, splunk).
+// log export destinations change (syslog, timescape, splunk).
 type Manager struct {
 	configPath string
 	socketPath string
@@ -89,7 +89,6 @@ func (m *Manager) RefreshConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.Co
 
 	switch cfg.Type {
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
-		v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
 		v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE,
 		v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
 		return m.handleLogConfig(cfg.Type, oldCfg, newCfg)
@@ -109,13 +108,6 @@ func (m *Manager) handleLogConfig(typ v1alpha.ConfigType, oldCfg, newCfg *v1alph
 		}
 		if newCfg != nil {
 			newLogConfigs = newCfg.GetConfigLogSyslog().Configs
-		}
-	case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
-		if oldCfg != nil {
-			oldLogConfigs = oldCfg.GetConfigLogIpfix().Configs
-		}
-		if newCfg != nil {
-			newLogConfigs = newCfg.GetConfigLogIpfix().Configs
 		}
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
 		if oldCfg != nil {

@@ -396,7 +396,6 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	// Adding config callbacks
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpuConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, logConfigCallback)
-	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, logConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, logConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_HA, haConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_NETWORK, networkConfigCallback)

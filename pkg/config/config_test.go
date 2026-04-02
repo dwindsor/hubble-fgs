@@ -135,13 +135,6 @@ func TestDiffConfigSetsBySource(t *testing.T) {
 						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
 					},
 				},
-				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX: {
-					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
-					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
-					Config: &v1alpha.ConfigObject_ConfigLogIpfix{
-						ConfigLogIpfix: &v1alpha.LogConfigIpfix{},
-					},
-				},
 			},
 			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
 				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
@@ -228,13 +221,6 @@ func TestDiffConfigSetsBySource(t *testing.T) {
 						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
 					},
 				},
-				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX: {
-					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
-					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
-					Config: &v1alpha.ConfigObject_ConfigLogIpfix{
-						ConfigLogIpfix: &v1alpha.LogConfigIpfix{},
-					},
-				},
 			},
 			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
 				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
@@ -272,15 +258,6 @@ func TestDiffConfigSetsBySource(t *testing.T) {
 					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
 					Config: &v1alpha.ConfigObject_ConfigLogTimescape{
 						ConfigLogTimescape: &v1alpha.LogConfigTimescape{},
-					},
-				},
-			},
-			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
-				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX: {
-					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
-					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
-					Config: &v1alpha.ConfigObject_ConfigLogIpfix{
-						ConfigLogIpfix: &v1alpha.LogConfigIpfix{},
 					},
 				},
 			},

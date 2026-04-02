@@ -111,7 +111,6 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	// Adding config callbacks
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpuListener.SubscribeDpuConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, dpuListener.SubscribeConfig)
-	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_HA, dpuListener.SubscribeHaConfig)
@@ -1332,8 +1331,7 @@ func validateLogConfig(id string, config LogConfigData) (LogConfigData, error) {
 	}
 	if config.Type != LogTypeSyslog &&
 		config.Type != LogTypeTimescape &&
-		config.Type != LogTypeSplunk &&
-		config.Type != LogTypeIpfix {
+		config.Type != LogTypeSplunk {
 		return config, errors.New("log type is invalid")
 	}
 

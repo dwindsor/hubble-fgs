@@ -38,8 +38,6 @@ func AddLogConfig(fbc FluentBitConfig, typ v1alpha.ConfigType, logCfg *v1alpha.L
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG:
 		logOutput = DefaultDpSyslogOutput()
 		logOutput.Properties["mode"] = logCfg.Protocol
-	case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
-		return fbc, fmt.Errorf("ipfix fluentbit support not implemented")
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
 		logOutput = DefaultDpTimescapeOutput()
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:

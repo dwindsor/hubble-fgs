@@ -116,14 +116,6 @@ func TestAddLogConfig(t *testing.T) {
 			},
 		},
 		{
-			name:        "unsupported config type - ipfix",
-			fbc:         DefaultBaseConfig(),
-			typ:         v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
-			logCfg:      &v1alpha.LogConfig{Id: "test-ipfix"},
-			wantErr:     true,
-			errContains: "ipfix fluentbit support not implemented",
-		},
-		{
 			name:        "unsupported config type - splunk",
 			fbc:         DefaultBaseConfig(),
 			typ:         v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK,

@@ -179,8 +179,8 @@ enum ConfigType {
   CONFIG_TYPE_DPU = 1;
   // Log export syslog configuration
   CONFIG_TYPE_LOG_SYSLOG = 2;
-  // Log export IPFIX configuration
-  CONFIG_TYPE_LOG_IPFIX = 3;
+  // Deprecated: use CONFIG_TYPE_FLOW_EXPORT_IPFIX instead.
+  CONFIG_TYPE_LOG_IPFIX = 3 [deprecated = true];
   // Log export timescape configuration
   CONFIG_TYPE_LOG_TIMESCAPE = 4;
   // Log export splunk configuration
@@ -191,6 +191,8 @@ enum ConfigType {
   CONFIG_TYPE_NETWORK = 7;
   // Timescape ingestor configuration
   CONFIG_TYPE_TIMESCAPE = 8;
+  // Flow export IPFIX configuration
+  CONFIG_TYPE_FLOW_EXPORT_IPFIX = 9;
 }
 
 enum ConfigSource {
@@ -258,10 +260,22 @@ message LogConfigSyslog {
   map<string, LogConfig> configs = 1;
 }
 
-// Object to store a list of ipfix configuration
-// CONFIG_TYPE_LOG_IPFIX
-message LogConfigIpfix {
-  map<string, LogConfig> configs = 1;
+// FlowExportConfig contains the configuration for a flow export collector.
+message FlowExportConfig {
+  // Configuration id
+  string id = 1;
+  // Configuration name
+  string name = 2;
+  // Configuration description
+  string description = 3;
+  // IPv4 only
+  string host = 4;
+}
+
+// Object to store a list of ipfix flow export configuration
+// CONFIG_TYPE_FLOW_EXPORT_IPFIX = 9
+message FlowExportConfigIpfix {
+  map<string, FlowExportConfig> configs = 1;
 }
 
 // Object to store a list of timescape configuration
@@ -437,7 +451,7 @@ message ConfigObject {
   oneof config {
     DpuConfig config_dpu = 20;
     LogConfigSyslog config_log_syslog = 21;
-    LogConfigIpfix config_log_ipfix = 22;
+    FlowExportConfigIpfix config_flow_export_ipfix = 22;
     LogConfigTimescape config_log_timescape = 23;
     LogConfigSplunk config_log_splunk = 24;
     HaConfig config_ha = 25;

@@ -586,23 +586,64 @@ export declare type LogConfigSyslog = Message<"l3l4networkpolicy.v1alpha.LogConf
 export declare const LogConfigSyslogSchema: GenMessage<LogConfigSyslog>;
 
 /**
- * Object to store a list of ipfix configuration
- * CONFIG_TYPE_LOG_IPFIX
+ * FlowExportConfig contains the configuration for a flow export collector.
  *
- * @generated from message l3l4networkpolicy.v1alpha.LogConfigIpfix
+ * @generated from message l3l4networkpolicy.v1alpha.FlowExportConfig
  */
-export declare type LogConfigIpfix = Message<"l3l4networkpolicy.v1alpha.LogConfigIpfix"> & {
+export declare type FlowExportConfig = Message<"l3l4networkpolicy.v1alpha.FlowExportConfig"> & {
   /**
-   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   * Configuration id
+   *
+   * @generated from field: string id = 1;
    */
-  configs: { [key: string]: LogConfig };
+  id: string;
+
+  /**
+   * Configuration name
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * Configuration description
+   *
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * IPv4 only
+   *
+   * @generated from field: string host = 4;
+   */
+  host: string;
 };
 
 /**
- * Describes the message l3l4networkpolicy.v1alpha.LogConfigIpfix.
- * Use `create(LogConfigIpfixSchema)` to create a new message.
+ * Describes the message l3l4networkpolicy.v1alpha.FlowExportConfig.
+ * Use `create(FlowExportConfigSchema)` to create a new message.
  */
-export declare const LogConfigIpfixSchema: GenMessage<LogConfigIpfix>;
+export declare const FlowExportConfigSchema: GenMessage<FlowExportConfig>;
+
+/**
+ * Object to store a list of ipfix flow export configuration
+ * CONFIG_TYPE_FLOW_EXPORT_IPFIX = 9
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.FlowExportConfigIpfix
+ */
+export declare type FlowExportConfigIpfix = Message<"l3l4networkpolicy.v1alpha.FlowExportConfigIpfix"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.FlowExportConfig> configs = 1;
+   */
+  configs: { [key: string]: FlowExportConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.FlowExportConfigIpfix.
+ * Use `create(FlowExportConfigIpfixSchema)` to create a new message.
+ */
+export declare const FlowExportConfigIpfixSchema: GenMessage<FlowExportConfigIpfix>;
 
 /**
  * Object to store a list of timescape configuration
@@ -1144,10 +1185,10 @@ export declare type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObje
     case: "configLogSyslog";
   } | {
     /**
-     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigIpfix config_log_ipfix = 22;
+     * @generated from field: l3l4networkpolicy.v1alpha.FlowExportConfigIpfix config_flow_export_ipfix = 22;
      */
-    value: LogConfigIpfix;
-    case: "configLogIpfix";
+    value: FlowExportConfigIpfix;
+    case: "configFlowExportIpfix";
   } | {
     /**
      * @generated from field: l3l4networkpolicy.v1alpha.LogConfigTimescape config_log_timescape = 23;
@@ -1565,9 +1606,10 @@ export enum ConfigType {
   LOG_SYSLOG = 2,
 
   /**
-   * Log export IPFIX configuration
+   * Deprecated: use CONFIG_TYPE_FLOW_EXPORT_IPFIX instead.
    *
-   * @generated from enum value: CONFIG_TYPE_LOG_IPFIX = 3;
+   * @generated from enum value: CONFIG_TYPE_LOG_IPFIX = 3 [deprecated = true];
+   * @deprecated
    */
   LOG_IPFIX = 3,
 
@@ -1605,6 +1647,13 @@ export enum ConfigType {
    * @generated from enum value: CONFIG_TYPE_TIMESCAPE = 8;
    */
   TIMESCAPE = 8,
+
+  /**
+   * Flow export IPFIX configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_FLOW_EXPORT_IPFIX = 9;
+   */
+  FLOW_EXPORT_IPFIX = 9,
 }
 
 /**

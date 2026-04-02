@@ -106,7 +106,6 @@ func executeAGW() {
 			// (gRPC to FWA) and the AGW-local FluentBit manager.
 			for _, ct := range []v1alpha.ConfigType{
 				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
-				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
 				v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE,
 				v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK,
 			} {
