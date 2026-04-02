@@ -140,7 +140,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 		CRDNSPolicy: crdNS,
 		IrPolicy:    newPolicy,
 	})
-	err = netpolstate.AddPolicies(newPolicy)
+	err = netpolstate.Get().AddPolicies(newPolicy)
 	if err != nil {
 		logger.GetLogger().Warn("updateNetworkPolicy: failed to create new state in an update to Tetragon network policy command",
 			"new title", newName, "old title", oldName, "network rules", len(newPolicy))
@@ -194,7 +194,7 @@ func deleteNetworkPolicy(name string) error {
 	if story == nil {
 		return fmt.Errorf("policy %q does not exist", name)
 	}
-	if err := netpolstate.RemovePolicies(story.IrPolicy); err != nil {
+	if err := netpolstate.Get().RemovePolicies(story.IrPolicy); err != nil {
 		return fmt.Errorf("removing policy %q failed: %w", name, err)
 	}
 	library.GetRepository().Delete(name)
@@ -232,7 +232,7 @@ func loadPolicy(policyStory *library.PolicyStory) error {
 
 	library.GetRepository().Add(policyStory)
 
-	err := netpolstate.AddPolicies(policyStory.IrPolicy)
+	err := netpolstate.Get().AddPolicies(policyStory.IrPolicy)
 	if err != nil {
 		return fmt.Errorf("failed create match label from policy set %s: %w", policyStory.Title, err)
 	}

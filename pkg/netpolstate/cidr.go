@@ -66,14 +66,13 @@ func addDestSrcCIDRRecords(
 	return records, nil
 }
 
-func addDestCIDRRecords(
+func (state *PolicyState) addDestCIDRRecords(
 	policy types.TetragonPolicyUniqueID,
 	dest *types.TetragonNetworkDestination,
 	subject *types.TetragonNetworkSubject,
 	podSubject *types.ProcessTreeKey,
 	action *record.DatapathAction,
 ) ([]record.DatapathRecord, error) {
-	state := GetRealizedState()
 	records := []record.DatapathRecord{}
 
 	for _, process := range subject.InProcessName {

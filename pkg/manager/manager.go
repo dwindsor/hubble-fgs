@@ -79,7 +79,7 @@ func New(ctx context.Context) (KubernetesManager, error) {
 	ossManager.Start(ctx)
 
 	// Set the k8s reader for namespace label lookups used by namespaceSelector
-	netpolstate.SetK8sReader(ossManager.Manager.GetCache())
+	netpolstate.Get().SetK8sReader(ossManager.Manager.GetCache())
 
 	// Ensure Namespace objects are cached for namespace label lookups
 	// This is needed for namespaceSelector matching in TetragonNetworkPolicy
@@ -122,7 +122,7 @@ func New(ctx context.Context) (KubernetesManager, error) {
 			return nil, err
 		}
 		// Set the ServiceMap on the realized state for policy lookups
-		netpolstate.GetRealizedState().SetServiceMap(sm)
+		netpolstate.Get().SetServiceMap(sm)
 	}
 	return &EnterpriseManager{ossManager}, nil
 }
@@ -202,7 +202,7 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 			case *v1alpha1.PodInfo:
 				logger.GetLogger().Debug(fmt.Sprintf("Add Pod: %v", t))
 				c.AddIpPodMap(t)
-				if polErr := netpolstate.PodAdd(t); polErr != nil {
+				if polErr := netpolstate.Get().PodAdd(t); polErr != nil {
 					logger.GetLogger().Error(fmt.Sprintf("Pod add error: %v", polErr))
 				}
 			}
@@ -217,7 +217,7 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 			switch t := old.(type) {
 			case *v1alpha1.PodInfo:
 				logger.GetLogger().Debug(fmt.Sprintf("Delete Pod: %v", t))
-				if err := netpolstate.PodRemove(t); err != nil {
+				if err := netpolstate.Get().PodRemove(t); err != nil {
 					logger.GetLogger().Error(fmt.Sprintf("Pod remove error: %v", err))
 				}
 			}

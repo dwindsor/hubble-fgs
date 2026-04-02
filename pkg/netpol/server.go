@@ -69,7 +69,7 @@ func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetra
 		return nil, fmt.Errorf("policy does not exist")
 	}
 
-	if err := netpolstate.RemovePolicies(story.IrPolicy); err != nil {
+	if err := netpolstate.Get().RemovePolicies(story.IrPolicy); err != nil {
 		return nil, fmt.Errorf("abort removing policy failed")
 	}
 

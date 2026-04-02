@@ -95,14 +95,11 @@ func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetwork
 	return zombieSet, afterSubjs, nil
 }
 
-func diffExistingRecords(set []record.DatapathRecord) ([]record.DatapathRecord, error) {
-	state := GetRealizedState()
-	state.Reader.Lock()
+func (state *PolicyState) diffExistingRecords(set []record.DatapathRecord) ([]record.DatapathRecord, error) {
 	_, existingRecords, err := state.GetRecords(state.getAllExistingPolicy())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing records: %w", err)
 	}
-	state.Reader.Unlock()
 
 	return record.Diff(set, existingRecords), nil
 }
@@ -114,7 +111,7 @@ func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) erro
 	}
 
 	// We should avoid trying to add records that are already programmed
-	updateSet, err = diffExistingRecords(updateSet)
+	updateSet, err = state.diffExistingRecords(updateSet)
 	if err != nil {
 		return fmt.Errorf("failed to diff existing records: %w", err)
 	}
@@ -457,7 +454,7 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 
 func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, error) {
 	calculatorRecords := []record.DatapathRecord{}
-	calculatorState := state.CloneEmpty()
+	calculatorState := state.TemporaryEmptyState()
 	calculatorState.serviceMap = state.serviceMap
 
 	// Add Policy to calculator state
@@ -507,12 +504,11 @@ func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolic
 // current computed records and the new ones).
 //
 // Todo, this has lots of low hanging fruit for optimizing duplicate calculations.
-func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, []record.DatapathRecord, error) {
+func (state *PolicyState) recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, []record.DatapathRecord, error) {
 	// Entry point to Policy state create collect records for current
 	// policy state.
-	preState := GetRealizedState()
-	currentPolicy := preState.getAllExistingPolicy()
-	_, preRecords, err := preState.GetRecords(currentPolicy)
+	currentPolicy := state.getAllExistingPolicy()
+	_, preRecords, err := state.GetRecords(currentPolicy)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -521,10 +517,10 @@ func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*Poli
 	newPolicy := append(currentPolicy, policies...)
 
 	// Recalculate records using new state with new policy.
-	postState := preState.CloneEmpty()
-	postState.localObjects = maps.Clone(preState.localObjects)
-	postState.remoteObjects = maps.Clone(preState.remoteObjects)
-	postState.serviceMap = preState.serviceMap
+	postState := state.TemporaryEmptyState()
+	postState.localObjects = maps.Clone(state.localObjects)
+	postState.remoteObjects = maps.Clone(state.remoteObjects)
+	postState.serviceMap = state.serviceMap
 	postState, postRecords, err := postState.GetRecords(newPolicy)
 	if err != nil {
 		return nil, nil, nil, err
@@ -536,21 +532,20 @@ func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*Poli
 	return postState, postRecords, removeRecordsSet, nil
 }
 
-func AddPolicies(policies []*types.TetragonNetworkPolicy) error {
-	newState, addSet, removeSet, err := recordsFromPoliciesAddition(policies)
+func (state *PolicyState) AddPolicies(policies []*types.TetragonNetworkPolicy) error {
+	newState, addSet, removeSet, err := state.recordsFromPoliciesAddition(policies)
 	if err != nil {
 		return err
 	}
 
 	// We should avoid trying to add records that are already programmed
-	addSet, err = diffExistingRecords(addSet)
+	addSet, err = state.diffExistingRecords(addSet)
 	if err != nil {
 		return fmt.Errorf("failed to diff existing records: %w", err)
 	}
 
 	// Order matters lets add the new set of records. Then second remove any
 	// old records that are no longer valid.
-	state := GetRealizedState()
 	err = state.prog.AddRecords(addSet, false)
 	if err != nil {
 		return fmt.Errorf("failed to add records: %w", err)
@@ -560,17 +555,15 @@ func AddPolicies(policies []*types.TetragonNetworkPolicy) error {
 		return fmt.Errorf("failed to remove records: %w", err)
 	}
 
-	// Setnew state
-	SetRealizedState(newState)
+	// Update state only after successful datapath programming
+	state.WriteToState(newState)
 	return nil
 }
 
 // Entry point to Policy state remove
-func RemovePolicies(policies []*types.TetragonNetworkPolicy) error {
-	s := GetRealizedState()
-
+func (state *PolicyState) RemovePolicies(policies []*types.TetragonNetworkPolicy) error {
 	for _, policy := range policies {
-		err := s.RemovePolicy(policy)
+		err := state.RemovePolicy(policy)
 		if err != nil {
 			return err
 		}
@@ -578,14 +571,10 @@ func RemovePolicies(policies []*types.TetragonNetworkPolicy) error {
 	return nil
 }
 
-func applyServiceSelectorEndpointCIDRDelta(namespace, name string, ipsToAdd, ipsToRemove map[netip.Addr]bool) {
+func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name string, ipsToAdd, ipsToRemove map[netip.Addr]bool) {
 	if len(ipsToAdd) == 0 && len(ipsToRemove) == 0 {
 		return
 	}
-
-	state := GetRealizedState()
-	state.Reader.Lock()
-	defer state.Reader.Unlock()
 
 	log := logger.GetLogger().With("service", name, "namespace", namespace)
 
@@ -651,7 +640,7 @@ func applyServiceSelectorEndpointCIDRDelta(namespace, name string, ipsToAdd, ips
 
 // HandleEndpointChange is called when service endpoints change. It regenerates
 // CIDR records for all serviceSelector policies targeting the affected service.
-func HandleEndpointChange(namespace, name string, oldEndpoints, newEndpoints []servicemap.EndpointInfo) {
+func (state *PolicyState) HandleEndpointChange(namespace, name string, oldEndpoints, newEndpoints []servicemap.EndpointInfo) {
 	// Deduplicate endpoint IPs (endpoints list may have same IP multiple times for different ports)
 	oldIPs := make(map[netip.Addr]bool)
 	for _, ep := range oldEndpoints {
@@ -680,11 +669,11 @@ func HandleEndpointChange(namespace, name string, oldEndpoints, newEndpoints []s
 		}
 	}
 
-	applyServiceSelectorEndpointCIDRDelta(namespace, name, ipsToAdd, ipsToRemove)
+	state.applyServiceSelectorEndpointCIDRDelta(namespace, name, ipsToAdd, ipsToRemove)
 }
 
 // HandleServiceDelete removes endpoint CIDR records when a service is deleted.
-func HandleServiceDelete(namespace, name string, endpoints []servicemap.EndpointInfo) {
+func (state *PolicyState) HandleServiceDelete(namespace, name string, endpoints []servicemap.EndpointInfo) {
 	// Deduplicate endpoint IPs
 	ips := make(map[netip.Addr]bool)
 	for _, ep := range endpoints {
@@ -697,7 +686,7 @@ func HandleServiceDelete(namespace, name string, endpoints []servicemap.Endpoint
 		return
 	}
 
-	applyServiceSelectorEndpointCIDRDelta(namespace, name, nil, ips)
+	state.applyServiceSelectorEndpointCIDRDelta(namespace, name, nil, ips)
 }
 
 // generateEndpointCIDRRecords creates CIDR records for a single endpoint IP

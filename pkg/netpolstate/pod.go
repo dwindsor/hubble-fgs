@@ -41,31 +41,16 @@ const (
 	InternalLabelKey = "_internal"
 )
 
-var (
-	RealizedState *PolicyState
-)
-
 // SetK8sReader sets the Kubernetes client reader for namespace lookups
-func SetK8sReader(reader client.Reader) {
-	if RealizedState != nil {
-		RealizedState.k8sReader = reader
-	}
+func (state *PolicyState) SetK8sReader(reader client.Reader) {
+	state.k8sReader = reader
 }
 
-// At init we build an empty realized state and register endpoint change handler
-func init() {
-	s := NewPolicyState()
-	SetRealizedState(s)
+var getState = sync.OnceValue(NewPolicyState)
 
-	// Register handlers for service/endpoint changes
-	servicemap.OnEndpointChange = HandleEndpointChange
-	servicemap.OnServiceDelete = HandleServiceDelete
-}
-
-func SetDatapath(dp datapath.Interface) {
-	if RealizedState != nil {
-		RealizedState.prog = dp
-	}
+// Get returns the singleton holding the network policy state.
+func Get() *PolicyState {
+	return getState()
 }
 
 func createObjectEndpoint(object metav1.Object) *endpoint.Endpoint {
@@ -110,10 +95,6 @@ func (state *PolicyState) createObjectSrcKey(object metav1.Object) (*types.Proce
 		return nil, fmt.Errorf("object %s has unsupported type", o.GetName())
 	}
 	return state.createSrcKey(namespace, name, kind)
-}
-
-func GetRealizedState() *PolicyState {
-	return RealizedState
 }
 
 type PolicyState struct {
@@ -174,10 +155,17 @@ func NewPolicyState() *PolicyState {
 	s.workloadID = workloadid.GetState()
 	s.prog = &datapath.BPFProgrammer{}
 
+	// Register handlers for service/endpoint changes
+	servicemap.OnEndpointChange = s.HandleEndpointChange
+	servicemap.OnServiceDelete = s.HandleServiceDelete
+
 	return s
 }
 
-func (state *PolicyState) CloneEmpty() *PolicyState {
+// TemporaryEmptyState is a legacy compatibility layer function. We have some
+// functions that are operating on a new empty state instead of mutating the
+// state in place. This should be removed eventually.
+func (state *PolicyState) TemporaryEmptyState() *PolicyState {
 	s := NewPolicyState()
 
 	if state != nil {
@@ -189,8 +177,18 @@ func (state *PolicyState) CloneEmpty() *PolicyState {
 	return s
 }
 
-func SetRealizedState(s *PolicyState) {
-	RealizedState = s
+// WriteToState is a legacy compatibility layer function. We have some functions
+// that previously, instead of mutating the state in place, created a new fresh
+// state and replaced the old state with it. We now want to keep a singleton
+// instance of the state and write to it directly. This should be removed
+// eventually when the function will be capable of mutating the state directly.
+func (state *PolicyState) WriteToState(newState *PolicyState) {
+	state.Dst = newState.Dst
+	state.Src = newState.Src
+	state.localObjects = newState.localObjects
+	state.remoteObjects = newState.remoteObjects
+	state.serviceSelPolicies = newState.serviceSelPolicies
+	state.serviceMap = newState.serviceMap
 }
 
 // SetServiceMap sets the ServiceMap used for serviceSelector policy lookups.
@@ -374,7 +372,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 		}
 
 		if s.Policy.Destination.CIDR.IsValid() {
-			r, err := addDestCIDRRecords(
+			r, err := state.addDestCIDRRecords(
 				policy,
 				&s.Policy.Destination,
 				&s.Policy.Subject,
@@ -439,12 +437,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 	return records, nil
 }
 
-func PodRemove(pod *v1alpha1.PodInfo) error {
-	state := GetRealizedState()
-
-	state.Reader.RLock()
-	defer state.Reader.RUnlock()
-
+func (state *PolicyState) PodRemove(pod *v1alpha1.PodInfo) error {
 	records, err := state.podRemove(pod)
 	if err != nil {
 		return err
@@ -633,12 +626,7 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 }
 
 // Top level handler to add pod and calculate tetragon network policy
-func PodAdd(epPod *v1alpha1.PodInfo) error {
-	state := GetRealizedState()
-
-	state.Reader.RLock()
-	defer state.Reader.RUnlock()
-
+func (state *PolicyState) PodAdd(epPod *v1alpha1.PodInfo) error {
 	records, err := state.objectAdd(epPod)
 	if err != nil {
 		return err
