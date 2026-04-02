@@ -52,11 +52,8 @@ var TracingPolicyYAML string
 func TestHTTP(t *testing.T, runner *runners.Runner) {
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
-	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
-		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
-	}
-	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("6.1.0") {
-		t.Skipf("HTTP tests are flaky on kenrels <6.1, got %s", kversion)
+	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("6.1.56") {
+		t.Skipf("HTTP parser requires kernel >= 6.1.56, got %s", kversion)
 	}
 
 	httpChecker := checker.NewRPCChecker(HTTPChecker(kversion), "hTTPChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)

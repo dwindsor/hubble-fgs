@@ -169,8 +169,8 @@ func (http *httpSensor) PolicyHandler(
 		return nil, fmt.Errorf("HTTP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
 	}
 
-	if !kernels.MinKernelVersion("5.10") {
-		return nil, fmt.Errorf("HTTP parser requires kernel version >= 5.10")
+	if !kernels.MinKernelVersion("6.1.56") {
+		return nil, fmt.Errorf("HTTP parser requires kernel version >= 6.1.56")
 	}
 
 	if httpParser.Metrics != nil {

@@ -87,7 +87,7 @@ spec:
 }
 
 func TestHttp11Curl(t *testing.T) {
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
@@ -154,7 +154,7 @@ func TestHttp11Curl(t *testing.T) {
 
 func TestHttp11Curl6(t *testing.T) {
 	t.Skip("TODO: http currently does not support ipv6")
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
@@ -252,7 +252,7 @@ func spawnHttp2Server(ctx context.Context, t *testing.T, ipv6 bool) string {
 func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	t.Skipf("This test is currrently very flaky due to a kernel bug. TODO: Re-enable after this gets fixed upstream")
 
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
@@ -323,7 +323,7 @@ func TestHttp20CurlPriorKnowledge6(t *testing.T) {
 	t.Skip("TODO: http currently does not support ipv6")
 	t.Skipf("This test is currrently very flaky due to a kernel bug. TODO: Re-enable after this gets fixed upstream")
 
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
@@ -391,7 +391,7 @@ func TestHttp20CurlPriorKnowledge6(t *testing.T) {
 }
 
 func TestLoadHttpSensor(t *testing.T) {
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {

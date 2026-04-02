@@ -351,7 +351,7 @@ func Test_tls(t *testing.T) {
 }
 
 func Test_http(t *testing.T) {
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
@@ -361,7 +361,7 @@ func Test_http(t *testing.T) {
 }
 
 func Test_http2(t *testing.T) {
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	if runtime.GOARCH != "amd64" {
