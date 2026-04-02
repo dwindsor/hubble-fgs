@@ -22,7 +22,7 @@ type ProcessExecveKey struct {
 }
 
 type ProcessTreeKey struct {
-	NSID  uint64
+	WLID  uint64
 	Depth uint64
 	Self  uint64
 	Path  [8]uint64
@@ -35,7 +35,7 @@ type ProcessTreeValue struct {
 	CgroupID         uint64
 	ExecCount        uint64
 	Pad0             [5]uint8
-	MaybeMissingNSID bool
+	MaybeMissingWLID bool
 	InContainer      bool
 	InInitTree       bool
 	Binary           [256]byte
@@ -51,14 +51,14 @@ const (
 
 type DestinationEndpointKey struct {
 	LocalId           uint64
-	LocalNSId         uint64
+	LocalWLID         uint64
 	DestinationId     uint64
 	DestinationSource uint64
 	DestinationPort   uint64
 }
 
 func (v DestinationEndpointKey) String() string {
-	return fmt.Sprintf("DestinationEndpointKey: %d-%d-%d-%d-%d", v.LocalId, v.LocalNSId, v.DestinationId, v.DestinationSource, v.DestinationPort)
+	return fmt.Sprintf("DestinationEndpointKey: %d-%d-%d-%d-%d", v.LocalId, v.LocalWLID, v.DestinationId, v.DestinationSource, v.DestinationPort)
 }
 
 // DestFlagPolicyTemplateOnly indicates an entry created by policy programming
@@ -92,7 +92,7 @@ type TreeId struct {
 
 type ListenKey struct {
 	Addr [2]uint64
-	Nsid uint64
+	WLID uint64
 	Port uint64
 }
 

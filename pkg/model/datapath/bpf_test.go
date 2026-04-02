@@ -104,7 +104,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 	bpfProgrammer := getNewFakeBPFProgrammer(nil)
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
-			NSID:  1,
+			WLID:  1,
 			Self:  18446744069414584321,
 			Depth: 0,
 		},
@@ -122,7 +122,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           inputRecord.Src.Self,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(inputRecord.Endpoint.Port),
@@ -136,7 +136,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           inputRecord.Src.Self,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceBPF,
 				DestinationPort:   uint64(inputRecord.Endpoint.Port),
@@ -150,7 +150,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           inputRecord.Src.Self,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceDNS,
 				DestinationPort:   uint64(inputRecord.Endpoint.Port),
@@ -172,7 +172,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 	bpfProgrammer := getNewFakeBPFProgrammer(nil)
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
-			NSID:  1,
+			WLID:  1,
 			Self:  18446744069414584321,
 			Depth: 0,
 		},
@@ -193,7 +193,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           inputRecord.Src.Self,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(inputRecord.Endpoint.Port),
@@ -208,7 +208,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           inputRecord.Src.Self,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(0),
@@ -222,7 +222,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           0,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(0),
@@ -236,7 +236,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           0,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(0),
@@ -268,7 +268,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 	bpfProgrammer := getNewFakeBPFProgrammer(fakePolicyRepo)
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
-			NSID:  1,
+			WLID:  1,
 			Self:  18446744069414584321,
 			Depth: 0,
 		},
@@ -293,7 +293,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           inputRecord.Src.Self,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(inputRecord.Endpoint.Port),
@@ -310,7 +310,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           inputRecord.Src.Self,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(0),
@@ -326,7 +326,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           0,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(0),
@@ -342,7 +342,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 		{
 			key: types.DestinationEndpointKey{
 				LocalId:           0,
-				LocalNSId:         inputRecord.Src.NSID,
+				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceUser,
 				DestinationPort:   uint64(0),
@@ -390,7 +390,7 @@ func newMockBpfProgrammer() (*BPFProgrammer, *mockRecordBackend) {
 	return p, mock
 }
 
-func makeTestRecord(nsid, self uint64, port uint32, epName string) *record.DatapathRecord {
+func makeTestRecord(wlid, self uint64, port uint32, epName string) *record.DatapathRecord {
 	var ep *endpoint.Endpoint
 	if epName != "" {
 		ep = &endpoint.Endpoint{
@@ -400,7 +400,7 @@ func makeTestRecord(nsid, self uint64, port uint32, epName string) *record.Datap
 	}
 	return &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
-			NSID: nsid,
+			WLID: wlid,
 			Self: self,
 		},
 		Endpoint: record.DatapathEndpoint{

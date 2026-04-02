@@ -77,7 +77,7 @@ func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.
 			}
 
 			processSrc := &types.ProcessTreeKey{
-				NSID:  src.NSID,
+				WLID:  src.WLID,
 				Depth: 0,
 				Self:  self,
 				Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},

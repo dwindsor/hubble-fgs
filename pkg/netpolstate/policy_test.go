@@ -333,7 +333,7 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 		policy := s.Src[policyUID]
 		found := false
 		for _, s := range policy.Subjects {
-			if s.NSID == 0x1 {
+			if s.WLID == 0x1 {
 				found = true
 				break
 			}

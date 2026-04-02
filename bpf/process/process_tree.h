@@ -154,13 +154,13 @@ static inline __attribute__((always_inline)) uint64_t find_my_self(__u32 pid)
 	return __find_my_self(curr, pid);
 }
 
-int find_my_nsid(__u64 cgid)
+int find_my_wlid(__u64 cgid)
 {
-	__u64 *nsid;
+	__u64 *wlid;
 
-	nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
-	if (nsid)
-		return *nsid;
+	wlid = map_lookup_elem(&tg_cgid_wlid, &cgid);
+	if (wlid)
+		return *wlid;
 	return 0;
 }
 
@@ -208,7 +208,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		return 0;
 	k->self.uid = uid & 0xffffffff;
 	k->self.cpu = uid >> 32; /* retains ignore_args bit in high bit */
-	k->nsid = find_my_nsid(cgid);
+	k->wlid = find_my_wlid(cgid);
 
 	/* Retrieve the per-CPU scratch populated by find_my_self with
 	 * binary path and args for this process.
@@ -231,9 +231,9 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		old->cgid = cgid;
 		old->exec_count = 1;
 		old->maybe_missing_nsid = 0;
-		if (k->nsid == 0 && old->in_container) {
-			// inform userspace that we might need to update the nsid mapping for this process when it becomes available
-			DEBUG("missing nsid pid=%d cgid=%d", pid, cgid);
+		if (k->wlid == 0 && old->in_container) {
+			// inform userspace that we might need to update the wlid mapping for this process when it becomes available
+			DEBUG("missing wlid pid=%d cgid=%d", pid, cgid);
 			old->maybe_missing_nsid = 1;
 		}
 		if (buid_scratch) {
@@ -250,9 +250,9 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		old->ktime_last_exec = tg_get_ktime();
 		old->cgid = cgid;
 		__sync_fetch_and_add(&old->exec_count, 1);
-		if (k->nsid == 0 && old->in_container) {
-			// inform userspace that we might need to update the nsid mapping for this process when it becomes available
-			DEBUG("missing nsid pid=%d cgid=%d", pid, cgid);
+		if (k->wlid == 0 && old->in_container) {
+			// inform userspace that we might need to update the wlid mapping for this process when it becomes available
+			DEBUG("missing wlid pid=%d cgid=%d", pid, cgid);
 			old->maybe_missing_nsid = 1;
 		}
 	}
@@ -333,7 +333,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	key.addr[0] = tuple->saddr[0];
 	key.addr[1] = tuple->saddr[1];
 	key.port = tuple->sport;
-	key.nsid = find_my_nsid(cgid);
+	key.wlid = find_my_wlid(cgid);
 
 	value = map_lookup_elem(&tg_h_ps_lstnval, &zero);
 	if (!value)
@@ -607,7 +607,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct msg_execve_key zero_uid;
 	struct tree_id self_uid;
 	int zero = 0;
-	__u64 *nsid, uid;
+	__u64 *wlid, uid;
 
 	struct endpoint_id_value *value;
 	struct endpoint_id_key key;
@@ -700,10 +700,9 @@ found_id:
 	dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = 0;
 
 	if (cgid) {
-		nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
-		if (nsid) {
-			dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = *nsid;
-		}
+		wlid = map_lookup_elem(&tg_cgid_wlid, &cgid);
+		if (wlid)
+			dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = *wlid;
 	}
 
 	return resolve_key(dnskey, lpmkey, usrkey, destkey, tuple, v);
@@ -721,16 +720,16 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 {
 	struct listen_endpoint_key key;
 	void *listen;
-	__u64 *nsid;
+	__u64 *wlid;
 
 	if (!tuple)
 		return 0;
 
-	nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
-	if (nsid)
-		key.nsid = *nsid;
+	wlid = map_lookup_elem(&tg_cgid_wlid, &cgid);
+	if (wlid)
+		key.wlid = *wlid;
 	else
-		key.nsid = 0;
+		key.wlid = 0;
 
 	key.addr[0] = tuple->saddr[0];
 	key.addr[1] = tuple->saddr[1];
@@ -752,7 +751,7 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 
 static int repair_socket_nsid(struct destination_endpoint_key *key, struct bpf_sock *sk)
 {
-	__u64 cgid, *nsid;
+	__u64 cgid, *wlid;
 
 	if (likely(key->local_nsid != 0))
 		return 0;
@@ -761,11 +760,11 @@ static int repair_socket_nsid(struct destination_endpoint_key *key, struct bpf_s
 	if (likely(cgid == 0))
 		return 0;
 
-	// Otherwise we have CGID, but no local NSID mapping so lets
+	// Otherwise we have CGID, but no local WLID mapping so lets
 	// attempt to discover if one exists.
-	nsid = map_lookup_elem(&tg_cgid_wlid, &cgid);
-	if (nsid) {
-		key->local_nsid = *nsid;
+	wlid = map_lookup_elem(&tg_cgid_wlid, &cgid);
+	if (wlid) {
+		key->local_nsid = *wlid;
 		return 1;
 	}
 	return 0;
@@ -965,10 +964,10 @@ static int recv(int deny, struct destination_endpoint_key *key, __u64 len)
  *
  * Order of operations:
  *
- * local_id + nsid + l3(destination_id) + l4(port)   : dest_full
- * local_id + nsid + l3(destination_id)              : dest_port
- *            nsid + l3(destination_id)              : dest_local
- *            nsid                                   : default
+ * local_id + wlid + l3(destination_id) + l4(port)   : dest_full
+ * local_id + wlid + l3(destination_id)              : dest_port
+ *            wlid + l3(destination_id)              : dest_local
+ *            wlid                                   : default
  */
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
@@ -1005,10 +1004,10 @@ err_out:
  *
  * Order of operations:
  *
- * local_id + nsid + l3(destination_id) + l4(port)
- * local_id + nsid + l3(destination_id)
- *            nsid + l3(destination_id)
- *            nsid
+ * local_id + wlid + l3(destination_id) + l4(port)
+ * local_id + wlid + l3(destination_id)
+ *            wlid + l3(destination_id)
+ *            wlid
  */
 static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {

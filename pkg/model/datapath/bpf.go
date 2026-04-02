@@ -205,7 +205,7 @@ func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error 
 
 	key := types.DestinationEndpointKey{
 		LocalId:           r.Src.Self,
-		LocalNSId:         r.Src.NSID,
+		LocalWLID:         r.Src.WLID,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
 		DestinationPort:   uint64(r.Endpoint.Port),
@@ -315,7 +315,7 @@ func (p *bpfRecordBackend) removeRecord(r record.DatapathRecord) error {
 	// to me that we need to move it given the connection is likely still around.
 	key := types.DestinationEndpointKey{
 		LocalId:           src.Self,
-		LocalNSId:         src.NSID,
+		LocalWLID:         src.WLID,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
 		DestinationPort:   uint64(r.Endpoint.Port),

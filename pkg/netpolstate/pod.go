@@ -252,7 +252,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 					}
 
 					processSrc := &types.ProcessTreeKey{
-						NSID:  subject.NSID,
+						WLID:  subject.WLID,
 						Depth: 0,
 						Self:  self,
 						Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
@@ -341,7 +341,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 					continue
 				}
 				processSrc := &types.ProcessTreeKey{
-					NSID:  subject.NSID,
+					WLID:  subject.WLID,
 					Depth: 0,
 					Self:  self,
 					Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
@@ -412,7 +412,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 					continue
 				}
 				processSrc := &types.ProcessTreeKey{
-					NSID:  subject.NSID,
+					WLID:  subject.WLID,
 					Depth: 0,
 					Self:  self,
 					Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
@@ -488,7 +488,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Port: 0,
 						}
 						processSrc := &types.ProcessTreeKey{
-							NSID:  subject.NSID,
+							WLID:  subject.WLID,
 							Depth: 0,
 							Self:  self,
 							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
@@ -506,7 +506,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Port: port,
 						}
 						processSrc := &types.ProcessTreeKey{
-							NSID:  subject.NSID,
+							WLID:  subject.WLID,
 							Depth: 0,
 							Self:  self,
 							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},

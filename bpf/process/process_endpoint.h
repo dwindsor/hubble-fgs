@@ -94,7 +94,7 @@ struct {
 } process_tree_binary_uid_map SEC(".maps");
 
 struct process_tree_key {
-	__u64 nsid;
+	__u64 wlid;
 	__u64 depth;
 	struct tree_id self;
 	struct tree_id path[8];
@@ -232,7 +232,7 @@ struct {
 
 struct listen_endpoint_key {
 	__u64 addr[2];
-	__u64 nsid;
+	__u64 wlid;
 	__u64 port;
 };
 

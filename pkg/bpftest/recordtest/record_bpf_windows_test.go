@@ -55,7 +55,7 @@ type recordTest struct {
 // Policy record building blocks
 var (
 	wildcardSrc = &types.ProcessTreeKey{
-		NSID:  uint64(workloadid.WorkloadID(0)),
+		WLID:  uint64(workloadid.WorkloadID(0)),
 		Depth: 0,
 		Self:  0,
 		Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},

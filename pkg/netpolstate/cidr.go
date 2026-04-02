@@ -83,7 +83,7 @@ func addDestCIDRRecords(
 			continue
 		}
 		processSrc := &types.ProcessTreeKey{
-			NSID:  podSubject.NSID,
+			WLID:  podSubject.WLID,
 			Depth: 0,
 			Self:  self,
 			Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},

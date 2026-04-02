@@ -274,14 +274,14 @@ type TcpKey struct {
 }
 
 type ProcessTreeKey struct {
-	Nsid   uint64                  `align:"nsid"`
+	WLID   uint64                  `align:"wlid"`
 	Self   processapi.MsgExecveKey `align:"self"`
 	Parent processapi.MsgExecveKey `align:"parent"`
 }
 
 type DestinationEndpointKey struct {
 	LocalId       uint64 `align:"local_id"`
-	LocalNSId     uint64 `align:"local_nsid"`
+	LocalWLID     uint64 `align:"local_wlid"`
 	DestinationId uint64 `align:"destination_id"`
 	Source        uint64 `align:"source"`
 	Port          uint64 `align:"port"`

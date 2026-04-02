@@ -133,7 +133,7 @@ func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) erro
 }
 
 func (state *PolicyState) createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
-	var nsId workloadid.WorkloadID
+	var wlid workloadid.WorkloadID
 	if namespace != "" {
 		var ok bool
 
@@ -147,17 +147,17 @@ func (state *PolicyState) createSrcKey(namespace, wl, kind string) (*types.Proce
 		// an imperfect solution. Ideally we would just modify the policyfilter state
 		// to preallocate an ID.But, its in OSS and not obvious how to extend it to
 		// support this.
-		nsId, ok = state.workloadID.LookupID(workload)
+		wlid, ok = state.workloadID.LookupID(workload)
 		if !ok {
 			logger.GetLogger().Debug("workload info does not exist yet, queuing for workload updates.", "namespace", namespace, "workload", wl)
 			return nil, nil
 		}
 	} else {
-		nsId = workloadid.WorkloadID(0)
+		wlid = workloadid.WorkloadID(0)
 	}
 
 	return &types.ProcessTreeKey{
-		NSID:  uint64(nsId),
+		WLID:  uint64(wlid),
 		Depth: 0,
 		Self:  0,
 		Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},

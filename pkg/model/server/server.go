@@ -125,7 +125,7 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 		title, _ := library.GetRepository().GetName(v.Policy)
 		d := &tetragon.DestinationEndpointDebug{
 			LocalId:           k.LocalId,
-			LocalNsId:         k.LocalNSId,
+			LocalNsId:         k.LocalWLID,
 			DestinationId:     k.DestinationId,
 			DestinationSource: k.DestinationSource,
 			DestinationPort:   k.DestinationPort,
@@ -349,7 +349,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMapName)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMapName)
 	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMapName)
-	nsIDMapPath := filepath.Join(bpf.MapPrefixPath(), workloadid.CgroupIDWorkloadIDMapName)
+	workloadIDMapPath := filepath.Join(bpf.MapPrefixPath(), workloadid.CgroupIDWorkloadIDMapName)
 	cgTrackerIdMapPath := filepath.Join(bpf.MapPrefixPath(), cgTrackerIdMapName)
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
@@ -359,9 +359,9 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	}
 	defer endpt.Close()
 
-	nsIDMap, err := ebpf.LoadPinnedMap(nsIDMapPath, nil)
+	nsIDMap, err := ebpf.LoadPinnedMap(workloadIDMapPath, nil)
 	if err != nil {
-		logger.GetLogger().Warn("Could not open nsid map", logfields.Error, err, "file", nsIDMapPath)
+		logger.GetLogger().Warn("Could not open workload ID map", logfields.Error, err, "file", workloadIDMapPath)
 		return nil, err
 	}
 	defer nsIDMap.Close()
@@ -385,8 +385,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	)
 
 	type dstListKey struct {
-		localID uint64
-		nsID    uint64
+		localID    uint64
+		workloadID uint64
 	}
 
 	dstList := make(map[dstListKey][]*types.Destination)
@@ -584,10 +584,10 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 		destinationCount++
 
-		// If this is the Zero ProcessID and it has a NSId then its an
+		// If this is the Zero ProcessID and it has a WLID then its an
 		// aggregated CgroupId destination.
-		if dstKey.LocalId == 0 && dstKey.LocalNSId != 0 {
-			cgid := dstKey.LocalNSId
+		if dstKey.LocalId == 0 && dstKey.LocalWLID != 0 {
+			cgid := dstKey.LocalWLID
 			l, ok := nsList[cgid]
 			if !ok {
 				nsList[cgid] = []*types.Destination{d}
@@ -597,8 +597,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			}
 		} else {
 			idKey := dstListKey{
-				localID: dstKey.LocalId,
-				nsID:    dstKey.LocalNSId,
+				localID:    dstKey.LocalId,
+				workloadID: dstKey.LocalWLID,
 			}
 
 			l, ok := dstList[idKey]
@@ -652,11 +652,11 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	for ns, d := range nsList {
 		var nsPath, wlPath, kind string
 
-		nsId, ok := workloadid.GetState().LookupMeta(workloadid.WorkloadID(ns))
+		wlid, ok := workloadid.GetState().LookupMeta(workloadid.WorkloadID(ns))
 		if ok {
-			nsPath = nsId.Namespace
-			wlPath = nsId.Workload
-			kind = nsId.Kind
+			nsPath = wlid.Namespace
+			wlPath = wlid.Workload
+			kind = wlid.Kind
 		} else {
 			nsPath = model.HostNamespace
 			wlPath = model.HostWorkload
@@ -679,8 +679,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	}
 
 	idKey := dstListKey{
-		localID: 0,
-		nsID:    0,
+		localID:    0,
+		workloadID: 0,
 	}
 
 	// Build process independent destination totals for host; these use
@@ -696,11 +696,11 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		})
 	}
 
-	type NSIDUpdate struct {
-		oldValue types.ProcessTreeValue
-		newNSID  uint64
+	type WLIDUpdate struct {
+		oldValue      types.ProcessTreeValue
+		newWorkloadID uint64
 	}
-	pendingNSIDUpdates := make(map[types.ProcessTreeKey]NSIDUpdate)
+	pendingNSIDUpdates := make(map[types.ProcessTreeKey]WLIDUpdate)
 	var skippedEntries int
 	type binaryInfo struct {
 		binary string
@@ -747,22 +747,22 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			cgroupid = val.CgroupID
 		}
 
-		if val.MaybeMissingNSID {
+		if val.MaybeMissingWLID {
 			var updatedNSID uint64
 			if err := nsIDMap.Lookup(cgroupid, &updatedNSID); err != nil {
-				logger.GetLogger().Debug("failed to look up nsid", logfields.Error, err, "cgid", cgroupid)
+				logger.GetLogger().Debug("failed to look up workload id", logfields.Error, err, "cgid", cgroupid)
 				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupNSID)
 			} else {
-				// Queue up a map update and fixup NSID value
-				pendingNSIDUpdates[key] = NSIDUpdate{
-					oldValue: val,
-					newNSID:  updatedNSID,
+				// Queue up a map update and fixup WLID value
+				pendingNSIDUpdates[key] = WLIDUpdate{
+					oldValue:      val,
+					newWorkloadID: updatedNSID,
 				}
-				key.NSID = updatedNSID
+				key.WLID = updatedNSID
 			}
 		}
 
-		policyFilterNSInfo, ok := workloadid.GetState().LookupMeta(workloadid.WorkloadID(key.NSID))
+		policyFilterNSInfo, ok := workloadid.GetState().LookupMeta(workloadid.WorkloadID(key.WLID))
 		if ok {
 			ns = policyFilterNSInfo.Namespace
 			wl = policyFilterNSInfo.Workload
@@ -789,8 +789,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		binaryByUID[key.Self] = binaryInfo{binary: selfBin, args: selfArgs}
 
 		idKey := dstListKey{
-			localID: key.Self,
-			nsID:    key.NSID,
+			localID:    key.Self,
+			workloadID: key.WLID,
 		}
 		dest := dstList[idKey]
 		inInitTree := val.InInitTree
@@ -891,17 +891,17 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			"count", skippedEntries)
 	}
 
-	// Do queued NSID updates
+	// Do queued WorkloadID updates
 	// TODO use batch operations here if supported
 	for k, v := range pendingNSIDUpdates {
 		// Delete the old entry
 		m.Delete(&k)
-		// Fix up new NSID and remove the flag
-		k.NSID = v.newNSID
-		v.oldValue.MaybeMissingNSID = false
+		// Fix up new WorkloadID and remove the flag
+		k.WLID = v.newWorkloadID
+		v.oldValue.MaybeMissingWLID = false
 		// Update process tree map with the new value
 		if err := m.Update(&k, &v.oldValue, ebpf.UpdateAny); err != nil {
-			logger.GetLogger().Debug("failed to update process tree map with corrected NSID", logfields.Error, err, "nsid", k.NSID, "uid", k.Self)
+			logger.GetLogger().Debug("failed to update process tree map with corrected WLID", logfields.Error, err, "wlid", k.WLID, "uid", k.Self)
 		}
 	}
 	clear(pendingNSIDUpdates)

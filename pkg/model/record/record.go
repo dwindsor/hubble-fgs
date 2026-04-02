@@ -45,7 +45,7 @@ type RecordKey struct {
 func (r DatapathRecord) ToKey() RecordKey {
 	key := RecordKey{}
 	if r.Src != nil {
-		key.CgroupId = r.Src.NSID
+		key.CgroupId = r.Src.WLID
 		key.Self = r.Src.Self
 	}
 	if r.Endpoint.EP != nil {
@@ -106,7 +106,7 @@ func (r DatapathRecord) String() string {
 	action := ""
 
 	if r.Src != nil {
-		src = fmt.Sprintf("%d:%d", r.Src.NSID, r.Src.Self)
+		src = fmt.Sprintf("%d:%d", r.Src.WLID, r.Src.Self)
 	}
 
 	ep := fmt.Sprint(r.Endpoint.String())
