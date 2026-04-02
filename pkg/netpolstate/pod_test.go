@@ -358,7 +358,6 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 
 func TestPolicySet(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 	name := "netpol"
 
 	srcPodName := "testNamePodSrc"
@@ -369,10 +368,10 @@ func TestPolicySet(t *testing.T) {
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
-	AddPolicies(netpolSet)
+	err := s.AddPolicies(netpolSet)
+	assert.NoError(t, err)
 	// add dst pod first which does not match a subject for any policy8
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
@@ -394,7 +393,7 @@ func TestPolicySet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	err = RemovePolicies(netpolSet)
+	err = s.RemovePolicies(netpolSet)
 	assert.NoError(t, err)
 }
 
@@ -428,7 +427,6 @@ func cntRecordsEPTypes(records []record.DatapathRecord) (int, int, int, int) {
 
 func TestPolicySetWithPods(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 	name := "netpol"
 
 	srcPodName := "testNamePodSrc"
@@ -439,7 +437,6 @@ func TestPolicySetWithPods(t *testing.T) {
 
 	// Add src pod and dest pod while no policy is in play
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
@@ -452,7 +449,7 @@ func TestPolicySetWithPods(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
-	newState, addSet, removeSet, errSet := recordsFromPoliciesAddition(netpolSet)
+	newState, addSet, removeSet, errSet := s.recordsFromPoliciesAddition(netpolSet)
 	assert.NoError(t, errSet)
 	assert.Equal(t, 4, len(addSet))
 	assert.Zero(t, len(removeSet))
@@ -473,13 +470,12 @@ func TestPolicySetWithPods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	err = RemovePolicies(netpolSet)
+	err = newState.RemovePolicies(netpolSet)
 	assert.NoError(t, err)
 }
 
 func TestPolicyOverlapping(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -492,7 +488,6 @@ func TestPolicyOverlapping(t *testing.T) {
 
 	// Add src pod and dest pod while no policy is in play
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
@@ -510,7 +505,7 @@ func TestPolicyOverlapping(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, err := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, err := s.recordsFromPoliciesAddition(netpolASet)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(addASet))
 	assert.Zero(t, len(removeASet))
@@ -519,12 +514,11 @@ func TestPolicyOverlapping(t *testing.T) {
 	assert.Equal(t, dns, 2)
 	assert.Equal(t, pod, 1)
 	assert.Equal(t, n, 1)
-	SetRealizedState(aState)
 
 	// netpol B overlaps with netpol A except actoins are reversed.
 	netpolB := testMatchDstLabelsDenyPolicy("netpolB", "B=b", dstPodLabels, "deny")
 	netpolBSet := []*types.TetragonNetworkPolicy{netpolB}
-	bState, addBSet, removeBSet, err := recordsFromPoliciesAddition(netpolBSet)
+	bState, addBSet, removeBSet, err := aState.recordsFromPoliciesAddition(netpolBSet)
 	assert.NoError(t, err)
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
@@ -533,7 +527,6 @@ func TestPolicyOverlapping(t *testing.T) {
 	assert.Equal(t, 4, dns)
 	assert.Equal(t, 2, pod)
 	assert.Equal(t, 2, n)
-	SetRealizedState(bState)
 
 	// Remove independent pod there should be no rules associated with this pod
 	delPod(t)
@@ -554,15 +547,14 @@ func TestPolicyOverlapping(t *testing.T) {
 	assert.Equal(t, 6, len(deleted)) // delete entries from both policy sources
 
 	netpolSet := []*types.TetragonNetworkPolicy{netpolB, netpolA}
-	err = RemovePolicies(netpolSet)
+	err = s.RemovePolicies(netpolSet)
 	assert.NoError(t, err)
-	err = RemovePolicies(netpolSet)
+	err = s.RemovePolicies(netpolSet)
 	assert.NoError(t, err)
 }
 
 func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -580,7 +572,6 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 0, len(rind))
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
@@ -593,7 +584,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Equal(t, 4, len(addASet))
@@ -603,12 +594,11 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, dns, 2)
 	assert.Equal(t, pod, 1)
 	assert.Equal(t, n, 1)
-	SetRealizedState(aState)
 
 	// netpol B overlaps with netpol A except actions are reversed.
 	netpolB := testMatchDstLabelsDenyPolicy("netpolB", "B=b", dstPodLabels, "deny")
 	netpolBSet := []*types.TetragonNetworkPolicy{netpolB}
-	bState, addBSet, removeBSet, errSet := recordsFromPoliciesAddition(netpolBSet)
+	bState, addBSet, removeBSet, errSet := aState.recordsFromPoliciesAddition(netpolBSet)
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
@@ -617,12 +607,11 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 4, dns)
 	assert.Equal(t, 2, pod)
 	assert.Equal(t, 2, n)
-	SetRealizedState(bState)
 
 	// netpol C does not overlap with A or B subjects.
 	netpolC := testMatchDstLabelsDenyPolicy("netpolC", "C=c", dstPodLabels, "deny")
 	netpolCSet := []*types.TetragonNetworkPolicy{netpolC}
-	cState, addCSet, removeCSet, err := recordsFromPoliciesAddition(netpolCSet)
+	cState, addCSet, removeCSet, err := bState.recordsFromPoliciesAddition(netpolCSet)
 	assert.NoError(t, err)
 	assert.Zero(t, len(removeCSet))
 	assert.Equal(t, 12, len(addCSet))
@@ -631,7 +620,6 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 6, dns)
 	assert.Equal(t, 3, pod)
 	assert.Equal(t, 3, n)
-	SetRealizedState(cState)
 
 	// netpol C does not overlap with netpol A remove it.
 	cRemove, cUpdate, err := cState.recordsFromPolicyRemoval(netpolC)
@@ -676,7 +664,6 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 
 func TestDestSrcProcessPolicy(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -687,7 +674,6 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	// Add src pod and dest pod while no policy is in play
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 
-	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
@@ -700,7 +686,7 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	// 3 records for /usr/bin/curl
@@ -717,7 +703,6 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	// record entry for /usr/sbin/curl -> ep
 	assert.Equal(t, pod, 2)
 	assert.Equal(t, n, 1)
-	SetRealizedState(aState)
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
@@ -740,7 +725,6 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 
 func TestSrcDestProcessPolicy(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -756,7 +740,6 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	// Add src pod and dest pod while no policy is in play
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 
-	s = GetRealizedState()
 	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
@@ -764,7 +747,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	// 3 records for /usr/bin/curl
@@ -781,7 +764,6 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	// record entry for /usr/sbin/curl -> ep
 	assert.Equal(t, pod, 2)
 	assert.Equal(t, n, 1)
-	SetRealizedState(aState)
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
@@ -804,7 +786,6 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 
 func TestProcessPolicySrcDest(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -815,23 +796,21 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
 	// Add src pod and dest pod while no policy is in play
-	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	SetRealizedState(aState)
+	dstPod := newPodFromCluster(t, aState, testNamespace, dstPodName, testKind, dstPodLabels)
 
-	s = GetRealizedState()
-	rDst, err := s.objectAdd(dstPod)
+	rDst, err := aState.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
-	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
-	r1, err := s.objectAdd(srcPod)
+	srcPod := newPodFromCluster(t, aState, testNamespace, srcPodName, testKind, srcPodLabels)
+	r1, err := aState.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
@@ -861,7 +840,6 @@ func TestProcessPolicySrcDest(t *testing.T) {
 
 func TestProcessPolicyDestSrc(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -872,23 +850,21 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
 	// Add dst pod and then src pod while no policy is in play
-	SetRealizedState(aState)
-	s = GetRealizedState()
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	rDst, err := s.objectAdd(dstPod)
+	rDst, err := aState.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
-	r1, err := s.objectAdd(srcPod)
+	r1, err := aState.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
@@ -918,7 +894,6 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 
 func TestProcessPortPolicyDestSrc(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -929,23 +904,21 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchPortDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
 	// Add dst pod and then src pod while no policy is in play
-	SetRealizedState(aState)
-	s = GetRealizedState()
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	rDst, err := s.objectAdd(dstPod)
+	rDst, err := aState.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
-	r1, err := s.objectAdd(srcPod)
+	r1, err := aState.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 13, len(r1))
 
@@ -1026,7 +999,6 @@ func countPorts(records []record.DatapathRecord, port uint32) int {
 
 func TestProcessPortPolicySrcDest(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1037,18 +1009,16 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchPortDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
 	// Add dst pod and then src pod while no policy is in play
-	SetRealizedState(aState)
-	s = GetRealizedState()
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
-	r1, err := s.objectAdd(srcPod)
+	r1, err := aState.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 9, len(r1))
 
@@ -1064,7 +1034,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 4, port81)
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	rDst, err := s.objectAdd(dstPod)
+	rDst, err := aState.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(rDst))
 
@@ -1109,7 +1079,6 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 
 func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1120,18 +1089,16 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchPortCIDRDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow", "10.0.0.1/16")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
+	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
 	// Add dst pod and then src pod while no policy is in play
-	SetRealizedState(aState)
-	s = GetRealizedState()
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
-	r1, err := s.objectAdd(srcPod)
+	r1, err := aState.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 13, len(r1))
 
@@ -1148,7 +1115,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 4, port81)
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
-	rDst, err := s.objectAdd(dstPod)
+	rDst, err := aState.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(rDst))
 

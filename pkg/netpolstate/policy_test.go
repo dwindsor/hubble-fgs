@@ -281,15 +281,13 @@ var tests = []policyCalcTest{
 
 func TestMatchLabelsTable(t *testing.T) {
 	s := newTestPolicyState(t)
-	SetRealizedState(s)
 
 	for _, test := range tests {
-		testPolicyCalculator(t, test.PodML, test.Policy, test.Check)
+		testPolicyCalculator(t, s, test.PodML, test.Policy, test.Check)
 	}
 }
 
-func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
-	s := GetRealizedState()
+func testPolicyCalculator(t *testing.T, s *PolicyState, podML, policy, check []string) {
 
 	policyMap := make(map[string]*types.TetragonNetworkPolicy)
 	// podMap := []policyfilter.PodID{}
@@ -319,7 +317,7 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 		assert.Equal(t, len(x), 2)
 
 		p := newPodFromCluster(t, s, "testNamespace", x[0], "testKind", x[1])
-		PodAdd(p)
+		_, _ = s.objectAdd(p)
 	}
 
 	for _, c := range check {
