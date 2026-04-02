@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -31,7 +32,7 @@ func TestCalculateDeny(t *testing.T) {
 		EnforceAction: enforce,
 	}
 	da, err := calculateAction(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, record.PolicyDeny, da.Action)
 }
 
@@ -45,7 +46,7 @@ func TestCalculateNoDeny(t *testing.T) {
 		EnforceAction: enforce,
 	}
 	da, err := calculateAction(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, record.PolicyNone, da.Action)
 }
 
@@ -59,6 +60,6 @@ func TestCalculateAllow(t *testing.T) {
 		EnforceAction: enforce,
 	}
 	da, err := calculateAction(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, record.PolicyAllow, da.Action)
 }

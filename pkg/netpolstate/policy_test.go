@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -125,7 +126,7 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 1, len(s.Src))
 
 	err := s.RemovePolicy(policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Src))
 }
@@ -140,7 +141,7 @@ func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 1, len(s.Dst))
 
 	err := s.RemovePolicy(policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Dst))
 }
@@ -225,7 +226,7 @@ func TestAddNetworkPolicy(t *testing.T) {
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	err := s.CreateMatchLabelsPolicy(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	d := s.Dst[netpol.PolicyUID]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Labels["D1"])
@@ -243,7 +244,7 @@ func testAddNetworkActionPolicy(t *testing.T, action string) {
 	name := "testPol"
 	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
 	err := s.CreateMatchLabelsPolicy(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	d := s.Dst[netpol.PolicyUID]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Labels["D1"])
@@ -341,7 +342,7 @@ func testPolicyCalculator(t *testing.T, s *PolicyState, podML, policy, check []s
 
 	for _, p := range policyMap {
 		err := s.RemovePolicy(p)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Before we were cleaning up the pod calling del Pod but we don't use

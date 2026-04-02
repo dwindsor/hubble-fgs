@@ -133,12 +133,12 @@ func TestSrcKeyLookup(t *testing.T) {
 	registerWorkloadID(t, s, testNamespace, "test2", testKind)
 
 	key, err := s.createSrcKey(testNamespace, "test1", testKind)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, key)
 	assert.NotZero(t, key.WLID)
 
 	key, err = s.createSrcKey(testNamespace, "test2", testKind)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, key)
 	assert.NotZero(t, key.WLID)
 
@@ -160,14 +160,14 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 
 	netpol := testMatchDstLabelsPolicy(name, srcPodLabels, dstPodLabels)
 	err := s.CreateMatchLabelsPolicy(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(s.Src))
 	assert.Equal(t, 1, len(s.Dst))
 
 	// srcPod matches subject labels so will be granted to records one for FQDN name.
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 	assert.NotZero(t, r1[0].Src.WLID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[0].Endpoint.EP.Type)
@@ -179,7 +179,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	// labels and srcPod needs to be given a record for the srcPod->dstPod pair.
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	r2, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(r2))
 	assert.Equal(t, r1[0].Src.WLID, r2[0].Src.WLID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r2[0].Endpoint.EP.Type)
@@ -187,7 +187,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 
 	dstPodKeep := newPodFromCluster(t, s, testNamespace, dstPodNameKeep, testKind, dstPodLabels)
 	r3, err := s.objectAdd(dstPodKeep)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(r3))
 	assert.Equal(t, r1[0].Src.WLID, r3[0].Src.WLID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r3[0].Endpoint.EP.Type)
@@ -212,7 +212,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	// its a subjects no change that will not change.
 	delPod(t)
 	deleted, err := s.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, 1, len(deleted))
@@ -220,27 +220,27 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	// Interesting artifact is deleting duplicate twice
 	// will build same endpoint recordSet.
 	deleted, err = s.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, 1, len(deleted))
 
 	delPod(t)
 	deleted, err = s.podRemove(dstPodKeep)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, 1, len(deleted))
 
 	delPod(t)
 	deleted, err = s.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 0, len(src.Subjects))
 	assert.Equal(t, 2, len(deleted))
 
 	zombieSet, updateSet, err := s.recordsFromPolicyRemoval(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 	assert.Equal(t, 0, len(updateSet))
 }
@@ -255,14 +255,14 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "deny")
 	err := s.CreateMatchLabelsPolicy(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(s.Src))
 	assert.Equal(t, 1, len(s.Dst))
 
 	// srcPod matches subject labels so will be granted to records one for default action
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 
 	assert.NotZero(t, r1[0].Src.WLID)
@@ -282,11 +282,11 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	// Remove pod and policy
 	delPod(t)
 	deleted, err := s.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
 	zombieSet, updateSet, err := s.recordsFromPolicyRemoval(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 	assert.Equal(t, 0, len(updateSet))
 }
@@ -304,20 +304,20 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	err := s.CreateMatchLabelsPolicy(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(s.Src))
 	assert.Equal(t, 1, len(s.Dst))
 
 	// add dst pod first which does not match a subject for any policy8
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(rDst)) // no records to program datapath bc not a subject
 
 	// add src pod next and ensure we build correct policy
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
 	assert.NotZero(t, r1[0].Src.WLID)
@@ -341,17 +341,17 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	// Remove pod and policy
 	delPod(t)
 	deleted, err := s.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
 	delPod(t)
 	deleted, err = s.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
 	zombieSet, updateSet, err := s.recordsFromPolicyRemoval(netpol)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 	assert.Equal(t, 0, len(updateSet))
 }
@@ -369,32 +369,32 @@ func TestPolicySet(t *testing.T) {
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
 	err := s.AddPolicies(netpolSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// add dst pod first which does not match a subject for any policy8
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
 	// Remove pod and policy
 	delPod(t)
 	deleted, err := s.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
 	delPod(t)
 	deleted, err = s.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
 	err = s.RemovePolicies(netpolSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func cntRecordsEPTypes(records []record.DatapathRecord) (int, int, int, int) {
@@ -438,19 +438,19 @@ func TestPolicySetWithPods(t *testing.T) {
 	// Add src pod and dest pod while no policy is in play
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	// Add policy and ensure we generate rules
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
 	newState, addSet, removeSet, errSet := s.recordsFromPoliciesAddition(netpolSet)
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Equal(t, 4, len(addSet))
 	assert.Zero(t, len(removeSet))
 	cntDnsType, cntPodType, _, cntNilType := cntRecordsEPTypes(addSet)
@@ -461,17 +461,17 @@ func TestPolicySetWithPods(t *testing.T) {
 	// Remove pod and policy
 	delPod(t)
 	deleted, err := newState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
 	delPod(t)
 	deleted, err = newState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
 	err = newState.RemovePolicies(netpolSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPolicyOverlapping(t *testing.T) {
@@ -489,24 +489,24 @@ func TestPolicyOverlapping(t *testing.T) {
 	// Add src pod and dest pod while no policy is in play
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	indPod := newPodFromCluster(t, s, testNamespace, indPodName, testKind, indPodLabels)
 	rind, err := s.objectAdd(indPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(rind))
 
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, err := s.recordsFromPoliciesAddition(netpolASet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, len(addASet))
 	assert.Zero(t, len(removeASet))
 
@@ -519,7 +519,7 @@ func TestPolicyOverlapping(t *testing.T) {
 	netpolB := testMatchDstLabelsDenyPolicy("netpolB", "B=b", dstPodLabels, "deny")
 	netpolBSet := []*types.TetragonNetworkPolicy{netpolB}
 	bState, addBSet, removeBSet, err := aState.recordsFromPoliciesAddition(netpolBSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
 
@@ -531,26 +531,26 @@ func TestPolicyOverlapping(t *testing.T) {
 	// Remove independent pod there should be no rules associated with this pod
 	delPod(t)
 	deleted, err := bState.podRemove(indPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destinatoin pod, should delete records from source->destination
 	delPod(t)
 	deleted, err = bState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(deleted))
 
 	// Remove source pod should delete remaining records for FQDN and defaults
 	delPod(t)
 	deleted, err = bState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 6, len(deleted)) // delete entries from both policy sources
 
 	netpolSet := []*types.TetragonNetworkPolicy{netpolB, netpolA}
 	err = s.RemovePolicies(netpolSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = s.RemovePolicies(netpolSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPolicyOverlappingPolicyDelete(t *testing.T) {
@@ -568,17 +568,17 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	// Add src, dst, and ind pods while no policy is in play
 	indPod := newPodFromCluster(t, s, testNamespace, indPodName, testKind, indPodLabels)
 	rind, err := s.objectAdd(indPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(rind))
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	// Add policy and ensure we generate rules
@@ -586,7 +586,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Equal(t, 4, len(addASet))
 	assert.Zero(t, len(removeASet))
 
@@ -599,7 +599,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	netpolB := testMatchDstLabelsDenyPolicy("netpolB", "B=b", dstPodLabels, "deny")
 	netpolBSet := []*types.TetragonNetworkPolicy{netpolB}
 	bState, addBSet, removeBSet, errSet := aState.recordsFromPoliciesAddition(netpolBSet)
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
 
@@ -612,7 +612,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	netpolC := testMatchDstLabelsDenyPolicy("netpolC", "C=c", dstPodLabels, "deny")
 	netpolCSet := []*types.TetragonNetworkPolicy{netpolC}
 	cState, addCSet, removeCSet, err := bState.recordsFromPoliciesAddition(netpolCSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(removeCSet))
 	assert.Equal(t, 12, len(addCSet))
 
@@ -623,7 +623,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 
 	// netpol C does not overlap with netpol A remove it.
 	cRemove, cUpdate, err := cState.recordsFromPolicyRemoval(netpolC)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// because these are entirely masked by policy A we do not remove anything
 	assert.Equal(t, 4, len(cRemove))
 	// however we need to update the rules to the new state.
@@ -631,7 +631,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 
 	// netpol B overlaps with netpol A remove it.
 	bRemove, bUpdate, err := cState.recordsFromPolicyRemoval(netpolB)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// because these are entirely masked by policy A we do not remove anything
 	assert.Equal(t, 0, len(bRemove))
 	// however we need to update the rules to the new state.
@@ -639,26 +639,26 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := cState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, len(aRemove))
 	assert.Equal(t, 0, len(aUpdate))
 
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := cState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = cState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove other pod, should not be any records remaining
 	delPod(t)
 	deleted, err = cState.podRemove(indPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
 
@@ -675,12 +675,12 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 
 	rDst, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	// Add policy and ensure we generate rules
@@ -688,7 +688,7 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	// 3 records for /usr/bin/curl
 	// 3 records for /usr/sbin/curl
 	// 1 record for default pod
@@ -706,20 +706,20 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
 
@@ -734,14 +734,14 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := s.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	// Add src pod and dest pod while no policy is in play
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 
 	rDst, err := s.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	// Add policy and ensure we generate rules
@@ -749,7 +749,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	// 3 records for /usr/bin/curl
 	// 3 records for /usr/sbin/curl
 	// 1 record for default pod
@@ -767,20 +767,20 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
 
@@ -798,7 +798,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
@@ -806,12 +806,12 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	dstPod := newPodFromCluster(t, aState, testNamespace, dstPodName, testKind, dstPodLabels)
 
 	rDst, err := aState.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, aState, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := aState.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
 	dns, pod, _, n := cntRecordsEPTypes(r1)
@@ -821,20 +821,20 @@ func TestProcessPolicySrcDest(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
@@ -852,7 +852,7 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
@@ -860,12 +860,12 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := aState.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := aState.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
 	dns, pod, _, n := cntRecordsEPTypes(r1)
@@ -875,20 +875,20 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
@@ -906,7 +906,7 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
@@ -914,12 +914,12 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := aState.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := aState.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 13, len(r1))
 
 	port80 := 0
@@ -957,20 +957,20 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 13, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
@@ -1011,7 +1011,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
@@ -1019,7 +1019,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := aState.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 9, len(r1))
 
 	dns, pod, _, n := cntRecordsEPTypes(r1)
@@ -1035,7 +1035,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := aState.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, len(rDst))
 
 	port80 = countPorts(rDst, 80)
@@ -1050,7 +1050,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 13, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
@@ -1067,13 +1067,13 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
@@ -1091,7 +1091,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
 	aState, addASet, removeASet, errSet := s.recordsFromPoliciesAddition(netpolASet)
 
-	assert.NoError(t, errSet)
+	require.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
 	assert.Zero(t, len(removeASet))
 
@@ -1099,7 +1099,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
 	r1, err := aState.objectAdd(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 13, len(r1))
 
 	dns, pod, cidr, n := cntRecordsEPTypes(r1)
@@ -1116,7 +1116,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)
 	rDst, err := aState.objectAdd(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, len(rDst))
 
 	port80 = countPorts(rDst, 80)
@@ -1132,7 +1132,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 
 	// netpol A remains, remove it.
 	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 17, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
@@ -1150,13 +1150,13 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	// Remove source pod there should be no more records
 	delPod(t)
 	deleted, err := aState.podRemove(srcPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t)
 	deleted, err = aState.podRemove(dstPod)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
 
