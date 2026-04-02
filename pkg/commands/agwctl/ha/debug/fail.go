@@ -8,11 +8,10 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package debug
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -21,25 +20,19 @@ import (
 )
 
 func init() {
-	CriteriaCmd.AddCommand(criteriaShowCmd)
+	DebugCmd.AddCommand(failCmd)
 }
 
-var criteriaShowCmd = &cobra.Command{
-	Use:          "show",
+var failCmd = &cobra.Command{
+	Use:          "fail",
 	SilenceUsage: true,
-	Short:        "Show all HA criteria",
-	Long:         `Show all local and peer HA criteria in a compact table.`,
+	Short:        "Inject local service failure",
+	Long:         `Set the debug_override HA criterion to false, forcing the local node into ha-switchover state. Use 'agwctl ha debug ok' to restore normal operation.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		data := ipc.MessageData{
-			Flags: map[string]string{
-				"json": fmt.Sprintf("%t", agwctl.JSON),
-			},
-		}
-
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_CRITERIA_SHOW, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_CRITERIA_FAIL, ipc.MessageData{})
 		if err != nil {
 			return err
 		}

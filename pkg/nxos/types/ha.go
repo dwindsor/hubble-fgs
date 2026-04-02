@@ -10,13 +10,24 @@
 
 package types
 
-// Local HA States
+// Agent HA States (MO translations from HA-states.md)
 const (
-	HAStateNoHa       = "no-ha"
-	HAStateNotReady   = "ha-not-ready"
-	HAStateReady      = "ha-ready"
-	HAStateSwitchover = "ha-switchover"
-	HAStateTakeover   = "ha-takeover"
+	HAStateNoHa        = "no-ha"
+	HAStateNotReady    = "ha-not-ready"   // standalone
+	HAStateReady       = "ha-ready"       // active/active
+	HAStateDegraded    = "ha-degraded"    // active/active with adjacency failure
+	HAStateSwitchover  = "ha-switchover"  // active/standby (standby side)
+	HAStateTakeover    = "ha-takeover"    // active/standby (active side)
+	HAStateUnavailable = "ha-unavailable" // unavailable
+)
+
+// Peer HA States (per-peer relationship state from HA-states.md State Table)
+const (
+	PeerHAStateNoHa        = "no-ha"
+	PeerHAStateOk          = "ha-ok"
+	PeerHAStateFail        = "ha-fail"
+	PeerHAStateDegraded    = "ha-degraded"
+	PeerHAStateUnavailable = "ha-unavailable"
 )
 
 // HA service states
@@ -49,24 +60,33 @@ func (r ReasonString) String() string {
 type HACriterion string
 
 const (
-	// Local criteria
+	// Local service criteria (determine Local Service State: ready/not-ready)
 	HACritDpuHealth HACriterion = "dpu_healthy"
 	HACritDpuInSync HACriterion = "dpu_insync"
-	HACritSvcRedir  HACriterion = "service_redir"
+	HACritInService HACriterion = "in_service"
 
-	// Peer membership criteria
-	HACritPeerCompatible HACriterion = "peer_compatible"
-
-	// Peer adjacency criteria
-	HACritPeerIpConfig     HACriterion = "peer_ip_config"
-	HACritPeerServiceRedir HACriterion = "peer_service_redir"
-	HACritPeerPolicy       HACriterion = "peer_policy"
+	// Peer membership criteria (failure → ha-fail)
+	HACritPeerCompatible   HACriterion = "peer_compatible"
 	HACritPeerVrfGid       HACriterion = "peer_vrf_gid"
 	HACritPeerDPUKeepalive HACriterion = "peer_dpu_keepalive"
-	HACritPeerDPUBulkSync  HACriterion = "peer_dpu_bulk_sync"
 
-	// Debug criteria
-	HACritDebug HACriterion = "debug_override"
+	// Peer adjacency criteria (failure → ha-degraded)
+	HACritPeerDPUBulkSync HACriterion = "peer_dpu_bulk_sync"
+	HACritPeerPolicy      HACriterion = "peer_policy"
+
+	// Peer indicators (not membership/adjacency classification)
+	HACritPeerIpConfig HACriterion = "peer_ip_config" // connectivity indicator
+	HACritPeerService  HACriterion = "peer_service"   // peer service state indicator
+
+	// Standby criterion (dynamically injected/removed for active/standby tiebreaking)
+	HACritHaStandby HACriterion = "ha_standby"
+
+	// Debug criteria — local overrides (set via CLI for testing)
+	HACritDebug                     HACriterion = "debug_override"
+	HACritDebugMembershipFail       HACriterion = "debug_membership_fail"        // local: forces membership failure
+	HACritDebugAdjacencyFail        HACriterion = "debug_adjacency_fail"         // local: forces adjacency failure
+	HACritDebugMembershipFailRemote HACriterion = "debug_membership_fail_remote" // propagated from peer
+	HACritDebugAdjacencyFailRemote  HACriterion = "debug_adjacency_fail_remote"  // propagated from peer
 )
 
 // DPUHAStatus tracks per-DPU HA keepalive and bulk-sync state.
@@ -109,7 +129,6 @@ type HALocalState struct {
 	CriteriaMetEpoch int64      // when CriteriaMet last changed
 	PolicyCheck      bool       // whether policy revision is being used as criteria
 	PolicyRev        string     // current policy revision
-	AdjacencyReached bool       // has adjacency been reached between peers at least once
 
 	// Anti-flapping hold-down state
 	CriteriaRecoveryPending bool
@@ -153,6 +172,9 @@ type HAPeerState struct {
 	DPUStatuses map[string]DPUHAStatus
 
 	// Derived states (computed by state machine)
+	HaState        string       // per-peer HA state (no-ha, ha-ok, ha-fail, ha-degraded, ha-unavailable)
+	HaStateReason  ReasonString // reason for current per-peer HaState
+	HaStateEpoch   int64        // when per-peer HaState last changed
 	SvcState       string
 	SvcStateReason ReasonString // reason for current SvcState
 	SvcStateEpoch  int64        // when SvcState last changed
@@ -188,4 +210,9 @@ type HAPeerMember struct {
 	LbMode      string
 	PolicyRev   string
 	PolicyCheck bool
+
+	// Debug overrides propagated via adjacency exchange.
+	// When true, the sender has injected a debug failure for this peer.
+	DebugMembershipFail bool
+	DebugAdjacencyFail  bool
 }

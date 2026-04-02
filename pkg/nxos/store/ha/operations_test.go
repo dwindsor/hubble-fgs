@@ -174,22 +174,26 @@ func TestSetRemoteSvcState_SetsStateAndReasonViaGnmi(t *testing.T) {
 	}
 }
 
-func TestSetRemoteMbrState_SetsStateAndReasonViaGnmi(t *testing.T) {
+func TestSetRemotePeerHaState_SetsStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
 
 	peerIP := "10.0.0.3"
-	reason := types.NewReasonString("adjacency down")
-	err := store.SetRemoteMbrState(ctx, peerIP, "no_ha", reason)
+	reason := types.NewReasonString("membership failure: peer_compatible")
+	err := store.SetRemotePeerHaState(ctx, peerIP, types.PeerHAStateFail, reason)
 	if err != nil {
-		t.Fatalf("SetRemoteMbrState failed: %v", err)
+		t.Fatalf("SetRemotePeerHaState failed: %v", err)
 	}
 
 	data := handler.GetAllData()
-	reasonPath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerSvcStateReason, peerIP))
+	statePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaState, peerIP))
+	if v, ok := data[statePath]; !ok || v != types.PeerHAStateFail {
+		t.Errorf("expected gNMI SET for peer haState=%q, got %v (found=%v)", types.PeerHAStateFail, v, ok)
+	}
+	reasonPath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaStateReason, peerIP))
 	if v, ok := data[reasonPath]; !ok || v != reason.String() {
-		t.Errorf("expected gNMI SET for peer svcStateReason=%q, got %v (found=%v)", reason, v, ok)
+		t.Errorf("expected gNMI SET for peer haStateReason=%q, got %v (found=%v)", reason, v, ok)
 	}
 }
 
@@ -205,8 +209,18 @@ func TestSetRemoteStatesAdjDown_SetsReasonsViaGnmi(t *testing.T) {
 	}
 
 	data := handler.GetAllData()
-	reasonPath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerSvcStateReason, peerIP))
-	if v, ok := data[reasonPath]; !ok || v != "adjacency down" {
+	// Check peer HA state set to no-ha
+	haStatePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaState, peerIP))
+	if v, ok := data[haStatePath]; !ok || v != types.PeerHAStateNoHa {
+		t.Errorf("expected gNMI SET for peer haState=%q, got %v (found=%v)", types.PeerHAStateNoHa, v, ok)
+	}
+	haReasonPath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaStateReason, peerIP))
+	if v, ok := data[haReasonPath]; !ok || v != "adjacency down" {
+		t.Errorf("expected gNMI SET for peer haStateReason=%q, got %v (found=%v)", "adjacency down", v, ok)
+	}
+	// Check peer SVC state set to unknown
+	svcReasonPath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerSvcStateReason, peerIP))
+	if v, ok := data[svcReasonPath]; !ok || v != "adjacency down" {
 		t.Errorf("expected gNMI SET for peer svcStateReason=%q, got %v (found=%v)", "adjacency down", v, ok)
 	}
 }
@@ -338,14 +352,14 @@ func TestUpdatePeerAdjacencyCriterion_ComputesMet(t *testing.T) {
 
 	// First criterion passes — two criteria exist, second not yet set → not all ok.
 	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerIpConfig, true)
-	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerServiceRedir, false)
+	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerService, false)
 	peer, _ := store.Peer(peerIP)
 	if peer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=false when one criterion fails")
 	}
 
 	// Both criteria now pass → Met becomes true.
-	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerServiceRedir, true)
+	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerService, true)
 	peer, _ = store.Peer(peerIP)
 	if !peer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=true after all criteria pass")
@@ -362,6 +376,58 @@ func TestUpdatePeerAdjacencyCriterion_ComputesMet(t *testing.T) {
 	}
 }
 
+func TestRemovePeerMemberCriterion(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+	peerIP := "10.0.0.20"
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
+
+	// Set criterion to false (injected failure), then remove it.
+	store.UpdatePeerMemberCriterion(ctx, peerIP, types.HACritDebugMembershipFail, false)
+	peer, _ := store.Peer(peerIP)
+	if peer.MemberCriteriaMet {
+		t.Error("expected MemberCriteriaMet=false with debug criterion set to false")
+	}
+
+	store.RemovePeerMemberCriterion(ctx, peerIP, types.HACritDebugMembershipFail)
+	peer, _ = store.Peer(peerIP)
+	if _, exists := peer.MemberCriteria[types.HACritDebugMembershipFail]; exists {
+		t.Error("expected debug criterion to be removed from MemberCriteria")
+	}
+
+	// No-op when criterion doesn't exist.
+	store.RemovePeerMemberCriterion(ctx, peerIP, types.HACritDebugMembershipFail)
+
+	// No-op when peer doesn't exist.
+	store.RemovePeerMemberCriterion(ctx, "1.2.3.4", types.HACritDebugMembershipFail)
+}
+
+func TestRemovePeerAdjacencyCriterion(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+	peerIP := "10.0.0.21"
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
+
+	// Set criterion to false (injected failure), then remove it.
+	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritDebugAdjacencyFail, false)
+	peer, _ := store.Peer(peerIP)
+	if peer.AdjacencyCriteriaMet {
+		t.Error("expected AdjacencyCriteriaMet=false with debug criterion set to false")
+	}
+
+	store.RemovePeerAdjacencyCriterion(ctx, peerIP, types.HACritDebugAdjacencyFail)
+	peer, _ = store.Peer(peerIP)
+	if _, exists := peer.AdjacencyCriteria[types.HACritDebugAdjacencyFail]; exists {
+		t.Error("expected debug criterion to be removed from AdjacencyCriteria")
+	}
+
+	// No-op when criterion doesn't exist.
+	store.RemovePeerAdjacencyCriterion(ctx, peerIP, types.HACritDebugAdjacencyFail)
+
+	// No-op when peer doesn't exist.
+	store.RemovePeerAdjacencyCriterion(ctx, "1.2.3.4", types.HACritDebugAdjacencyFail)
+}
+
 func TestSetPeer_ComputesMetFromMaps(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(ctx).(*haStore)
@@ -375,7 +441,7 @@ func TestSetPeer_ComputesMetFromMaps(t *testing.T) {
 		},
 		AdjacencyCriteria: types.HACriteria{
 			types.HACritPeerIpConfig:     true,
-			types.HACritPeerServiceRedir: true,
+			types.HACritPeerService: true,
 		},
 	})
 
@@ -433,7 +499,7 @@ func TestUpdatePeerAdjacency_Disconnect_ClearsConnectionCriteria(t *testing.T) {
 		},
 		AdjacencyCriteria: types.HACriteria{
 			types.HACritPeerIpConfig:     true,
-			types.HACritPeerServiceRedir: true,
+			types.HACritPeerService: true,
 			types.HACritPeerPolicy:       true,
 		},
 	})
@@ -453,8 +519,8 @@ func TestUpdatePeerAdjacency_Disconnect_ClearsConnectionCriteria(t *testing.T) {
 	if peer.MemberCriteriaMet {
 		t.Error("expected MemberCriteriaMet=false after disconnect")
 	}
-	if peer.AdjacencyCriteria[types.HACritPeerServiceRedir] {
-		t.Error("expected AdjacencyCriteria[peer_service_redir]=false after disconnect")
+	if peer.AdjacencyCriteria[types.HACritPeerService] {
+		t.Error("expected AdjacencyCriteria[peer_service]=false after disconnect")
 	}
 	if peer.AdjacencyCriteria[types.HACritPeerPolicy] {
 		t.Error("expected AdjacencyCriteria[peer_policy]=false after disconnect")
@@ -539,6 +605,27 @@ func TestSetHaPort_NoGnmiHandler(t *testing.T) {
 	if err := store.SetHaPort(ctx, 28416); err != nil {
 		t.Errorf("expected no error without gNMI handler, got %v", err)
 	}
+}
+
+func TestRemoveLocalCriterion(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+
+	// Set a criterion, then remove it.
+	store.UpdateLocalCriterion(ctx, types.HACritHaStandby, false)
+	local := store.Local()
+	if _, has := local.Criteria[types.HACritHaStandby]; !has {
+		t.Fatal("expected HACritHaStandby to exist after UpdateLocalCriterion")
+	}
+
+	store.RemoveLocalCriterion(ctx, types.HACritHaStandby)
+	local = store.Local()
+	if _, has := local.Criteria[types.HACritHaStandby]; has {
+		t.Error("expected HACritHaStandby to be removed after RemoveLocalCriterion")
+	}
+
+	// Removing a non-existent criterion should not panic.
+	store.RemoveLocalCriterion(ctx, types.HACritHaStandby)
 }
 
 // normalizeMockPath strips the "device:" prefix and leading "/" to match mock handler keys.

@@ -17,9 +17,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/version"
+
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 	hastore "github.com/isovalent/hubble-fgs/pkg/nxos/store/ha"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
 
 func TestNewManager(t *testing.T) {
@@ -180,6 +183,33 @@ func TestManager_BuildMemberInfo_WithProvider(t *testing.T) {
 	}
 	if info.Model != expectedInfo.Model {
 		t.Errorf("expected model %s, got %s", expectedInfo.Model, info.Model)
+	}
+}
+
+func TestManager_BuildMemberInfo_WithDeviceStoreCPAVersion(t *testing.T) {
+	// Set a known version for the test; in production this is set via build ldflags.
+	version.Version = "test-2.0.0"
+	t.Cleanup(func() { version.Version = "" })
+
+	ctx := context.Background()
+	ds := device.NewStore(ctx)
+	haStore := hastore.NewStore(ctx)
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(ds),
+	).(*manager)
+
+	info := mgr.buildMemberInfo()
+	if info.CPAVersion != "test-2.0.0" {
+		t.Errorf("buildMemberInfo: expected CPAVersion %q, got %q", "test-2.0.0", info.CPAVersion)
+	}
+	if info.CPAVersion != ds.CPAVersion() {
+		t.Errorf("buildMemberInfo: CPAVersion %q does not match device store %q", info.CPAVersion, ds.CPAVersion())
+	}
+
+	deviceInfo := mgr.buildDeviceInfo()
+	if deviceInfo.CPAVersion != "test-2.0.0" {
+		t.Errorf("buildDeviceInfo: expected CPAVersion %q, got %q", "test-2.0.0", deviceInfo.CPAVersion)
 	}
 }
 
@@ -444,9 +474,9 @@ func TestManager_isConfigReady(t *testing.T) {
 	}
 }
 
-// TestManager_haUpdateNx_GatedOnInService verifies that svc state is not pushed
+// TestManager_applyNxStates_GatedOnInService verifies that svc state is not pushed
 // to NX-OS when InServiceState is "".
-func TestManager_haUpdateNx_GatedOnInService(t *testing.T) {
+func TestManager_applyNxStates_GatedOnInService(t *testing.T) {
 	haStore := hastore.NewStore(context.Background())
 	deviceStore := device.NewStore(context.Background())
 	mgr := NewManager(
@@ -456,16 +486,50 @@ func TestManager_haUpdateNx_GatedOnInService(t *testing.T) {
 
 	bgCtx := context.Background()
 
-	// Call haUpdateNx with InService == "" — should skip svc state push.
+	// Call applyNxStates with InService == "" — should skip svc state push.
 	// We verify by checking there's no panic and the function returns cleanly.
 	// (The actual gNMI push is tested via the haStore's SetLocalSvcState.)
-	mgr.haUpdateNx(bgCtx)
+	mgr.applyNxStates(bgCtx)
 
-	// Set InService — now haUpdateNx should proceed to check svc state.
+	// Set InService — now applyNxStates should proceed to write svc state.
 	deviceStore.SetInService(bgCtx, "in-service")
-	mgr.haUpdateNx(bgCtx)
+	mgr.applyNxStates(bgCtx)
 
 	// If we got here without panic, the gating works correctly.
+}
+
+// TestProcessHaInfo_NotReadyRemovesStandby: HA_STATE_HA_NOTREADY from peer should remove standby.
+func TestProcessHaInfo_NotReadyRemovesStandby(t *testing.T) {
+	haStore := hastore.NewStore(context.Background())
+	ctx := context.Background()
+
+	// Pre-inject standby.
+	haStore.UpdateLocalCriterion(ctx, types.HACritHaStandby, false)
+
+	mgr := NewManager(WithHAStoreForManager(haStore)).(*manager)
+	mgr.ProcessHaInfo(ctx, "10.0.0.2", &hav1.HaInfo{Ha: hav1.HA_STATE_HA_NOTREADY})
+
+	local := haStore.Local()
+	if _, has := local.Criteria[types.HACritHaStandby]; has {
+		t.Error("expected standby criterion to be removed after NOTREADY notify")
+	}
+}
+
+// TestProcessHaInfo_SwitchoverRemovesStandby: HA_STATE_HA_SWITCHOVER from peer should remove standby.
+func TestProcessHaInfo_SwitchoverRemovesStandby(t *testing.T) {
+	haStore := hastore.NewStore(context.Background())
+	ctx := context.Background()
+
+	// Pre-inject standby.
+	haStore.UpdateLocalCriterion(ctx, types.HACritHaStandby, false)
+
+	mgr := NewManager(WithHAStoreForManager(haStore)).(*manager)
+	mgr.ProcessHaInfo(ctx, "10.0.0.2", &hav1.HaInfo{Ha: hav1.HA_STATE_HA_SWITCHOVER})
+
+	local := haStore.Local()
+	if _, has := local.Criteria[types.HACritHaStandby]; has {
+		t.Error("expected standby criterion to be removed after SWITCHOVER notify")
+	}
 }
 
 // TestMockManager_Run verifies that mockManager.Run() blocks on ctx and returns nil.
@@ -555,7 +619,11 @@ func (m *mockManager) ProcessMemberInfo(ctx context.Context, peer string, info t
 
 func (m *mockManager) NotifyRemoval(ctx context.Context, peer string) {}
 
+func (m *mockManager) HandleRemoval(ctx context.Context, peer string) {}
+
 func (m *mockManager) HandleAdjFailureNotify(ctx context.Context, peer string, reason string) {}
+
+func (m *mockManager) ProcessHaInfo(ctx context.Context, peer string, haInfo *hav1.HaInfo) {}
 
 func (m *mockManager) RegisterDpu(ctx context.Context, dpuUid string)              {}
 func (m *mockManager) UpdateKeepalive(ctx context.Context, dpuUid string, up bool) {}
@@ -564,5 +632,11 @@ func (m *mockManager) UpdateBulkSyncLocal(ctx context.Context, dpuUid string, do
 func (m *mockManager) UpdateBulkSyncPeer(ctx context.Context, dpuUid string, done bool) {
 }
 func (m *mockManager) UpdatePolicyRevision(ctx context.Context, revision string) {}
+
+func (m *mockManager) SetDebugPeerFail(ctx context.Context, peer string, membership, adjacency bool) {
+}
+func (m *mockManager) SetDebugPeerOk(ctx context.Context, peer string)  {}
+func (m *mockManager) SetDebugFail(ctx context.Context, fail bool)      {}
+func (m *mockManager) NotifyServiceFailure(ctx context.Context)         {}
 
 var _ Manager = (*mockManager)(nil)

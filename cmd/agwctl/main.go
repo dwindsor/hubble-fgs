@@ -18,6 +18,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/device"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/dpu"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha"
+	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha/debug"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha/peers"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/logging"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/metrics"

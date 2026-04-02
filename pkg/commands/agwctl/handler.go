@@ -90,6 +90,9 @@ const (
 	CMD_MOCK_VLAN_DELETE
 	CMD_MOCK_GNMI_SET_BULK
 	CMD_MOCK_GNMI_LOG
+	CMD_HA_INFO
+	CMD_HA_PEER_FAIL
+	CMD_HA_PEER_OK
 )
 
 const (
@@ -520,6 +523,11 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.ReturnCode = "ok"
 		response.Data = res
 
+	case CMD_HA_INFO:
+		res := agwAgent.GnmiShowHaInfo(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
 	case CMD_HA_SHOW:
 		res := agwAgent.GnmiShowHa(ctx, data)
 		response.ReturnCode = "ok"
@@ -639,9 +647,9 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		}
 		membership := data.Flags["membership"] == "true"
 		adjacency := data.Flags["adjacency"] == "true"
-		nxos.Nexus.HaSetDebugPeerFail(ctx, peer, membership, adjacency)
+		res := agwAgent.HaSetDebugPeerFail(ctx, peer, membership, adjacency)
 		response.ReturnCode = "ok"
-		response.Data = fmt.Sprintf("Debug peer failure injected for %s", peer)
+		response.Data = res
 
 	case CMD_HA_PEER_OK:
 		peer := data.Flags["peer"]
@@ -650,9 +658,11 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			response.Data = "--peer is required"
 			return response, nil
 		}
-		nxos.Nexus.HaSetDebugPeerOk(ctx, peer)
+		membership := data.Flags["membership"] == "true"
+		adjacency := data.Flags["adjacency"] == "true"
+		res := agwAgent.HaSetDebugPeerOk(ctx, peer, membership, adjacency)
 		response.ReturnCode = "ok"
-		response.Data = fmt.Sprintf("Debug peer failure cleared for %s", peer)
+		response.Data = res
 
 	default:
 		response.ReturnCode = "fail"

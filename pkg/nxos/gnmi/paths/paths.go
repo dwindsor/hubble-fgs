@@ -116,6 +116,10 @@ const (
 	HAStorePeerSvcState = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/svcState"
 	// haStore.Peer.SvcStateReason
 	HAStorePeerSvcStateReason = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/svcStateReason"
+	// haStore.Peer.HaState
+	HAStorePeerHaState = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/haState"
+	// haStore.Peer.HaStateReason
+	HAStorePeerHaStateReason = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/haStateReason"
 )
 
 // NXOS Manager Paths

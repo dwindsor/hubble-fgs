@@ -85,23 +85,56 @@ func TestKeepaliveAggregation_AllUpBecomesTrue(t *testing.T) {
 	if !ok {
 		t.Fatal("peer not found")
 	}
-	if peer.AdjacencyCriteria[types.HACritPeerDPUKeepalive] {
+	if peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
 		t.Error("expected keepalive criterion false when only one DPU is up")
 	}
 
 	// Both up — criterion should be true.
 	m.UpdateKeepalive(ctx, "dpu-2", true)
 	peer, _ = hs.Peer("10.0.0.2")
-	if !peer.AdjacencyCriteria[types.HACritPeerDPUKeepalive] {
+	if !peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
 		t.Error("expected keepalive criterion true when all DPUs are up")
 	}
 
 	// One goes down — criterion should revert to false.
 	m.UpdateKeepalive(ctx, "dpu-1", false)
 	peer, _ = hs.Peer("10.0.0.2")
-	if peer.AdjacencyCriteria[types.HACritPeerDPUKeepalive] {
+	if peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
 		t.Error("expected keepalive criterion false after one DPU goes down")
 	}
+}
+
+func TestKeepaliveDown_ResetsBulkSync(t *testing.T) {
+	ctx := context.Background()
+	m, hs := newTestManager(ctx)
+
+	m.RegisterDpu(ctx, "dpu-1")
+
+	// Set keepalive up and complete bulk sync.
+	m.UpdateKeepalive(ctx, "dpu-1", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu-1", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu-1", true)
+
+	peer, _ := hs.Peer("10.0.0.2")
+	if !peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
+		t.Fatal("expected bulk_sync criterion true before keepalive down")
+	}
+
+	// Keepalive goes down — bulk sync should reset.
+	m.UpdateKeepalive(ctx, "dpu-1", false)
+
+	peer, _ = hs.Peer("10.0.0.2")
+	if peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
+		t.Error("expected bulk_sync criterion false after keepalive goes down")
+	}
+
+	// Verify internal state was actually reset.
+	m.mu.RLock()
+	s := m.dpuStatuses["dpu-1"]
+	if s.bulkSyncLocal || s.bulkSyncPeer {
+		t.Error("expected bulkSyncLocal and bulkSyncPeer to be reset when keepalive goes down")
+	}
+	m.mu.RUnlock()
 }
 
 func TestBulkSyncAggregation_RequiresBothLocalAndPeer(t *testing.T) {
@@ -157,7 +190,7 @@ func TestNoDPUs_CriteriaFalse(t *testing.T) {
 	// No DPUs registered — aggregate should be false (len == 0 case).
 	m.aggregateDPUStatus(ctx)
 	peer, _ := hs.Peer("10.0.0.2")
-	if peer.AdjacencyCriteria[types.HACritPeerDPUKeepalive] {
+	if peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
 		t.Error("expected keepalive criterion false with no DPUs")
 	}
 	if peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {

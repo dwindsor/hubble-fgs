@@ -12,354 +12,1037 @@ package ha
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	hastore "github.com/isovalent/hubble-fgs/pkg/nxos/store/ha"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 )
 
-// setupStore creates a store with local criteria met and no peers, ready for per-test configuration.
+// setupStore creates a store with no peers and default local state.
 func setupStore(t *testing.T) hastore.Store {
 	t.Helper()
 	return hastore.NewStore(context.Background())
 }
 
-// setLocalCriteriaMet sets CriteriaMet=true with required criteria all passing.
-func setLocalCriteriaMet(t *testing.T, store hastore.Store, isLeader bool) {
+// setLocalReady sets all local criteria to true and CriteriaMet=true.
+func setLocalReady(t *testing.T, store hastore.Store) {
 	t.Helper()
 	ctx := context.Background()
-	store.UpdateLocalCriterion(ctx, types.HACritSvcRedir, true)
+	store.UpdateLocalCriterion(ctx, types.HACritInService, true)
 	store.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
 	store.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
 	local := store.Local()
 	local.CriteriaMet = true
-	local.Leader = isLeader
 	store.SetLocal(ctx, local)
 }
 
-// setAdjacencyReached marks AdjacencyReached=true on local state.
-func setAdjacencyReached(t *testing.T, store hastore.Store) {
+// setLocalReadyEstablished sets local ready with an established HA state (for startup protection tests).
+func setLocalReadyEstablished(t *testing.T, store hastore.Store) {
 	t.Helper()
-	store.SetLocalAdjacencyReached(context.Background(), true)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	store.SetLocalDerivedStates(ctx, types.HAStateReady, types.SvcStateSuccess,
+		types.NewReasonString("established"), types.NewReasonString("established"))
 }
 
-// addPeerWithMembershipOK adds a peer with member criteria passing but adjacency not yet OK.
-func addPeerWithMembershipOK(t *testing.T, store hastore.Store, ip string) {
+// setLocalSyncing sets local to yielding/syncing state: all real criteria pass but
+// standby criterion is injected, making CriteriaMet=false. This represents a node
+// that is yielding to a peer in TAKEOVER.
+func setLocalSyncing(t *testing.T, store hastore.Store) {
 	t.Helper()
 	ctx := context.Background()
-	store.SetPeer(ctx, ip, types.HAPeerState{
-		IP:             ip,
-		MemberCriteria: types.HACriteria{types.HACritPeerCompatible: true},
-		AdjacencyCriteria: types.HACriteria{
-			types.HACritPeerIpConfig:     true,
-			types.HACritPeerServiceRedir: false, // adjacency not yet established
-		},
-	})
+	store.UpdateLocalCriterion(ctx, types.HACritInService, true)
+	store.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	store.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
+	store.UpdateLocalCriterion(ctx, types.HACritHaStandby, false)
+	// CriteriaMet stays false (default) because standby is false.
 }
 
-// addPeerWithMembershipFail adds a peer with member criteria failing and adjacency not OK.
-func addPeerWithMembershipFail(t *testing.T, store hastore.Store, ip string) {
+// setLocalServiceFailure sets local to not-in-service (service failure).
+func setLocalServiceFailure(t *testing.T, store hastore.Store) {
 	t.Helper()
 	ctx := context.Background()
-	store.SetPeer(ctx, ip, types.HAPeerState{
-		IP:             ip,
-		MemberCriteria: types.HACriteria{types.HACritPeerCompatible: false},
-		AdjacencyCriteria: types.HACriteria{
-			types.HACritPeerIpConfig:     true,
-			types.HACritPeerServiceRedir: false, // adjacency not established due to membership failure
-		},
-	})
+	store.UpdateLocalCriterion(ctx, types.HACritInService, false)
+	// CriteriaMet stays false (default).
 }
 
-// addPeerWithAllAdjacencyOK adds a peer with all adjacency criteria passing.
-func addPeerWithAllAdjacencyOK(t *testing.T, store hastore.Store, ip string) {
+// addPeerConnectedAndReady adds a connected peer with service ready, membership ok, adjacency ok.
+func addPeerConnectedAndReady(t *testing.T, store hastore.Store, ip string) {
 	t.Helper()
 	ctx := context.Background()
 	store.SetPeer(ctx, ip, types.HAPeerState{
 		IP:                 ip,
-		MemberCriteria:     types.HACriteria{types.HACritPeerCompatible: true},
-		MemberCriteriaMet:  true,
 		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
 		AdjacencyCriteria: types.HACriteria{
 			types.HACritPeerIpConfig:     true,
-			types.HACritPeerServiceRedir: true,
+			types.HACritPeerService: true,
+			types.HACritPeerDPUBulkSync:  true,
 			types.HACritPeerPolicy:       true,
 		},
-		AdjacencyCriteriaMet: true,
 	})
 }
 
-// TestComputeState_Row1_NoConnectivity tests Row 1: no connectivity, adjacency not reached → ha_notready.
-func TestComputeState_Row1_NoConnectivity(t *testing.T) {
+// addPeerConnectedAdjacencyFail adds a connected peer with service ready, membership ok, but adjacency failing.
+func addPeerConnectedAdjacencyFail(t *testing.T, store hastore.Store, ip string) {
+	t.Helper()
+	ctx := context.Background()
+	store.SetPeer(ctx, ip, types.HAPeerState{
+		IP:                 ip,
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: true,
+			types.HACritPeerDPUBulkSync:  false, // adjacency failure
+			types.HACritPeerPolicy:       true,
+		},
+	})
+}
+
+// addPeerConnectedMembershipFail adds a connected peer with membership criteria failing.
+func addPeerConnectedMembershipFail(t *testing.T, store hastore.Store, ip string) {
+	t.Helper()
+	ctx := context.Background()
+	store.SetPeer(ctx, ip, types.HAPeerState{
+		IP:                 ip,
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible: false, // membership failure
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: true,
+		},
+	})
+}
+
+// addPeerConnectedSvcFailure adds a connected peer with service not ready (peer service failure).
+func addPeerConnectedSvcFailure(t *testing.T, store hastore.Store, ip string) {
+	t.Helper()
+	ctx := context.Background()
+	store.SetPeer(ctx, ip, types.HAPeerState{
+		IP:                 ip,
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: false, // peer service failure
+		},
+	})
+}
+
+// addPeerNotConnected adds a peer that is not connected (unknown state).
+func addPeerNotConnected(t *testing.T, store hastore.Store, ip string) {
+	t.Helper()
+	ctx := context.Background()
+	store.SetPeer(ctx, ip, types.HAPeerState{
+		IP:                 ip,
+		AdjacencyConnected: false,
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig: true,
+		},
+	})
+}
+
+// assertResult checks agent HA state, SVC state, and optionally per-peer HA state.
+func assertResult(t *testing.T, result stateResult, wantHa, wantSvc string) {
+	t.Helper()
+	if result.HaState != wantHa {
+		t.Errorf("expected Agent HaState=%s, got %s (reason=%s)", wantHa, result.HaState, result.HaReason)
+	}
+	if result.SvcState != wantSvc {
+		t.Errorf("expected SvcState=%s, got %s (reason=%s)", wantSvc, result.SvcState, result.SvcReason)
+	}
+	// Verify all state values have non-empty reasons
+	if result.HaReason == "" {
+		t.Errorf("Agent HaState=%s has empty reason", result.HaState)
+	}
+	if result.SvcReason == "" {
+		t.Errorf("SvcState=%s has empty reason", result.SvcState)
+	}
+}
+
+func assertPeerHaState(t *testing.T, result stateResult, ip, wantPeerHa string) {
+	t.Helper()
+	ps, ok := result.PeerStates[ip]
+	if !ok {
+		t.Fatalf("no peer state for %s", ip)
+	}
+	if ps.HaState != wantPeerHa {
+		t.Errorf("expected Peer HaState=%s for %s, got %s (reason=%s)", wantPeerHa, ip, ps.HaState, ps.HaReason)
+	}
+	if ps.HaReason == "" {
+		t.Errorf("Peer HaState=%s for %s has empty reason", ps.HaState, ip)
+	}
+}
+
+func assertReasonContains(t *testing.T, reason types.ReasonString, substring string) {
+	t.Helper()
+	if !strings.Contains(reason.String(), substring) {
+		t.Errorf("expected reason to contain %q, got %q", substring, reason)
+	}
+}
+
+// TestComputeState_NoConnectivity_LocalReady: no peers connected, local ready → standalone (ha-not-ready, svc ready).
+func TestComputeState_NoConnectivity_LocalReady(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, true)
-	// No peers added → no connectivity.
+	setLocalReady(t, store)
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateNotReady {
-		t.Errorf("Row 1: expected HaState=%s, got %s", types.HAStateNotReady, result.HaState)
-	}
-	if result.SvcState != types.SvcStateSuccess {
-		t.Errorf("Row 1: expected SvcState=%s, got %s", types.SvcStateSuccess, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateNotReady, types.SvcStateSuccess)
+	assertReasonContains(t, result.HaReason, "no peer connectivity")
+	assertReasonContains(t, result.SvcReason, "all criteria met")
 }
 
-// TestComputeState_Row2_LeaderMembershipFailure tests Row 2: leader + membership failure,
-// adjacency not reached → ha_notready, svc_success.
-func TestComputeState_Row2_LeaderMembershipFailure(t *testing.T) {
+// TestComputeState_NoConnectivity_LocalNotReady: no peers connected, local not-ready → standalone (ha-not-ready, svc not-ready).
+func TestComputeState_NoConnectivity_LocalNotReady(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, true /* isLeader */)
-	addPeerWithMembershipFail(t, store, "10.0.0.2")
+	setLocalServiceFailure(t, store)
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateNotReady {
-		t.Errorf("Row 2: expected HaState=%s, got %s", types.HAStateNotReady, result.HaState)
-	}
-	if result.SvcState != types.SvcStateSuccess {
-		t.Errorf("Row 2: expected SvcState=%s, got %s", types.SvcStateSuccess, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateNotReady, types.SvcStateFailure)
+	assertReasonContains(t, result.HaReason, "no peer connectivity")
 }
 
-// TestComputeState_Row3_FollowerMembershipFailure tests Row 3: follower + membership failure,
-// adjacency not reached → ha_switchover, svc_failure.
-func TestComputeState_Row3_FollowerMembershipFailure(t *testing.T) {
+// TestComputeState_NoConnectivity_PeerConfiguredButNotConnected: peer exists but not connected → standalone.
+func TestComputeState_NoConnectivity_PeerConfiguredButNotConnected(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, false /* isLeader=false → follower */)
-	addPeerWithMembershipFail(t, store, "10.0.0.2")
+	setLocalReady(t, store)
+	addPeerNotConnected(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateSwitchover {
-		t.Errorf("Row 3: expected HaState=%s, got %s", types.HAStateSwitchover, result.HaState)
-	}
-	if result.SvcState != types.SvcStateFailure {
-		t.Errorf("Row 3: expected SvcState=%s, got %s", types.SvcStateFailure, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateNotReady, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateNoHa)
 }
 
-// TestComputeState_Row4_BothInService tests Row 4: both in-service, adjacency OK → ha_ready, svc_success.
-func TestComputeState_Row4_BothInService(t *testing.T) {
+// TestComputeState_BothReady_AllOk: both ready, all criteria ok → active/active (ha-ready, svc ready).
+func TestComputeState_BothReady_AllOk(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, true)
-	addPeerWithAllAdjacencyOK(t, store, "10.0.0.2")
+	setLocalReady(t, store)
+	addPeerConnectedAndReady(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateReady {
-		t.Errorf("Row 4: expected HaState=%s, got %s", types.HAStateReady, result.HaState)
-	}
-	if result.SvcState != types.SvcStateSuccess {
-		t.Errorf("Row 4: expected SvcState=%s, got %s", types.SvcStateSuccess, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateReady, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateOk)
+	assertReasonContains(t, result.HaReason, "all criteria met")
 }
 
-// TestComputeState_Row5_AdjacencyFailure_Leader tests Row 5: leader + adjacency failure
-// after adjacency reached → ha_takeover, svc_success.
-func TestComputeState_Row5_AdjacencyFailure_Leader(t *testing.T) {
+// TestComputeState_BothReady_AdjacencyFail: both ready, adjacency failure → active/active degraded (ha-degraded, svc ready).
+func TestComputeState_BothReady_AdjacencyFail(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, true /* isLeader */)
-	setAdjacencyReached(t, store)
-	addPeerWithMembershipOK(t, store, "10.0.0.2")
+	setLocalReady(t, store)
+	addPeerConnectedAdjacencyFail(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateTakeover {
-		t.Errorf("Row 5 Leader: expected HaState=%s, got %s", types.HAStateTakeover, result.HaState)
-	}
-	if result.SvcState != types.SvcStateSuccess {
-		t.Errorf("Row 5 Leader: expected SvcState=%s, got %s", types.SvcStateSuccess, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateDegraded, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateDegraded)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "adjacency failure")
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer_dpu_bulk_sync")
 }
 
-// TestComputeState_Row5_AdjacencyFailure_Follower tests Row 5: follower + adjacency failure
-// after adjacency reached → ha_switchover, svc_failure.
-func TestComputeState_Row5_AdjacencyFailure_Follower(t *testing.T) {
+// TestComputeState_LocalReady_MembershipFail: local ready (established), membership failure → active/standby active (ha-takeover, svc ready).
+func TestComputeState_LocalReady_MembershipFail(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, false /* isLeader=false → follower */)
-	setAdjacencyReached(t, store)
-	addPeerWithMembershipOK(t, store, "10.0.0.2")
+	setLocalReadyEstablished(t, store)
+	addPeerConnectedMembershipFail(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateSwitchover {
-		t.Errorf("Row 5 Follower: expected HaState=%s, got %s", types.HAStateSwitchover, result.HaState)
-	}
-	if result.SvcState != types.SvcStateFailure {
-		t.Errorf("Row 5 Follower: expected SvcState=%s, got %s", types.SvcStateFailure, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateTakeover, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "membership failure")
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer_compatible")
 }
 
-// TestComputeState_Row6_NoConnectivityAfterAdjReached_Leader tests Row 6: leader + no connectivity
-// after adjacency reached → ha_takeover, svc_success.
-func TestComputeState_Row6_NoConnectivityAfterAdjReached_Leader(t *testing.T) {
+// TestComputeState_LocalReady_PeerSvcFailure: local ready, peer service failure → standalone (ha-not-ready, svc ready).
+func TestComputeState_LocalReady_PeerSvcFailure(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, true /* isLeader */)
-	setAdjacencyReached(t, store)
+	setLocalReady(t, store)
+	addPeerConnectedSvcFailure(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateTakeover {
-		t.Errorf("Row 6 Leader: expected HaState=%s, got %s", types.HAStateTakeover, result.HaState)
-	}
-	if result.SvcState != types.SvcStateSuccess {
-		t.Errorf("Row 6 Leader: expected SvcState=%s, got %s", types.SvcStateSuccess, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateNotReady, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateUnavailable)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer service failure")
 }
 
-// TestComputeState_Row6_NoConnectivityAfterAdjReached_Follower tests Row 6: follower + no connectivity
-// after adjacency reached → ha_switchover, svc_failure.
-func TestComputeState_Row6_NoConnectivityAfterAdjReached_Follower(t *testing.T) {
+// TestComputeState_LocalSyncing_PeerReady: local yielding (standby injected), peer ready → active/standby standby (ha-switchover, svc not-ready).
+func TestComputeState_LocalSyncing_PeerReady(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, false /* isLeader=false → follower */)
-	setAdjacencyReached(t, store)
+	setLocalSyncing(t, store)
+	addPeerConnectedAndReady(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateSwitchover {
-		t.Errorf("Row 6 Follower: expected HaState=%s, got %s", types.HAStateSwitchover, result.HaState)
-	}
-	if result.SvcState != types.SvcStateFailure {
-		t.Errorf("Row 6 Follower: expected SvcState=%s, got %s", types.SvcStateFailure, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateSwitchover, types.SvcStateFailure)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateDegraded)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "syncing")
+	assertReasonContains(t, result.HaReason, "syncing")
 }
 
-// TestComputeState_Row7a_LocalCriteriaFailure_AdjNotReached tests Row 7a: local criteria failure,
-// adjacency not reached → ha_switchover, svc_failure.
-func TestComputeState_Row7a_LocalCriteriaFailure_AdjNotReached(t *testing.T) {
+// TestComputeState_LocalSvcFailure_PeerReady: local service failure (not in-service), peer ready → unavailable (ha-unavailable, svc not-ready).
+func TestComputeState_LocalSvcFailure_PeerReady(t *testing.T) {
 	store := setupStore(t)
-	// Do NOT set CriteriaMet — local criteria are failing.
-	addPeerWithAllAdjacencyOK(t, store, "10.0.0.2")
+	setLocalServiceFailure(t, store)
+	addPeerConnectedAndReady(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateSwitchover {
-		t.Errorf("Row 7a: expected HaState=%s, got %s", types.HAStateSwitchover, result.HaState)
-	}
-	if result.SvcState != types.SvcStateFailure {
-		t.Errorf("Row 7a: expected SvcState=%s, got %s", types.SvcStateFailure, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateUnavailable, types.SvcStateFailure)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateUnavailable)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "local service failure")
 }
 
-// TestComputeState_Row7b_LocalCriteriaFailure_AdjReached tests Row 7b: local criteria failure,
-// adjacency previously reached → still ha_switchover (local criteria always wins).
-func TestComputeState_Row7b_LocalCriteriaFailure_AdjReached(t *testing.T) {
+// TestComputeState_BothNotReady: both not ready → unavailable (ha-unavailable, svc not-ready).
+func TestComputeState_BothNotReady(t *testing.T) {
 	store := setupStore(t)
-	// Set adjacency reached but then local criteria fail (e.g. DPU went unhealthy).
-	setAdjacencyReached(t, store)
-	// Do NOT set CriteriaMet.
-	addPeerWithAllAdjacencyOK(t, store, "10.0.0.2")
+	setLocalServiceFailure(t, store)
+	addPeerConnectedSvcFailure(t, store, "10.0.0.2")
 
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	if result.HaState != types.HAStateSwitchover {
-		t.Errorf("Row 7b: expected HaState=%s, got %s", types.HAStateSwitchover, result.HaState)
-	}
-	if result.SvcState != types.SvcStateFailure {
-		t.Errorf("Row 7b: expected SvcState=%s, got %s", types.SvcStateFailure, result.SvcState)
-	}
+	assertResult(t, result, types.HAStateUnavailable, types.SvcStateFailure)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateUnavailable)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "local and peer service failure")
 }
 
-// TestAdjacencyReached_Sticky verifies that AdjacencyReached is a one-way latch:
-// once true, it stays true even when HA state drops to ha_notready or ha_takeover/ha_switchover.
-func TestAdjacencyReached_Sticky(t *testing.T) {
+// TestComputeState_MembershipFailPriority: local ready (established), peer service ready BUT membership fails → ha-takeover (membership takes priority).
+func TestComputeState_MembershipFailPriority(t *testing.T) {
 	store := setupStore(t)
-	setLocalCriteriaMet(t, store, true /* isLeader */)
-	setAdjacencyReached(t, store)
+	setLocalReadyEstablished(t, store)
+	ctx := context.Background()
+	// Peer connected, service ready, but membership fails.
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible: false, // membership failure
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: true, // peer service IS ready
+			types.HACritPeerDPUBulkSync:  true,
+			types.HACritPeerPolicy:       true,
+		},
+	})
 
-	// Start with no peers — leader should give ha_takeover (not reset AdjacencyReached).
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
-	if result.HaState != types.HAStateTakeover {
-		t.Errorf("expected ha_takeover after adjacency reached + no peers (leader), got %s", result.HaState)
+
+	assertResult(t, result, types.HAStateTakeover, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "membership failure")
+}
+
+// TestComputeState_KeepaliveMembershipFail: keepalive failure (now membership) → ha-takeover (not ha-degraded).
+func TestComputeState_KeepaliveMembershipFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalReadyEstablished(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: false, // keepalive is now membership
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: true,
+			types.HACritPeerDPUBulkSync:  true,
+			types.HACritPeerPolicy:       true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertResult(t, result, types.HAStateTakeover, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer_dpu_keepalive")
+}
+
+// TestComputeState_PolicyAdjacencyFail: policy failure (adjacency criterion) → ha-degraded (not ha-fail).
+func TestComputeState_PolicyAdjacencyFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: true,
+			types.HACritPeerDPUBulkSync:  true,
+			types.HACritPeerPolicy:       false, // policy is adjacency criterion
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertResult(t, result, types.HAStateDegraded, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateDegraded)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer_policy")
+}
+
+// TestComputeState_LocalSyncing_MembershipFail: local syncing + membership failure → peer ha-fail, agent ha-switchover.
+func TestComputeState_LocalSyncing_MembershipFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalSyncing(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible: false, // membership failure
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertResult(t, result, types.HAStateSwitchover, types.SvcStateFailure)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "membership failure")
+}
+
+// TestComputeState_LocalSyncing_AdjacencyFail: local syncing + adjacency failure → peer ha-degraded, agent ha-switchover.
+func TestComputeState_LocalSyncing_AdjacencyFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalSyncing(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:     true,
+			types.HACritPeerService: true,
+			types.HACritPeerDPUBulkSync:  false, // adjacency failure
+			types.HACritPeerPolicy:       true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertResult(t, result, types.HAStateSwitchover, types.SvcStateFailure)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateDegraded)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "adjacency failure")
+}
+
+// TestBestPeerHaState_SelectsHighestPriority: with multiple peers, selects the best HA state.
+func TestBestPeerHaState_SelectsHighestPriority(t *testing.T) {
+	tests := []struct {
+		name     string
+		states   map[string]peerStateResult
+		wantBest string
+	}{
+		{
+			name: "ha-ok wins over ha-degraded",
+			states: map[string]peerStateResult{
+				"10.0.0.2": {IP: "10.0.0.2", HaState: types.PeerHAStateDegraded, HaReason: "adj"},
+				"10.0.0.3": {IP: "10.0.0.3", HaState: types.PeerHAStateOk, HaReason: "ok"},
+			},
+			wantBest: types.PeerHAStateOk,
+		},
+		{
+			name: "ha-fail wins over ha-unavailable",
+			states: map[string]peerStateResult{
+				"10.0.0.2": {IP: "10.0.0.2", HaState: types.PeerHAStateUnavailable, HaReason: "u"},
+				"10.0.0.3": {IP: "10.0.0.3", HaState: types.PeerHAStateFail, HaReason: "f"},
+			},
+			wantBest: types.PeerHAStateFail,
+		},
+		{
+			name:     "empty map returns no-ha",
+			states:   map[string]peerStateResult{},
+			wantBest: types.PeerHAStateNoHa,
+		},
 	}
 
-	// AdjacencyReached should still be true.
-	local := store.Local()
-	if !local.AdjacencyReached {
-		t.Error("AdjacencyReached should remain true (sticky latch), but was reset to false")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			best := bestPeerHaState(tt.states)
+			if best.HaState != tt.wantBest {
+				t.Errorf("expected best=%s, got %s", tt.wantBest, best.HaState)
+			}
+		})
 	}
 }
 
-// TestComputeState_AdjacencyTimeout_vs_Failure verifies the distinction between
-// adjacency timeout (AdjacencyConnected=false) and adjacency failure (connected but criteria fail).
-func TestComputeState_AdjacencyTimeout_vs_Failure(t *testing.T) {
+// TestAgentHaStateReason_IncludesPeerIP: agent HA state reason should include the peer IP when derived from a peer.
+func TestAgentHaStateReason_IncludesPeerIP(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	addPeerConnectedAdjacencyFail(t, store, "10.0.0.2")
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertReasonContains(t, result.HaReason, "10.0.0.2")
+	assertReasonContains(t, result.HaReason, "adjacency failure")
+}
+
+// TestSvcStateReason_AlwaysPopulated: SVC state reason is always populated.
+func TestSvcStateReason_AlwaysPopulated(t *testing.T) {
+	tests := []struct {
+		name      string
+		setup     func(t *testing.T, store hastore.Store)
+		wantSvc   string
+		wantInRsn string
+	}{
+		{
+			name:      "ready",
+			setup:     func(t *testing.T, s hastore.Store) { setLocalReady(t, s) },
+			wantSvc:   types.SvcStateSuccess,
+			wantInRsn: "all criteria met",
+		},
+		{
+			name:      "not in service",
+			setup:     func(t *testing.T, s hastore.Store) { setLocalServiceFailure(t, s) },
+			wantSvc:   types.SvcStateFailure,
+			wantInRsn: "in_service",
+		},
+		{
+			name:      "syncing",
+			setup:     func(t *testing.T, s hastore.Store) { setLocalSyncing(t, s) },
+			wantSvc:   types.SvcStateFailure,
+			wantInRsn: "syncing",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := setupStore(t)
+			tt.setup(t, store)
+			sm := NewStateMachine(store)
+			result := sm.ComputeState()
+			if result.SvcState != tt.wantSvc {
+				t.Errorf("expected SvcState=%s, got %s", tt.wantSvc, result.SvcState)
+			}
+			assertReasonContains(t, result.SvcReason, tt.wantInRsn)
+		})
+	}
+}
+
+// --- Startup Protection Tests ---
+
+// TestDeriveAgentHaState_StartupProtection: on startup (no established state), PeerHAStateFail → ha-not-ready (not ha-takeover).
+func TestDeriveAgentHaState_StartupProtection(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store) // no established HaState (default "")
+	addPeerConnectedMembershipFail(t, store, "10.0.0.2")
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertResult(t, result, types.HAStateNotReady, types.SvcStateSuccess)
+	assertReasonContains(t, result.HaReason, "startup")
+}
+
+// TestDeriveAgentHaState_EstablishedTakeover: when in established HA_READY, PeerHAStateFail → ha-takeover.
+func TestDeriveAgentHaState_EstablishedTakeover(t *testing.T) {
+	store := setupStore(t)
+	setLocalReadyEstablished(t, store)
+	addPeerConnectedMembershipFail(t, store, "10.0.0.2")
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertResult(t, result, types.HAStateTakeover, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
+}
+
+// --- Standby Criteria Evaluation Tests ---
+
+// TestEvaluateStandbyCrit_PeerTakeover: when peer reports HA_TAKEOVER, svc ready, criteria not converged → inject.
+func TestEvaluateStandbyCrit_PeerTakeover(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberInfo:         &types.HAPeerMember{HaState: types.HAStateTakeover},
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible: false, // not converged
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: false,
+			types.HACritPeerPolicy:      false,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	inject, remove := sm.EvaluateStandbyCrit("", false)
+	if !inject {
+		t.Error("expected inject=true when peer reports TAKEOVER and criteria not converged")
+	}
+	if remove {
+		t.Error("expected remove=false")
+	}
+}
+
+// TestEvaluateStandbyCrit_Tiebreaker: both TAKEOVER, local is leader → do NOT inject.
+func TestEvaluateStandbyCrit_Tiebreaker(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberInfo:         &types.HAPeerMember{HaState: types.HAStateTakeover},
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible: false,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: false,
+			types.HACritPeerPolicy:      false,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	// Local is TAKEOVER and leader → tiebreaker wins, no inject.
+	inject, _ := sm.EvaluateStandbyCrit(types.HAStateTakeover, true)
+	if inject {
+		t.Error("expected inject=false when local is TAKEOVER and leader (tiebreaker)")
+	}
+}
+
+// TestEvaluateStandbyCrit_CriteriaConverged: peer TAKEOVER but criteria converged → no inject.
+func TestEvaluateStandbyCrit_CriteriaConverged(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberInfo:         &types.HAPeerMember{HaState: types.HAStateTakeover},
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: true,
+			types.HACritPeerPolicy:      true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	inject, _ := sm.EvaluateStandbyCrit("", false)
+	if inject {
+		t.Error("expected inject=false when criteria have converged")
+	}
+}
+
+// TestEvaluateStandbyCrit_RemoveOnPeerReady: when standby is present and peer is no longer TAKEOVER → remove.
+func TestEvaluateStandbyCrit_RemoveOnPeerReady(t *testing.T) {
+	store := setupStore(t)
+	ctx := context.Background()
+	// Local has standby injected
+	store.UpdateLocalCriterion(ctx, types.HACritInService, true)
+	store.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	store.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
+	store.UpdateLocalCriterion(ctx, types.HACritHaStandby, false)
+
+	// Peer is now HA_READY (recovered)
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberInfo:         &types.HAPeerMember{HaState: types.HAStateReady},
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: true,
+			types.HACritPeerPolicy:      true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	inject, remove := sm.EvaluateStandbyCrit("", false)
+	if inject {
+		t.Error("expected inject=false when peer is not TAKEOVER")
+	}
+	if !remove {
+		t.Error("expected remove=true when standby is present and peer recovered")
+	}
+}
+
+// TestEvaluateStandbyCrit_DisconnectedPeerIgnored: disconnected peer with stale TAKEOVER
+// MemberInfo should not trigger standby injection, and should trigger removal if standby present.
+func TestEvaluateStandbyCrit_DisconnectedPeerIgnored(t *testing.T) {
 	ctx := context.Background()
 
-	// Case 1: AdjacencyConnected=false with all criteria true → AnyPeerAdjacencyCriteriaOk=false (timeout case).
-	t.Run("timeout_not_reported_as_ok", func(t *testing.T) {
+	t.Run("no inject when peer disconnected", func(t *testing.T) {
 		store := setupStore(t)
-		setLocalCriteriaMet(t, store, true)
-		setAdjacencyReached(t, store)
-		// Peer connected=false but criteria still show all true (stale from before timeout).
+		setLocalReady(t, store)
 		store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
 			IP:                 "10.0.0.2",
-			MemberCriteria:     types.HACriteria{types.HACritPeerCompatible: true},
-			MemberCriteriaMet:  true,
-			AdjacencyConnected: false, // timeout: connection lost
-			AdjacencyCriteria: types.HACriteria{
-				types.HACritPeerIpConfig:     true,
-				types.HACritPeerServiceRedir: true,
-				types.HACritPeerPolicy:       true,
+			AdjacencyConnected: false, // disconnected
+			MemberInfo:         &types.HAPeerMember{HaState: types.HAStateTakeover},
+			MemberCriteria: types.HACriteria{
+				types.HACritPeerCompatible: false, // not converged
 			},
-			AdjacencyCriteriaMet: true,
+			AdjacencyCriteria: types.HACriteria{
+				types.HACritPeerService:   true, // stale
+				types.HACritPeerDPUBulkSync: false,
+				types.HACritPeerPolicy:      false,
+			},
 		})
 
-		// AnyPeerAdjacencyCriteriaOk must return false when AdjacencyConnected=false.
-		if store.AnyPeerAdjacencyCriteriaOk() {
-			t.Error("AnyPeerAdjacencyCriteriaOk should be false when AdjacencyConnected=false (timeout)")
+		sm := NewStateMachine(store)
+		inject, remove := sm.EvaluateStandbyCrit("", false)
+		if inject {
+			t.Error("expected inject=false for disconnected peer")
+		}
+		if remove {
+			t.Error("expected remove=false when no standby present")
 		}
 	})
 
-	// Case 2: AdjacencyConnected=true but peer_service_redir=false → AnyPeerAdjacencyCriteriaOk=false (failure case).
-	t.Run("live_failure_reported_as_not_ok", func(t *testing.T) {
+	t.Run("remove standby when only peer is disconnected", func(t *testing.T) {
 		store := setupStore(t)
-		setLocalCriteriaMet(t, store, true)
-		setAdjacencyReached(t, store)
+		setLocalSyncing(t, store) // standby already injected
 		store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
 			IP:                 "10.0.0.2",
-			MemberCriteria:     types.HACriteria{types.HACritPeerCompatible: true},
-			MemberCriteriaMet:  true,
-			AdjacencyConnected: true, // still connected
+			AdjacencyConnected: false, // disconnected
+			MemberInfo:         &types.HAPeerMember{HaState: types.HAStateTakeover},
+			MemberCriteria: types.HACriteria{
+				types.HACritPeerCompatible: false,
+			},
 			AdjacencyCriteria: types.HACriteria{
-				types.HACritPeerIpConfig:     true,
-				types.HACritPeerServiceRedir: false, // peer SVC failed
-				types.HACritPeerPolicy:       true,
+				types.HACritPeerService:   true, // stale
+				types.HACritPeerDPUBulkSync: false,
 			},
 		})
 
-		if store.AnyPeerAdjacencyCriteriaOk() {
-			t.Error("AnyPeerAdjacencyCriteriaOk should be false when peer_service_redir=false")
+		sm := NewStateMachine(store)
+		inject, remove := sm.EvaluateStandbyCrit("", false)
+		if inject {
+			t.Error("expected inject=false for disconnected peer")
+		}
+		if !remove {
+			t.Error("expected remove=true when standby present and no connected peer in TAKEOVER")
 		}
 	})
 }
 
-// TestComputeStateForRemoval_LocalCriteriaFail tests that local criteria failure after
-// peer removal yields ha_switchover (not ha_notready).
-func TestComputeStateForRemoval_LocalCriteriaFail(t *testing.T) {
+// TestEvaluateStandbyCrit_CriteriaConvergedRemovesStandby: even if peer is still
+// TAKEOVER, criteria convergence should trigger standby removal.
+func TestEvaluateStandbyCrit_CriteriaConvergedRemovesStandby(t *testing.T) {
 	store := setupStore(t)
-	// Do NOT set CriteriaMet.
+	setLocalSyncing(t, store) // standby injected
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberInfo:         &types.HAPeerMember{HaState: types.HAStateTakeover}, // still TAKEOVER
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: true, // converged
+			types.HACritPeerPolicy:      true,  // converged
+		},
+	})
 
 	sm := NewStateMachine(store)
-	result := sm.ComputeStateForRemoval()
-
-	if result.HaState != types.HAStateSwitchover {
-		t.Errorf("expected HaState=%s after removal with local criteria fail, got %s",
-			types.HAStateSwitchover, result.HaState)
+	inject, remove := sm.EvaluateStandbyCrit("", false)
+	if inject {
+		t.Error("expected inject=false when criteria have converged")
 	}
-	if result.SvcState != types.SvcStateFailure {
-		t.Errorf("expected SvcState=%s after removal with local criteria fail, got %s",
-			types.SvcStateFailure, result.SvcState)
+	if !remove {
+		t.Error("expected remove=true when standby present and criteria converged")
+	}
+}
+
+// TestComputeState_RecoveryToReady: after standby removed and CriteriaMet=true with peer
+// all-ok, both agent HA state and peer HA state should be ha-ready / ha-ok.
+func TestComputeState_RecoveryToReady(t *testing.T) {
+	store := setupStore(t)
+	ctx := context.Background()
+
+	// Simulate post-recovery: standby removed, all local criteria pass, CriteriaMet=true.
+	store.UpdateLocalCriterion(ctx, types.HACritInService, true)
+	store.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	store.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
+	// No ha_standby criterion — it was removed.
+	local := store.Local()
+	local.CriteriaMet = true
+	store.SetLocal(ctx, local)
+
+	// Peer is fully ready (was TAKEOVER, now recovered to READY).
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberInfo:         &types.HAPeerMember{HaState: types.HAStateReady},
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:    true,
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: true,
+			types.HACritPeerPolicy:      true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertResult(t, result, types.HAStateReady, types.SvcStateSuccess)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateOk)
+	assertReasonContains(t, result.HaReason, "all criteria met")
+}
+
+// --- Priority Tests: worst failure takes precedence ---
+
+// TestComputeState_LocalReady_PeerSvcFailure_MembershipFail: when both peer svc failure
+// (tier 1) and membership failure (tier 2) exist, ha-unavailable (worst) must win.
+func TestComputeState_LocalReady_PeerSvcFailure_MembershipFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	// Peer connected, service NOT ready, AND membership fails.
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible: false, // membership failure (tier 2)
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:  true,
+			types.HACritPeerService: false, // peer svc failure (tier 1)
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	// ha-unavailable must win over ha-fail (worst takes precedence)
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateUnavailable)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer service failure")
+}
+
+// --- Validation soft/hard failure Tests ---
+
+// TestComputeState_PeerSvcFailure_MembershipStaysOk: peer service failure should NOT
+// contaminate membership criteria — it produces ha-unavailable via peerSvcReady check.
+func TestComputeState_PeerSvcFailure_MembershipStaysOk(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	// Peer connected with svc failure, but membership criteria are all ok.
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:  true,
+			types.HACritPeerService: false, // svc failure
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	// Peer state should be ha-unavailable (svc failure), NOT ha-fail
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateUnavailable)
+}
+
+// --- Debug criteria Tests ---
+
+// TestComputeState_DebugMembershipFail: debug membership fail should cause ha-fail.
+func TestComputeState_DebugMembershipFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalReadyEstablished(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:        true,
+			types.HACritPeerVrfGid:            true,
+			types.HACritPeerDPUKeepalive:      true,
+			types.HACritDebugMembershipFail:   false, // debug override
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:    true,
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: true,
+			types.HACritPeerPolicy:      true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
+	assertResult(t, result, types.HAStateTakeover, types.SvcStateSuccess)
+}
+
+// TestComputeState_DebugAdjacencyFail: debug adjacency fail should cause ha-degraded.
+func TestComputeState_DebugAdjacencyFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalReady(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:   true,
+			types.HACritPeerVrfGid:       true,
+			types.HACritPeerDPUKeepalive: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:           true,
+			types.HACritPeerService:          true,
+			types.HACritPeerDPUBulkSync:        true,
+			types.HACritPeerPolicy:             true,
+			types.HACritDebugAdjacencyFail:     false, // debug override
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateDegraded)
+	assertResult(t, result, types.HAStateDegraded, types.SvcStateSuccess)
+}
+
+// TestComputeState_DebugRemoteMembershipFail: remote debug membership fail propagated from peer.
+func TestComputeState_DebugRemoteMembershipFail(t *testing.T) {
+	store := setupStore(t)
+	setLocalReadyEstablished(t, store)
+	ctx := context.Background()
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                 "10.0.0.2",
+		AdjacencyConnected: true,
+		MemberCriteria: types.HACriteria{
+			types.HACritPeerCompatible:              true,
+			types.HACritPeerVrfGid:                  true,
+			types.HACritPeerDPUKeepalive:            true,
+			types.HACritDebugMembershipFailRemote:   false, // propagated from peer
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerIpConfig:    true,
+			types.HACritPeerService:   true,
+			types.HACritPeerDPUBulkSync: true,
+			types.HACritPeerPolicy:      true,
+		},
+	})
+
+	sm := NewStateMachine(store)
+	result := sm.ComputeState()
+
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
+}
+
+// --- isLocalServiceFailure Tests ---
+
+func TestIsLocalServiceFailure(t *testing.T) {
+	tests := []struct {
+		name     string
+		criteria types.HACriteria
+		want     bool
+	}{
+		{
+			name:     "all ok → not failure",
+			criteria: types.HACriteria{types.HACritInService: true, types.HACritDpuHealth: true},
+			want:     false,
+		},
+		{
+			name:     "dpu health false → failure",
+			criteria: types.HACriteria{types.HACritInService: true, types.HACritDpuHealth: false},
+			want:     true,
+		},
+		{
+			name:     "only standby false → not failure (yielding)",
+			criteria: types.HACriteria{types.HACritInService: true, types.HACritDpuHealth: true, types.HACritHaStandby: false},
+			want:     false,
+		},
+		{
+			name:     "standby false + dpu false → failure",
+			criteria: types.HACriteria{types.HACritInService: true, types.HACritDpuHealth: false, types.HACritHaStandby: false},
+			want:     true,
+		},
+		{
+			name:     "not in service → failure",
+			criteria: types.HACriteria{types.HACritInService: false},
+			want:     true,
+		},
+		{
+			name:     "empty criteria → not failure",
+			criteria: types.HACriteria{},
+			want:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isLocalServiceFailure(tt.criteria)
+			if got != tt.want {
+				t.Errorf("isLocalServiceFailure() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

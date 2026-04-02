@@ -12,7 +12,7 @@ package ha
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -20,33 +20,26 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
 )
 
-var peerOkPeer string
-
 func init() {
-	HaCmd.AddCommand(peerOkCmd)
-	peerOkCmd.Flags().StringVar(&peerOkPeer, "peer", "", "Peer IP address")
+	HaCmd.AddCommand(infoCmd)
 }
 
-var peerOkCmd = &cobra.Command{
-	Use:          "peer-ok",
+var infoCmd = &cobra.Command{
+	Use:          "info",
 	SilenceUsage: true,
-	Short:        "Clear HA peer debug failure",
-	Long:         `Clear debug failure criteria for a specific peer to restore normal HA operation.`,
+	Short:        "Show HA configuration info",
+	Long:         `Show static HA configuration: HA IP, port, admin/oper state, leader status, and policy settings.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if peerOkPeer == "" {
-			return errors.New("--peer is required")
-		}
-
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		data := ipc.MessageData{
 			Flags: map[string]string{
-				"peer": peerOkPeer,
+				"json": fmt.Sprintf("%t", agwctl.JSON),
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_PEER_OK, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_INFO, data)
 		if err != nil {
 			return err
 		}

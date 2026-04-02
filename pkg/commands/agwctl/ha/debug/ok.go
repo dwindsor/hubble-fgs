@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package debug
 
 import (
 	"context"
@@ -20,41 +20,13 @@ import (
 )
 
 func init() {
-	HaCmd.AddCommand(CriteriaCmd)
-	CriteriaCmd.AddCommand(criteriaFailCmd)
-	CriteriaCmd.AddCommand(criteriaOkCmd)
+	DebugCmd.AddCommand(okCmd)
 }
 
-// CriteriaCmd groups "ha criteria" subcommands.
-var CriteriaCmd = &cobra.Command{
-	Use:          "criteria",
-	SilenceUsage: true,
-	Short:        "Manage HA debug criteria",
-	Long:         `Manage HA debug criteria for testing and diagnostics.`,
-}
-
-var criteriaFailCmd = &cobra.Command{
-	Use:          "fail",
-	SilenceUsage: true,
-	Short:        "Set debug_override criterion to false (force ha-switchover)",
-	Long:         `Set the debug_override HA criterion to false, forcing the local node into ha-switchover state.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_CRITERIA_FAIL, ipc.MessageData{})
-		if err != nil {
-			return err
-		}
-		ipc.PrintResponse(ret, agwctl.JSON)
-		return nil
-	},
-}
-
-var criteriaOkCmd = &cobra.Command{
+var okCmd = &cobra.Command{
 	Use:          "ok",
 	SilenceUsage: true,
-	Short:        "Set debug_override criterion to true (allow normal evaluation)",
+	Short:        "Clear local service failure",
 	Long:         `Set the debug_override HA criterion to true, allowing normal criteria evaluation to resume.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())

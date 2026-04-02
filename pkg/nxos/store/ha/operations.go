@@ -101,6 +101,18 @@ func (s *haStore) UpdateLocalCriterion(ctx context.Context, crit types.HACriteri
 	}
 }
 
+func (s *haStore) RemoveLocalCriterion(ctx context.Context, crit types.HACriterion) {
+	s.mu.Lock()
+	_, had := s.localState.Criteria[crit]
+	delete(s.localState.Criteria, crit)
+	s.mu.Unlock()
+
+	if had {
+		s.notify(Event{Type: EventCriterionChanged, Criterion: string(crit), Value: true})
+		// Not persisted — criteria are rebuilt from device/DPU state on startup.
+	}
+}
+
 func (s *haStore) SetLocalDerivedStates(ctx context.Context, haState, svcState string, haReason, svcReason types.ReasonString) {
 	s.mu.Lock()
 	now := time.Now().Unix()
@@ -137,13 +149,6 @@ func (s *haStore) SetLocalPolicyCheck(ctx context.Context, check bool) {
 	s.localState.PolicyCheck = check
 	s.mu.Unlock()
 	// Not persisted — policy state is rebuilt from controller on startup.
-}
-
-func (s *haStore) SetLocalAdjacencyReached(ctx context.Context, reached bool) {
-	s.mu.Lock()
-	s.localState.AdjacencyReached = reached
-	s.mu.Unlock()
-	// Not persisted — adjacency state is rebuilt via HA protocol on startup.
 }
 
 func (s *haStore) SetLocalCriteriaMet(ctx context.Context, local types.HALocalState) {
@@ -224,6 +229,32 @@ func (s *haStore) UpdatePeerMemberCriterion(ctx context.Context, ip string, crit
 	// Not persisted — peer criteria are runtime state rebuilt via HA protocol.
 }
 
+func (s *haStore) RemovePeerMemberCriterion(ctx context.Context, ip string, crit types.HACriterion) {
+	s.mu.Lock()
+	peer, ok := s.peers[ip]
+	if !ok {
+		s.mu.Unlock()
+		return
+	}
+	_, had := peer.MemberCriteria[crit]
+	if had {
+		delete(peer.MemberCriteria, crit)
+		newMet := len(peer.MemberCriteria) > 0 && peer.MemberCriteria.AllOk()
+		peer.MemberCriteriaMet = newMet
+		if newMet {
+			peer.MemberCriteriaMetEpoch = time.Now().Unix()
+		}
+		s.peers[ip] = peer
+	}
+	s.mu.Unlock()
+
+	if had {
+		s.notify(Event{Type: EventPeerCriteriaUpdated, PeerIP: ip})
+		s.notify(Event{Type: EventCriterionChanged, PeerIP: ip, Criterion: string(crit), Value: true})
+		// Not persisted — peer criteria are runtime state rebuilt via HA protocol.
+	}
+}
+
 func (s *haStore) UpdatePeerAdjacencyCriterion(ctx context.Context, ip string, crit types.HACriterion, val bool) {
 	s.mu.Lock()
 	peer, ok := s.peers[ip]
@@ -247,6 +278,32 @@ func (s *haStore) UpdatePeerAdjacencyCriterion(ctx context.Context, ip string, c
 	// Not persisted — peer adjacency criteria are runtime state rebuilt via HA protocol.
 }
 
+func (s *haStore) RemovePeerAdjacencyCriterion(ctx context.Context, ip string, crit types.HACriterion) {
+	s.mu.Lock()
+	peer, ok := s.peers[ip]
+	if !ok {
+		s.mu.Unlock()
+		return
+	}
+	_, had := peer.AdjacencyCriteria[crit]
+	if had {
+		delete(peer.AdjacencyCriteria, crit)
+		newMet := len(peer.AdjacencyCriteria) > 0 && peer.AdjacencyCriteria.AllOk()
+		if peer.AdjacencyCriteriaMet != newMet {
+			peer.AdjacencyCriteriaMet = newMet
+			peer.AdjacencyCriteriaMetEpoch = time.Now().Unix()
+		}
+		s.peers[ip] = peer
+	}
+	s.mu.Unlock()
+
+	if had {
+		s.notify(Event{Type: EventPeerCriteriaUpdated, PeerIP: ip})
+		s.notify(Event{Type: EventCriterionChanged, PeerIP: ip, Criterion: string(crit), Value: true})
+		// Not persisted — peer adjacency criteria are runtime state rebuilt via HA protocol.
+	}
+}
+
 func (s *haStore) UpdatePeerMember(ctx context.Context, ip string, member *types.HAPeerMember) {
 	s.mu.Lock()
 	peer, ok := s.peers[ip]
@@ -259,6 +316,25 @@ func (s *haStore) UpdatePeerMember(ctx context.Context, ip string, member *types
 	s.mu.Unlock()
 	s.notify(Event{Type: EventMemberUpdated, PeerIP: ip})
 	// Not persisted — member info is rebuilt via HA adjacency protocol on startup.
+}
+
+func (s *haStore) UpdatePeerHaState(ctx context.Context, ip string, haState string, reason types.ReasonString) {
+	s.mu.Lock()
+	peer, ok := s.peers[ip]
+	if !ok {
+		s.mu.Unlock()
+		return
+	}
+	now := time.Now().Unix()
+	changed := peer.HaState != haState
+	peer.HaState = haState
+	peer.HaStateReason = reason
+	if changed {
+		peer.HaStateEpoch = now
+	}
+	s.peers[ip] = peer
+	s.mu.Unlock()
+	// Not persisted — peer HA state is runtime state computed by the HA state machine.
 }
 
 func (s *haStore) UpdatePeerSvcState(ctx context.Context, ip string, svcState string, reason types.ReasonString) {
@@ -371,19 +447,19 @@ func (s *haStore) SetLocalSvcStateToFailure(ctx context.Context, reason types.Re
 	return s.SetLocalSvcState(ctx, types.SvcStateFailure, reason)
 }
 
-// SetRemoteMbrState writes a remote peer's member HA state via gNMI SET.
-func (s *haStore) SetRemoteMbrState(ctx context.Context, peerIP string, state string, reason types.ReasonString) error {
+// SetRemotePeerHaState writes a remote peer's HA state via gNMI SET.
+func (s *haStore) SetRemotePeerHaState(ctx context.Context, peerIP string, state string, reason types.ReasonString) error {
 	s.mu.RLock()
 	handler := s.gnmiHandler
 	s.mu.RUnlock()
 	if handler == nil {
 		return nil
 	}
-	path := fmt.Sprintf(paths.HAStorePeerSvcState, peerIP)
+	path := fmt.Sprintf(paths.HAStorePeerHaState, peerIP)
 	if err := handler.Set(ctx, path, state); err != nil {
 		return err
 	}
-	reasonPath := fmt.Sprintf(paths.HAStorePeerSvcStateReason, peerIP)
+	reasonPath := fmt.Sprintf(paths.HAStorePeerHaStateReason, peerIP)
 	return handler.Set(ctx, reasonPath, reason.String())
 }
 
@@ -403,11 +479,11 @@ func (s *haStore) SetRemoteSvcState(ctx context.Context, peerIP string, state st
 	return handler.Set(ctx, reasonPath, reason.String())
 }
 
-// SetRemoteStatesAdjDown writes both member and service states for adjacency down.
+// SetRemoteStatesAdjDown writes both peer HA and service states for adjacency down.
 func (s *haStore) SetRemoteStatesAdjDown(ctx context.Context, peerIP string) error {
 	reason := types.NewReasonString("adjacency down")
-	if err := s.SetRemoteMbrState(ctx, peerIP, "no_ha", reason); err != nil {
-		logger.GetLogger().Warn("Failed to set remote mbr state adj down", "peer", peerIP, "error", err)
+	if err := s.SetRemotePeerHaState(ctx, peerIP, types.PeerHAStateNoHa, reason); err != nil {
+		logger.GetLogger().Warn("Failed to set remote peer ha state adj down", "peer", peerIP, "error", err)
 	}
 	return s.SetRemoteSvcState(ctx, peerIP, types.SvcStateUnknown, reason)
 }

@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package debug
 
 import (
 	"context"
@@ -22,31 +22,31 @@ import (
 )
 
 var (
-	peerFailPeer       string
-	peerFailMembership bool
-	peerFailAdjacency  bool
+	peerOkPeer       string
+	peerOkMembership bool
+	peerOkAdjacency  bool
 )
 
 func init() {
-	HaCmd.AddCommand(peerFailCmd)
-	peerFailCmd.Flags().StringVar(&peerFailPeer, "peer", "", "Peer IP address")
-	peerFailCmd.Flags().BoolVar(&peerFailMembership, "membership", false, "Inject membership failure for peer (triggers TAKEOVER/SWITCHOVER failover)")
-	peerFailCmd.Flags().BoolVar(&peerFailAdjacency, "adjacency", false, "Inject adjacency failure for peer (results in ha-degraded MO state; service states remain ready)")
+	DebugCmd.AddCommand(peerOkCmd)
+	peerOkCmd.Flags().StringVar(&peerOkPeer, "peer", "", "Peer IP address")
+	peerOkCmd.Flags().BoolVar(&peerOkMembership, "membership", false, "Clear membership debug failure")
+	peerOkCmd.Flags().BoolVar(&peerOkAdjacency, "adjacency", false, "Clear adjacency debug failure")
 }
 
-var peerFailCmd = &cobra.Command{
-	Use:          "peer-fail",
+var peerOkCmd = &cobra.Command{
+	Use:          "peer-ok",
 	SilenceUsage: true,
-	Short:        "Inject HA peer failure for testing",
-	Long:         `Inject a debug failure for a specific peer's membership or adjacency criteria. Use 'agwctl ha peer-ok' to restore normal operation.`,
+	Short:        "Clear HA peer debug failure",
+	Long:         `Clear a debug failure for a peer's membership or adjacency criteria.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		if peerFailPeer == "" {
+		if peerOkPeer == "" {
 			return errors.New("--peer is required")
 		}
-		if peerFailMembership && peerFailAdjacency {
+		if peerOkMembership && peerOkAdjacency {
 			return errors.New("--membership and --adjacency are mutually exclusive")
 		}
-		if !peerFailMembership && !peerFailAdjacency {
+		if !peerOkMembership && !peerOkAdjacency {
 			return errors.New("one of --membership or --adjacency is required")
 		}
 
@@ -55,13 +55,13 @@ var peerFailCmd = &cobra.Command{
 
 		data := ipc.MessageData{
 			Flags: map[string]string{
-				"peer":       peerFailPeer,
-				"membership": fmt.Sprintf("%t", peerFailMembership),
-				"adjacency":  fmt.Sprintf("%t", peerFailAdjacency),
+				"peer":       peerOkPeer,
+				"membership": fmt.Sprintf("%t", peerOkMembership),
+				"adjacency":  fmt.Sprintf("%t", peerOkAdjacency),
 			},
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_PEER_FAIL, data)
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_PEER_OK, data)
 		if err != nil {
 			return err
 		}

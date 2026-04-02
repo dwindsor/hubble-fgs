@@ -33,14 +33,14 @@ func TestHaShowCmd(t *testing.T) {
 	assert.True(t, found, "show subcommand not registered")
 }
 
-func TestHaCriteriaShowCmd(t *testing.T) {
+func TestHaInfoCmd(t *testing.T) {
 	var found bool
-	for _, cmd := range CriteriaCmd.Commands() {
-		if cmd.Use == "show" {
+	for _, cmd := range HaCmd.Commands() {
+		if cmd.Use == "info" {
 			found = true
 			assert.NotNil(t, cmd.RunE)
 			break
 		}
 	}
-	assert.True(t, found, "criteria show subcommand not registered")
+	assert.True(t, found, "info subcommand not registered")
 }

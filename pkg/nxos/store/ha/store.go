@@ -211,7 +211,7 @@ func (s *haStore) AnyPeerInHaReady() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, peer := range s.peers {
-		if peer.MemberInfo != nil && peer.MemberInfo.HaState == types.HAStateReady {
+		if peer.HaState == types.PeerHAStateOk {
 			return true
 		}
 	}

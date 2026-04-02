@@ -8,22 +8,22 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package ha
+package debug
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha"
 )
 
 func init() {
-	agwctl.RootCmd.AddCommand(HaCmd)
+	ha.HaCmd.AddCommand(DebugCmd)
 }
 
-// HaCmd represents the ha command
-var HaCmd = &cobra.Command{
-	Use:          "ha",
+// DebugCmd represents the debug command
+var DebugCmd = &cobra.Command{
+	Use:          "debug",
 	SilenceUsage: true,
-	Short:        "HA commands",
-	Long:         `HA commands: show state overview, view config info, inspect peers, and run debug tools.`,
+	Short:        "HA debug tools",
+	Long:         `HA debug tools for injecting and clearing failures for testing.`,
 }

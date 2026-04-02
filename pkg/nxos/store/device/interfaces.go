@@ -32,6 +32,7 @@ type Reader interface {
 	ControllerEndpoint() string
 	ControllerPort() uint32
 	ControllerVersion() string
+	CPAVersion() string
 	SystemState() int
 	RejectReason() string
 	SkipReg() bool

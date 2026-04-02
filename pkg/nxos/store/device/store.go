@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/version"
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
@@ -64,6 +65,7 @@ type deviceStore struct {
 	controllerEndpoint string
 	controllerPort     uint32
 	controllerVersion  string
+	cpaVersion         string
 	systemState        int
 	headlessMode       bool
 	inService          string
@@ -125,6 +127,7 @@ func NewStore(ctx context.Context, opts ...Option) Store {
 		hsaPortLow:       DefaultHSAPortLow,
 		hsaPortHigh:      DefaultHSAPortHigh,
 		callbacks:        make(map[int]func(Event)),
+		cpaVersion:       version.Version,
 	}
 
 	for _, opt := range opts {
@@ -265,6 +268,12 @@ func (s *deviceStore) ControllerVersion() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.controllerVersion
+}
+
+func (s *deviceStore) CPAVersion() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cpaVersion
 }
 
 func (s *deviceStore) SystemState() int {

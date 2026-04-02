@@ -1274,10 +1274,34 @@ func (agw *AgentGateway) HaCriteriaFail(ctx context.Context) string {
 	return "HA debug criterion set to fail"
 }
 
-// HaCriteriaOk sets the debug_override criterion to true, allowing normal criteria evaluation.
+// HaCriteriaOk removes the debug_override criterion, restoring normal criteria evaluation.
 func (agw *AgentGateway) HaCriteriaOk(ctx context.Context) string {
-	agw.nxosManager.HAStore().UpdateLocalCriterion(ctx, nxtypes.HACritDebug, true)
-	return "HA debug criterion set to ok"
+	agw.nxosManager.HAStore().RemoveLocalCriterion(ctx, nxtypes.HACritDebug)
+	return "HA debug criterion removed"
+}
+
+// HaSetDebugPeerFail injects a debug failure for a peer's membership or adjacency criteria.
+func (agw *AgentGateway) HaSetDebugPeerFail(ctx context.Context, peer string, membership bool, adjacency bool) string {
+	store := agw.nxosManager.HAStore()
+	if membership {
+		store.UpdatePeerMemberCriterion(ctx, peer, nxtypes.HACritDebugMembershipFail, false)
+	}
+	if adjacency {
+		store.UpdatePeerAdjacencyCriterion(ctx, peer, nxtypes.HACritDebugAdjacencyFail, false)
+	}
+	return fmt.Sprintf("Debug peer failure injected for %s", peer)
+}
+
+// HaSetDebugPeerOk removes the debug criterion for a peer's membership or adjacency criteria.
+func (agw *AgentGateway) HaSetDebugPeerOk(ctx context.Context, peer string, membership bool, adjacency bool) string {
+	store := agw.nxosManager.HAStore()
+	if membership {
+		store.RemovePeerMemberCriterion(ctx, peer, nxtypes.HACritDebugMembershipFail)
+	}
+	if adjacency {
+		store.RemovePeerAdjacencyCriterion(ctx, peer, nxtypes.HACritDebugAdjacencyFail)
+	}
+	return fmt.Sprintf("Debug peer criterion removed for %s", peer)
 }
 
 func (agw *AgentGateway) ConfigRemoveHa(_ context.Context, _ ipc.MessageData) string {
@@ -1767,7 +1791,6 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 			CriteriaMetEpoch string          `json:"criteria_met_epoch"`
 			PolicyCheck      bool            `json:"policy_check"`
 			PolicyRev        string          `json:"policy_rev"`
-			AdjacencyReached bool            `json:"adjacency_reached"`
 			RecoveryPending  bool            `json:"recovery_pending"`
 			RecoveryEpoch    string          `json:"recovery_epoch"`
 			FlapCount        int             `json:"flap_count"`
@@ -1789,40 +1812,42 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 			CriteriaMetEpoch: formatEpochISO(local.CriteriaMetEpoch),
 			PolicyCheck:      local.PolicyCheck,
 			PolicyRev:        local.PolicyRev,
-			AdjacencyReached: local.AdjacencyReached,
 			RecoveryPending:  local.CriteriaRecoveryPending,
 			RecoveryEpoch:    formatEpochISO(local.CriteriaRecoveryEpoch),
 			FlapCount:        local.CriteriaFlapCount,
 			Criteria:         localCritJSON,
 		}
 
-		peersJSON := make(map[string]bool, len(allPeers))
-		for ip := range allPeers {
-			peersJSON[ip] = true
+		type PeerSummaryData struct {
+			HaState       string `json:"ha_state"`
+			HaStateReason string `json:"ha_state_reason"`
+			HaStateEpoch  string `json:"ha_state_epoch"`
+			SvcState      string `json:"svc_state"`
+			MembershipOK  bool   `json:"membership_ok"`
+			AdjacencyOK   bool   `json:"adjacency_ok"`
+			ServiceOK     bool   `json:"service_ok"`
+		}
+		peerSummaries := make(map[string]PeerSummaryData, len(allPeers))
+		for ip, peer := range allPeers {
+			peerSummaries[ip] = PeerSummaryData{
+				HaState:       peer.HaState,
+				HaStateReason: peer.HaStateReason.String(),
+				HaStateEpoch:  formatEpochISO(peer.HaStateEpoch),
+				SvcState:      peer.SvcState,
+				MembershipOK:  peer.MemberCriteriaMet,
+				AdjacencyOK:   peer.AdjacencyCriteriaMet,
+				ServiceOK:     peer.SvcState == nxtypes.SvcStateSuccess,
+			}
 		}
 
 		result := struct {
-			AdminState     string          `json:"admin_state"`
-			OperState      string          `json:"oper_state"`
-			IsLeader       bool            `json:"is_leader"`
-			LocalIP        string          `json:"local_ip"`
-			HaPort         uint16          `json:"ha_port"`
-			Local          LocalData       `json:"local"`
-			Peers          map[string]bool `json:"peers"`
-			AnyPeerAdjOk   bool            `json:"any_peer_adj_ok"`
-			AnyPeerMbrFail bool            `json:"any_peer_mbr_fail"`
-			AnyPeerHaReady bool            `json:"any_peer_ha_ready"`
+			ClusterState string                     `json:"cluster_state"`
+			Local        LocalData                  `json:"local"`
+			Peers        map[string]PeerSummaryData `json:"peers"`
 		}{
-			AdminState:     haStore.Enabled(),
-			OperState:      haStore.SwitchState(),
-			IsLeader:       haStore.IsLeader(),
-			LocalIP:        haStore.HaIP(),
-			HaPort:         haStore.HaPort(),
-			Local:          localData,
-			Peers:          peersJSON,
-			AnyPeerAdjOk:   haStore.AnyPeerAdjacencyCriteriaOk(),
-			AnyPeerMbrFail: haStore.AnyPeerMemberCriteriaFail(),
-			AnyPeerHaReady: haStore.AnyPeerInHaReady(),
+			ClusterState: local.HaState,
+			Local:        localData,
+			Peers:        peerSummaries,
 		}
 		jsonData, err := json.Marshal(result)
 		if err != nil {
@@ -1834,45 +1859,158 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 	// Text output
 	buf := new(bytes.Buffer)
 	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "=== gNMI HA Store ===")
-	fmt.Fprintln(w, "\n--- Summary ---")
+
+	okFail := func(ok bool) string {
+		if ok {
+			return "[OK]"
+		}
+		return "[FAIL]"
+	}
+
+	fmt.Fprintln(w, "=== HA Status ===")
+	fmt.Fprintf(w, "\nCluster State:\t%s\n", local.HaState)
+
+	fmt.Fprintln(w, "\n--- Local ---")
+	fmt.Fprintf(w, "  Svc State:\t%s since %s\n", local.SvcState, formatEpoch(local.SvcStateEpoch))
+	fmt.Fprintf(w, "    Reason:\t%s\n", local.SvcStateReason)
+	fmt.Fprintf(w, "    Criteria:\t%s since %s\n", okFail(local.CriteriaMet), formatEpoch(local.CriteriaMetEpoch))
+	if len(local.Criteria) > 0 {
+		critKeys := make([]string, 0, len(local.Criteria))
+		for k := range local.Criteria {
+			critKeys = append(critKeys, string(k))
+		}
+		sort.Strings(critKeys)
+		for _, k := range critKeys {
+			fmt.Fprintf(w, "      %s:\t%s\n", k, okFail(local.Criteria[nxtypes.HACriterion(k)]))
+		}
+	}
+
+	if len(allPeers) > 0 {
+		// Sort peers for deterministic output
+		peerIPs := make([]string, 0, len(allPeers))
+		for ip := range allPeers {
+			peerIPs = append(peerIPs, ip)
+		}
+		sort.Strings(peerIPs)
+
+		for _, ip := range peerIPs {
+			peer := allPeers[ip]
+			fmt.Fprintf(w, "\n--- Peer: %s ---\n", ip)
+
+			haState := peer.HaState
+			if haState == "" {
+				haState = "unknown"
+			}
+			fmt.Fprintf(w, "  HA State:\t%s since %s\n", haState, formatEpoch(peer.HaStateEpoch))
+			fmt.Fprintf(w, "    Reason:\t%s\n", peer.HaStateReason)
+
+			fmt.Fprintf(w, "  Svc State:\t%s since %s\n", peer.SvcState, formatEpoch(peer.SvcStateEpoch))
+			fmt.Fprintf(w, "    Reason:\t%s\n", peer.SvcStateReason)
+			fmt.Fprintf(w, "    Criteria:\t%s since %s\n", okFail(peer.AdjacencyCriteria[nxtypes.HACritPeerService]), formatEpoch(peer.SvcStateEpoch))
+			fmt.Fprintf(w, "      peer_service:\t%s\n", okFail(peer.AdjacencyCriteria[nxtypes.HACritPeerService]))
+
+			fmt.Fprintf(w, "  Membership:\t%s since %s\n", okFail(peer.MemberCriteriaMet), formatEpoch(peer.MemberCriteriaMetEpoch))
+			if len(peer.MemberCriteria) > 0 {
+				mbrKeys := make([]string, 0, len(peer.MemberCriteria))
+				for k := range peer.MemberCriteria {
+					mbrKeys = append(mbrKeys, string(k))
+				}
+				sort.Strings(mbrKeys)
+				for _, k := range mbrKeys {
+					fmt.Fprintf(w, "    %s:\t%s\n", k, okFail(peer.MemberCriteria[nxtypes.HACriterion(k)]))
+				}
+			}
+			if len(peer.DPUStatuses) > 0 {
+				upCount := 0
+				for _, s := range peer.DPUStatuses {
+					if s.KeepaliveUp {
+						upCount++
+					}
+				}
+				fmt.Fprintf(w, "    DPU Keepalive:\t%d/%d up\n", upCount, len(peer.DPUStatuses))
+			}
+
+			fmt.Fprintf(w, "  Adjacency:\t%s since %s\n", okFail(peer.AdjacencyCriteriaMet), formatEpoch(peer.AdjacencyCriteriaMetEpoch))
+			if len(peer.AdjacencyCriteria) > 0 {
+				adjKeys := make([]string, 0, len(peer.AdjacencyCriteria))
+				for k := range peer.AdjacencyCriteria {
+					if nxtypes.HACriterion(k) == nxtypes.HACritPeerIpConfig || nxtypes.HACriterion(k) == nxtypes.HACritPeerService {
+						continue
+					}
+					adjKeys = append(adjKeys, string(k))
+				}
+				sort.Strings(adjKeys)
+				for _, k := range adjKeys {
+					fmt.Fprintf(w, "    %s:\t%s\n", k, okFail(peer.AdjacencyCriteria[nxtypes.HACriterion(k)]))
+				}
+			}
+			if len(peer.DPUStatuses) > 0 {
+				doneCount := 0
+				for _, s := range peer.DPUStatuses {
+					if s.BulkSyncLocal && s.BulkSyncPeer {
+						doneCount++
+					}
+				}
+				fmt.Fprintf(w, "    DPU Bulk Sync:\t%d/%d done\n", doneCount, len(peer.DPUStatuses))
+			}
+		}
+	}
+
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowHaInfo returns static HA configuration information.
+func (agw *AgentGateway) GnmiShowHaInfo(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show gNMI HA info")
+
+	haStore := agw.nxosManager.HAStore()
+	local := haStore.Local()
+
+	if msgData.Flags["json"] == "true" {
+		result := struct {
+			AdminState  string `json:"admin_state"`
+			OperState   string `json:"oper_state"`
+			IsLeader    bool   `json:"is_leader"`
+			LocalIP     string `json:"local_ip"`
+			HaPort      uint16 `json:"ha_port"`
+			PolicyCheck bool   `json:"policy_check"`
+			PolicyRev   string `json:"policy_rev"`
+			PeerCount   int    `json:"peer_count"`
+		}{
+			AdminState:  haStore.Enabled(),
+			OperState:   haStore.SwitchState(),
+			IsLeader:    haStore.IsLeader(),
+			LocalIP:     haStore.HaIP(),
+			HaPort:      haStore.HaPort(),
+			PolicyCheck: local.PolicyCheck,
+			PolicyRev:   local.PolicyRev,
+			PeerCount:   len(haStore.PeerIPs()),
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal HA info: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "=== HA Info ===")
 	fmt.Fprintf(w, "Admin State:\t%s\n", haStore.Enabled())
 	fmt.Fprintf(w, "Oper State:\t%s\n", haStore.SwitchState())
 	fmt.Fprintf(w, "Leader:\t%v\n", haStore.IsLeader())
-	fmt.Fprintf(w, "Local IP:\t%s\n", haStore.HaIP())
+	fmt.Fprintf(w, "HA IP:\t%s\n", haStore.HaIP())
 	fmt.Fprintf(w, "HA Port:\t%d\n", haStore.HaPort())
-
-	fmt.Fprintln(w, "\n--- Local State ---")
-	fmt.Fprintf(w, "HA State:\t%s (%s) since %s\n", local.HaState, local.HaStateReason, formatEpoch(local.HaStateEpoch))
-	fmt.Fprintf(w, "SVC State:\t%s (%s) since %s\n", local.SvcState, local.SvcStateReason, formatEpoch(local.SvcStateEpoch))
-	fmt.Fprintf(w, "Criteria Met:\t%v since %s\n", local.CriteriaMet, formatEpoch(local.CriteriaMetEpoch))
 	fmt.Fprintf(w, "Policy Check:\t%v\n", local.PolicyCheck)
 	fmt.Fprintf(w, "Policy Rev:\t%s\n", local.PolicyRev)
-	fmt.Fprintf(w, "Adjacency Reached:\t%v\n", local.AdjacencyReached)
-	fmt.Fprintf(w, "Recovery Pending:\t%v\n", local.CriteriaRecoveryPending)
-	fmt.Fprintf(w, "Flap Count:\t%d\n", local.CriteriaFlapCount)
-
-	if len(local.Criteria) > 0 {
-		fmt.Fprintln(w, "\nCriteria:")
-		keys := make([]string, 0, len(local.Criteria))
-		for k := range local.Criteria {
-			keys = append(keys, string(k))
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			fmt.Fprintf(w, "  %s:\t%v\n", k, local.Criteria[nxtypes.HACriterion(k)])
-		}
+	peers := haStore.PeerIPs()
+	sort.Strings(peers)
+	if len(peers) > 0 {
+		fmt.Fprintf(w, "Configured Peers:\t%s\n", strings.Join(peers, ", "))
+	} else {
+		fmt.Fprintf(w, "Configured Peers:\t(none)\n")
 	}
-
-	fmt.Fprintf(w, "Any Peer Adj OK:\t%v\n", haStore.AnyPeerAdjacencyCriteriaOk())
-	fmt.Fprintf(w, "Any Peer Mbr Fail:\t%v\n", haStore.AnyPeerMemberCriteriaFail())
-	fmt.Fprintf(w, "Any Peer HA Ready:\t%v\n", haStore.AnyPeerInHaReady())
-
-	if len(allPeers) > 0 {
-		fmt.Fprintf(w, "\nPeers: %d (use 'ha peers show' for details)\n", len(allPeers))
-	}
-
 	w.Flush()
 	return buf.String()
 }
@@ -1898,6 +2036,7 @@ func (agw *AgentGateway) GnmiShowDevice(_ context.Context, msgData ipc.MessageDa
 			ControllerEndpoint string `json:"controller_endpoint"`
 			ControllerPort     uint32 `json:"controller_port"`
 			ControllerVersion  string `json:"controller_version"`
+			CPAVersion         string `json:"cpa_version"`
 			SystemState        string `json:"system_state"`
 			HeadlessMode       bool   `json:"headless_mode"`
 			InService          bool   `json:"in_service"`
@@ -1920,6 +2059,7 @@ func (agw *AgentGateway) GnmiShowDevice(_ context.Context, msgData ipc.MessageDa
 			ControllerEndpoint: deviceStore.ControllerEndpoint(),
 			ControllerPort:     deviceStore.ControllerPort(),
 			ControllerVersion:  deviceStore.ControllerVersion(),
+			CPAVersion:         deviceStore.CPAVersion(),
 			SystemState:        nxos.Phase(deviceStore.SystemState()).String(),
 			HeadlessMode:       deviceStore.IsHeadlessMode(),
 			InService:          deviceStore.IsInService(),
@@ -2527,15 +2667,15 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 			Version string `json:"version"`
 		}
 		type MemberInfoData struct {
-			SerialNum    string           `json:"serial_num"`
-			Model        string           `json:"model"`
-			SWVersion    string           `json:"sw_version"`
-			AgentVersion string           `json:"agent_version"`
-			HaState      string           `json:"ha_state"`
-			Service      string           `json:"service"`
-			LbMode       string           `json:"lb_mode"`
-			PolicyCheck  bool             `json:"policy_check"`
-			DPUs         []DPUVersionData `json:"dpus"`
+			SerialNum       string           `json:"serial_num"`
+			Model           string           `json:"model"`
+			SWVersion       string           `json:"sw_version"`
+			AgentVersion    string           `json:"agent_version"`
+			ReportedHaState string           `json:"reported_ha_state"`
+			Service         string           `json:"service"`
+			LbMode          string           `json:"lb_mode"`
+			PolicyCheck     bool             `json:"policy_check"`
+			DPUs            []DPUVersionData `json:"dpus"`
 		}
 		type DPUHAStatusData struct {
 			KeepaliveUp   bool `json:"keepalive_up"`
@@ -2543,6 +2683,9 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 			BulkSyncPeer  bool `json:"bulk_sync_peer"`
 		}
 		type PeerData struct {
+			HaState                   string                     `json:"ha_state"`
+			HaStateReason             string                     `json:"ha_state_reason"`
+			HaStateEpoch              string                     `json:"ha_state_epoch"`
 			SvcState                  string                     `json:"svc_state"`
 			SvcStateReason            string                     `json:"svc_state_reason"`
 			SvcStateEpoch             string                     `json:"svc_state_epoch"`
@@ -2580,6 +2723,9 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 				}
 			}
 			pd := PeerData{
+				HaState:                   peer.HaState,
+				HaStateReason:             peer.HaStateReason.String(),
+				HaStateEpoch:              formatEpochISO(peer.HaStateEpoch),
 				SvcState:                  peer.SvcState,
 				SvcStateReason:            peer.SvcStateReason.String(),
 				SvcStateEpoch:             formatEpochISO(peer.SvcStateEpoch),
@@ -2599,15 +2745,15 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 					dpus[i] = DPUVersionData{Name: d.Name, Version: d.Version}
 				}
 				pd.MemberInfo = &MemberInfoData{
-					SerialNum:    peer.MemberInfo.SerialNum,
-					Model:        peer.MemberInfo.Model,
-					SWVersion:    peer.MemberInfo.SWVersion,
-					AgentVersion: peer.MemberInfo.CPAVersion,
-					HaState:      peer.MemberInfo.HaState,
-					Service:      peer.MemberInfo.Service,
-					LbMode:       peer.MemberInfo.LbMode,
-					PolicyCheck:  peer.MemberInfo.PolicyCheck,
-					DPUs:         dpus,
+					SerialNum:       peer.MemberInfo.SerialNum,
+					Model:           peer.MemberInfo.Model,
+					SWVersion:       peer.MemberInfo.SWVersion,
+					AgentVersion:    peer.MemberInfo.CPAVersion,
+					ReportedHaState: peer.MemberInfo.HaState,
+					Service:         peer.MemberInfo.Service,
+					LbMode:          peer.MemberInfo.LbMode,
+					PolicyCheck:     peer.MemberInfo.PolicyCheck,
+					DPUs:            dpus,
 				}
 			}
 			peersData[ip] = pd
@@ -2632,31 +2778,46 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 
 	buf := new(bytes.Buffer)
 	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+
+	okFail := func(ok bool) string {
+		if ok {
+			return "[OK]"
+		}
+		return "[FAIL]"
+	}
+
 	fmt.Fprintln(w, "=== HA Peers ===")
 	for _, ip := range peerIPs {
 		peer := allPeers[ip]
 		fmt.Fprintf(w, "\n--- Peer: %s ---\n", ip)
-		fmt.Fprintf(w, "Svc State:\t%s (%s) since %s\n", peer.SvcState, peer.SvcStateReason, formatEpoch(peer.SvcStateEpoch))
-		fmt.Fprintf(w, "Adjacency Connected:\t%v since %s\n", peer.AdjacencyConnected, formatEpoch(peer.AdjacencyConnectedEpoch))
+		haState := peer.HaState
+		if haState == "" {
+			haState = "unknown"
+		}
+		fmt.Fprintf(w, "HA State:\t%s since %s\n", haState, formatEpoch(peer.HaStateEpoch))
+		fmt.Fprintf(w, "  Reason:\t%s\n", peer.HaStateReason)
+		fmt.Fprintf(w, "Svc State:\t%s since %s\n", peer.SvcState, formatEpoch(peer.SvcStateEpoch))
+		fmt.Fprintf(w, "  Reason:\t%s\n", peer.SvcStateReason)
+		fmt.Fprintf(w, "Adjacency Connected:\t%s since %s\n", okFail(peer.AdjacencyConnected), formatEpoch(peer.AdjacencyConnectedEpoch))
 
-		fmt.Fprintf(w, "\nMember Criteria Met:\t%v since %s\n", peer.MemberCriteriaMet, formatEpoch(peer.MemberCriteriaMetEpoch))
+		fmt.Fprintf(w, "\nMember Criteria Met:\t%s since %s\n", okFail(peer.MemberCriteriaMet), formatEpoch(peer.MemberCriteriaMetEpoch))
 		mbrKeys := make([]string, 0, len(peer.MemberCriteria))
 		for k := range peer.MemberCriteria {
 			mbrKeys = append(mbrKeys, string(k))
 		}
 		sort.Strings(mbrKeys)
 		for _, k := range mbrKeys {
-			fmt.Fprintf(w, "  %s:\t%v\n", k, peer.MemberCriteria[nxtypes.HACriterion(k)])
+			fmt.Fprintf(w, "  %s:\t%s\n", k, okFail(peer.MemberCriteria[nxtypes.HACriterion(k)]))
 		}
 
-		fmt.Fprintf(w, "\nAdjacency Criteria Met:\t%v since %s\n", peer.AdjacencyCriteriaMet, formatEpoch(peer.AdjacencyCriteriaMetEpoch))
+		fmt.Fprintf(w, "\nAdjacency Criteria Met:\t%s since %s\n", okFail(peer.AdjacencyCriteriaMet), formatEpoch(peer.AdjacencyCriteriaMetEpoch))
 		adjKeys := make([]string, 0, len(peer.AdjacencyCriteria))
 		for k := range peer.AdjacencyCriteria {
 			adjKeys = append(adjKeys, string(k))
 		}
 		sort.Strings(adjKeys)
 		for _, k := range adjKeys {
-			fmt.Fprintf(w, "  %s:\t%v\n", k, peer.AdjacencyCriteria[nxtypes.HACriterion(k)])
+			fmt.Fprintf(w, "  %s:\t%s\n", k, okFail(peer.AdjacencyCriteria[nxtypes.HACriterion(k)]))
 		}
 
 		if peer.MemberInfo != nil {
@@ -2665,11 +2826,11 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 			fmt.Fprintf(w, "  Model:\t%s\n", peer.MemberInfo.Model)
 			fmt.Fprintf(w, "  SW Version:\t%s\n", peer.MemberInfo.SWVersion)
 			fmt.Fprintf(w, "  CPA Version:\t%s\n", peer.MemberInfo.CPAVersion)
-			fmt.Fprintf(w, "  HA State:\t%s\n", peer.MemberInfo.HaState)
+			fmt.Fprintf(w, "  Reported HA State:\t%s\n", peer.MemberInfo.HaState)
 			fmt.Fprintf(w, "  Service:\t%s\n", peer.MemberInfo.Service)
 			fmt.Fprintf(w, "  LB Mode:\t%s\n", peer.MemberInfo.LbMode)
 			fmt.Fprintf(w, "  Policy Rev:\t%s\n", peer.MemberInfo.PolicyRev)
-			fmt.Fprintf(w, "  Policy Check:\t%v\n", peer.MemberInfo.PolicyCheck)
+			fmt.Fprintf(w, "  Policy Check:\t%t\n", peer.MemberInfo.PolicyCheck)
 			if len(peer.MemberInfo.DPUs) > 0 {
 				dpuParts := make([]string, len(peer.MemberInfo.DPUs))
 				for i, d := range peer.MemberInfo.DPUs {

@@ -172,14 +172,15 @@ func (s *server) Adjacency(ctx context.Context, req *hav1.AdjRequest) (*hav1.Adj
 		}, nil
 	}
 
-	// Check for NO_HA (intentional HA removal)
+	// Check for NO_HA (intentional HA removal).
+	// Clear peer runtime state but keep peer in config so the adjacency loop
+	// can reconnect when HA is re-enabled on the peer.
 	if req.MbrInfo != nil && req.MbrInfo.HaInfo != nil && req.MbrInfo.HaInfo.Ha == hav1.HA_STATE_NO_HA {
 		logger.GetLogger().Info("Peer signaled HA removal (NO_HA state)", "peer", req.HaIp)
 		if s.manager != nil {
-			s.manager.NotifyRemoval(ctx, req.HaIp)
+			s.manager.HandleRemoval(ctx, req.HaIp)
 		}
-		// Build response with local info
-		responseMbrInfo := s.buildLocalMbrInfo()
+		responseMbrInfo := s.buildLocalMbrInfo(req.HaIp)
 		return &hav1.AdjResponse{
 			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS,
 			Details: "HA removal acknowledged",
@@ -187,13 +188,15 @@ func (s *server) Adjacency(ctx context.Context, req *hav1.AdjRequest) (*hav1.Adj
 		}, nil
 	}
 
-	// Process member info through the manager
+	// Process member info through the manager and check validation result.
+	var isDel bool
+	var reason string
 	if req.MbrInfo != nil && s.manager != nil {
 		memberInfo := convertMbrInfoToPeerMember(req.MbrInfo)
-		s.manager.ProcessMemberInfo(ctx, req.HaIp, memberInfo)
+		isDel, reason = s.manager.ProcessMemberInfo(ctx, req.HaIp, memberInfo)
 	}
 
-	// Reconcile VRF GIDs from the incoming request
+	// Reconcile VRF GIDs from the incoming request.
 	if req.MbrInfo != nil && s.reconciler != nil {
 		var lbMode string
 		if s.memberInfoProvider != nil {
@@ -204,12 +207,23 @@ func (s *server) Adjacency(ctx context.Context, req *hav1.AdjRequest) (*hav1.Adj
 			logger.GetLogger().Warn("HA server reconciliation failed", "peer", req.HaIp, "error", err)
 		}
 		if s.haStore != nil {
-			s.haStore.UpdatePeerAdjacencyCriterion(ctx, req.HaIp, types.HACritPeerVrfGid, ok)
+			s.haStore.UpdatePeerMemberCriterion(ctx, req.HaIp, types.HACritPeerVrfGid, ok)
 		}
 	}
 
-	// Build response with local member info
-	responseMbrInfo := s.buildLocalMbrInfo()
+	// Build response with local member info.
+	responseMbrInfo := s.buildLocalMbrInfo(req.HaIp)
+
+	// Return ADJ_FAILURE on membership/policy validation failures so the peer
+	// can fast-path failure detection. Still include local MbrInfo in the
+	// response so the peer can update its criteria.
+	if isDel {
+		return &hav1.AdjResponse{
+			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
+			Details: reason,
+			MbrInfo: responseMbrInfo,
+		}, nil
+	}
 
 	return &hav1.AdjResponse{
 		Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS,
@@ -220,7 +234,7 @@ func (s *server) Adjacency(ctx context.Context, req *hav1.AdjRequest) (*hav1.Adj
 
 // Notify implements the Ha gRPC service Notify method.
 func (s *server) Notify(ctx context.Context, req *hav1.NotifyRequest) (*hav1.NotifyResponse, error) {
-	logger.GetLogger().Debug("HA server received Notify", "peer", req.HaIp)
+	logger.GetLogger().Debug("HA server received Notify", "peer", req.HaIp, "haInfo", req.HaInfo)
 
 	if s.haStore == nil {
 		return &hav1.NotifyResponse{
@@ -238,16 +252,48 @@ func (s *server) Notify(ctx context.Context, req *hav1.NotifyRequest) (*hav1.Not
 	}
 
 	if s.manager != nil {
-		s.manager.HandleAdjFailureNotify(ctx, req.HaIp, "peer notify")
+		if req.HaInfo != nil {
+			// Process incoming HaInfo for standby injection/removal.
+			s.manager.ProcessHaInfo(ctx, req.HaIp, req.HaInfo)
+		} else {
+			// Legacy: no HaInfo means adj failure notify.
+			s.manager.HandleAdjFailureNotify(ctx, req.HaIp, "peer notify")
+		}
+	}
+
+	// Build response with local HaInfo so peer learns our state immediately.
+	var responseHaInfo *hav1.HaInfo
+	if s.haStore != nil {
+		local := s.haStore.Local()
+		svc := hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE
+		if local.CriteriaMet && !local.CriteriaRecoveryPending {
+			svc = hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS
+		}
+		haState := hav1.HA_STATE_HA_NOTREADY
+		switch local.HaState {
+		case types.HAStateReady:
+			haState = hav1.HA_STATE_HA_READY
+		case types.HAStateDegraded:
+			haState = hav1.HA_STATE_HA_DEGRADED
+		case types.HAStateSwitchover:
+			haState = hav1.HA_STATE_HA_SWITCHOVER
+		case types.HAStateTakeover:
+			haState = hav1.HA_STATE_HA_TAKEOVER
+		case types.HAStateUnavailable:
+			haState = hav1.HA_STATE_HA_UNAVAILABLE
+		}
+		responseHaInfo = &hav1.HaInfo{LocalSvcState: svc, Ha: haState}
 	}
 
 	return &hav1.NotifyResponse{
 		Status: hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS,
+		HaInfo: responseHaInfo,
 	}, nil
 }
 
 // buildLocalMbrInfo builds the local member info for adjacency responses.
-func (s *server) buildLocalMbrInfo() *hav1.MbrInfo {
+// peerIP is the requesting peer's IP, used to include per-peer debug flags.
+func (s *server) buildLocalMbrInfo(peerIP string) *hav1.MbrInfo {
 	var mbrInfo *hav1.MbrInfo
 	if s.memberInfoProvider != nil {
 		info := s.memberInfoProvider()
@@ -262,6 +308,18 @@ func (s *server) buildLocalMbrInfo() *hav1.MbrInfo {
 	}
 	if s.vlanStore != nil {
 		mbrInfo.VlanInfo = BuildLocalVLANInfo(s.vlanStore)
+	}
+
+	// Include local debug override flags for this peer.
+	if s.haStore != nil && peerIP != "" {
+		if peerState, ok := s.haStore.Peer(peerIP); ok {
+			if val, exists := peerState.MemberCriteria[types.HACritDebugMembershipFail]; exists && !val {
+				mbrInfo.DebugMembershipFail = true
+			}
+			if val, exists := peerState.AdjacencyCriteria[types.HACritDebugAdjacencyFail]; exists && !val {
+				mbrInfo.DebugAdjacencyFail = true
+			}
+		}
 	}
 
 	return mbrInfo
@@ -295,12 +353,16 @@ func convertMbrInfoToPeerMember(info *hav1.MbrInfo) types.HAPeerMember {
 		switch info.HaInfo.Ha {
 		case hav1.HA_STATE_HA_READY:
 			member.HaState = types.HAStateReady
+		case hav1.HA_STATE_HA_DEGRADED:
+			member.HaState = types.HAStateDegraded
 		case hav1.HA_STATE_HA_NOTREADY:
 			member.HaState = types.HAStateNotReady
 		case hav1.HA_STATE_HA_SWITCHOVER:
 			member.HaState = types.HAStateSwitchover
 		case hav1.HA_STATE_HA_TAKEOVER:
 			member.HaState = types.HAStateTakeover
+		case hav1.HA_STATE_HA_UNAVAILABLE:
+			member.HaState = types.HAStateUnavailable
 		}
 		switch info.HaInfo.GetLocalSvcState() {
 		case hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS:
@@ -309,6 +371,11 @@ func convertMbrInfoToPeerMember(info *hav1.MbrInfo) types.HAPeerMember {
 			member.Service = types.SvcStateFailure
 		}
 	}
+
+	// Debug overrides propagated from peer.
+	member.DebugMembershipFail = info.DebugMembershipFail
+	member.DebugAdjacencyFail = info.DebugAdjacencyFail
+
 	return member
 }
 
@@ -343,15 +410,23 @@ func convertPeerMemberToMbrInfo(info types.HAPeerMember) *hav1.MbrInfo {
 	switch info.HaState {
 	case types.HAStateReady:
 		haState = hav1.HA_STATE_HA_READY
+	case types.HAStateDegraded:
+		haState = hav1.HA_STATE_HA_DEGRADED
 	case types.HAStateSwitchover:
 		haState = hav1.HA_STATE_HA_SWITCHOVER
 	case types.HAStateTakeover:
 		haState = hav1.HA_STATE_HA_TAKEOVER
+	case types.HAStateUnavailable:
+		haState = hav1.HA_STATE_HA_UNAVAILABLE
 	}
 	mbrInfo.HaInfo = &hav1.HaInfo{
 		LocalSvcState: svc,
 		Ha:            haState,
 	}
+
+	// Debug overrides.
+	mbrInfo.DebugMembershipFail = info.DebugMembershipFail
+	mbrInfo.DebugAdjacencyFail = info.DebugAdjacencyFail
 
 	return mbrInfo
 }

@@ -27,8 +27,8 @@ func init() {
 var showCmd = &cobra.Command{
 	Use:          "show",
 	SilenceUsage: true,
-	Short:        "Show HA store contents",
-	Long:         `Show the contents of the HA gNMI data store.`,
+	Short:        "Show HA state overview",
+	Long:         `Show HA cluster state, local state, and a per-peer summary with [OK]/[FAIL] indicators for membership, adjacency, and service.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
