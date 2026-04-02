@@ -59,6 +59,7 @@ const (
 	Dataplane_DpuConfig     = 20
 	Dataplane_HaConfig      = 30
 	Dataplane_NetworkConfig = 40
+	Dataplane_FlowmonConfig = 50
 )
 
 // Policy command values
@@ -102,6 +103,19 @@ type Dataplane interface {
 	Stop(context.Context) error
 	Restart(context.Context) error
 	Status() bool
+}
+
+// Dataplane Flowmon (IPFIX) Configuration Object
+type FlowmonConfig struct {
+	Enabled    bool               `json:"flowmon_enabled"`
+	Collectors []FlowmonCollector `json:"collectors"`
+}
+
+type FlowmonCollector struct {
+	SessionID int    `json:"session_id"`
+	DstIP     string `json:"dst_ip"`
+	SrcIP     string `json:"src_ip"`
+	DstMAC    string `json:"dst_mac"`
 }
 
 // Dataplane Log Configuration Object

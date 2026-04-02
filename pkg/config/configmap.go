@@ -181,6 +181,15 @@ func ParseConfigMap(cm *v1.ConfigMap) map[v1alpha.ConfigType]*v1alpha.ConfigObje
 				continue
 			}
 			configObj.Config = &v1alpha.ConfigObject_ConfigLogSyslog{ConfigLogSyslog: &syslogCfg}
+		case "flow_export_ipfix":
+			configObj.Type = v1alpha.ConfigType_CONFIG_TYPE_FLOW_EXPORT_IPFIX
+			var ipfixCfg v1alpha.FlowExportConfigIpfix
+			err := json.Unmarshal([]byte(jsonData), &ipfixCfg)
+			if err != nil {
+				logger.GetLogger().Error("Failed to parse IPFIX config", "type", cType, "json", jsonData)
+				continue
+			}
+			configObj.Config = &v1alpha.ConfigObject_ConfigFlowExportIpfix{ConfigFlowExportIpfix: &ipfixCfg}
 		case "log_timescape":
 			configObj.Type = v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE
 			var timescapeCfg v1alpha.LogConfigTimescape

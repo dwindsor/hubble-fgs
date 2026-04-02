@@ -125,6 +125,12 @@ func executeAGW() {
 		}
 	}
 
+	// IPFIX/flowmon config is streamed to FWA for dataplane programming
+	library.GetRepository().AddConfigCallback(
+		v1alpha.ConfigType_CONFIG_TYPE_FLOW_EXPORT_IPFIX,
+		dpuListener.SubscribeConfig,
+	)
+
 	waitGroup.Go(func() error {
 		err := cliServer(ctx, agwAgent)
 		if err != nil {

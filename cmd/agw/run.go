@@ -48,7 +48,8 @@ import (
 
 const (
 	// ConfigMap is the name of the ConfigMap that the agent watches for configuration updates
-	TimescapeConfigMapName = "smartswitch-timescape-config"
+	TimescapeConfigMapName  = "smartswitch-timescape-config"
+	FlowExportConfigMapName = "smartswitch-flow-export-config"
 )
 
 func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *switchpolicy.DPUListener) error {
@@ -225,7 +226,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		// Create connection monitor for health checking
 		connMonitor := agw.NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager, agwAgent.Token.K8sControllerURL())
 		// TODO: Wait for configmap to be ready
-		ConfigMaps := []string{Config.ConfigMap}
+		ConfigMaps := []string{Config.ConfigMap, FlowExportConfigMapName}
 
 		// Only add Timescape ConfigMap if CLI timescape is disabled (precedence logic)
 		// Register the timescape config callback

@@ -18,6 +18,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -364,6 +365,64 @@ func (dp *AcceleratedDataplaneProcess) SendNetworkConfig(networkConfig *v1alpha.
 	return nil
 }
 
+func (dp *AcceleratedDataplaneProcess) SendFlowmonConfig(collectors []FlowmonCollector) error {
+	cfg := FlowmonConfig{
+		Enabled:    len(collectors) > 0,
+		Collectors: collectors,
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal flowmon config: %w", err)
+	}
+
+	logger.GetLogger().Info("sending flowmon config to dp-app", "config", string(data))
+
+	msg := &socket.ControlMessage{
+		Command: Dataplane_FlowmonConfig,
+		Type:    socket.DATAPLANE,
+		Data:    data,
+	}
+	dpsocket := socket.NewDataplaneSocket(dp.ApiPath, UDS_TIMEOUT*time.Second)
+	err = dpsocket.Connect()
+	if err != nil {
+		return err
+	}
+	defer dpsocket.Close()
+	err = dpsocket.Send(msg)
+	if err != nil {
+		return err
+	}
+	rc, err := dpsocket.Receive()
+	if err != nil {
+		return err
+	}
+	if rc.ReturnCode < socket.SUCCESS {
+		return errors.New(rc.ReturnCode.String())
+	}
+	return nil
+}
+
+// getCurrentDsc0IP returns the first IPv4 address on the dsc0 interface.
+func getCurrentDsc0IP() (string, error) {
+	link, err := netlink.LinkByName(EXPORTER_INTERFACE)
+	if err != nil {
+		return "", fmt.Errorf("failed to get %s interface: %w", EXPORTER_INTERFACE, err)
+	}
+	addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
+	if err != nil {
+		return "", fmt.Errorf("failed to list IPv4 addresses on %s: %w", EXPORTER_INTERFACE, err)
+	}
+	for _, a := range addrs {
+		if a.IP != nil {
+			ip := a.IP.To4()
+			if ip != nil {
+				return ip.String(), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no IPv4 address found on %s", EXPORTER_INTERFACE)
+}
+
 // -----------------------------------------------------------------------------
 // Accelerated Dataplane Implementation
 // -----------------------------------------------------------------------------
@@ -529,6 +588,45 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		dp.Accelerated.NpuIp = dpuConfig.ServiceIp
 		dp.Accelerated.NpuMac = dpuConfig.ServiceMac
 		err = dp.Accelerated.SendDpuConfig(dpuConfig)
+		if err != nil {
+			return err
+		}
+	case v1alpha.ConfigType_CONFIG_TYPE_FLOW_EXPORT_IPFIX:
+		// Flowmon/IPFIX export: program collector-session and telemetry-policy
+		// into the dataplane rather than FluentBit.
+		var ipfixConfigs map[string]*v1alpha.FlowExportConfig
+		if operation == ConfigOperationDelete {
+			ipfixConfigs = nil
+		} else {
+			ipfixConfigs = cfg.GetConfigFlowExportIpfix().Configs
+		}
+
+		var collectors []FlowmonCollector
+		if len(ipfixConfigs) > 0 {
+			srcIP, err := getCurrentDsc0IP()
+			if err != nil {
+				return fmt.Errorf("failed to get dsc0 IP for flowmon config: %w", err)
+			}
+
+			// Sort keys for stable session ID assignment
+			keys := make([]string, 0, len(ipfixConfigs))
+			for k := range ipfixConfigs {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			for i, k := range keys {
+				lc := ipfixConfigs[k]
+				collectors = append(collectors, FlowmonCollector{
+					SessionID: i + 1,
+					DstIP:     lc.Host,
+					SrcIP:     srcIP,
+					DstMAC:    "00:0c:0c:0c:0c:0c",
+				})
+			}
+		}
+
+		err := dp.Accelerated.SendFlowmonConfig(collectors)
 		if err != nil {
 			return err
 		}

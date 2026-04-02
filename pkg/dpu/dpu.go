@@ -396,9 +396,19 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	// Adding config callbacks
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpuConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, logConfigCallback)
+	// Flowmon/IPFIX config only goes to the dataplane (not the FluentBit log exporter)
+	flowmonConfigCallback := func(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+		err := dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
+		if err != nil {
+			logger.GetLogger().Error("flowmon config failed", "callback", "dataplane", logfields.Error, err)
+			return err
+		}
+		return nil
+	}
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, logConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_HA, haConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_NETWORK, networkConfigCallback)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_FLOW_EXPORT_IPFIX, flowmonConfigCallback)
 
 	return nil
 }
