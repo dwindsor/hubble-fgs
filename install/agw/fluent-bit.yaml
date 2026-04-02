@@ -14,13 +14,9 @@ pipeline:
           path: /tmp/fluentbit_agw.sock
           parser: json
           threaded: "true"
-    outputs:
-        - name: stdout
-          match: '*'
-          format: json
 parsers:
     - name: json
       format: json
 env:
     flush_interval: "1"
-    log_level: debug
+    log_level: info

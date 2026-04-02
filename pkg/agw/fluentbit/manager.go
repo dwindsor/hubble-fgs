@@ -277,9 +277,10 @@ func fluentBitReloadSucceeded(body []byte) (bool, string) {
 }
 
 // defaultConfig returns the base FluentBit config for AGW with a single
-// JSON input on the AGW socket and a stdout output for debugging.
+// JSON input on the AGW socket.
 func (m *Manager) defaultConfig() flb.FluentBitConfig {
 	cfg := flb.DefaultBaseConfig()
+	cfg.Env["log_level"] = "info"
 	cfg.Service.HTTPServer = "on"
 	cfg.Service.HTTPListen = "0.0.0.0"
 	cfg.Service.HTTPPort = httpPort
@@ -298,6 +299,5 @@ func (m *Manager) defaultConfig() flb.FluentBitConfig {
 			"threaded":  "true",
 		},
 	})
-	cfg.Pipeline.Outputs = append(cfg.Pipeline.Outputs, flb.DefaultStdoutOutput())
 	return cfg
 }
