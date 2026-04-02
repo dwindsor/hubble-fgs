@@ -22,7 +22,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/stretchr/testify/require"
 
@@ -32,16 +31,18 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
 
 var (
-	prog datapath.Interface = &datapath.BpfProgrammer{}
+	prog datapath.Interface = &datapath.BPFProgrammer{}
 )
 
 type recordCheck struct {
-	check string
+	check      string
+	expectDeny bool // If true, this specific check should fail (be denied)
 }
 
 type recordTest struct {
@@ -54,7 +55,7 @@ type recordTest struct {
 // Policy record building blocks
 var (
 	wildcardSrc = &types.ProcessTreeKey{
-		NSID:  uint64(policyfilter.StateID(0)),
+		NSID:  uint64(workloadid.WorkloadID(0)),
 		Depth: 0,
 		Self:  0,
 		Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},

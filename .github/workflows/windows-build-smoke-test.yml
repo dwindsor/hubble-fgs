@@ -332,8 +332,18 @@ jobs:
           echo "::endgroup::"
           cd recordtest
           go test ./ -v
+          if (!$?) {
+            $errcode = $LASTEXITCODE
+            Write-Output "✗ recordtest unit tests failed"
+            exit $errcode
+          }
           cd ../netpoltest
           go test ./ -v
+          if (!$?) {
+            $errcode = $LASTEXITCODE
+            Write-Output "✗ netpoltest unit tests failed"
+            exit $errcode
+          }
 
       - name: Build and Zip tetragon Windows binaries
         working-directory: ${{ github.workspace }}
