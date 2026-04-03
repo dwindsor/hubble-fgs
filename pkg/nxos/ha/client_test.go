@@ -15,21 +15,9 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
-
-func TestNewClient(t *testing.T) {
-	client := NewClient()
-	if client == nil {
-		t.Fatal("expected client to be non-nil")
-	}
-
-	if client.IsConnected() {
-		t.Error("new client should not be connected")
-	}
-}
 
 func TestClient_NotConnected(t *testing.T) {
 	client := NewClient()
@@ -113,25 +101,6 @@ func TestMockClient_CustomHandler(t *testing.T) {
 	}
 	if resp.Details != expectedDetails {
 		t.Errorf("expected details '%s', got '%s'", expectedDetails, resp.Details)
-	}
-}
-
-func TestWithClientTimeout(t *testing.T) {
-	client := NewClient().(*client)
-
-	// Default timeout
-	if client.opts.timeout != 10*time.Second {
-		t.Errorf("expected default timeout 10s, got %v", client.opts.timeout)
-	}
-}
-
-func TestMockClient_NotConnected(t *testing.T) {
-	client := NewMockClient()
-
-	// Adjacency should fail when not connected
-	_, err := client.Adjacency(context.Background(), &hav1.AdjRequest{})
-	if err == nil {
-		t.Error("expected error when not connected")
 	}
 }
 

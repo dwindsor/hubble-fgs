@@ -40,7 +40,7 @@ type stateResult struct {
 
 const (
 	// CriteriaMetHoldDown is the anti-flapping hold-down period for CriteriaMet recovery.
-	CriteriaMetHoldDown = 15 * time.Second
+	CriteriaMetHoldDown = 30 * time.Second
 )
 
 // peerHaStatePriority returns a numeric priority for peer HA states (higher = better).
@@ -52,9 +52,9 @@ func peerHaStatePriority(state string) int {
 		return 3
 	case types.PeerHAStateFail:
 		return 2
-	case types.PeerHAStateUnavailable:
-		return 1
 	case types.PeerHAStateNoHa:
+		return 1
+	case types.PeerHAStateUnavailable:
 		return 0
 	default:
 		return -1
@@ -130,13 +130,13 @@ func (sm *StateMachine) computePeerHaState(peer types.HAPeerState, localReady bo
 	result := peerStateResult{IP: peer.IP}
 
 	// Not connected → no-ha
-	if !peer.AdjacencyConnected {
+	if !peer.Connected {
 		result.HaState = types.PeerHAStateNoHa
 		result.HaReason = types.NewReasonString("no peer connectivity")
 		return result
 	}
 
-	peerSvcReady := peer.AdjacencyCriteria[types.HACritPeerService]
+	peerSvcReady := peer.ServiceCriteria[types.HACritPeerService]
 	membershipFail := !peer.MemberCriteria.AllOk()
 
 	// Check adjacency criteria (bulk_sync, policy, and debug adjacency overrides)
@@ -153,19 +153,33 @@ func (sm *StateMachine) computePeerHaState(peer types.HAPeerState, localReady bo
 	}
 
 	if localReady {
-		// Tier 1 (worst): peer service failure → ha-unavailable.
+		// Peer service failure: check membership first (takes precedence).
 		if !peerSvcReady {
+			if membershipFail {
+				result.HaState = types.PeerHAStateFail
+				result.HaReason = types.NewReasonString(fmt.Sprintf("membership failure: %s", failedMemberCriteria(peer)))
+				return result
+			}
+			// Peer service is not-ready but membership is OK. Check whether the
+			// peer is deliberately in standby hold-down (ha-switchover) due to our
+			// takeover. In that case the peer is still participating in HA and
+			// should be treated as ha-fail (active/standby appropriate) rather
+			// than ha-unavailable (standalone).
+			if peer.MemberInfo != nil && peer.MemberInfo.HaState == types.HAStateSwitchover {
+				result.HaState = types.PeerHAStateFail
+				result.HaReason = types.NewReasonString("peer standby hold-down")
+				return result
+			}
 			result.HaState = types.PeerHAStateUnavailable
 			result.HaReason = types.NewReasonString("peer service failure")
 			return result
 		}
-		// Tier 2: membership failure → ha-fail.
+		// Peer service ready: check membership then adjacency.
 		if membershipFail {
 			result.HaState = types.PeerHAStateFail
 			result.HaReason = types.NewReasonString(fmt.Sprintf("membership failure: %s", failedMemberCriteria(peer)))
 			return result
 		}
-		// Tier 3: adjacency failure → ha-degraded.
 		if adjacencyFail {
 			result.HaState = types.PeerHAStateDegraded
 			result.HaReason = types.NewReasonString(fmt.Sprintf("adjacency failure: %s", failedAdjacencyCriteria(peer)))
@@ -178,21 +192,16 @@ func (sm *StateMachine) computePeerHaState(peer types.HAPeerState, localReady bo
 
 	// Local not ready.
 	if peerSvcReady {
-		// Distinguish between hard service failure and standby yielding/syncing.
+		// Local service failure takes precedence over membership failure.
 		if isLocalServiceFailure(localCriteria) {
 			result.HaState = types.PeerHAStateUnavailable
 			result.HaReason = types.NewReasonString("local service failure")
 			return result
 		}
-		// Only standby criterion is false → syncing/yielding.
+		// Only HACritHaStandby=false: yielding/syncing.
 		if membershipFail {
 			result.HaState = types.PeerHAStateFail
 			result.HaReason = types.NewReasonString(fmt.Sprintf("membership failure: %s", failedMemberCriteria(peer)))
-			return result
-		}
-		if adjacencyFail {
-			result.HaState = types.PeerHAStateDegraded
-			result.HaReason = types.NewReasonString(fmt.Sprintf("adjacency failure: %s", failedAdjacencyCriteria(peer)))
 			return result
 		}
 		local := sm.store.Local()
@@ -210,9 +219,17 @@ func (sm *StateMachine) computePeerHaState(peer types.HAPeerState, localReady bo
 // bestPeerHaState returns the best (highest priority) per-peer HA state result.
 // Returns a no-ha result if no peers exist.
 func bestPeerHaState(peerStates map[string]peerStateResult) peerStateResult {
-	best := peerStateResult{
-		HaState:  types.PeerHAStateNoHa,
-		HaReason: types.NewReasonString("no peer connectivity"),
+	if len(peerStates) == 0 {
+		return peerStateResult{
+			HaState:  types.PeerHAStateNoHa,
+			HaReason: types.NewReasonString("no peer connectivity"),
+		}
+	}
+	// Seed from the first actual peer state so the seed never masks real results.
+	var best peerStateResult
+	for _, ps := range peerStates {
+		best = ps
+		break
 	}
 	for _, ps := range peerStates {
 		if peerHaStatePriority(ps.HaState) > peerHaStatePriority(best.HaState) {
@@ -223,11 +240,14 @@ func bestPeerHaState(peerStates map[string]peerStateResult) peerStateResult {
 }
 
 // deriveActiveStandbyActive returns HAStateTakeover when transitioning from an
-// already-established HA state, or HAStateNotReady on startup so that a newly
-// joining switch does not disrupt a peer that is already providing service.
+// already-established HA state. HAStateNotReady is considered established when
+// it results from a peer service failure recovery, allowing the healthy switch
+// to claim takeover. EvaluateStandbyCrit provides the primary protection against
+// disrupting a peer already in takeover by injecting the standby criterion before
+// this function is called.
 func deriveActiveStandbyActive(currentHaState string) string {
 	switch currentHaState {
-	case types.HAStateReady, types.HAStateTakeover, types.HAStateSwitchover:
+	case types.HAStateReady, types.HAStateTakeover, types.HAStateSwitchover, types.HAStateNotReady:
 		return types.HAStateTakeover
 	default:
 		return types.HAStateNotReady // starting up, wait for convergence
@@ -260,7 +280,7 @@ func deriveAgentHaState(localReady bool, localCriteria types.HACriteria, best pe
 	// Local not ready.
 	localSvcFailure := isLocalServiceFailure(localCriteria)
 	switch best.HaState {
-	case types.PeerHAStateOk, types.PeerHAStateDegraded, types.PeerHAStateFail:
+	case types.PeerHAStateDegraded, types.PeerHAStateFail:
 		if !localSvcFailure {
 			// Syncing/yielding — only standby criterion is false (or all ok but CriteriaMet not promoted yet).
 			return types.HAStateSwitchover, types.NewReasonString(fmt.Sprintf("syncing: %s", failedLocalCriteria(local)))
@@ -399,17 +419,18 @@ func (sm *StateMachine) stableCriteriaMet(local types.HALocalState) bool {
 }
 
 // EvaluateStandbyCrit determines whether the HACritHaStandby criterion should be
-// injected or removed. Returns (shouldInject, shouldRemove).
+// injected or removed. This is the single authoritative path for standby
+// injection/removal. Returns (shouldInject, shouldRemove).
 //
 // Inject when: a peer reports HA_TAKEOVER (already the active side), peer service
-// is ready, raw peer criteria have not converged, and this node doesn't win the
-// tiebreaker (leader stays active).
+// is ready, raw peer criteria have not converged (membership + adjacency), and
+// this node doesn't win the tiebreaker (leader stays active).
 //
 // Remove when: no peer reports TAKEOVER, or criteria have converged.
 //
-// Uses raw peer member criteria (not derived peer HA state) to avoid a feedback
-// loop: injecting standby makes local not-ready, which would make derived peer
-// state "degraded", keeping standby injected forever.
+// Uses raw peer member/adjacency criteria (not derived peer HA state) to avoid a
+// feedback loop: injecting standby makes local not-ready, which would make derived
+// peer state "degraded", keeping standby injected forever.
 func (sm *StateMachine) EvaluateStandbyCrit(localHaState string, isLeader bool) (inject, remove bool) {
 	local := sm.store.Local()
 	_, hasStandby := local.Criteria[types.HACritHaStandby]
@@ -421,26 +442,32 @@ func (sm *StateMachine) EvaluateStandbyCrit(localHaState string, isLeader bool) 
 	bestCritOk := false
 
 	for _, peer := range allPeers {
-		if !peer.AdjacencyConnected {
+		if !peer.Connected {
 			continue
 		}
 		if peer.MemberInfo != nil && peer.MemberInfo.HaState == types.HAStateTakeover {
 			peerIsTakeover = true
 		}
-		if peer.AdjacencyCriteria[types.HACritPeerService] {
+		if peer.ServiceCriteria[types.HACritPeerService] {
 			peerSvcReady = true
 		}
-		// Check raw peer criteria convergence (member + adjacency excluding indicators).
-		if peer.MemberCriteria.AllOk() && peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] && peer.AdjacencyCriteria[types.HACritPeerPolicy] {
+		if peer.MemberCriteria.AllOk() && peer.AdjacencyCriteria.AllOk() {
 			bestCritOk = true
 		}
 	}
 
-	// Yield to the peer already in TAKEOVER when criteria haven't converged.
-	// Tiebreaker: if both are TAKEOVER, leader wins and does NOT inject standby.
-	amTakeover := localHaState == types.HAStateTakeover
+	// Yield to the peer already in TAKEOVER when:
+	//   1. The peer's service is ready
+	//   2. Raw peer criteria have not converged (membership + adjacency)
+	//   3. This node is not the leader (tiebreaker), unless it has a local
+	//      service failure (HA.md "Leader Election and Role Differences")
+	//
+	// When criteria have converged (bestCritOk), standby is NOT injected
+	// even if the peer reports TAKEOVER, allowing a quick transition back
+	// to HA_READY.
+	localSvcFailure := isLocalServiceFailure(local.Criteria)
 	shouldBeStandby := peerIsTakeover && peerSvcReady && !bestCritOk &&
-		!(amTakeover && isLeader)
+		(!isLeader || localSvcFailure)
 
 	if shouldBeStandby && !hasStandby {
 		return true, false

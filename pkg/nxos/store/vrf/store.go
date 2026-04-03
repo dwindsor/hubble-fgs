@@ -41,9 +41,9 @@ type vrfStore struct {
 	// DPU pinning configuration
 	dpuCount        uint16      // number of DPUs for hash-based pinning
 	isLbModePinning func() bool // returns true when per-DPU pinning is active
-	// Redirect readiness gate: when false, programVRFRedirects no-ops.
-	// Set to true after shared infrastructure + reconciliation complete.
-	redirectsReady bool
+	// In-service gate: when false, reactive programRedirects no-ops.
+	// Set to true when the device transitions to in-service.
+	inService bool
 }
 
 // Option configures Store.
@@ -331,12 +331,11 @@ func (s *vrfStore) SetDPUCount(count uint16) {
 	s.dpuCount = count
 }
 
-// SetRedirectsReady marks the store as ready to program redirects.
-// Called after shared redirect infrastructure and reconciliation are complete.
-func (s *vrfStore) SetRedirectsReady() {
+// SetInService controls the in-service gate for reactive redirect programming.
+func (s *vrfStore) SetInService(inService bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.redirectsReady = true
+	s.inService = inService
 }
 
 // isPinningActive returns true when per-DPU pinning is active.

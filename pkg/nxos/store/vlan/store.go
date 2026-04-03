@@ -44,9 +44,9 @@ type vlanStore struct {
 	// DPU pinning configuration
 	dpuCount        uint16      // number of DPUs for hash-based pinning
 	isLbModePinning func() bool // returns true when per-DPU pinning is active
-	// Redirect readiness gate: when false, programRedirects no-ops.
-	// Set to true after shared infrastructure + reconciliation complete.
-	redirectsReady bool
+	// In-service gate: when false, reactive programRedirects no-ops.
+	// Set to true when the device transitions to in-service.
+	inService bool
 }
 
 // Option configures Store.
@@ -199,13 +199,14 @@ func (s *vlanStore) persist(ctx context.Context) {
 // programRedirects triggers service redirect programming for all active VLANs.
 // It programs fwPolicyState and BD enforcement bindings. BD policy maps are
 // per-DPU (shared) and not managed here.
+// Gated on inService — no-ops when the device is out-of-service.
 func (s *vlanStore) programRedirects(ctx context.Context) {
 	s.mu.RLock()
 	handler := s.gnmiHandler
-	ready := s.redirectsReady
+	inService := s.inService
 	s.mu.RUnlock()
 
-	if handler == nil || !ready {
+	if handler == nil || !inService {
 		return
 	}
 
@@ -616,17 +617,44 @@ func fnv1a(buf []byte) uint64 {
 	return h.Sum64()
 }
 
-// SetRedirectsReady marks the store as ready to program redirects.
-// Called after shared redirect infrastructure and reconciliation are complete.
-func (s *vlanStore) SetRedirectsReady() {
+// SetInService controls the in-service gate for reactive redirect programming.
+func (s *vlanStore) SetInService(inService bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.redirectsReady = true
+	s.inService = inService
+}
+
+// ProgramAllRedirects programs redirects for all active VLANs.
+// Used during in-service transition. Bypasses the inService gate.
+func (s *vlanStore) ProgramAllRedirects(ctx context.Context) {
+	s.mu.RLock()
+	handler := s.gnmiHandler
+	s.mu.RUnlock()
+	if handler == nil {
+		return
+	}
+
+	vlans := s.ListActive()
+	if len(vlans) == 0 {
+		return
+	}
+
+	s.programFwPolicyState(ctx, handler, vlans)
+	s.programEnforcement(ctx, handler, vlans)
+}
+
+// CleanupAllRedirects removes redirects for all active VLANs.
+// Used during out-of-service transition.
+func (s *vlanStore) CleanupAllRedirects(ctx context.Context) {
+	for _, v := range s.ListActive() {
+		s.cleanupRedirects(ctx, v.Name)
+	}
 }
 
 // ReconcileRedirects clears stale redirect state from a previous run (crash recovery)
 // and reprograms redirects for all active VLANs.
 // Called during startup after shared infrastructure is in place.
+// Unconditional — bypasses the inService gate.
 func (s *vlanStore) ReconcileRedirects(ctx context.Context) {
 	s.mu.RLock()
 	handler := s.gnmiHandler
@@ -642,28 +670,8 @@ func (s *vlanStore) ReconcileRedirects(ctx context.Context) {
 		}
 	}
 
-	s.programRedirectsUngated(ctx)
-}
-
-// programRedirectsUngated is like programRedirects but bypasses the
-// redirectsReady gate. Used during reconciliation before the gate is set.
-func (s *vlanStore) programRedirectsUngated(ctx context.Context) {
-	s.mu.RLock()
-	handler := s.gnmiHandler
-	s.mu.RUnlock()
-
-	if handler == nil {
-		return
-	}
-
-	vlans := s.ListActive()
-	if len(vlans) == 0 {
-		logger.GetLogger().Debug("No active VLANs to reconcile for service redirect")
-		return
-	}
-
-	s.programFwPolicyState(ctx, handler, vlans)
-	s.programEnforcement(ctx, handler, vlans)
+	// Program redirects for all active VLANs unconditionally.
+	s.ProgramAllRedirects(ctx)
 }
 
 // CleanupAllFwPolicyState deletes fwPolicyState for all active VLANs (BDs).

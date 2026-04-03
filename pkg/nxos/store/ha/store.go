@@ -95,14 +95,19 @@ func NewStore(ctx context.Context, opts ...Option) Store {
 			s.switchState = state.SwitchState
 			s.haIP = state.HaIP
 			s.haPort = state.HaPort
-			// Restore peer IPs as empty peer entries so the HA adjacency protocol
-			// can reconnect to known peers on startup. Full peer state is rebuilt at runtime.
+			// Restore peer IPs from storage so the HA adjacency protocol can
+			// reconnect to known peers on startup. IpConfigState is set to
+			// "success" because peers were valid when persisted; gNMI will
+			// correct this if the peer is no longer reachable. Without this,
+			// checkAdjacencies silently skips peers.
 			for _, ip := range state.PeerIPs {
 				if _, exists := s.peers[ip]; !exists {
 					s.peers[ip] = types.HAPeerState{
 						IP:                ip,
 						MemberCriteria:    make(types.HACriteria),
+						ServiceCriteria:   make(types.HACriteria),
 						AdjacencyCriteria: make(types.HACriteria),
+						IpConfigState:     PeerIpCfgStateSuccess,
 					}
 				}
 			}
@@ -189,7 +194,7 @@ func (s *haStore) AnyPeerAdjacencyCriteriaOk() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, peer := range s.peers {
-		if peer.AdjacencyConnected && peer.AdjacencyCriteria.AllOk() {
+		if peer.Connected && peer.AdjacencyCriteria.AllOk() {
 			return true
 		}
 	}

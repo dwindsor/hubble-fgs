@@ -10,11 +10,22 @@
 
 package ha
 
+import nxosmodel "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+
+// PeerIpCfgState string values - derived directly from E_Cisco_NX_OSDevice_Sas_PeerIpCfgStateE YANG enum.
+// Using .String() ensures exact compliance with NX-OS expected values.
+var (
+	PeerIpCfgStateNotStarted = nxosmodel.Cisco_NX_OSDevice_Sas_PeerIpCfgStateE_not_started.String()
+	PeerIpCfgStateSuccess    = nxosmodel.Cisco_NX_OSDevice_Sas_PeerIpCfgStateE_success.String()
+	PeerIpCfgStateFailed     = nxosmodel.Cisco_NX_OSDevice_Sas_PeerIpCfgStateE_failed.String()
+)
+
 // EventType represents the type of HA event.
 type EventType string
 
 const (
 	EventAdminStateChanged   EventType = "admin_state_changed"
+	EventSwitchStateChanged  EventType = "switch_state_changed"
 	EventPeerAdded           EventType = "peer_added"
 	EventPeerRemoved         EventType = "peer_removed"
 	EventMemberUpdated       EventType = "member_updated"
@@ -25,6 +36,7 @@ const (
 	EventPartnerChanged      EventType = "partner_changed"
 	EventDerivedStateChanged EventType = "derived_state_changed"
 	EventLocalStateChanged   EventType = "local_state_changed"
+	EventHaIPChanged         EventType = "ha_ip_changed"
 )
 
 // Event represents an HA store event.

@@ -22,9 +22,6 @@ type Option func(*managerOptions)
 
 // managerOptions holds all configuration options for the manager.
 type managerOptions struct {
-	// Connection options
-	skipDPU bool
-
 	// Port configuration
 	dpuPortLow  uint16
 	dpuPortHigh uint16
@@ -54,17 +51,8 @@ type managerOptions struct {
 // defaultOptions returns the default options.
 func defaultOptions() *managerOptions {
 	return &managerOptions{
-		skipDPU:     false,
 		dpuPortLow:  28672,
 		dpuPortHigh: 29695,
-	}
-}
-
-// WithSkipDPU configures whether to skip DPU operations.
-// Useful for testing without DPU hardware.
-func WithSkipDPU(skip bool) Option {
-	return func(o *managerOptions) {
-		o.skipDPU = skip
 	}
 }
 

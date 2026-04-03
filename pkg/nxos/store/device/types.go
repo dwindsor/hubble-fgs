@@ -20,6 +20,12 @@ var (
 	CommonStateFailure = nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_failure.String()
 )
 
+// In-service state string values - derived from SasInstState YANG enum.
+var (
+	InServiceStateInService    = nxosmodel.Cisco_NX_OSDevice_Sas_SasInstState_in_service.String()
+	InServiceStateOutOfService = nxosmodel.Cisco_NX_OSDevice_Sas_SasInstState_out_of_service.String()
+)
+
 // EventType represents the type of device event.
 type EventType string
 

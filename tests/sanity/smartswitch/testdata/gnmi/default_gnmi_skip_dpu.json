@@ -1,0 +1,95 @@
+{
+  "System": {
+    "inst-items": {
+      "Inst-list[name=default]": { "name": "default" },
+      "Inst-list[name=test-vrf-1]": { "name": "test-vrf-1" },
+      "Inst-list[name=test-vrf-2]": { "name": "test-vrf-2" }
+    },
+    "ch-items": {
+      "supslot-items": {
+        "SupCSlot-list": {
+          "id": "1",
+          "sup-items": {
+            "type": "N9K-MOCK",
+            "model": "N9K-MOCK",
+            "swVer": "10.5(1)",
+            "descr": "Mock NXOS Switch"
+          }
+        }
+      },
+      "spbp-items": {
+        "spcmn-items": {
+          "serNum": "MOCK-SERIAL-001"
+        }
+      }
+    },
+    "sas-items": {
+      "globalpol-items": {
+        "lbMode": "symmetric_hash"
+      },
+      "state-items": {
+        "agent-items": {
+          "SasAgent-list[svcName=hypershield]": {
+            "agentSrcIntfAddr": "10.0.0.1",
+            "agentHaSrcIntfAddr": ""
+          }
+        }
+      },
+      "svc-items": {
+        "svcinst-items": {
+          "SvcInstance-list[name=hypershield]": {
+            "fwpolicy-items": {
+              "operState": "in-service",
+              "ipvrf-items": {
+                "dom-items": {
+                  "Dom-list[name=default]": { "name": "default", "affinity": 0 },
+                  "Dom-list[name=test-vrf-1]": { "name": "test-vrf-1", "affinity": 0 },
+                  "Dom-list[name=test-vrf-2]": { "name": "test-vrf-2", "affinity": 0 }
+                }
+              },
+              "bd-items": {
+                "vlan-items": {
+                  "Vlan-list[vlanId=vxlan-100]": { "vlanId": "vxlan-100", "affinity": 0 },
+                  "Vlan-list[vlanId=vxlan-200]": { "vlanId": "vxlan-200", "affinity": 0 }
+                }
+              }
+            },
+            "ha-items": {
+              "adminState": "disabled",
+              "nxHaOperState": "standalone",
+              "peer-items": {},
+              "ext-items": {}
+            },
+            "scontroller-items": {
+              "ext-items": {
+                "admissionStatus": "success",
+                "connectionStatus": "success",
+                "rejectReason": ""
+              }
+            },
+            "sagent-items": {
+              "ext-items": {
+                "initState": "success",
+                "policyState": "success",
+                "systemState": 0
+              }
+            }
+          }
+        }
+      },
+      "dpu-items": {
+        "ext-items": {
+          "numDpus": 0,
+          "initState": "inventory-done"
+        },
+        "inst-items": {}
+      }
+    },
+    "bd-items": {
+      "bd-items": {
+        "BD-list[fabEncap=vxlan-100]": { "fabEncap": "vxlan-100" },
+        "BD-list[fabEncap=vxlan-200]": { "fabEncap": "vxlan-200" }
+      }
+    }
+  }
+}

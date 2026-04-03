@@ -30,7 +30,7 @@ from helper.ha_helpers import (
     wait_for_ha_ready, get_local_ha_state,
     assert_no_state_flapping,
 )
-from helper.gnmi_paths import HA_ADMIN_STATE_PATH, HA_IP_PATH
+from helper.gnmi_paths import HA_ADMIN_STATE_PATH, HA_IP_PATH, HA_SWITCH_STATE_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,7 @@ class TestConnectivity:
         try:
             cmd.agw_mock_gnmi_set_file(str(gnmi_file))
             cmd.agw_mock_gnmi_set(HA_ADMIN_STATE_PATH, '"enabled"')
+            cmd.agw_mock_gnmi_set(HA_SWITCH_STATE_PATH, '"ha-ready"')
             cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
         except Exception as e:
             logger.warning(f"Failed to re-seed gNMI after container restart: {e}")

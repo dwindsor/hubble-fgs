@@ -44,10 +44,11 @@ ENV FWA_CONFIG="" \
     FWA_ENABLE_DATAPLANE="false" \
     FWA_ENABLE_AGW="true" \
     FWA_ENABLE_LOGGER="false" \
+    FWA_ENABLE_EVENT_STREAM="false" \
     FWA_SERVER_ADDRESS="127.0.0.1:8880" \
     FWA_DP_SOCKET_PATH="" \
     FWA_DEBUG="false"
-RUN apk update && apk upgrade --no-cache
+RUN apk update && apk upgrade --no-cache && apk add --no-cache iproute2
 WORKDIR /usr/src/app
 COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/fwa ./
 COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/fwactl ./

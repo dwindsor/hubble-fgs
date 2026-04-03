@@ -19,17 +19,6 @@ import (
 func TestPeersCmd(t *testing.T) {
 	assert.Equal(t, "peers", PeersCmd.Use)
 	assert.True(t, PeersCmd.SilenceUsage)
-}
-
-func TestPeersShowCmd(t *testing.T) {
-	var found bool
-	for _, cmd := range PeersCmd.Commands() {
-		if cmd.Use == "show" {
-			found = true
-			assert.NotNil(t, cmd.RunE)
-			assert.NotNil(t, cmd.Flags().Lookup("filter"), "show should have --filter flag")
-			break
-		}
-	}
-	assert.True(t, found, "show subcommand not registered")
+	assert.NotNil(t, PeersCmd.RunE)
+	assert.NotNil(t, PeersCmd.Flags().Lookup("filter"), "peers should have --filter flag")
 }

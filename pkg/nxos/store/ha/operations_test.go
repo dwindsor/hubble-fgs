@@ -21,16 +21,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 )
 
-func TestSetLocalHaState_SetsStateAndReason(t *testing.T) {
+func TestSetLocalDerivedStates_SetsHaStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
 
 	reason := types.NewReasonString("local criteria not met")
-	err := store.SetLocalHaState(ctx, types.HAStateNotReady, reason)
-	if err != nil {
-		t.Fatalf("SetLocalHaState failed: %v", err)
-	}
+	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
 
 	// Verify store state
 	local := store.Local()
@@ -53,16 +50,13 @@ func TestSetLocalHaState_SetsStateAndReason(t *testing.T) {
 	}
 }
 
-func TestSetLocalSvcState_SetsStateAndReason_Failure(t *testing.T) {
+func TestSetLocalDerivedStates_SetsSvcStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
 
 	reason := types.NewReasonString("local criteria not met")
-	err := store.SetLocalSvcState(ctx, types.SvcStateFailure, reason)
-	if err != nil {
-		t.Fatalf("SetLocalSvcState failed: %v", err)
-	}
+	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
 
 	local := store.Local()
 	if local.SvcState != types.SvcStateFailure {
@@ -83,15 +77,12 @@ func TestSetLocalSvcState_SetsStateAndReason_Failure(t *testing.T) {
 	}
 }
 
-func TestSetLocalSvcState_SuccessHasEmptyReason(t *testing.T) {
+func TestSetLocalDerivedStates_SuccessHasEmptyReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
 
-	err := store.SetLocalSvcState(ctx, types.SvcStateSuccess, "")
-	if err != nil {
-		t.Fatalf("SetLocalSvcState failed: %v", err)
-	}
+	store.SetLocalDerivedStates(ctx, types.HAStateReady, types.SvcStateSuccess, "", "", true)
 
 	local := store.Local()
 	if local.SvcStateReason != "" {
@@ -151,17 +142,16 @@ func TestSetLocalSvcStateToFailure_SetsReasonViaGnmi(t *testing.T) {
 	}
 }
 
-func TestSetRemoteSvcState_SetsStateAndReasonViaGnmi(t *testing.T) {
+func TestUpdatePeerSvcState_SetsStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
 
 	peerIP := "10.0.0.2"
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
+
 	reason := types.NewReasonString("peer service failure")
-	err := store.SetRemoteSvcState(ctx, peerIP, types.SvcStateFailure, reason)
-	if err != nil {
-		t.Fatalf("SetRemoteSvcState failed: %v", err)
-	}
+	store.UpdatePeerSvcState(ctx, peerIP, types.SvcStateFailure, reason)
 
 	data := handler.GetAllData()
 	statePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerSvcState, peerIP))
@@ -174,17 +164,16 @@ func TestSetRemoteSvcState_SetsStateAndReasonViaGnmi(t *testing.T) {
 	}
 }
 
-func TestSetRemotePeerHaState_SetsStateAndReasonViaGnmi(t *testing.T) {
+func TestUpdatePeerHaState_SetsStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
 
 	peerIP := "10.0.0.3"
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
+
 	reason := types.NewReasonString("membership failure: peer_compatible")
-	err := store.SetRemotePeerHaState(ctx, peerIP, types.PeerHAStateFail, reason)
-	if err != nil {
-		t.Fatalf("SetRemotePeerHaState failed: %v", err)
-	}
+	store.UpdatePeerHaState(ctx, peerIP, types.PeerHAStateFail, reason)
 
 	data := handler.GetAllData()
 	statePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaState, peerIP))
@@ -203,6 +192,7 @@ func TestSetRemoteStatesAdjDown_SetsReasonsViaGnmi(t *testing.T) {
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
 
 	peerIP := "10.0.0.4"
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
 	err := store.SetRemoteStatesAdjDown(ctx, peerIP)
 	if err != nil {
 		t.Fatalf("SetRemoteStatesAdjDown failed: %v", err)
@@ -229,7 +219,7 @@ func TestSetLocalDerivedStates_SuccessHasEmptyReasons(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(ctx).(*haStore)
 
-	store.SetLocalDerivedStates(ctx, types.HAStateReady, types.SvcStateSuccess, "", "")
+	store.SetLocalDerivedStates(ctx, types.HAStateReady, types.SvcStateSuccess, "", "", true)
 
 	local := store.Local()
 	if local.HaStateReason != "" {
@@ -246,7 +236,7 @@ func TestSetLocalDerivedStates_FailureHasReasons(t *testing.T) {
 
 	haReason := types.NewReasonString("local criteria not met")
 	svcReason := types.NewReasonString("local criteria not met")
-	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, haReason, svcReason)
+	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, haReason, svcReason, true)
 
 	local := store.Local()
 	if local.HaStateReason != haReason {
@@ -300,14 +290,39 @@ func TestUpdatePeerSvcState_SuccessHasEmptyReason(t *testing.T) {
 	}
 }
 
-func TestSetLocalHaState_NoHandler_NoError(t *testing.T) {
+func TestSetLocalDerivedStates_PushSvcToNxFalse_SkipsSvcGnmi(t *testing.T) {
+	ctx := context.Background()
+	handler := mock.NewHandler()
+	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
+
+	reason := types.NewReasonString("local criteria not met")
+	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, false)
+
+	// Store state should still be updated.
+	local := store.Local()
+	if local.SvcState != types.SvcStateFailure {
+		t.Errorf("expected SvcState %q, got %q", types.SvcStateFailure, local.SvcState)
+	}
+
+	// HA state should be written to gNMI.
+	data := handler.GetAllData()
+	haStateKey := normalizeMockPath(paths.HAStoreLocalHaState)
+	if v, ok := data[haStateKey]; !ok || v != types.HAStateNotReady {
+		t.Errorf("expected gNMI SET for HAStoreLocalHaState=%q, got %v (found=%v)", types.HAStateNotReady, v, ok)
+	}
+
+	// Svc state should NOT be written to gNMI.
+	svcStateKey := normalizeMockPath(paths.HAStoreLocalSvcState)
+	if _, ok := data[svcStateKey]; ok {
+		t.Error("expected NO gNMI SET for HAStoreLocalSvcState when pushSvcToNx=false")
+	}
+}
+
+func TestSetLocalDerivedStates_NoHandler_NoError(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(ctx).(*haStore)
 
-	err := store.SetLocalHaState(ctx, types.HAStateReady, "")
-	if err != nil {
-		t.Fatalf("expected no error without handler, got: %v", err)
-	}
+	store.SetLocalDerivedStates(ctx, types.HAStateReady, types.SvcStateSuccess, "", "", true)
 
 	local := store.Local()
 	if local.HaState != types.HAStateReady {
@@ -315,6 +330,42 @@ func TestSetLocalHaState_NoHandler_NoError(t *testing.T) {
 	}
 	if local.HaStateReason != "" {
 		t.Errorf("expected empty HaStateReason for success, got %q", local.HaStateReason)
+	}
+}
+
+func TestSetLocalDerivedStates_SvcStateWrittenBeforeHaState(t *testing.T) {
+	ctx := context.Background()
+	persistPath := t.TempDir() + "/mock_gnmi.json"
+	handler := mock.NewHandlerBuilder().WithPersistPath(persistPath).Build()
+	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
+
+	reason := types.NewReasonString("test reason")
+	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
+
+	entries, err := handler.TxLog().ReadEntries("", "", "set")
+	if err != nil {
+		t.Fatalf("failed to read tx log: %v", err)
+	}
+
+	var svcStateIdx, haStateIdx int = -1, -1
+	for i, entry := range entries {
+		normPath := normalizeMockPath(entry.Path)
+		if normPath == normalizeMockPath(paths.HAStoreLocalSvcState) {
+			svcStateIdx = i
+		}
+		if normPath == normalizeMockPath(paths.HAStoreLocalHaState) {
+			haStateIdx = i
+		}
+	}
+
+	if svcStateIdx == -1 {
+		t.Fatal("expected gNMI SET for localSvcState not found in tx log")
+	}
+	if haStateIdx == -1 {
+		t.Fatal("expected gNMI SET for agentHaState not found in tx log")
+	}
+	if svcStateIdx >= haStateIdx {
+		t.Errorf("expected localSvcState (idx %d) to be written before agentHaState (idx %d)", svcStateIdx, haStateIdx)
 	}
 }
 
@@ -351,15 +402,15 @@ func TestUpdatePeerAdjacencyCriterion_ComputesMet(t *testing.T) {
 	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
 
 	// First criterion passes — two criteria exist, second not yet set → not all ok.
-	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerIpConfig, true)
-	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerService, false)
+	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerDPUBulkSync, true)
+	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerPolicy, false)
 	peer, _ := store.Peer(peerIP)
 	if peer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=false when one criterion fails")
 	}
 
 	// Both criteria now pass → Met becomes true.
-	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerService, true)
+	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerPolicy, true)
 	peer, _ = store.Peer(peerIP)
 	if !peer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=true after all criteria pass")
@@ -369,7 +420,7 @@ func TestUpdatePeerAdjacencyCriterion_ComputesMet(t *testing.T) {
 	}
 
 	// One criterion fails again → Met reverts to false.
-	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerIpConfig, false)
+	store.UpdatePeerAdjacencyCriterion(ctx, peerIP, types.HACritPeerDPUBulkSync, false)
 	peer, _ = store.Peer(peerIP)
 	if peer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=false after criterion fails")
@@ -428,6 +479,63 @@ func TestRemovePeerAdjacencyCriterion(t *testing.T) {
 	store.RemovePeerAdjacencyCriterion(ctx, "1.2.3.4", types.HACritDebugAdjacencyFail)
 }
 
+func TestUpdatePeerServiceCriterion_ComputesMet(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+	peerIP := "10.0.0.22"
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
+
+	// Set peer_service false → ServiceCriteriaMet=false.
+	store.UpdatePeerServiceCriterion(ctx, peerIP, types.HACritPeerService, false)
+	peer, _ := store.Peer(peerIP)
+	if peer.ServiceCriteriaMet {
+		t.Error("expected ServiceCriteriaMet=false when criterion fails")
+	}
+
+	// Set peer_service true → ServiceCriteriaMet=true.
+	store.UpdatePeerServiceCriterion(ctx, peerIP, types.HACritPeerService, true)
+	peer, _ = store.Peer(peerIP)
+	if !peer.ServiceCriteriaMet {
+		t.Error("expected ServiceCriteriaMet=true after criterion passes")
+	}
+	if peer.ServiceCriteriaMetEpoch == 0 {
+		t.Error("expected ServiceCriteriaMetEpoch to be set when Met becomes true")
+	}
+
+	// Verify peer_service is NOT in AdjacencyCriteria.
+	if _, exists := peer.AdjacencyCriteria[types.HACritPeerService]; exists {
+		t.Error("expected peer_service to not be in AdjacencyCriteria")
+	}
+
+	// No-op when peer doesn't exist.
+	store.UpdatePeerServiceCriterion(ctx, "1.2.3.4", types.HACritPeerService, true)
+}
+
+func TestRemovePeerServiceCriterion(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+	peerIP := "10.0.0.23"
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
+
+	store.UpdatePeerServiceCriterion(ctx, peerIP, types.HACritPeerService, false)
+	peer, _ := store.Peer(peerIP)
+	if peer.ServiceCriteriaMet {
+		t.Error("expected ServiceCriteriaMet=false with criterion set to false")
+	}
+
+	store.RemovePeerServiceCriterion(ctx, peerIP, types.HACritPeerService)
+	peer, _ = store.Peer(peerIP)
+	if _, exists := peer.ServiceCriteria[types.HACritPeerService]; exists {
+		t.Error("expected peer_service criterion to be removed from ServiceCriteria")
+	}
+
+	// No-op when criterion doesn't exist.
+	store.RemovePeerServiceCriterion(ctx, peerIP, types.HACritPeerService)
+
+	// No-op when peer doesn't exist.
+	store.RemovePeerServiceCriterion(ctx, "1.2.3.4", types.HACritPeerService)
+}
+
 func TestSetPeer_ComputesMetFromMaps(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(ctx).(*haStore)
@@ -435,13 +543,16 @@ func TestSetPeer_ComputesMetFromMaps(t *testing.T) {
 
 	// Pre-populate criteria that are all true → SetPeer should compute Met=true.
 	store.SetPeer(ctx, peerIP, types.HAPeerState{
-		IP: peerIP,
+		IP:            peerIP,
+		IpConfigState: PeerIpCfgStateSuccess,
 		MemberCriteria: types.HACriteria{
 			types.HACritPeerCompatible: true,
 		},
-		AdjacencyCriteria: types.HACriteria{
-			types.HACritPeerIpConfig:     true,
+		ServiceCriteria: types.HACriteria{
 			types.HACritPeerService: true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerDPUBulkSync: true,
 		},
 	})
 
@@ -454,6 +565,12 @@ func TestSetPeer_ComputesMetFromMaps(t *testing.T) {
 	}
 	if peer.MemberCriteriaMetEpoch == 0 {
 		t.Error("expected MemberCriteriaMetEpoch to be set")
+	}
+	if !peer.ServiceCriteriaMet {
+		t.Error("expected ServiceCriteriaMet=true from pre-populated passing criteria")
+	}
+	if peer.ServiceCriteriaMetEpoch == 0 {
+		t.Error("expected ServiceCriteriaMetEpoch to be set")
 	}
 	if !peer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=true from pre-populated passing criteria")
@@ -474,44 +591,56 @@ func TestSetPeer_ComputesMetFromMaps(t *testing.T) {
 		t.Error("expected MemberCriteriaMet=false when criterion is false")
 	}
 
-	// Empty criteria map → Met=false (vacuous AllOk guard).
-	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
-	peer, _ = store.Peer(peerIP)
-	if peer.MemberCriteriaMet {
+	// Empty criteria map on a fresh peer → Met=false (vacuous AllOk guard).
+	// Use a different peer IP so there is no existing state to preserve.
+	freshPeerIP := "10.0.0.99"
+	store.SetPeer(ctx, freshPeerIP, types.HAPeerState{IP: freshPeerIP})
+	freshPeer, _ := store.Peer(freshPeerIP)
+	if freshPeer.MemberCriteriaMet {
 		t.Error("expected MemberCriteriaMet=false for empty criteria map")
 	}
-	if peer.AdjacencyCriteriaMet {
+	if freshPeer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=false for empty criteria map")
+	}
+
+	// When SetPeer is called without IpConfigState on an existing peer
+	// that had IpConfigState set, the value is preserved.
+	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
+	peer, _ = store.Peer(peerIP)
+	if peer.IpConfigState != PeerIpCfgStateSuccess {
+		t.Errorf("expected IpConfigState to be preserved from existing peer, got %q", peer.IpConfigState)
 	}
 }
 
-func TestUpdatePeerAdjacency_Disconnect_ClearsConnectionCriteria(t *testing.T) {
+func TestUpdatePeerConnected_Disconnect_ClearsConnectionCriteria(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(ctx).(*haStore)
 	peerIP := "10.0.0.20"
 
-	// Set peer with all connection-managed criteria true and adjacency connected.
+	// Set peer with all connection-managed criteria true and connected.
 	store.SetPeer(ctx, peerIP, types.HAPeerState{
-		IP:                 peerIP,
-		AdjacencyConnected: true,
+		IP:            peerIP,
+		Connected:     true,
+		IpConfigState: PeerIpCfgStateSuccess,
 		MemberCriteria: types.HACriteria{
 			types.HACritPeerCompatible: true,
 		},
-		AdjacencyCriteria: types.HACriteria{
-			types.HACritPeerIpConfig:     true,
+		ServiceCriteria: types.HACriteria{
 			types.HACritPeerService: true,
-			types.HACritPeerPolicy:       true,
+		},
+		AdjacencyCriteria: types.HACriteria{
+			types.HACritPeerPolicy: true,
 		},
 	})
 
-	store.UpdatePeerAdjacency(ctx, peerIP, false, 0)
+	store.UpdatePeerConnected(ctx, peerIP, false, 0)
 
 	peer, ok := store.Peer(peerIP)
 	if !ok {
 		t.Fatal("expected peer to exist")
 	}
-	if peer.AdjacencyConnected {
-		t.Error("expected AdjacencyConnected=false after disconnect")
+	if peer.Connected {
+		t.Error("expected Connected=false after disconnect")
 	}
 	if peer.MemberCriteria[types.HACritPeerCompatible] {
 		t.Error("expected MemberCriteria[peer_compatible]=false after disconnect")
@@ -519,8 +648,11 @@ func TestUpdatePeerAdjacency_Disconnect_ClearsConnectionCriteria(t *testing.T) {
 	if peer.MemberCriteriaMet {
 		t.Error("expected MemberCriteriaMet=false after disconnect")
 	}
-	if peer.AdjacencyCriteria[types.HACritPeerService] {
-		t.Error("expected AdjacencyCriteria[peer_service]=false after disconnect")
+	if peer.ServiceCriteria[types.HACritPeerService] {
+		t.Error("expected ServiceCriteria[peer_service]=false after disconnect")
+	}
+	if peer.ServiceCriteriaMet {
+		t.Error("expected ServiceCriteriaMet=false after disconnect")
 	}
 	if peer.AdjacencyCriteria[types.HACritPeerPolicy] {
 		t.Error("expected AdjacencyCriteria[peer_policy]=false after disconnect")
@@ -528,9 +660,9 @@ func TestUpdatePeerAdjacency_Disconnect_ClearsConnectionCriteria(t *testing.T) {
 	if peer.AdjacencyCriteriaMet {
 		t.Error("expected AdjacencyCriteriaMet=false after disconnect")
 	}
-	// peer_ip_config must be preserved — used by checkAdjacencies to retry connection.
-	if !peer.AdjacencyCriteria[types.HACritPeerIpConfig] {
-		t.Error("expected AdjacencyCriteria[peer_ip_config]=true (preserved) after disconnect")
+	// IpConfigState must be preserved — it's on the peer struct, not in criteria.
+	if peer.IpConfigState != PeerIpCfgStateSuccess {
+		t.Errorf("expected IpConfigState='success' (preserved) after disconnect, got %q", peer.IpConfigState)
 	}
 	// AnyPeerMemberCriteriaFail should return true (map has entries, all false).
 	if !store.AnyPeerMemberCriteriaFail() {
@@ -626,6 +758,41 @@ func TestRemoveLocalCriterion(t *testing.T) {
 
 	// Removing a non-existent criterion should not panic.
 	store.RemoveLocalCriterion(ctx, types.HACritHaStandby)
+}
+
+func TestSetSwitchState_EmitsEventOnChange(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+
+	var events []Event
+	unsubscribe := store.Watch(func(e Event) {
+		events = append(events, e)
+	})
+	defer unsubscribe()
+
+	// First call should emit event (empty -> "ha-ready")
+	store.SetSwitchState(ctx, "ha-ready")
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event after first SetSwitchState, got %d", len(events))
+	}
+	if events[0].Type != EventSwitchStateChanged {
+		t.Errorf("expected EventSwitchStateChanged, got %v", events[0].Type)
+	}
+
+	// Second call with same value should NOT emit event
+	store.SetSwitchState(ctx, "ha-ready")
+	if len(events) != 1 {
+		t.Errorf("expected no new event when state unchanged, got %d total events", len(events))
+	}
+
+	// Third call with different value should emit event
+	store.SetSwitchState(ctx, "ha_not_initialized")
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events after state change, got %d", len(events))
+	}
+	if events[1].Type != EventSwitchStateChanged {
+		t.Errorf("expected EventSwitchStateChanged on second change, got %v", events[1].Type)
+	}
 }
 
 // normalizeMockPath strips the "device:" prefix and leading "/" to match mock handler keys.

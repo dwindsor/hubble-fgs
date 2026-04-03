@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/dpu"
 	hastore "github.com/isovalent/hubble-fgs/pkg/nxos/store/ha"
@@ -27,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/vrf"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 // haPort returns the HA gRPC port reserved from the device store's HSA port range.
@@ -38,6 +40,15 @@ func (m *manager) haPort() (uint16, error) {
 	return m.deviceStore.ReservePort(device.HAService)
 }
 
+// holdDownChan returns the channel for the hold-down timer, or nil if no timer is active.
+// A nil channel blocks forever in a select, effectively disabling the case.
+func (m *manager) holdDownChan() <-chan time.Time {
+	if m.holdDownTimer != nil {
+		return m.holdDownTimer.C
+	}
+	return nil
+}
+
 // isConfigReady returns true when all three prerequisites for HA activation are met:
 //   - HA is enabled
 //   - at least one peer is configured
@@ -46,27 +57,117 @@ func (m *manager) isConfigReady() bool {
 	if m.haStore.Enabled() != "enabled" || len(m.haStore.PeerIPs()) == 0 {
 		return false
 	}
+	if m.haStore.HaIP() == "" {
+		return false
+	}
 	if m.deviceStore != nil && m.deviceStore.InServiceState() == "" {
 		return false
 	}
 	return true
 }
 
+// computeAndPushHaConfig computes the HaConfig from store state and pushes it to
+// the config library, which triggers fan-out to DPUs via the registered callback.
+// This implements the old updateHaConfig() logic:
+//   - Enabled:  configured && operUp && peers > 0
+//   - FlowSync: Enabled && haEnabled (admin enabled)
+func (m *manager) computeAndPushHaConfig() {
+	if m.haStore == nil {
+		return
+	}
+
+	// Read store state
+	enabled := m.haStore.Enabled()
+	switchState := m.haStore.SwitchState()
+	peerIPs := m.haStore.PeerIPs()
+	haIP := m.haStore.HaIP()
+
+	// Compute conditions (matching old doUpdateHaConfig logic)
+	configured := enabled != ""                 // ha-items was received via gNMI
+	operUp := switchState == "ha-ready"         // NxHaOperState operational
+	haEnabled := enabled == "enabled" && operUp // admin enabled AND oper up
+
+	// Check inService criterion: default to true if not set (matches old behavior)
+	inService := true
+	if v, ok := m.haStore.Local().Criteria[types.HACritInService]; ok {
+		inService = v
+	}
+
+	// haIp must be non-empty and not 0.0.0.0 (matches old haIp validation)
+	haIpValid := haIP != "" && haIP != "0.0.0.0"
+
+	shouldEnable := configured && operUp && len(peerIPs) > 0 && haIpValid && inService
+
+	// If conditions not met, push config with enabled=false (matches old doUpdateHaConfig
+	// behavior — DPUs expect UPDATE with enabled=false, not DELETE).
+	if !shouldEnable {
+		disabledConfig := &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+			Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: &v1alpha.HaConfig{
+				Enabled:  false,
+				FlowSync: false,
+				HaIp:     haIP,
+			}},
+		}
+		err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_HA,
+			func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+				return disabledConfig, nil
+			})
+		if err != nil {
+			logger.GetLogger().Error("Failed to update HaConfig (disabled) in config library", logfields.Error, err)
+		}
+		return
+	}
+
+	// Get global port range for peers
+	var portLow, portHigh uint32
+	if m.dpuStore != nil {
+		low, high := m.dpuStore.GetGlobalPortRange()
+		portLow = uint32(low)
+		portHigh = uint32(high)
+	}
+
+	// Build peers list
+	peers := make([]*v1alpha.HaPeer, 0, len(peerIPs))
+	for _, ip := range peerIPs {
+		peers = append(peers, &v1alpha.HaPeer{
+			Ip:      ip,
+			MinPort: portLow,
+			MaxPort: portHigh,
+		})
+	}
+
+	// Build HaConfig
+	haConfig := &v1alpha.HaConfig{
+		Enabled:  shouldEnable,
+		FlowSync: shouldEnable && haEnabled && m.allDPUKeepaliveUp(),
+		HaIp:     haIP,
+		Peers:    peers,
+	}
+
+	configObj := &v1alpha.ConfigObject{
+		Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+		Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: haConfig},
+	}
+
+	// UpdateConfig is atomic and no-ops if unchanged (proto.Equal check)
+	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_HA,
+		func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+			return configObj, nil
+		})
+	if err != nil {
+		logger.GetLogger().Error("Failed to update HaConfig in config library", logfields.Error, err)
+	}
+}
+
 const (
-	// AdjacencyTimeout is the timeout for considering a peer as down.
-	AdjacencyTimeout = 30 * time.Second
+	// HAKeepaliveInterval is the interval between adjacency keepalive checks.
+	HAKeepaliveInterval = 5 * time.Second
 
-	// AdjacencyInterval is the interval between adjacency checks.
-	AdjacencyInterval = 10 * time.Second
-
-	// HeartbeatInterval is the interval between heartbeat messages.
-	HeartbeatInterval = 5 * time.Second
-
-	// HeartbeatTimeout is the timeout for considering a peer unreachable via heartbeat.
-	HeartbeatTimeout = 15 * time.Second
-
-	// MemberTimeout is the timeout for considering a peer member as expired.
-	MemberTimeout = 30 * time.Second
+	// HATimeout is the timeout for considering a peer adjacency or member as expired.
+	HATimeout = 10 * time.Second
 )
 
 // Manager defines the interface for HA orchestration.
@@ -178,7 +279,6 @@ type manager struct {
 	localIP            string
 	peerClients        map[string]Client
 	lastAdjTime        map[string]time.Time
-	lastHeartbeatTime  map[string]time.Time
 	memberInfoProvider func() types.HAPeerMember
 	deviceInfoProvider func() LocalDeviceInfo
 	clientFactory      func() Client
@@ -197,6 +297,10 @@ type manager struct {
 	// Per-DPU HA status tracking
 	dpuStatuses map[string]*dpuStatus
 
+	// holdDownTimer fires once when the CriteriaMet recovery hold-down expires.
+	// nil when no recovery is pending. Only accessed from the runActive goroutine.
+	holdDownTimer *time.Timer
+
 	// Server owned by this manager during Run() activation
 	server Server
 }
@@ -204,10 +308,9 @@ type manager struct {
 // NewManager creates a new HA manager.
 func NewManager(opts ...ManagerOption) Manager {
 	m := &manager{
-		peerClients:       make(map[string]Client),
-		lastAdjTime:       make(map[string]time.Time),
-		lastHeartbeatTime: make(map[string]time.Time),
-		dpuStatuses:       make(map[string]*dpuStatus),
+		peerClients: make(map[string]Client),
+		lastAdjTime: make(map[string]time.Time),
+		dpuStatuses: make(map[string]*dpuStatus),
 		clientFactory: func() Client {
 			return NewClient()
 		},
@@ -218,16 +321,11 @@ func NewManager(opts ...ManagerOption) Manager {
 	}
 
 	// Pre-populate per-DPU status from dpuStore.
-	if m.dpuStore != nil {
-		skipDPU := m.dpuStore.IsSkipDPU()
+	// When DPUs are skipped for testing, do not populate any DPU entries;
+	// the DPU count stays at 0 and DPU criteria are never added to the map.
+	if m.dpuStore != nil && !m.dpuStore.IsSkipDPU() {
 		for _, d := range m.dpuStore.List() {
-			s := &dpuStatus{}
-			if skipDPU {
-				s.keepaliveUp = true
-				s.bulkSyncLocal = true
-				s.bulkSyncPeer = true
-			}
-			m.dpuStatuses[d.Name] = s
+			m.dpuStatuses[d.Name] = &dpuStatus{}
 		}
 	}
 
@@ -437,16 +535,29 @@ func (m *manager) Run(ctx context.Context) error {
 			m.haStore.UpdateLocalCriterion(ctx, types.HACritInService, m.deviceStore.IsInService())
 		}
 
-		// In mock/DPU-less mode, initialize DPU criteria for peers. DPUs may have
-		// been loaded into dpuStore via gNMI after NewManager, and no FWA will
-		// connect to trigger RegisterDpu. Treat all DPUs as healthy when the
-		// dpuStore reports them as ready (inventory complete, all online).
+		// Pre-populate local DPU criteria as false when DPUs are expected.
+		// This prevents a brief "ready" state before DPU health events arrive.
+		if m.dpuStore != nil && !m.dpuStore.IsSkipDPU() && len(m.dpuStore.List()) > 0 {
+			m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+			m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, false)
+		}
+
+		// Initialize DPU criteria for peers. DPUs may have been loaded into
+		// dpuStore via gNMI after NewManager, but no FWA has connected yet to
+		// report keepalive/bulk-sync status. Populate dpuStatuses and write
+		// initial false criteria to all peers.
 		m.initDPUCriteriaFromStore(ctx)
+
+		// Push initial HaConfig to DPUs now that HA is activated.
+		m.computeAndPushHaConfig()
 
 		// Run the active event loop (blocks until deactivation or ctx cancellation).
 		done := m.runActive(ctx, serverCancel, storeCh, deviceCh)
 
-		// Cleanup: stop server, disconnect all peers.
+		// Cleanup: clear HaConfig, stop server, disconnect all peers.
+		if err := library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_HA); err != nil {
+			logger.GetLogger().Debug("Failed to delete HaConfig on deactivation", logfields.Error, err)
+		}
 		serverCancel()
 		serverWg.Wait() // Wait for server goroutine to exit before proceeding.
 		m.mu.Lock()
@@ -472,7 +583,8 @@ func (m *manager) waitForConfig(ctx context.Context, storeCh <-chan hastore.Even
 			return true
 		case event := <-storeCh:
 			switch event.Type {
-			case hastore.EventAdminStateChanged, hastore.EventPeerAdded:
+			case hastore.EventAdminStateChanged, hastore.EventSwitchStateChanged,
+				hastore.EventPeerAdded, hastore.EventHaIPChanged:
 				if m.isConfigReady() {
 					return false
 				}
@@ -494,17 +606,18 @@ func (m *manager) runActive(ctx context.Context, serverCancel context.CancelFunc
 	var peerWg sync.WaitGroup
 	defer peerWg.Wait()
 
-	ticker := time.NewTicker(AdjacencyInterval)
+	ticker := time.NewTicker(HAKeepaliveInterval)
 	defer ticker.Stop()
-
-	heartbeatTicker := time.NewTicker(HeartbeatInterval)
-	defer heartbeatTicker.Stop()
 
 	logger.GetLogger().Debug("HA active event loop started")
 
 	for {
 		select {
 		case <-ctx.Done():
+			if m.holdDownTimer != nil {
+				m.holdDownTimer.Stop()
+				m.holdDownTimer = nil
+			}
 			serverCancel()
 			logger.GetLogger().Debug("HA active event loop stopped (ctx done)")
 			return true
@@ -512,12 +625,21 @@ func (m *manager) runActive(ctx context.Context, serverCancel context.CancelFunc
 		case event := <-storeCh:
 			switch event.Type {
 			case hastore.EventAdminStateChanged:
-				// If HA becomes disabled, deactivate.
+				// Recompute config — if HA became disabled, computeAndPushHaConfig
+				// pushes enabled=false. If still enabled, it recomputes normally.
+				m.computeAndPushHaConfig()
 				if m.haStore.Enabled() != "enabled" {
+					if m.holdDownTimer != nil {
+						m.holdDownTimer.Stop()
+						m.holdDownTimer = nil
+					}
 					serverCancel()
 					logger.GetLogger().Info("HA disabled, deactivating")
 					return false
 				}
+			case hastore.EventSwitchStateChanged:
+				// Switch oper state changed (e.g., ha-ready <-> standalone).
+				m.computeAndPushHaConfig()
 			case hastore.EventCriterionChanged, hastore.EventCriterionSet, hastore.EventPeerCriteriaUpdated:
 				m.recomputeAndApplyState(ctx)
 			case hastore.EventPeerAdded:
@@ -528,10 +650,23 @@ func (m *manager) runActive(ctx context.Context, serverCancel context.CancelFunc
 						logger.GetLogger().Debug("Failed to connect to new peer", logfields.Error, err, "peer", ip)
 					}
 				}(event.PeerIP)
+				// Peer added -- recompute config to include new peer.
+				m.computeAndPushHaConfig()
 			case hastore.EventPeerRemoved:
 				if err := m.DisconnectPeer(event.PeerIP); err != nil {
 					logger.GetLogger().Debug("Failed to disconnect peer", logfields.Error, err, "peer", event.PeerIP)
 				}
+				// Peer removed -- recompute config to exclude removed peer.
+				m.computeAndPushHaConfig()
+			case hastore.EventHaIPChanged:
+				newIP := m.haStore.HaIP()
+				m.mu.Lock()
+				if newIP != "" {
+					m.localIP = newIP
+				}
+				m.mu.Unlock()
+				logger.GetLogger().Info("HA source IP updated", "localIP", newIP)
+				m.computeAndPushHaConfig()
 			}
 
 		case devEvent := <-deviceCh:
@@ -541,16 +676,18 @@ func (m *manager) runActive(ctx context.Context, serverCancel context.CancelFunc
 				isInService := devEvent.Status == "in-service"
 				m.haStore.UpdateLocalCriterion(ctx, types.HACritInService, isInService)
 				logger.GetLogger().Info("HACritInService updated", "in-service", isInService)
+				// Recompute HA config since inService affects the enabled computation.
+				m.computeAndPushHaConfig()
 			}
 
-		case <-ticker.C:
+		case <-m.holdDownChan():
+			m.holdDownTimer = nil // timer is spent
 			m.checkHoldDown(ctx)
+
+		case <-ticker.C:
 			m.checkAdjacencies(ctx)
 			m.checkAdjMbrTimeouts(ctx)
 
-		case <-heartbeatTicker.C:
-			m.sendHeartbeats(ctx)
-			m.checkHeartbeatTimeouts(ctx)
 		}
 	}
 }
@@ -566,7 +703,6 @@ func (m *manager) disconnectAllPeers() {
 	}
 	m.peerClients = make(map[string]Client)
 	m.lastAdjTime = make(map[string]time.Time)
-	m.lastHeartbeatTime = make(map[string]time.Time)
 }
 
 // IsLeader returns true if this node is the HA leader.
@@ -662,7 +798,7 @@ func (m *manager) ProcessMemberInfo(ctx context.Context, peer string, info types
 
 	// Update peer service criterion
 	svcOk := info.Service == types.SvcStateSuccess
-	m.haStore.UpdatePeerAdjacencyCriterion(ctx, peer, types.HACritPeerService, svcOk)
+	m.haStore.UpdatePeerServiceCriterion(ctx, peer, types.HACritPeerService, svcOk)
 
 	// Store remote debug flags propagated from peer via adjacency exchange.
 	// Only add the criterion when the peer is actively injecting a failure; remove
@@ -728,7 +864,7 @@ func (m *manager) HandleRemoval(ctx context.Context, peer string) {
 	m.haStore.UpdatePeerMember(ctx, peer, nil)
 
 	// Reset adjacency state.
-	m.haStore.UpdatePeerAdjacency(ctx, peer, false, 0)
+	m.haStore.UpdatePeerConnected(ctx, peer, false, 0)
 
 	// Set peer service state to unknown (not failure — this isn't a failure).
 	m.haStore.UpdatePeerSvcState(ctx, peer, types.SvcStateUnknown, types.NewReasonString("peer removed HA configuration"))
@@ -750,65 +886,42 @@ func (m *manager) HandleAdjFailureNotify(ctx context.Context, peer string, reaso
 }
 
 // ProcessHaInfo processes an incoming HaInfo from a peer's Notify RPC.
-// It updates the peer's service criterion and injects or removes the standby criterion.
+// It updates the peer's service criterion and HA state, then triggers a
+// full state recomputation (which includes standby evaluation via EvaluateStandbyCrit).
 func (m *manager) ProcessHaInfo(ctx context.Context, peer string, haInfo *hav1.HaInfo) {
 	if haInfo == nil || m.haStore == nil {
 		return
 	}
 
-	// Update peer service criterion and svc state from Notify's reported service state.
+	// Update peer service criterion and svc state from Notify's reported state.
 	// This ensures timely propagation without waiting for the next adjacency interval.
 	svcOk := haInfo.LocalSvcState == hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS
-	m.haStore.UpdatePeerAdjacencyCriterion(ctx, peer, types.HACritPeerService, svcOk)
+	m.haStore.UpdatePeerServiceCriterion(ctx, peer, types.HACritPeerService, svcOk)
 	if svcOk {
 		m.haStore.UpdatePeerSvcState(ctx, peer, types.SvcStateSuccess, types.NewReasonString("peer service ready"))
 	} else {
 		m.haStore.UpdatePeerSvcState(ctx, peer, types.SvcStateFailure, types.NewReasonString("peer service not-ready"))
 	}
 
-	amTakeover := m.haStore.Local().HaState == types.HAStateTakeover
-	isLeader := m.haStore.IsLeader()
-
-	if haInfo.Ha == hav1.HA_STATE_HA_TAKEOVER && !(amTakeover && isLeader) {
-		// Peer is taking over — inject standby so this node yields.
-		local := m.haStore.Local()
-		if _, has := local.Criteria[types.HACritHaStandby]; !has {
-			logger.GetLogger().Debug("Notify: injecting standby criteria (peer in TAKEOVER)", "peer", peer)
-			m.haStore.UpdateLocalCriterion(ctx, types.HACritHaStandby, false)
-		}
-	} else {
-		// Any non-TAKEOVER state (including NOTREADY and SWITCHOVER): clear standby.
-		local := m.haStore.Local()
-		if _, has := local.Criteria[types.HACritHaStandby]; has {
-			logger.GetLogger().Debug("Notify: removing standby criteria on recovery", "peer", peer)
-			m.haStore.RemoveLocalCriterion(ctx, types.HACritHaStandby)
-		}
+	// Update the peer's MemberInfo.HaState so that EvaluateStandbyCrit (which
+	// reads MemberInfo to detect TAKEOVER) sees the updated state immediately.
+	// Without this, EvaluateStandbyCrit uses stale MemberInfo from the last
+	// adjacency exchange and would remove standby that was just injected.
+	peerHaState := protoToHaState(haInfo.Ha)
+	if peerHaState != "" {
+		m.haStore.UpdatePeerMemberHaState(ctx, peer, peerHaState)
 	}
 
+	// Standby injection/removal is handled exclusively by EvaluateStandbyCrit
+	// (called from recomputeAndApplyState) to avoid conflicting dual paths.
+	// The peer's MemberInfo.HaState was already updated above, so
+	// EvaluateStandbyCrit will see the latest TAKEOVER state.
 	m.recomputeAndApplyState(ctx)
 }
 
 // buildLocalHaInfo builds the local HaInfo proto for Notify RPCs.
 func (m *manager) buildLocalHaInfo() *hav1.HaInfo {
-	local := m.haStore.Local()
-	svc := hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE
-	if local.CriteriaMet && !local.CriteriaRecoveryPending {
-		svc = hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS
-	}
-	haState := hav1.HA_STATE_HA_NOTREADY
-	switch local.HaState {
-	case types.HAStateReady:
-		haState = hav1.HA_STATE_HA_READY
-	case types.HAStateDegraded:
-		haState = hav1.HA_STATE_HA_DEGRADED
-	case types.HAStateSwitchover:
-		haState = hav1.HA_STATE_HA_SWITCHOVER
-	case types.HAStateTakeover:
-		haState = hav1.HA_STATE_HA_TAKEOVER
-	case types.HAStateUnavailable:
-		haState = hav1.HA_STATE_HA_UNAVAILABLE
-	}
-	return &hav1.HaInfo{LocalSvcState: svc, Ha: haState}
+	return buildLocalHaInfoFromStore(m.haStore)
 }
 
 // haNotifyPeers sends a Notify RPC to all connected peers to push the local
@@ -893,70 +1006,45 @@ func (m *manager) recomputeAndApplyState(ctx context.Context) {
 		m.haStore.SetLocalCriteriaMet(ctx, updated)
 	}
 
-	// Evaluate standby criteria injection/removal before computing derived state.
-	inject, remove := m.stateMachine.EvaluateStandbyCrit(m.haStore.Local().HaState, m.haStore.IsLeader())
-	if inject {
-		logger.GetLogger().Debug("Injecting standby criteria (yielding to peer in TAKEOVER)")
-		m.haStore.UpdateLocalCriterion(ctx, types.HACritHaStandby, false)
-	} else if remove {
-		logger.GetLogger().Debug("Removing standby criteria (recovery or convergence)")
-		m.haStore.RemoveLocalCriterion(ctx, types.HACritHaStandby)
+	// Manage hold-down timer based on recovery-pending state transitions.
+	if updated.CriteriaRecoveryPending && m.holdDownTimer == nil {
+		// Recovery just started — schedule exact expiry.
+		m.holdDownTimer = time.NewTimer(CriteriaMetHoldDown)
+	} else if !updated.CriteriaRecoveryPending && m.holdDownTimer != nil {
+		// Recovery cancelled (flap or degradation) or promoted — stop timer.
+		m.holdDownTimer.Stop()
+		m.holdDownTimer = nil
 	}
 
-	// Compute derived states
-	result := m.stateMachine.ComputeState()
-	m.haStore.SetLocalDerivedStates(ctx, result.HaState, result.SvcState, result.HaReason, result.SvcReason)
+	// Evaluate standby criteria injection/removal before computing derived state.
+	// Use SetLocal to avoid firing EventCriterionChanged, which would create an
+	// event feedback loop causing redundant gNMI writes.
+	local = m.haStore.Local()
+	inject, remove := m.stateMachine.EvaluateStandbyCrit(local.HaState, m.haStore.IsLeader())
+	if inject {
+		logger.GetLogger().Debug("Injecting standby criteria (yielding to peer in TAKEOVER)")
+		local.Criteria[types.HACritHaStandby] = false
+		m.haStore.SetLocal(ctx, local)
+	} else if remove {
+		logger.GetLogger().Debug("Removing standby criteria (recovery or convergence)")
+		delete(local.Criteria, types.HACritHaStandby)
+		m.haStore.SetLocal(ctx, local)
+	}
 
-	// Persist per-peer HA states
+	// Compute derived states.
+	// Service state is pushed to NX-OS only when SF is configured (InServiceState != "").
+	result := m.stateMachine.ComputeState()
+	pushSvcToNx := m.deviceStore == nil || m.deviceStore.InServiceState() != ""
+	m.haStore.SetLocalDerivedStates(ctx, result.HaState, result.SvcState, result.HaReason, result.SvcReason, pushSvcToNx)
+
+	// Persist per-peer HA states (also writes to NX-OS via gNMI inline).
 	for ip, ps := range result.PeerStates {
 		m.haStore.UpdatePeerHaState(ctx, ip, ps.HaState, ps.HaReason)
 	}
 
-	// Write states to NX-OS immediately (no debounce).
-	// Service state first (only when SF is configured), then HA state, then per-peer states.
-	m.applyNxStates(ctx)
-
 	// Both leader and follower push state changes to peers via Notify so they learn immediately.
 	if result.HaState != prevHaState || result.SvcState != prevSvcState {
 		go m.haNotifyPeers(ctx)
-	}
-}
-
-// applyNxStates writes the current HA and service states to NX-OS via gNMI.
-// Service state is written first (only when SF is configured), then HA state, then per-peer states.
-func (m *manager) applyNxStates(ctx context.Context) {
-	if m.haStore == nil {
-		return
-	}
-
-	local := m.haStore.Local()
-
-	// Process service state only when SF is configured (InServiceState != "").
-	// Mirrors the old n.Configured gate: only push svc state/redirects to NX-OS
-	// once the service function path has been seen.
-	if m.deviceStore == nil || m.deviceStore.InServiceState() != "" {
-		if err := m.haStore.SetLocalSvcState(ctx, local.SvcState, local.SvcStateReason); err != nil {
-			logger.GetLogger().Warn("Failed to set local svc state", "error", err)
-		}
-	}
-
-	// Then write HA state.
-	if err := m.haStore.SetLocalHaState(ctx, local.HaState, local.HaStateReason); err != nil {
-		logger.GetLogger().Warn("Failed to set local ha state", "error", err)
-	}
-
-	// Write per-peer HA and service states.
-	for _, ip := range m.haStore.PeerIPs() {
-		peer, ok := m.haStore.Peer(ip)
-		if !ok {
-			continue
-		}
-		if err := m.haStore.SetRemotePeerHaState(ctx, ip, peer.HaState, peer.HaStateReason); err != nil {
-			logger.GetLogger().Warn("Failed to set peer ha state", "peer", ip, "error", err)
-		}
-		if err := m.haStore.SetRemoteSvcState(ctx, ip, peer.SvcState, peer.SvcStateReason); err != nil {
-			logger.GetLogger().Warn("Failed to set peer svc state", "peer", ip, "error", err)
-		}
 	}
 }
 
@@ -971,6 +1059,10 @@ func (m *manager) checkHoldDown(ctx context.Context) {
 	if promoted {
 		m.haStore.SetLocalCriteriaMet(ctx, updated)
 		m.recomputeAndApplyState(ctx)
+	} else if updated.CriteriaRecoveryPending != local.CriteriaRecoveryPending || updated.CriteriaFlapCount != local.CriteriaFlapCount {
+		// Hold-down expired but criteria no longer pass — persist the cancellation
+		// so the store doesn't retain stale CriteriaRecoveryPending/Epoch state.
+		m.haStore.SetLocalCriteriaMet(ctx, updated)
 	}
 }
 
@@ -981,7 +1073,7 @@ func (m *manager) checkAdjMbrTimeouts(ctx context.Context) {
 	}
 
 	now := time.Now().Unix()
-	mbrTimeoutSec := int64(MemberTimeout / time.Second)
+	mbrTimeoutSec := int64(HATimeout / time.Second)
 
 	peers := m.haStore.AllPeers()
 	for ip, peer := range peers {
@@ -992,9 +1084,9 @@ func (m *manager) checkAdjMbrTimeouts(ctx context.Context) {
 		}
 
 		// Check adjacency timeout
-		if peer.AdjacencyConnected && peer.AdjacencyConnectedEpoch > 0 && now-peer.AdjacencyConnectedEpoch > int64(AdjacencyTimeout/time.Second) {
+		if peer.Connected && peer.ConnectedEpoch > 0 && now-peer.ConnectedEpoch > int64(HATimeout/time.Second) {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
-			m.haStore.UpdatePeerAdjacency(ctx, ip, false, 0)
+			m.haStore.UpdatePeerConnected(ctx, ip, false, 0)
 			m.haStore.UpdatePeerSvcState(ctx, ip, types.SvcStateUnknown, types.NewReasonString("adjacency timed out"))
 			if err := m.haStore.SetRemoteStatesAdjDown(ctx, ip); err != nil {
 				logger.GetLogger().Warn("Failed to set remote states adj down", "peer", ip, "error", err)
@@ -1017,7 +1109,8 @@ func (m *manager) checkAdjacencies(ctx context.Context) {
 	localInfo := m.buildMemberInfo()
 
 	for ip, peer := range peers {
-		if !peer.AdjacencyCriteria[types.HACritPeerIpConfig] {
+		if peer.IpConfigState != hastore.PeerIpCfgStateSuccess {
+			logger.GetLogger().Debug("checkAdjacencies: skipping peer, IpConfigState not success", "peer", ip, "state", peer.IpConfigState)
 			continue
 		}
 
@@ -1032,13 +1125,6 @@ func (m *manager) checkAdjacencies(ctx context.Context) {
 			m.handlePeerFailure(ctx, ip)
 			continue
 		}
-
-		// Update adjacency state
-		m.haStore.UpdatePeerAdjacency(ctx, ip, true, time.Now().Unix())
-
-		m.mu.Lock()
-		m.lastAdjTime[ip] = time.Now()
-		m.mu.Unlock()
 	}
 
 	// Perform leader election
@@ -1108,6 +1194,26 @@ func (m *manager) sendAdjacency(ctx context.Context, peer string, localInfo type
 		return err
 	}
 
+	// RPC completed — peer is reachable at the network level. Update adjacency
+	// liveness regardless of response status. Validation failures (e.g. local
+	// service failure causing ADJ_FAILURE) are tracked via criteria, not via
+	// adjacency timeout. Without this, ADJ_FAILURE responses leave the epoch
+	// stale and cause spurious "peer adjacency timeout" flapping.
+	peerState, _ := m.haStore.Peer(peer)
+	wasDisconnected := !peerState.Connected
+	m.haStore.UpdatePeerConnected(ctx, peer, true, time.Now().Unix())
+	// Re-push DPU aggregate criteria on reconnection.
+	// UpdatePeerConnected(false) resets all criteria to false; the adjacency
+	// exchange restores peer_compatible, peer_service, and peer_vrf_gid via
+	// ProcessMemberInfo, but peer_dpu_keepalive and peer_dpu_bulk_sync are only
+	// written by aggregateDPUStatus() which is not triggered during adjacency.
+	if wasDisconnected {
+		m.aggregateDPUStatus(ctx)
+	}
+	m.mu.Lock()
+	m.lastAdjTime[peer] = time.Now()
+	m.mu.Unlock()
+
 	if resp.Status != hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS {
 		// Process MbrInfo from failure response to detect criteria failures fast
 		if resp.MbrInfo != nil {
@@ -1140,96 +1246,13 @@ func (m *manager) sendAdjacency(ctx context.Context, peer string, localInfo type
 	return nil
 }
 
-// sendHeartbeats sends heartbeat messages to all connected peers.
-func (m *manager) sendHeartbeats(ctx context.Context) {
-	if m.haStore == nil {
-		return
-	}
-
-	m.mu.RLock()
-	localIP := m.localIP
-	m.mu.RUnlock()
-
-	peers := m.haStore.AllPeers()
-	for ip, peer := range peers {
-		if !peer.AdjacencyCriteria[types.HACritPeerIpConfig] {
-			continue
-		}
-
-		m.mu.RLock()
-		client, ok := m.peerClients[ip]
-		m.mu.RUnlock()
-
-		if !ok || !client.IsConnected() {
-			continue
-		}
-
-		req := &hav1.AdjRequest{
-			HaIp: localIP,
-		}
-
-		_, err := client.Adjacency(ctx, req)
-		if err != nil {
-			logger.GetLogger().Debug("Heartbeat failed", "peer", ip, "error", err)
-			continue
-		}
-
-		m.mu.Lock()
-		m.lastHeartbeatTime[ip] = time.Now()
-		m.mu.Unlock()
-	}
-}
-
-// checkHeartbeatTimeouts checks for peers that have exceeded the heartbeat timeout.
-func (m *manager) checkHeartbeatTimeouts(ctx context.Context) {
-	if m.haStore == nil {
-		return
-	}
-
-	m.mu.RLock()
-	heartbeatTimes := make(map[string]time.Time, len(m.lastHeartbeatTime))
-	for k, v := range m.lastHeartbeatTime {
-		heartbeatTimes[k] = v
-	}
-	m.mu.RUnlock()
-
-	now := time.Now()
-	peers := m.haStore.AllPeers()
-	reelectionNeeded := false
-
-	for ip, peer := range peers {
-		if !peer.AdjacencyCriteria[types.HACritPeerIpConfig] {
-			continue
-		}
-
-		lastHeartbeat, ok := heartbeatTimes[ip]
-		if !ok {
-			m.mu.Lock()
-			m.lastHeartbeatTime[ip] = now
-			m.mu.Unlock()
-			continue
-		}
-
-		if now.Sub(lastHeartbeat) > HeartbeatTimeout {
-			logger.GetLogger().Warn("Peer heartbeat timeout", "peer", ip, "lastHeartbeat", lastHeartbeat)
-			m.haStore.UpdatePeerSvcState(ctx, ip, types.SvcStateUnknown, types.NewReasonString("heartbeat timeout"))
-			reelectionNeeded = true
-		}
-	}
-
-	if reelectionNeeded {
-		logger.GetLogger().Info("Triggering re-election due to heartbeat timeout")
-		m.electLeader(ctx)
-	}
-}
-
 // handlePeerFailure handles a peer failure.
 func (m *manager) handlePeerFailure(ctx context.Context, peer string) {
 	m.mu.Lock()
 	lastAdj, ok := m.lastAdjTime[peer]
 	m.mu.Unlock()
 
-	if ok && time.Since(lastAdj) > AdjacencyTimeout {
+	if ok && time.Since(lastAdj) > HATimeout {
 		logger.GetLogger().Warn("Peer adjacency timeout", "peer", peer)
 		m.haStore.UpdatePeerSvcState(ctx, peer, types.SvcStateUnknown, types.NewReasonString("peer adjacency timeout"))
 		m.DisconnectPeer(peer)
@@ -1296,16 +1319,13 @@ func (m *manager) resolveDpuUid(uid string) string {
 
 // RegisterDpu registers a DPU with the HA manager.
 func (m *manager) RegisterDpu(ctx context.Context, dpuUid string) {
+	if m.dpuStore != nil && m.dpuStore.IsSkipDPU() {
+		return
+	}
 	dpuUid = m.resolveDpuUid(dpuUid)
 	m.mu.Lock()
 	if _, ok := m.dpuStatuses[dpuUid]; !ok {
-		s := &dpuStatus{}
-		if m.dpuStore != nil && m.dpuStore.IsSkipDPU() {
-			s.keepaliveUp = true
-			s.bulkSyncLocal = true
-			s.bulkSyncPeer = true
-		}
-		m.dpuStatuses[dpuUid] = s
+		m.dpuStatuses[dpuUid] = &dpuStatus{}
 	}
 	m.mu.Unlock()
 	m.aggregateDPUStatus(ctx)
@@ -1461,13 +1481,21 @@ func (m *manager) NotifyServiceFailure(ctx context.Context) {
 	}
 }
 
-// initDPUCriteriaFromStore sets DPU keepalive/bulk-sync criteria at HA
-// activation time based on dpuStore health. When the dpuStore reports
-// healthy DPUs (via gNMI) but no FWA has connected to report actual
-// keepalive/bulk-sync status, we trust the dpuStore's assessment and
-// mark DPUs as healthy so that membership/adjacency criteria pass.
+// initDPUCriteriaFromStore ensures DPU entries exist in dpuStatuses and
+// writes initial (false) criteria to all HA peers at activation time. This
+// handles the case where DPUs were loaded into dpuStore via gNMI but no FWA
+// has connected yet. All DPU criteria (keepalive, bulkSyncLocal, bulkSyncPeer)
+// start as false and only become true when FWA explicitly reports via the
+// Update* methods.
 func (m *manager) initDPUCriteriaFromStore(ctx context.Context) {
 	if m.dpuStore == nil || m.haStore == nil {
+		return
+	}
+
+	// When DPUs are skipped for testing, return early without adding any
+	// DPU criteria to the map. This prevents them from contributing to
+	// criteria checks at all.
+	if m.dpuStore.IsSkipDPU() {
 		return
 	}
 
@@ -1476,21 +1504,10 @@ func (m *manager) initDPUCriteriaFromStore(ctx context.Context) {
 		return
 	}
 
-	// Use IsReady (inventory complete + all DPUs discovered) as the gate
-	// for treating DPUs as healthy at activation. IsHealthy may lag behind
-	// because it depends on FWA health reports that haven't arrived yet.
-	ready := m.dpuStore.IsReady()
-
 	m.mu.Lock()
 	for _, d := range dpus {
 		if _, ok := m.dpuStatuses[d.Name]; !ok {
 			m.dpuStatuses[d.Name] = &dpuStatus{}
-		}
-		if ready {
-			s := m.dpuStatuses[d.Name]
-			s.keepaliveUp = true
-			s.bulkSyncLocal = true
-			s.bulkSyncPeer = true
 		}
 	}
 	m.mu.Unlock()
@@ -1498,10 +1515,37 @@ func (m *manager) initDPUCriteriaFromStore(ctx context.Context) {
 	m.aggregateDPUStatus(ctx)
 }
 
+// allDPUKeepaliveUp returns true if all DPU keepalives are up.
+// When DPUs are skipped for testing, returns true (matching old aggregateDpuKeepalive/SkipDpu behavior).
+// When no DPUs are registered (and not skipped), returns false.
+func (m *manager) allDPUKeepaliveUp() bool {
+	if m.dpuStore != nil && m.dpuStore.IsSkipDPU() {
+		return true
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if len(m.dpuStatuses) == 0 {
+		return false
+	}
+	for _, s := range m.dpuStatuses {
+		if !s.keepaliveUp {
+			return false
+		}
+	}
+	return true
+}
+
 // aggregateDPUStatus computes aggregate keepalive/bulk-sync criteria from all DPUs
 // and updates per-peer adjacency criteria and DPU status snapshots in the HA store.
 func (m *manager) aggregateDPUStatus(ctx context.Context) {
 	if m.haStore == nil {
+		return
+	}
+
+	// When DPUs are skipped for testing, return early without adding any
+	// DPU criteria to the map. This prevents them from contributing to
+	// criteria checks at all.
+	if m.dpuStore != nil && m.dpuStore.IsSkipDPU() {
 		return
 	}
 
@@ -1534,6 +1578,9 @@ func (m *manager) aggregateDPUStatus(ctx context.Context) {
 		m.haStore.UpdatePeerAdjacencyCriterion(ctx, ip, types.HACritPeerDPUBulkSync, allBulkSyncDone)
 		m.haStore.UpdatePeerDPUStatuses(ctx, ip, snapshot)
 	}
+
+	// Recompute HA config since DPU keepalive affects FlowSync.
+	m.computeAndPushHaConfig()
 }
 
 // compareIPs compares two IP addresses.

@@ -87,12 +87,18 @@ const (
 	// Switch managed paths (subscribe)
 	// --------------------------------
 
+	// haStore HA container (used for full-config delete detection)
+	HAStoreHaItems = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items"
 	// haStore.Enabled
 	HAStoreEnabled = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/adminState"
 	// haStore.SwitchState
 	HAStoreSwitchState = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/nxHaOperState"
 	// haStore.Peer
 	HAStorePeers = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/peer-items/HaPeer-list"
+	// haStore.Peer.IpAddr
+	HAStorePeerIpAddr = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/peer-items/HaPeer-list/ipAddr"
+	// haStore.Peer.IpConfigState
+	HAStorePeerIpConfigState = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/peer-items/HaPeer-list/ipConfigState"
 	// haStore.HaIp
 	HAStoreHaIp = "device:/System/sas-items/state-items/agent-items/SasAgent-list[svcName=hypershield]/agentHaSrcIntfAddr"
 
@@ -117,9 +123,9 @@ const (
 	// haStore.Peer.SvcStateReason
 	HAStorePeerSvcStateReason = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/svcStateReason"
 	// haStore.Peer.HaState
-	HAStorePeerHaState = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/haState"
+	HAStorePeerHaState = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/svcHaState"
 	// haStore.Peer.HaStateReason
-	HAStorePeerHaStateReason = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/haStateReason"
+	HAStorePeerHaStateReason = "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/ext-items/peer-items/HaPeerExt-list[ipAddr=%s]/svcHaStateReason"
 )
 
 // NXOS Manager Paths

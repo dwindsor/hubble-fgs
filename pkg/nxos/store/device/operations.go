@@ -174,6 +174,27 @@ func (s *deviceStore) SetSerialNumber(ctx context.Context, serial string) {
 	s.serialNumber = serial
 	s.mu.Unlock()
 	s.persist(ctx)
+
+	// Propagate SerialNumber to config library so DPUs receive it.
+	if serial != "" {
+		err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+			var dpuConfig *v1alpha.DpuConfig
+			if existing != nil && existing.GetConfigDpu() != nil {
+				dpuConfig = proto.Clone(existing.GetConfigDpu()).(*v1alpha.DpuConfig)
+			} else {
+				dpuConfig = &v1alpha.DpuConfig{}
+			}
+			dpuConfig.SerialNumber = serial
+			return &v1alpha.ConfigObject{
+				Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+				Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+				Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuConfig},
+			}, nil
+		})
+		if err != nil {
+			logger.GetLogger().Warn("Failed to update serial number in config library", "error", err)
+		}
+	}
 }
 
 func (s *deviceStore) SetModel(ctx context.Context, model string) {
@@ -226,14 +247,52 @@ func (s *deviceStore) SetHeadlessMode(ctx context.Context, headless bool) {
 }
 
 func (s *deviceStore) SetInService(ctx context.Context, inService string) {
+	// Snapshot the current state and hooks under the lock so we can run hooks
+	// outside the lock (avoiding deadlock if hooks call back into the store).
+	// NOTE: this does not fully serialize concurrent callers — if two goroutines
+	// race with different values, both may pass the early-return check. In
+	// practice SetInService is called from the single gNMI dispatch goroutine.
 	s.mu.Lock()
-	changed := s.inService != inService
+	if s.inService == inService {
+		s.mu.Unlock()
+		return
+	}
+	old := s.inService
+	preHook := s.preInServiceHook
+	postHook := s.postInServiceHook
+	s.mu.Unlock()
+
+	// Pre-hook: runs BEFORE state changes (for in-service redirect programming).
+	if preHook != nil {
+		preHook(ctx, inService)
+	}
+
+	s.mu.Lock()
 	s.inService = inService
 	s.mu.Unlock()
-	if changed {
-		s.notify(Event{Type: EventInServiceChanged, Status: inService})
+
+	s.notify(Event{Type: EventInServiceChanged, Status: inService})
+
+	// Post-hook: runs AFTER state changes and notification (for out-of-service cleanup).
+	if postHook != nil {
+		postHook(ctx, old)
 	}
+
 	s.persist(ctx)
+}
+
+// SetPreInServiceHook registers a hook called BEFORE in-service state changes.
+func (s *deviceStore) SetPreInServiceHook(hook func(ctx context.Context, newState string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.preInServiceHook = hook
+}
+
+// SetPostInServiceHook registers a hook called AFTER in-service state changes.
+func (s *deviceStore) SetPostInServiceHook(hook func(ctx context.Context, oldState string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.postInServiceHook = hook
 }
 
 func (s *deviceStore) SetSkipReg(ctx context.Context, skip bool, reason string) {
@@ -272,12 +331,13 @@ func (s *deviceStore) ResetConnection(ctx context.Context) {
 
 func (s *deviceStore) SetControllerEndpoint(ctx context.Context, endpoint string) {
 	s.mu.Lock()
+	changed := s.controllerEndpoint != endpoint
 	s.controllerEndpoint = endpoint
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	s.persist(ctx)
 
-	if handler != nil {
+	if handler != nil && changed {
 		if err := handler.Set(ctx, paths.DeviceStoreControllerEndpoint, endpoint); err != nil {
 			logger.GetLogger().Warn("Failed to sync controller endpoint to gNMI", "endpoint", endpoint, "error", err)
 		}
@@ -286,12 +346,13 @@ func (s *deviceStore) SetControllerEndpoint(ctx context.Context, endpoint string
 
 func (s *deviceStore) SetControllerPort(ctx context.Context, port uint32) {
 	s.mu.Lock()
+	changed := s.controllerPort != port
 	s.controllerPort = port
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	s.persist(ctx)
 
-	if handler != nil {
+	if handler != nil && changed {
 		if err := handler.Set(ctx, paths.DeviceStoreControllerPort, port); err != nil {
 			logger.GetLogger().Warn("Failed to sync controller port to gNMI", "port", port, "error", err)
 		}
@@ -300,12 +361,13 @@ func (s *deviceStore) SetControllerPort(ctx context.Context, port uint32) {
 
 func (s *deviceStore) SetControllerVersion(ctx context.Context, version string) {
 	s.mu.Lock()
+	changed := s.controllerVersion != version
 	s.controllerVersion = version
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	s.persist(ctx)
 
-	if handler != nil {
+	if handler != nil && changed {
 		if err := handler.Set(ctx, paths.DeviceStoreControllerVersion, version); err != nil {
 			logger.GetLogger().Warn("Failed to sync agent version to gNMI", "version", version, "error", err)
 		}
@@ -314,12 +376,13 @@ func (s *deviceStore) SetControllerVersion(ctx context.Context, version string) 
 
 func (s *deviceStore) SetSystemState(ctx context.Context, systemState int) {
 	s.mu.Lock()
+	changed := s.systemState != systemState
 	s.systemState = systemState
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	s.persist(ctx)
 
-	if handler != nil {
+	if handler != nil && changed {
 		hexState := fmt.Sprintf("0x%X", systemState)
 		if err := handler.Set(ctx, paths.DeviceStoreSystemState, hexState); err != nil {
 			logger.GetLogger().Warn("Failed to sync system state to gNMI", "state", hexState, "error", err)

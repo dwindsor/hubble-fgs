@@ -35,9 +35,9 @@ const (
 func (s *vrfStore) programRedirects(ctx context.Context, vrf types.VRF) {
 	s.mu.RLock()
 	handler := s.gnmiHandler
-	ready := s.redirectsReady
+	inService := s.inService
 	s.mu.RUnlock()
-	if handler == nil || !ready {
+	if handler == nil || !inService {
 		return
 	}
 	s.programFwPolicyState(ctx, handler, vrf)
@@ -234,9 +234,9 @@ func (s *vrfStore) deleteDpuEndpoint(ctx context.Context, handler gnmi.GnmiHandl
 func (s *vrfStore) deleteDpuEndpointForRepin(ctx context.Context, vrfName string, oldDPU uint16) {
 	s.mu.RLock()
 	handler := s.gnmiHandler
-	ready := s.redirectsReady
+	inService := s.inService
 	s.mu.RUnlock()
-	if handler == nil || !ready {
+	if handler == nil || !inService {
 		return
 	}
 	s.deleteDpuEndpoint(ctx, handler, vrfName, oldDPU)
@@ -280,25 +280,39 @@ func (s *vrfStore) cleanupRedirects(ctx context.Context, name string) {
 	logger.GetLogger().Debug("VRF redirect cleanup completed", "vrf", name)
 }
 
-// ReconcileRedirects reprograms redirects for all active VRFs.
-// Called during startup after shared infrastructure is in place,
-// bypassing the redirectsReady gate.
-func (s *vrfStore) ReconcileRedirects(ctx context.Context) {
+// ProgramAllRedirects programs redirects for all active VRFs.
+// Used during in-service transition. Bypasses the inService gate.
+func (s *vrfStore) ProgramAllRedirects(ctx context.Context) int {
 	s.mu.RLock()
 	handler := s.gnmiHandler
 	s.mu.RUnlock()
 	if handler == nil {
-		return
+		return 0
 	}
-
-	activeVRFs := s.ListActive()
-	for _, v := range activeVRFs {
+	active := s.ListActive()
+	for _, v := range active {
 		s.programFwPolicyState(ctx, handler, v)
 		s.programServiceEndpoints(ctx, handler, v)
 		s.programPolicyMap(ctx, handler, v)
 		s.programEnforcement(ctx, handler, v)
 	}
-	logger.GetLogger().Info("VRF redirects reconciled", "count", len(activeVRFs))
+	return len(active)
+}
+
+// CleanupAllRedirects removes redirects for all active VRFs.
+// Used during out-of-service transition.
+func (s *vrfStore) CleanupAllRedirects(ctx context.Context) {
+	for _, v := range s.ListActive() {
+		s.cleanupRedirects(ctx, v.Name)
+	}
+}
+
+// ReconcileRedirects reprograms redirects for all active VRFs.
+// Called during startup after shared infrastructure is in place.
+// Unconditional — bypasses the inService gate.
+func (s *vrfStore) ReconcileRedirects(ctx context.Context) {
+	n := s.ProgramAllRedirects(ctx)
+	logger.GetLogger().Info("VRF redirects reconciled", "count", n)
 }
 
 // CleanupAllFwPolicyState deletes fwPolicyState for all active VRFs.

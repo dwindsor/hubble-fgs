@@ -18,8 +18,9 @@ import (
 )
 
 func TestHandleServiceLifecycleNotification_IgnoresUpdates(t *testing.T) {
+	t.Setenv("NX_AGENT_IGNORE_MODULES", "1")
 	ctx := context.Background()
-	m := NewManager(ctx, WithMockGnmiHandler(nil), WithSkipDPU(true)).(*manager)
+	m := NewManager(ctx, WithMockGnmiHandler(nil)).(*manager)
 
 	// Should not panic or take action on non-delete notifications
 	m.handleServiceLifecycleNotification(ctx, paths.SvcInstancePath, false)
@@ -69,8 +70,9 @@ func TestHandleServiceLifecycleNotification_SvcFwPolicyPathMatches(t *testing.T)
 }
 
 func TestHandleSvcInstanceDelete_IgnoresNonHypershield(t *testing.T) {
+	t.Setenv("NX_AGENT_IGNORE_MODULES", "1")
 	ctx := context.Background()
-	m := NewManager(ctx, WithMockGnmiHandler(nil), WithSkipDPU(true)).(*manager)
+	m := NewManager(ctx, WithMockGnmiHandler(nil)).(*manager)
 
 	// Should not panic or restart for a different service instance name.
 	// The path check uses strings.Contains(path, "name=hypershield").

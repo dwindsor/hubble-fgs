@@ -101,8 +101,7 @@ func executeAGW() {
 		// NXOS disabled - build a pre-configured mock handler so stores are populated
 		// and the NX-OS manager can reach PhaseRunning without hardware.
 		builder := mock.NewHandlerBuilder().
-			WithPersistPath(filepath.Join(storage.DefaultRootPath, "mock_gnmi.json")).
-			WithTree(mock.DPUTree(2))
+			WithPersistPath(filepath.Join(storage.DefaultRootPath, "mock_gnmi.json"))
 
 		haPeerIP := os.Getenv("AGW_HA_PEER_IP")
 		haSourceIP := os.Getenv("AGW_HA_SOURCE_IP")

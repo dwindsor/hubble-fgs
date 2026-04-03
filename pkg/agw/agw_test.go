@@ -1134,63 +1134,63 @@ func TestGnmiShowHa(t *testing.T) {
 			msgData: ipc.MessageData{
 				Flags: map[string]string{},
 			},
-			expectContains: "gNMI HA Store",
+			expectContains: "=== HA Status ===",
 		},
 		{
-			name: "Text output contains summary section",
+			name: "Text output contains cluster state",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{},
 			},
-			expectContains: "--- Summary ---",
+			expectContains: "Cluster State:",
 		},
 		{
-			name: "Text output contains local state section",
+			name: "Text output contains local section",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{},
 			},
-			expectContains: "--- Local State ---",
+			expectContains: "--- Local ---",
 		},
 		{
-			name: "Text output contains HA State field",
+			name: "Text output contains NX State field",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{},
 			},
-			expectContains: "HA State:",
+			expectContains: "NX State:",
 		},
 		{
-			name: "Text output contains SVC State field",
+			name: "Text output contains Svc State field",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{},
 			},
-			expectContains: "SVC State:",
+			expectContains: "Svc State:",
 		},
 		{
-			name: "Text output contains Adjacency Reached",
+			name: "Text output contains Reason field",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{},
 			},
-			expectContains: "Adjacency Reached:",
+			expectContains: "Reason:",
 		},
 		{
-			name: "Text output contains Any Peer Adj OK",
+			name: "Text output contains Criteria field",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{},
 			},
-			expectContains: "Any Peer Adj OK:",
+			expectContains: "Criteria:",
 		},
 		{
-			name: "JSON output contains admin_state",
+			name: "JSON output contains cluster_state",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{"json": "true"},
 			},
-			expectContains: `"admin_state"`,
+			expectContains: `"cluster_state"`,
 		},
 		{
-			name: "JSON output contains peers",
+			name: "JSON output contains nx_state",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{"json": "true"},
 			},
-			expectContains: `"peers"`,
+			expectContains: `"nx_state"`,
 		},
 		{
 			name: "JSON output contains local section",
@@ -1228,32 +1228,32 @@ func TestGnmiShowHa(t *testing.T) {
 			expectContains: `"policy_check"`,
 		},
 		{
-			name: "JSON output local contains adjacency_reached",
+			name: "JSON output local contains recovery_pending",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{"json": "true"},
 			},
-			expectContains: `"adjacency_reached"`,
+			expectContains: `"recovery_pending"`,
 		},
 		{
-			name: "JSON output contains any_peer_adj_ok",
+			name: "JSON output local contains flap_count",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{"json": "true"},
 			},
-			expectContains: `"any_peer_adj_ok"`,
+			expectContains: `"flap_count"`,
 		},
 		{
-			name: "JSON output contains any_peer_mbr_fail",
+			name: "JSON output local contains criteria",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{"json": "true"},
 			},
-			expectContains: `"any_peer_mbr_fail"`,
+			expectContains: `"criteria"`,
 		},
 		{
-			name: "JSON output contains any_peer_ha_ready",
+			name: "JSON output contains peers",
 			msgData: ipc.MessageData{
 				Flags: map[string]string{"json": "true"},
 			},
-			expectContains: `"any_peer_ha_ready"`,
+			expectContains: `"peers"`,
 		},
 	}
 

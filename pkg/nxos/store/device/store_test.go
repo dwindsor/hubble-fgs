@@ -459,6 +459,100 @@ func TestStore_SetInService_EmitEvent(t *testing.T) {
 	}
 }
 
+func TestStore_SetInService_HookOrdering(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("in_service_pre_hook_before_state_change", func(t *testing.T) {
+		cs := NewStore(ctx)
+		var preHookState string
+
+		cs.SetPreInServiceHook(func(_ context.Context, _ string) {
+			// At this point the store should still be out-of-service
+			preHookState = cs.InServiceState()
+		})
+
+		cs.SetInService(ctx, "in-service")
+
+		if preHookState != "" {
+			t.Errorf("expected pre-hook to see old state (empty), got %q", preHookState)
+		}
+		if !cs.IsInService() {
+			t.Error("expected in-service after SetInService")
+		}
+	})
+
+	t.Run("out_of_service_post_hook_after_state_change", func(t *testing.T) {
+		cs := NewStore(ctx)
+		cs.SetInService(ctx, "in-service") // start in-service
+
+		var postHookState string
+		cs.SetPostInServiceHook(func(_ context.Context, _ string) {
+			// At this point the store should already be out-of-service
+			postHookState = cs.InServiceState()
+		})
+
+		cs.SetInService(ctx, "out-of-service")
+
+		if postHookState != "out-of-service" {
+			t.Errorf("expected post-hook to see new state 'out-of-service', got %q", postHookState)
+		}
+	})
+
+	t.Run("full_transition_sequence", func(t *testing.T) {
+		cs := NewStore(ctx)
+		var sequence []string
+
+		cs.SetPreInServiceHook(func(_ context.Context, newState string) {
+			sequence = append(sequence, "pre:"+newState)
+		})
+		cs.SetPostInServiceHook(func(_ context.Context, oldState string) {
+			sequence = append(sequence, "post:"+oldState)
+		})
+		cs.Watch(func(e Event) {
+			if e.Type == EventInServiceChanged {
+				sequence = append(sequence, "notify:"+e.Status)
+			}
+		})
+
+		// Transition to in-service
+		cs.SetInService(ctx, "in-service")
+		// Transition to out-of-service
+		cs.SetInService(ctx, "out-of-service")
+
+		expected := []string{
+			"pre:in-service", "notify:in-service", "post:",
+			"pre:out-of-service", "notify:out-of-service", "post:in-service",
+		}
+		if len(sequence) != len(expected) {
+			t.Fatalf("expected %d events, got %d: %v", len(expected), len(sequence), sequence)
+		}
+		for i, want := range expected {
+			if sequence[i] != want {
+				t.Errorf("sequence[%d]: expected %q, got %q", i, want, sequence[i])
+			}
+		}
+	})
+
+	t.Run("no_op_same_state", func(t *testing.T) {
+		cs := NewStore(ctx)
+		cs.SetInService(ctx, "in-service")
+
+		var hookCalled bool
+		cs.SetPreInServiceHook(func(_ context.Context, _ string) {
+			hookCalled = true
+		})
+		cs.SetPostInServiceHook(func(_ context.Context, _ string) {
+			hookCalled = true
+		})
+
+		// Same state — should be no-op
+		cs.SetInService(ctx, "in-service")
+		if hookCalled {
+			t.Error("expected no hooks to fire on duplicate SetInService call")
+		}
+	})
+}
+
 func TestStore_HandleGnmiNotification_InService_RawString(t *testing.T) {
 	ctx := context.Background()
 	cs := NewStore(ctx)

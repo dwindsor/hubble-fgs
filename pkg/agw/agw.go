@@ -1836,16 +1836,18 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 				SvcState:      peer.SvcState,
 				MembershipOK:  peer.MemberCriteriaMet,
 				AdjacencyOK:   peer.AdjacencyCriteriaMet,
-				ServiceOK:     peer.SvcState == nxtypes.SvcStateSuccess,
+				ServiceOK:     peer.ServiceCriteriaMet,
 			}
 		}
 
 		result := struct {
 			ClusterState string                     `json:"cluster_state"`
+			NxState      string                     `json:"nx_state"`
 			Local        LocalData                  `json:"local"`
 			Peers        map[string]PeerSummaryData `json:"peers"`
 		}{
-			ClusterState: local.HaState,
+			ClusterState: nxtypes.ClusterState(local.HaState),
+			NxState:      local.HaState,
 			Local:        localData,
 			Peers:        peerSummaries,
 		}
@@ -1868,12 +1870,17 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 	}
 
 	fmt.Fprintln(w, "=== HA Status ===")
-	fmt.Fprintf(w, "\nCluster State:\t%s\n", local.HaState)
+	fmt.Fprintf(w, "\nCluster State:\t%s\n", nxtypes.ClusterState(local.HaState))
+	fmt.Fprintf(w, "NX State:\t%s\n", local.HaState)
 
 	fmt.Fprintln(w, "\n--- Local ---")
 	fmt.Fprintf(w, "  Svc State:\t%s since %s\n", local.SvcState, formatEpoch(local.SvcStateEpoch))
 	fmt.Fprintf(w, "    Reason:\t%s\n", local.SvcStateReason)
-	fmt.Fprintf(w, "    Criteria:\t%s since %s\n", okFail(local.CriteriaMet), formatEpoch(local.CriteriaMetEpoch))
+	critDisplay := okFail(local.CriteriaMet)
+	if local.CriteriaRecoveryPending {
+		critDisplay = "[HOLD]"
+	}
+	fmt.Fprintf(w, "    Criteria:\t%s since %s\n", critDisplay, formatEpoch(local.CriteriaMetEpoch))
 	if len(local.Criteria) > 0 {
 		critKeys := make([]string, 0, len(local.Criteria))
 		for k := range local.Criteria {
@@ -1906,8 +1913,8 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 
 			fmt.Fprintf(w, "  Svc State:\t%s since %s\n", peer.SvcState, formatEpoch(peer.SvcStateEpoch))
 			fmt.Fprintf(w, "    Reason:\t%s\n", peer.SvcStateReason)
-			fmt.Fprintf(w, "    Criteria:\t%s since %s\n", okFail(peer.AdjacencyCriteria[nxtypes.HACritPeerService]), formatEpoch(peer.SvcStateEpoch))
-			fmt.Fprintf(w, "      peer_service:\t%s\n", okFail(peer.AdjacencyCriteria[nxtypes.HACritPeerService]))
+			fmt.Fprintf(w, "    Criteria:\t%s since %s\n", okFail(peer.ServiceCriteriaMet), formatEpoch(peer.SvcStateEpoch))
+			fmt.Fprintf(w, "      peer_service:\t%s\n", okFail(peer.ServiceCriteria[nxtypes.HACritPeerService]))
 
 			fmt.Fprintf(w, "  Membership:\t%s since %s\n", okFail(peer.MemberCriteriaMet), formatEpoch(peer.MemberCriteriaMetEpoch))
 			if len(peer.MemberCriteria) > 0 {
@@ -1920,38 +1927,17 @@ func (agw *AgentGateway) GnmiShowHa(_ context.Context, msgData ipc.MessageData) 
 					fmt.Fprintf(w, "    %s:\t%s\n", k, okFail(peer.MemberCriteria[nxtypes.HACriterion(k)]))
 				}
 			}
-			if len(peer.DPUStatuses) > 0 {
-				upCount := 0
-				for _, s := range peer.DPUStatuses {
-					if s.KeepaliveUp {
-						upCount++
-					}
-				}
-				fmt.Fprintf(w, "    DPU Keepalive:\t%d/%d up\n", upCount, len(peer.DPUStatuses))
-			}
 
 			fmt.Fprintf(w, "  Adjacency:\t%s since %s\n", okFail(peer.AdjacencyCriteriaMet), formatEpoch(peer.AdjacencyCriteriaMetEpoch))
 			if len(peer.AdjacencyCriteria) > 0 {
 				adjKeys := make([]string, 0, len(peer.AdjacencyCriteria))
 				for k := range peer.AdjacencyCriteria {
-					if nxtypes.HACriterion(k) == nxtypes.HACritPeerIpConfig || nxtypes.HACriterion(k) == nxtypes.HACritPeerService {
-						continue
-					}
 					adjKeys = append(adjKeys, string(k))
 				}
 				sort.Strings(adjKeys)
 				for _, k := range adjKeys {
 					fmt.Fprintf(w, "    %s:\t%s\n", k, okFail(peer.AdjacencyCriteria[nxtypes.HACriterion(k)]))
 				}
-			}
-			if len(peer.DPUStatuses) > 0 {
-				doneCount := 0
-				for _, s := range peer.DPUStatuses {
-					if s.BulkSyncLocal && s.BulkSyncPeer {
-						doneCount++
-					}
-				}
-				fmt.Fprintf(w, "    DPU Bulk Sync:\t%d/%d done\n", doneCount, len(peer.DPUStatuses))
 			}
 		}
 	}
@@ -2689,8 +2675,12 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 			SvcState                  string                     `json:"svc_state"`
 			SvcStateReason            string                     `json:"svc_state_reason"`
 			SvcStateEpoch             string                     `json:"svc_state_epoch"`
-			AdjacencyConnected        bool                       `json:"adjacency_connected"`
-			AdjacencyConnectedEpoch   string                     `json:"adjacency_connected_epoch"`
+			IpConfigState             string                     `json:"ip_config_state"`
+			Connected                 bool                       `json:"connected"`
+			ConnectedEpoch            string                     `json:"connected_epoch"`
+			ServiceCriteria           map[string]bool            `json:"service_criteria"`
+			ServiceCriteriaMet        bool                       `json:"service_criteria_met"`
+			ServiceCriteriaMetEpoch   string                     `json:"service_criteria_met_epoch"`
 			MemberCriteria            map[string]bool            `json:"member_criteria"`
 			MemberCriteriaMet         bool                       `json:"member_criteria_met"`
 			MemberCriteriaMetEpoch    string                     `json:"member_criteria_met_epoch"`
@@ -2703,6 +2693,10 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 		peersData := make(map[string]PeerData, len(peerIPs))
 		for _, ip := range peerIPs {
 			peer := allPeers[ip]
+			svcCrit := make(map[string]bool, len(peer.ServiceCriteria))
+			for k, v := range peer.ServiceCriteria {
+				svcCrit[string(k)] = v
+			}
 			mbrCrit := make(map[string]bool, len(peer.MemberCriteria))
 			for k, v := range peer.MemberCriteria {
 				mbrCrit[string(k)] = v
@@ -2729,8 +2723,12 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 				SvcState:                  peer.SvcState,
 				SvcStateReason:            peer.SvcStateReason.String(),
 				SvcStateEpoch:             formatEpochISO(peer.SvcStateEpoch),
-				AdjacencyConnected:        peer.AdjacencyConnected,
-				AdjacencyConnectedEpoch:   formatEpochISO(peer.AdjacencyConnectedEpoch),
+				IpConfigState:             peer.IpConfigState,
+				Connected:                 peer.Connected,
+				ConnectedEpoch:            formatEpochISO(peer.ConnectedEpoch),
+				ServiceCriteria:           svcCrit,
+				ServiceCriteriaMet:        peer.ServiceCriteriaMet,
+				ServiceCriteriaMetEpoch:   formatEpochISO(peer.ServiceCriteriaMetEpoch),
 				MemberCriteria:            mbrCrit,
 				MemberCriteriaMet:         peer.MemberCriteriaMet,
 				MemberCriteriaMetEpoch:    formatEpochISO(peer.MemberCriteriaMetEpoch),
@@ -2798,7 +2796,18 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 		fmt.Fprintf(w, "  Reason:\t%s\n", peer.HaStateReason)
 		fmt.Fprintf(w, "Svc State:\t%s since %s\n", peer.SvcState, formatEpoch(peer.SvcStateEpoch))
 		fmt.Fprintf(w, "  Reason:\t%s\n", peer.SvcStateReason)
-		fmt.Fprintf(w, "Adjacency Connected:\t%s since %s\n", okFail(peer.AdjacencyConnected), formatEpoch(peer.AdjacencyConnectedEpoch))
+		fmt.Fprintf(w, "IpConfigState:\t%s\n", peer.IpConfigState)
+		fmt.Fprintf(w, "Connected:\t%s since %s\n", okFail(peer.Connected), formatEpoch(peer.ConnectedEpoch))
+
+		fmt.Fprintf(w, "\nService Criteria Met:\t%s since %s\n", okFail(peer.ServiceCriteriaMet), formatEpoch(peer.ServiceCriteriaMetEpoch))
+		svcKeys := make([]string, 0, len(peer.ServiceCriteria))
+		for k := range peer.ServiceCriteria {
+			svcKeys = append(svcKeys, string(k))
+		}
+		sort.Strings(svcKeys)
+		for _, k := range svcKeys {
+			fmt.Fprintf(w, "  %s:\t%s\n", k, okFail(peer.ServiceCriteria[nxtypes.HACriterion(k)]))
+		}
 
 		fmt.Fprintf(w, "\nMember Criteria Met:\t%s since %s\n", okFail(peer.MemberCriteriaMet), formatEpoch(peer.MemberCriteriaMetEpoch))
 		mbrKeys := make([]string, 0, len(peer.MemberCriteria))
@@ -2849,20 +2858,8 @@ func (agw *AgentGateway) GnmiShowHaPeers(_ context.Context, msgData ipc.MessageD
 			sort.Strings(dpuUIDs)
 			for _, uid := range dpuUIDs {
 				s := peer.DPUStatuses[uid]
-				keepalive := "down"
-				if s.KeepaliveUp {
-					keepalive = "up"
-				}
-				bulkLocal := "pending"
-				if s.BulkSyncLocal {
-					bulkLocal = "done"
-				}
-				bulkPeer := "pending"
-				if s.BulkSyncPeer {
-					bulkPeer = "done"
-				}
-				fmt.Fprintf(w, "  %s:\tkeepalive=%-4s  bulk_sync_local=%-7s  bulk_sync_peer=%s\n",
-					uid, keepalive, bulkLocal, bulkPeer)
+				fmt.Fprintf(w, "  %s:\tkeepalive=%s  bulk_sync_local=%s  bulk_sync_peer=%s\n",
+					uid, okFail(s.KeepaliveUp), okFail(s.BulkSyncLocal), okFail(s.BulkSyncPeer))
 			}
 		}
 	}

@@ -82,6 +82,10 @@ type deviceStore struct {
 
 	hsaPortLow  uint16
 	hsaPortHigh uint16
+
+	// Hooks for in-service transitions, called by SetInService.
+	preInServiceHook  func(ctx context.Context, newState string)
+	postInServiceHook func(ctx context.Context, oldState string)
 }
 
 // AgentTokenProvider is an optional interface for advanced token processing.
@@ -315,7 +319,7 @@ func (s *deviceStore) InServiceState() string {
 func (s *deviceStore) IsInService() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.inService == "in-service"
+	return s.inService == InServiceStateInService
 }
 
 func (s *deviceStore) LbMode() string {

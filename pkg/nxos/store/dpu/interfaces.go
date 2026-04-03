@@ -55,14 +55,14 @@ type Store interface {
 
 	Update(ctx context.Context, dpu types.DPU) error
 	Remove(ctx context.Context, name string) error
-	SetExpectedCount(count int)
+	SetExpectedCount(ctx context.Context, count int)
 	SetInventoryComplete(complete bool)
 	SetInSync(inSync bool)
 	SetHealth(healthy bool, count int)
 	// SetInSyncCount tracks the count of DPUs that are in sync.
 	SetInSyncCount(count int)
 	// SetGlobalPortRange sets the fleet-wide port range and recalculates all per-DPU ranges.
-	SetGlobalPortRange(low, high uint16)
+	SetGlobalPortRange(ctx context.Context, low, high uint16)
 
 	// SetDpuPortRange writes TCP/UDP control plane port ranges for a DPU (gnmi.md SET #6).
 	SetDpuPortRange(ctx context.Context, moduleNum int, tcpRange, udpRange string) error

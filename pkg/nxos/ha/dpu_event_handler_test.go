@@ -23,6 +23,7 @@ import (
 func newTestManager(ctx context.Context) (*manager, hastore.Store) {
 	hs := hastore.NewStore(ctx)
 	hs.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		ServiceCriteria:   make(types.HACriteria),
 		AdjacencyCriteria: make(types.HACriteria),
 	})
 	m := NewManager(
@@ -242,6 +243,7 @@ func TestRegisterDpu_ResolvesIPToName(t *testing.T) {
 	ctx := context.Background()
 	hs := hastore.NewStore(ctx)
 	hs.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		ServiceCriteria:   make(types.HACriteria),
 		AdjacencyCriteria: make(types.HACriteria),
 	})
 
@@ -272,6 +274,7 @@ func TestUpdateKeepalive_ResolvesIPToName(t *testing.T) {
 	ctx := context.Background()
 	hs := hastore.NewStore(ctx)
 	hs.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		ServiceCriteria:   make(types.HACriteria),
 		AdjacencyCriteria: make(types.HACriteria),
 	})
 
@@ -295,5 +298,109 @@ func TestUpdateKeepalive_ResolvesIPToName(t *testing.T) {
 	}
 	if !s.keepaliveUp {
 		t.Error("expected keepaliveUp true after update via IP")
+	}
+}
+
+func TestAggregateDPUStatus_RestoredAfterPeerReconnect(t *testing.T) {
+	ctx := context.Background()
+	m, hs := newTestManager(ctx)
+
+	m.RegisterDpu(ctx, "dpu-1")
+	m.RegisterDpu(ctx, "dpu-2")
+	m.UpdateKeepalive(ctx, "dpu-1", true)
+	m.UpdateKeepalive(ctx, "dpu-2", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu-1", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu-1", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu-2", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu-2", true)
+
+	peer, _ := hs.Peer("10.0.0.2")
+	if !peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
+		t.Fatal("expected peer_dpu_keepalive true before disconnect")
+	}
+	if !peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
+		t.Fatal("expected peer_dpu_bulk_sync true before disconnect")
+	}
+
+	// Simulate disconnect — criteria reset to false.
+	hs.UpdatePeerConnected(ctx, "10.0.0.2", false, 0)
+	peer, _ = hs.Peer("10.0.0.2")
+	if peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
+		t.Error("expected peer_dpu_keepalive false after disconnect")
+	}
+	if peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
+		t.Error("expected peer_dpu_bulk_sync false after disconnect")
+	}
+
+	// Simulate reconnect path: aggregateDPUStatus() is called when wasDisconnected.
+	m.aggregateDPUStatus(ctx)
+	peer, _ = hs.Peer("10.0.0.2")
+	if !peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
+		t.Error("expected peer_dpu_keepalive restored to true after reconnect")
+	}
+	if !peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
+		t.Error("expected peer_dpu_bulk_sync restored to true after reconnect")
+	}
+}
+
+func TestInitDPUCriteriaFromStore_InitializesFalse(t *testing.T) {
+	ctx := context.Background()
+	hs := hastore.NewStore(ctx)
+	hs.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		ServiceCriteria:   make(types.HACriteria),
+		AdjacencyCriteria: make(types.HACriteria),
+	})
+
+	ds := dpu.NewStore(ctx)
+	ds.SetExpectedCount(ctx, 2)
+	ds.Update(ctx, types.DPU{Name: "dpu-1", IP: "169.254.0.1"})
+	ds.Update(ctx, types.DPU{Name: "dpu-2", IP: "169.254.0.2"})
+	ds.SetInventoryComplete(true)
+	ds.SetInSyncCount(2)
+
+	// Verify IsReady returns true (inventory complete, all DPUs discovered).
+	if !ds.IsReady() {
+		t.Fatal("expected dpuStore.IsReady() to be true")
+	}
+
+	m := NewManager(
+		WithHAStoreForManager(hs),
+		WithLocalIP("10.0.0.1"),
+		WithDPUStore(ds),
+	).(*manager)
+
+	// Call initDPUCriteriaFromStore as Run() does at activation time.
+	m.initDPUCriteriaFromStore(ctx)
+
+	// Verify dpuStatuses entries exist with all fields false.
+	m.mu.RLock()
+	for _, name := range []string{"dpu-1", "dpu-2"} {
+		s, ok := m.dpuStatuses[name]
+		if !ok {
+			t.Errorf("expected %s to be in dpuStatuses", name)
+			continue
+		}
+		if s.keepaliveUp {
+			t.Errorf("expected %s.keepaliveUp to be false, got true", name)
+		}
+		if s.bulkSyncLocal {
+			t.Errorf("expected %s.bulkSyncLocal to be false, got true", name)
+		}
+		if s.bulkSyncPeer {
+			t.Errorf("expected %s.bulkSyncPeer to be false, got true", name)
+		}
+	}
+	m.mu.RUnlock()
+
+	// Verify DPU criteria are false on the peer.
+	peer, ok := hs.Peer("10.0.0.2")
+	if !ok {
+		t.Fatal("peer not found")
+	}
+	if peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
+		t.Error("expected peer_dpu_keepalive membership criterion to be false")
+	}
+	if peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
+		t.Error("expected peer_dpu_bulk_sync adjacency criterion to be false")
 	}
 }

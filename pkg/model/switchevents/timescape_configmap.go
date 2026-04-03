@@ -269,8 +269,8 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 		saNamespace = agw.Token.K8sNamespace()
 	}
 
-	// Get service IP from AGW
-	serviceIp := agw.GetServiceIp()
+	// Get service IP from NXOS manager device store
+	serviceIp := agw.NxosManager().DeviceStore().ServiceIP()
 	// For test containers where nxos is not present, uncomment the below line
 	// serviceIp = "127.0.0.1" // use localhost
 	if serviceIp == "" {

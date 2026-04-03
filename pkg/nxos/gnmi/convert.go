@@ -162,6 +162,28 @@ func ExtractJSONObject(value *gnmiproto.TypedValue) (map[string]interface{}, boo
 	return obj, true
 }
 
+// ExtractJSONList extracts a JSON array from a gNMI TypedValue.
+// Used when subscribing at list-container level, where the value is a JSON array of objects.
+func ExtractJSONList(value *gnmiproto.TypedValue) ([]map[string]interface{}, bool) {
+	if value == nil {
+		return nil, false
+	}
+	var raw []byte
+	switch v := value.GetValue().(type) {
+	case *gnmiproto.TypedValue_JsonVal:
+		raw = v.JsonVal
+	case *gnmiproto.TypedValue_JsonIetfVal:
+		raw = v.JsonIetfVal
+	default:
+		return nil, false
+	}
+	var list []map[string]interface{}
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return nil, false
+	}
+	return list, true
+}
+
 // marshalJSONValue converts a Go value to a JSON string for gNMI Set operations.
 // NX-OS gNMI only accepts JSON-encoded values.
 func marshalJSONValue(value any) (string, error) {

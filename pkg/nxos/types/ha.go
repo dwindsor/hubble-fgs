@@ -37,6 +37,24 @@ const (
 	SvcStateSuccess = "ready"
 )
 
+// ClusterState maps NX HA states to human-readable cluster state descriptions.
+func ClusterState(nxState string) string {
+	switch nxState {
+	case HAStateReady:
+		return "active/active"
+	case HAStateDegraded:
+		return "active/active (degraded)"
+	case HAStateNotReady:
+		return "standalone"
+	case HAStateTakeover, HAStateSwitchover:
+		return "active/standby (degraded)"
+	case HAStateUnavailable:
+		return "unavailable"
+	default:
+		return nxState
+	}
+}
+
 // MaxReasonLength is the maximum length of a reason string.
 const MaxReasonLength = 80
 
@@ -74,9 +92,8 @@ const (
 	HACritPeerDPUBulkSync HACriterion = "peer_dpu_bulk_sync"
 	HACritPeerPolicy      HACriterion = "peer_policy"
 
-	// Peer indicators (not membership/adjacency classification)
-	HACritPeerIpConfig HACriterion = "peer_ip_config" // connectivity indicator
-	HACritPeerService  HACriterion = "peer_service"   // peer service state indicator
+	// Peer indicators
+	HACritPeerService HACriterion = "peer_service" // peer service state indicator
 
 	// Standby criterion (dynamically injected/removed for active/standby tiebreaking)
 	HACritHaStandby HACriterion = "ha_standby"
@@ -155,6 +172,11 @@ func (l HALocalState) Copy() HALocalState {
 type HAPeerState struct {
 	IP string
 
+	// Service criteria
+	ServiceCriteria         HACriteria
+	ServiceCriteriaMet      bool
+	ServiceCriteriaMetEpoch int64
+
 	// Membership criteria
 	MemberCriteria         HACriteria
 	MemberCriteriaMet      bool
@@ -165,8 +187,9 @@ type HAPeerState struct {
 	AdjacencyCriteria         HACriteria
 	AdjacencyCriteriaMet      bool
 	AdjacencyCriteriaMetEpoch int64
-	AdjacencyConnected        bool  // successful keepalive
-	AdjacencyConnectedEpoch   int64 // last successful keepalive
+	Connected                 bool   // successful keepalive
+	ConnectedEpoch            int64  // last successful keepalive
+	IpConfigState             string // gNMI-managed IP config state (e.g. "success", "not-started", "failed")
 
 	// Per-DPU HA status (for CLI visibility)
 	DPUStatuses map[string]DPUHAStatus
@@ -184,6 +207,7 @@ type HAPeerState struct {
 func (p HAPeerState) Copy() HAPeerState {
 	cp := p
 	cp.MemberCriteria = p.MemberCriteria.Copy()
+	cp.ServiceCriteria = p.ServiceCriteria.Copy()
 	cp.AdjacencyCriteria = p.AdjacencyCriteria.Copy()
 	if p.MemberInfo != nil {
 		memberCopy := *p.MemberInfo

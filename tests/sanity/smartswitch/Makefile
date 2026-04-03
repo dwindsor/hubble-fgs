@@ -12,14 +12,17 @@
         install-test-dependencies run-all-tests run-nxos-tests run-ha-tests \
         run-tests-with-allure show-allure-report run-specific-test \
         clean-test-artifacts \
-        build-agw-image pull-sim-image \
+        build-agw-image pull-sim-image build-fwa-image \
         launch-agw launch-sim launch-sim-multi launch-ha-agw \
         launch-containers launch-containers-multi \
         configure-network configure-network-multi \
-        attach-agw attach-sim \
+        attach-agw attach-sim attach-fwa \
         shutdown shutdown-containers shutdown-containers-multi status \
         show-containers-status show-containers-status-multi \
         create-ha-network remove-ha-network \
+		create-fwa-network remove-fwa-network create-fwa-ha-network remove-fwa-ha-network \
+		launch-fwa-agw launch-fwa seed-fwa-gnmi seed-fwa-ha-gnmi configure-fwa-network launch-containers-fwa \
+		launch-fwa-ha-agw launch-fwa-ha configure-fwa-ha-network launch-containers-fwa-ha \
         shutdown-ha-containers show-ha-status \
         create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token teardown-kind-cluster
 
@@ -47,6 +50,25 @@ AGW_LEADER_IP := 172.20.0.2
 AGW_FOLLOWER_IP := 172.20.0.3
 AGW_LEADER_NAME := agw-leader
 AGW_FOLLOWER_NAME := agw-follower
+
+# FWA test container configuration
+FWA_IMAGE := isovalent/fwa-test:latest
+FWA_CONTAINER_PREFIX := fwa-test
+FWA_COUNT ?= 2
+FWA_NETWORK := fwa-net
+FWA_SUBNET := 169.254.0.0/16
+FWA_AGW_NAME := agw-fwa
+FWA_AGW_IP := 169.254.101.2
+
+# FWA HA configuration
+FWA_HA_NETWORK := fwa-ha-net
+FWA_HA_AGW_LEADER_NAME := agw-fwa-leader
+FWA_HA_AGW_FOLLOWER_NAME := agw-fwa-follower
+FWA_HA_AGW_LEADER_IP := 169.254.101.2
+FWA_HA_AGW_FOLLOWER_IP := 169.254.101.3
+
+# DPU IPs from DPUMap (pkg/model/switchpolicy/dpu.go)
+FWA_DPU_IPS := 169.254.28.1 169.254.24.1 169.254.36.1 169.254.32.1
 
 # Test configuration
 VENV := venv
@@ -85,6 +107,11 @@ help:
 	@echo "  launch-sim-multi        - Multiple DPU Sim containers (SIM_COUNT=N)"
 	@echo "  launch-containers       - Full stack: single AGW + SIM + network config"
 	@echo "  launch-containers-multi - Full stack: single AGW + N SIMs + network config"
+	@echo "  launch-fwa-agw          - AGW for FWA on bridge network"
+	@echo "  launch-fwa              - N FWA test containers (default: 2, use FWA_COUNT=N)"
+	@echo "  launch-fwa-ha-agw       - Dual AGW HA containers for FWA"
+	@echo "  launch-containers-fwa   - Full FWA stack: AGW + N FWAs (works on arm64/macOS)"
+	@echo "  launch-containers-fwa-ha - Full FWA HA stack: 2 AGWs + N FWAs"
 	@echo "  shutdown                - Stop all containers and clean up networks"
 	@echo "  shutdown-ha-containers  - Stop HA containers and remove HA network"
 	@echo "  show-ha-status          - Show status of HA containers"
@@ -92,6 +119,7 @@ help:
 	@echo ""
 	@echo "Build:"
 	@echo "  build-agw-image         - Build AGW test image"
+	@echo "  build-fwa-image         - Build FWA test image (multi-arch, no tarball needed)"
 	@echo "  pull-sim-image          - Download DPU Sim tarball from GitHub releases"
 	@echo ""
 	@echo "K8s Infrastructure (used by launch-agw):"
@@ -115,12 +143,16 @@ help:
 	@echo "  clean-test-artifacts    - Remove venv, reports, and cache files"
 	@echo "  attach-agw              - Attach shell to AGW container"
 	@echo "  attach-sim              - Attach shell to DPU Sim container"
+	@echo "  attach-fwa              - Attach shell to FWA test container"
 	@echo "  configure-network       - Configure host IP and DPU interface (single SIM)"
 	@echo "  configure-network-multi - Configure host IP and DPU interfaces (multi SIM)"
+	@echo "  configure-fwa-network   - Configure int_mnic0 for FWA containers"
+	@echo "  configure-fwa-ha-network - Configure int_mnic0 for FWA HA containers"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  SIM_VERSION=v1.32.0     - Specific release version (default: latest)"
 	@echo "  SIM_COUNT=2             - Number of SIMs for *-multi targets (default: 2)"
+	@echo "  FWA_COUNT=2             - Number of FWAs for FWA targets (default: 2)"
 	@echo "  GITHUB_REPO=org/repo    - GitHub repository (default: cisco-hypershield/hs-dpu-pensando)"
 	@echo "  APPLY_ROUTE=1           - Enable DPU bridge routing (default: 0)"
 	@echo ""
@@ -133,6 +165,12 @@ help:
 	@echo ""
 	@echo "Quick Start (HA):"
 	@echo "  make launch-ha-agw && make install-test-dependencies && make run-ha-tests"
+	@echo ""
+	@echo "Quick Start (FWA - works on arm64/macOS):"
+	@echo "  make launch-containers-fwa && make install-test-dependencies && make run-all-tests"
+	@echo ""
+	@echo "Quick Start (HA + FWA):"
+	@echo "  make launch-containers-fwa-ha && make install-test-dependencies && make run-ha-tests"
 
 
 # ============================================================================
@@ -187,6 +225,10 @@ launch-agw: create-kind-cluster deploy-crds deploy-prometheus deploy-timescape g
 # DPU Sim Targets
 # ============================================================================
 
+build-fwa-image:
+	@echo "Building FWA test image: $(FWA_IMAGE)"
+	@cd $(REPO_ROOT) && docker build -f Dockerfile.fwa -t $(FWA_IMAGE) --target=fwa-test .
+
 pull-sim-image:
 	@echo "Downloading DPU Sim tarball from GitHub releases: $(GITHUB_REPO)"
 	@if command -v gh >/dev/null 2>&1; then \
@@ -231,8 +273,21 @@ create-ha-network:
 remove-ha-network:
 	@-docker network rm $(HA_NETWORK) 2>/dev/null || true
 
-# HA containers run with NX-OS mock mode active (no NX_AGENT_IGNORE_MODULES).
-# Both nodes require 'Phase:' in show_status for ha/ tests to run.
+create-fwa-network:
+	@docker network create --subnet=$(FWA_SUBNET) $(FWA_NETWORK) 2>/dev/null || echo "Network already exists"
+
+remove-fwa-network:
+	@-docker network rm $(FWA_NETWORK) 2>/dev/null || true
+
+create-fwa-ha-network:
+	@docker network create --subnet=$(FWA_SUBNET) $(FWA_HA_NETWORK) 2>/dev/null || echo "Network already exists"
+
+remove-fwa-ha-network:
+	@-docker network rm $(FWA_HA_NETWORK) 2>/dev/null || true
+
+# HA containers run with NX-OS mock mode active and DPUs skipped
+# (NX_AGENT_IGNORE_MODULES=1). Both nodes require 'Phase:' in show_status
+# for ha/ tests to run.
 launch-ha-agw: create-ha-network
 	@echo "Starting HA AGW containers (DPU-less, NX-OS mock enabled)..."
 	@-docker rm -f $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) >/dev/null 2>&1 || true
@@ -244,6 +299,7 @@ launch-ha-agw: create-ha-network
 		-e AGW_HA_PEER_IP="$(AGW_FOLLOWER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_LEADER_IP)" \
 		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
 		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		-e NX_AGENT_IGNORE_MODULES="1" \
 		$(AGW_IMAGE)
 	@docker run -d --name $(AGW_FOLLOWER_NAME) --network $(HA_NETWORK) --ip $(AGW_FOLLOWER_IP) \
 		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
@@ -253,8 +309,27 @@ launch-ha-agw: create-ha-network
 		-e AGW_HA_PEER_IP="$(AGW_LEADER_IP)" -e AGW_HA_SOURCE_IP="$(AGW_FOLLOWER_IP)" \
 		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
 		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		-e NX_AGENT_IGNORE_MODULES="1" \
 		$(AGW_IMAGE)
 	@echo "HA AGW containers started (leader=$(AGW_LEADER_NAME) @ $(AGW_LEADER_IP), follower=$(AGW_FOLLOWER_NAME) @ $(AGW_FOLLOWER_IP))"
+
+launch-fwa-agw: create-fwa-network
+	@echo "Starting AGW for FWA on $(FWA_NETWORK)..."
+	@-docker rm -f $(FWA_AGW_NAME) >/dev/null 2>&1 || true
+	@docker run -d --name $(FWA_AGW_NAME) --network $(FWA_NETWORK) --ip $(FWA_AGW_IP) \
+		-e AGW_CONFIG="" \
+		-e AGW_NETWORK_POLICY="" \
+		-e AGW_ENABLE_K8S="false" \
+		-e AGW_ENABLE_NXOS="false" \
+		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+		-e AGW_VRF_MAP="default:1,tims:2,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003,epbr-1004:1004,epbr-1005:1005,epbr-1006:1006,epbr-1007:1007,epbr-1008:1008,epbr-1009:1009,epbr-1010:1010,epbr-1011:1011,epbr-1012:1012,epbr-1013:1013,epbr-1014:1014,epbr-1015:1015,epbr-1016:1016,epbr-1017:1017,epbr-1018:1018,epbr-1019:1019,epbr-1020:1020,epbr-1021:1021,epbr-1022:1022,epbr-1023:1023,epbr-1024:1024,epbr-1025:1025,trmvrf-3001:3001,trmvrf-3002:3002,trmvrf-3003:3003,trmvrf-3004:3004,trmvrf-3005:3005,trmvrf-3006:3006,trmvrf-3007:3007,trmvrf-3008:3008,trmvrf-3009:3009,trmvrf-3010:3010,trmvrf-3011:3011,trmvrf-3012:3012,trmvrf-3013:3013,trmvrf-3014:3014,trmvrf-3015:3015,trmvrf-3016:3016,trmvrf-3017:3017,trmvrf-3018:3018,trmvrf-3019:3019,trmvrf-3020:3020,trmvrf-3021:3021,trmvrf-3022:3022,trmvrf-3023:3023,trmvrf-3024:3024,trmvrf-3025:3025,trmvrf-3026:3026,trmvrf-3027:3027,trmvrf-3028:3028,trmvrf-3029:3029,trmvrf-3030:3030,trmvrf-3031:3031,trmvrf-3032:3032,trmvrf-3033:3033,trmvrf-3034:3034,trmvrf-3035:3035,trmvrf-3036:3036,trmvrf-3037:3037,trmvrf-3038:3038,trmvrf-3039:3039,trmvrf-3040:3040,trmvrf-3041:3041,trmvrf-3042:3042,trmvrf-3043:3043,trmvrf-3044:3044,trmvrf-3045:3045,trmvrf-3046:3046,trmvrf-3047:3047,trmvrf-3048:3048,trmvrf-3049:3049,trmvrf-3050:3050,trmvrf-3051:3051,trmvrf-3052:3052,trmvrf-3053:3053,trmvrf-3054:3054,trmvrf-3055:3055,trmvrf-3056:3056,trmvrf-3057:3057,trmvrf-3058:3058,trmvrf-3059:3059,trmvrf-3060:3060,trmvrf-3061:3061,trmvrf-3062:3062,trmvrf-3063:3063,trmvrf-3064:3064,trmvrf-3065:3065,trmvrf-3066:3066,trmvrf-3067:3067,trmvrf-3068:3068,trmvrf-3069:3069,trmvrf-3070:3070,trmvrf-3071:3071,trmvrf-3072:3072,trmvrf-3073:3073,trmvrf-3074:3074,trmvrf-3075:3075" \
+		-e AGW_DEBUG="true" \
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		-e AGW_TIMESCAPE_PASSWORD="" \
+		-e AGW_TIMESCAPE_ENDPOINT="" \
+		$(AGW_IMAGE)
+	@echo "AGW for FWA started at $(FWA_AGW_IP)"
 
 launch-sim:
 	@echo "Launching DPU Sim using original launch_sas.sh script"
@@ -404,11 +479,255 @@ launch-sim-multi:
 		exit 1; \
 	fi
 
+launch-fwa:
+	@echo "Launching $(FWA_COUNT) FWA test container(s)..."
+	@-docker rm -f $$(docker ps -aq --filter "name=$(FWA_CONTAINER_PREFIX)-") >/dev/null 2>&1 || true
+	@if ! [ "$(FWA_COUNT)" -ge 1 ] 2>/dev/null; then \
+		echo "❌ FWA_COUNT must be a positive integer"; \
+		exit 1; \
+	fi; \
+	DPU_IP_ARRAY="$(FWA_DPU_IPS)"; \
+	for IDX in $$(seq 1 $(FWA_COUNT)); do \
+		INSTANCE_NAME="$(FWA_CONTAINER_PREFIX)-$$IDX"; \
+		DPU_IP=$$(echo "$$DPU_IP_ARRAY" | awk "{print \$$$$IDX}"); \
+		if [ -z "$$DPU_IP" ]; then \
+			echo "❌ No DPU IP available for FWA $$IDX (only $$(echo $$DPU_IP_ARRAY | wc -w) IPs configured)"; \
+			exit 1; \
+		fi; \
+		echo "Launching $$INSTANCE_NAME at $$DPU_IP"; \
+		docker run -d \
+			--name "$$INSTANCE_NAME" \
+			--network $(FWA_NETWORK) --ip "$$DPU_IP" \
+			--cap-add NET_ADMIN \
+			-e FWA_CONFIG="" \
+			-e FWA_NETWORK_POLICY="" \
+			-e FWA_ENABLE_DATAPLANE="false" \
+			-e FWA_ENABLE_AGW="true" \
+			-e FWA_ENABLE_LOGGER="false" \
+			-e FWA_SERVER_ADDRESS="$(FWA_AGW_IP):8880" \
+			-e FWA_DP_SOCKET_PATH="" \
+			-e FWA_DEBUG="true" \
+			$(FWA_IMAGE); \
+		if [ $$? -ne 0 ]; then \
+			echo "❌ Failed to launch $$INSTANCE_NAME"; \
+			exit 1; \
+		fi; \
+	done; \
+	sleep 2; \
+	RUNNING_COUNT=$$(docker ps --filter "name=$(FWA_CONTAINER_PREFIX)-" --format "{{.Names}}" | wc -l | tr -d ' '); \
+	if [ "$$RUNNING_COUNT" -ge "$(FWA_COUNT)" ]; then \
+		echo "✅ Launched $$RUNNING_COUNT FWA test container(s)"; \
+		docker ps --filter "name=$(FWA_CONTAINER_PREFIX)-" --format "  - {{.Names}} @ {{.Networks}}"; \
+	else \
+		echo "❌ Expected $(FWA_COUNT) FWA container(s), found $$RUNNING_COUNT"; \
+		docker ps -a --filter "name=$(FWA_CONTAINER_PREFIX)-" || echo "No FWA containers found"; \
+		exit 1; \
+	fi
+
 launch-containers: build-agw-image pull-sim-image launch-sim launch-agw configure-network status
 	@echo "Stack ready"
 
 launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-agw configure-network-multi status
 	@echo "Multi-SIM stack ready"
+
+seed-fwa-gnmi:
+	@echo "Seeding mock gNMI with DPU inventory..."
+	@echo "Waiting for AGW CLI server to be ready..."
+	@for i in $$(seq 1 15); do \
+		docker exec $(FWA_AGW_NAME) ./agwctl health >/dev/null 2>&1 && break; \
+		sleep 1; \
+	done
+	@docker cp testdata/gnmi/default_gnmi.json $(FWA_AGW_NAME):/tmp/mock_gnmi_seed.json
+	@docker exec $(FWA_AGW_NAME) ./agwctl mock gnmi set --file /tmp/mock_gnmi_seed.json >/dev/null 2>&1
+	@echo "Waiting for gNMI notifications to propagate..."
+	@sleep 3
+	@PHASE=$$(docker exec $(FWA_AGW_NAME) ./agwctl show_status 2>&1 | grep "Phase:" | awk '{print $$2}'); \
+	if [ -z "$$PHASE" ]; then \
+		echo "  ❌ AGW has no Phase (NX-OS mock may not be active)"; \
+	elif echo "$$PHASE" | grep -qE "dpu-ready|redir-done|running"; then \
+		echo "  ✅ AGW phase: $$PHASE (DPU listener ready)"; \
+	else \
+		echo "  ⏳ AGW phase: $$PHASE (may still be initializing)"; \
+	fi
+
+seed-fwa-ha-gnmi:
+	@echo "Seeding mock gNMI on HA AGW containers..."
+	@echo "Waiting for AGW CLI servers to be ready..."
+	@for C in $(FWA_HA_AGW_LEADER_NAME) $(FWA_HA_AGW_FOLLOWER_NAME); do \
+		for i in $$(seq 1 15); do \
+			docker exec $$C ./agwctl health >/dev/null 2>&1 && break; \
+			sleep 1; \
+		done; \
+	done
+	@for C in $(FWA_HA_AGW_LEADER_NAME) $(FWA_HA_AGW_FOLLOWER_NAME); do \
+		echo "  Seeding $$C with DPU inventory..."; \
+		docker cp testdata/gnmi/default_gnmi.json $$C:/tmp/mock_gnmi_seed.json; \
+		docker exec $$C ./agwctl mock gnmi set --file /tmp/mock_gnmi_seed.json >/dev/null 2>&1; \
+	done
+	@echo "Waiting for DPU inventory to propagate..."
+	@sleep 3
+	@# Enable HA on each AGW (mirrors ha/conftest.py _seed_gnmi_and_enable_ha)
+	@# Order matters: set source IP first, then enable HA, then add peer.
+	@# If peer is added before source IP, the HA manager activates with empty localIP.
+	@echo "Configuring HA on leader..."
+	@docker exec $(FWA_HA_AGW_LEADER_NAME) ./agwctl mock gnmi set \
+		--path "device:/System/sas-items/state-items/agent-items/SasAgent-list[svcName=hypershield]/agentHaSrcIntfAddr" \
+		--value $(FWA_HA_AGW_LEADER_IP) >/dev/null 2>&1
+	@docker exec $(FWA_HA_AGW_LEADER_NAME) ./agwctl mock gnmi set \
+		--path "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/adminState" \
+		--value enabled >/dev/null 2>&1
+	@docker exec $(FWA_HA_AGW_LEADER_NAME) ./agwctl mock gnmi set \
+		--path "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/peer-items/HaPeer-list[ipAddr=$(FWA_HA_AGW_FOLLOWER_IP)]" \
+		--value '{"ipAddr":"$(FWA_HA_AGW_FOLLOWER_IP)"}' >/dev/null 2>&1
+	@echo "Configuring HA on follower..."
+	@docker exec $(FWA_HA_AGW_FOLLOWER_NAME) ./agwctl mock gnmi set \
+		--path "device:/System/sas-items/state-items/agent-items/SasAgent-list[svcName=hypershield]/agentHaSrcIntfAddr" \
+		--value $(FWA_HA_AGW_FOLLOWER_IP) >/dev/null 2>&1
+	@docker exec $(FWA_HA_AGW_FOLLOWER_NAME) ./agwctl mock gnmi set \
+		--path "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/adminState" \
+		--value enabled >/dev/null 2>&1
+	@docker exec $(FWA_HA_AGW_FOLLOWER_NAME) ./agwctl mock gnmi set \
+		--path "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/peer-items/HaPeer-list[ipAddr=$(FWA_HA_AGW_LEADER_IP)]" \
+		--value '{"ipAddr":"$(FWA_HA_AGW_LEADER_IP)"}' >/dev/null 2>&1
+	@echo "Waiting for HA config to propagate..."
+	@sleep 3
+	@for C in $(FWA_HA_AGW_LEADER_NAME) $(FWA_HA_AGW_FOLLOWER_NAME); do \
+		PHASE=$$(docker exec $$C ./agwctl show_status 2>&1 | grep "Phase:" | awk '{print $$2}'); \
+		HAS_HA=$$(docker exec $$C ./agwctl config show 2>&1 | grep -c "CONFIG_TYPE_HA" || true); \
+		if [ "$$HAS_HA" -gt 0 ]; then \
+			echo "  ✅ $$C: phase=$${PHASE:-unknown}, HA config present"; \
+		else \
+			echo "  ⏳ $$C: phase=$${PHASE:-unknown}, HA config not yet available"; \
+		fi; \
+	done
+
+launch-containers-fwa: build-agw-image build-fwa-image launch-fwa-agw seed-fwa-gnmi launch-fwa configure-fwa-network status
+	@echo "FWA stack ready"
+
+launch-fwa-ha-agw: create-fwa-ha-network
+	@echo "Starting HA AGW containers for FWA on $(FWA_HA_NETWORK)..."
+	@-docker rm -f $(FWA_HA_AGW_LEADER_NAME) $(FWA_HA_AGW_FOLLOWER_NAME) >/dev/null 2>&1 || true
+	@docker run -d --name $(FWA_HA_AGW_LEADER_NAME) --network $(FWA_HA_NETWORK) --ip $(FWA_HA_AGW_LEADER_IP) \
+		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
+		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
+		-e AGW_DEBUG="true" \
+		-e AGW_HA_PEER_IP="$(FWA_HA_AGW_FOLLOWER_IP)" -e AGW_HA_SOURCE_IP="$(FWA_HA_AGW_LEADER_IP)" \
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		$(AGW_IMAGE)
+	@docker run -d --name $(FWA_HA_AGW_FOLLOWER_NAME) --network $(FWA_HA_NETWORK) --ip $(FWA_HA_AGW_FOLLOWER_IP) \
+		-e AGW_ENABLE_NXOS="false" -e AGW_ENABLE_K8S="false" \
+		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+		-e AGW_VRF_MAP="default:1,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003" \
+		-e AGW_DEBUG="true" \
+		-e AGW_HA_PEER_IP="$(FWA_HA_AGW_LEADER_IP)" -e AGW_HA_SOURCE_IP="$(FWA_HA_AGW_FOLLOWER_IP)" \
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+		$(AGW_IMAGE)
+	@echo "HA AGW for FWA started (leader=$(FWA_HA_AGW_LEADER_NAME) @ $(FWA_HA_AGW_LEADER_IP), follower=$(FWA_HA_AGW_FOLLOWER_NAME) @ $(FWA_HA_AGW_FOLLOWER_IP))"
+
+launch-fwa-ha:
+	@echo "Launching $(FWA_COUNT) FWA test container(s) for HA..."
+	@-docker rm -f $$(docker ps -aq --filter "name=$(FWA_CONTAINER_PREFIX)-") >/dev/null 2>&1 || true
+	@if ! [ "$(FWA_COUNT)" -ge 1 ] 2>/dev/null; then \
+		echo "❌ FWA_COUNT must be a positive integer"; \
+		exit 1; \
+	fi; \
+	DPU_IP_ARRAY="$(FWA_DPU_IPS)"; \
+	for IDX in $$(seq 1 $(FWA_COUNT)); do \
+		INSTANCE_NAME="$(FWA_CONTAINER_PREFIX)-$$IDX"; \
+		DPU_IP=$$(echo "$$DPU_IP_ARRAY" | awk "{print \$$$$IDX}"); \
+		if [ -z "$$DPU_IP" ]; then \
+			echo "❌ No DPU IP available for FWA $$IDX (only $$(echo $$DPU_IP_ARRAY | wc -w) IPs configured)"; \
+			exit 1; \
+		fi; \
+		echo "Launching $$INSTANCE_NAME at $$DPU_IP"; \
+		docker run -d \
+			--name "$$INSTANCE_NAME" \
+			--network $(FWA_HA_NETWORK) --ip "$$DPU_IP" \
+			--cap-add NET_ADMIN \
+			-e FWA_CONFIG="" \
+			-e FWA_NETWORK_POLICY="" \
+			-e FWA_ENABLE_DATAPLANE="false" \
+			-e FWA_ENABLE_AGW="true" \
+			-e FWA_ENABLE_LOGGER="false" \
+			-e FWA_SERVER_ADDRESS="$(FWA_HA_AGW_LEADER_IP):8880" \
+			-e FWA_DP_SOCKET_PATH="" \
+			-e FWA_DEBUG="true" \
+			$(FWA_IMAGE); \
+		if [ $$? -ne 0 ]; then \
+			echo "❌ Failed to launch $$INSTANCE_NAME"; \
+			exit 1; \
+		fi; \
+	done; \
+	sleep 2; \
+	RUNNING_COUNT=$$(docker ps --filter "name=$(FWA_CONTAINER_PREFIX)-" --format "{{.Names}}" | wc -l | tr -d ' '); \
+	if [ "$$RUNNING_COUNT" -ge "$(FWA_COUNT)" ]; then \
+		echo "✅ Launched $$RUNNING_COUNT FWA test container(s) for HA"; \
+		docker ps --filter "name=$(FWA_CONTAINER_PREFIX)-" --format "  - {{.Names}} @ {{.Networks}}"; \
+	else \
+		echo "❌ Expected $(FWA_COUNT) FWA container(s), found $$RUNNING_COUNT"; \
+		docker ps -a --filter "name=$(FWA_CONTAINER_PREFIX)-" || echo "No FWA containers found"; \
+		exit 1; \
+	fi
+
+launch-containers-fwa-ha: build-agw-image build-fwa-image launch-fwa-ha-agw seed-fwa-ha-gnmi launch-fwa-ha configure-fwa-ha-network status
+	@echo "FWA HA stack ready"
+
+# ============================================================================
+# Network Configuration (FWA)
+# ============================================================================
+
+configure-fwa-network:
+	@echo "Configuring FWA container int_mnic0 interfaces..."
+	@FWA_CONTAINERS="$$(docker ps --filter "name=$(FWA_CONTAINER_PREFIX)-" --format "{{.Names}}")"; \
+	if [ -z "$$FWA_CONTAINERS" ]; then \
+		echo "❌ No running FWA containers found"; \
+		exit 1; \
+	fi; \
+	for C in $$FWA_CONTAINERS; do \
+		CONTAINER_IP=$$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$$C"); \
+		if [ -z "$$CONTAINER_IP" ]; then \
+			echo "  ❌ $$C: could not determine IP address"; \
+			continue; \
+		fi; \
+		echo "  - $$C: setting up int_mnic0 with $$CONTAINER_IP"; \
+		docker exec "$$C" sh -c "ip link show int_mnic0 >/dev/null 2>&1 || ip link add int_mnic0 type dummy" >/dev/null 2>&1; \
+		docker exec "$$C" sh -c "ip addr add $$CONTAINER_IP/32 dev int_mnic0 2>/dev/null || true" >/dev/null 2>&1; \
+		docker exec "$$C" sh -c "ip link set int_mnic0 up" >/dev/null 2>&1; \
+		VERIFY_IP=$$(docker exec "$$C" sh -c "ip -4 -o addr show dev int_mnic0 2>/dev/null | awk '{print \$$4}' | cut -d/ -f1"); \
+		if [ "$$VERIFY_IP" = "$$CONTAINER_IP" ]; then \
+			echo "    ✅ int_mnic0=$$CONTAINER_IP"; \
+		else \
+			echo "    ❌ verification failed (expected $$CONTAINER_IP, got $$VERIFY_IP)"; \
+		fi; \
+	done
+
+configure-fwa-ha-network:
+	@echo "Configuring FWA HA container int_mnic0 interfaces..."
+	@FWA_CONTAINERS="$$(docker ps --filter "name=$(FWA_CONTAINER_PREFIX)-" --format "{{.Names}}")"; \
+	if [ -z "$$FWA_CONTAINERS" ]; then \
+		echo "❌ No running FWA containers found"; \
+		exit 1; \
+	fi; \
+	for C in $$FWA_CONTAINERS; do \
+		CONTAINER_IP=$$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$$C"); \
+		if [ -z "$$CONTAINER_IP" ]; then \
+			echo "  ❌ $$C: could not determine IP address"; \
+			continue; \
+		fi; \
+		echo "  - $$C: setting up int_mnic0 with $$CONTAINER_IP"; \
+		docker exec "$$C" sh -c "ip link show int_mnic0 >/dev/null 2>&1 || ip link add int_mnic0 type dummy" >/dev/null 2>&1; \
+		docker exec "$$C" sh -c "ip addr add $$CONTAINER_IP/32 dev int_mnic0 2>/dev/null || true" >/dev/null 2>&1; \
+		docker exec "$$C" sh -c "ip link set int_mnic0 up" >/dev/null 2>&1; \
+		VERIFY_IP=$$(docker exec "$$C" sh -c "ip -4 -o addr show dev int_mnic0 2>/dev/null | awk '{print \$$4}' | cut -d/ -f1"); \
+		if [ "$$VERIFY_IP" = "$$CONTAINER_IP" ]; then \
+			echo "    ✅ int_mnic0=$$CONTAINER_IP"; \
+		else \
+			echo "    ❌ verification failed (expected $$CONTAINER_IP, got $$VERIFY_IP)"; \
+		fi; \
+	done
 
 # ============================================================================
 # Status & Shutdown (handle any combination of running containers)
@@ -416,11 +735,11 @@ launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-
 
 status:
 	@echo "Container Status:"
-	@docker ps --filter "name=agw" --filter "name=naples-" \
+	@docker ps --filter "name=agw" --filter "name=naples-" --filter "name=$(FWA_CONTAINER_PREFIX)" \
 		--format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers running"
 	@echo ""
 	@echo "Health Checks:"
-	@for C in agw $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME); do \
+	@for C in agw $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) $(FWA_AGW_NAME) $(FWA_HA_AGW_LEADER_NAME) $(FWA_HA_AGW_FOLLOWER_NAME); do \
 		if docker ps --filter "name=$$C" --format "{{.Names}}" | grep -qx "$$C"; then \
 			docker exec $$C ./agwctl health >/dev/null 2>&1 \
 				&& echo "  ✅ $$C: healthy" \
@@ -435,11 +754,19 @@ status:
 				|| echo "  ❌ $$C: dataplane not running"; \
 		done; \
 	fi
+	@FWA_CONTAINERS="$$(docker ps --filter "name=$(FWA_CONTAINER_PREFIX)-" --format "{{.Names}}")"; \
+	if [ -n "$$FWA_CONTAINERS" ]; then \
+		for C in $$FWA_CONTAINERS; do \
+			docker exec "$$C" pgrep -f "fwa" >/dev/null 2>&1 \
+				&& echo "  ✅ $$C: FWA process running" \
+				|| echo "  ❌ $$C: FWA process not running"; \
+		done; \
+	fi
 
 shutdown:
 	@echo "Stopping all containers..."
 	@# Single AGW and HA containers
-	@for C in agw $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME); do \
+	@for C in agw $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME) $(FWA_AGW_NAME) $(FWA_HA_AGW_LEADER_NAME) $(FWA_HA_AGW_FOLLOWER_NAME); do \
 		if docker ps -a --filter "name=$$C" --format "{{.Names}}" | grep -qx "$$C"; then \
 			echo "  Removing $$C"; \
 			docker rm -f $$C >/dev/null 2>&1 || true; \
@@ -451,16 +778,24 @@ shutdown:
 		echo "  Removing DPU Sim containers: $$SIM_CONTAINERS"; \
 		docker rm -f $$SIM_CONTAINERS >/dev/null 2>&1 || true; \
 	fi
+	@# FWA test containers (single and multi)
+	@FWA_CONTAINERS="$$(docker ps -a --filter "name=$(FWA_CONTAINER_PREFIX)" --format "{{.Names}}")"; \
+	if [ -n "$$FWA_CONTAINERS" ]; then \
+		echo "  Removing FWA test containers: $$FWA_CONTAINERS"; \
+		docker rm -f $$FWA_CONTAINERS >/dev/null 2>&1 || true; \
+	fi
 	@# Clean up host SIM interfaces
 	@for IFACE in $$(ip -o link show 2>/dev/null | awk -F': ' '{print $$2}' | sed 's/@.*//' | grep -E '^sim[0-9]+-(eth1-1|eth1-2|dsc0)$$' || true); do \
 		echo "  Deleting interface $$IFACE"; \
 		sudo ip link delete "$$IFACE" >/dev/null 2>&1 || true; \
 	done
-	@# Remove HA network if it exists
-	@if docker network ls --format "{{.Name}}" | grep -q "^$(HA_NETWORK)$$"; then \
-		echo "  Removing network $(HA_NETWORK)"; \
-		docker network rm $(HA_NETWORK) >/dev/null 2>&1 || true; \
-	fi
+	@# Remove networks if they exist
+	@for NET in $(HA_NETWORK) $(FWA_NETWORK) $(FWA_HA_NETWORK); do \
+		if docker network ls --format "{{.Name}}" | grep -q "^$$NET$$"; then \
+			echo "  Removing network $$NET"; \
+			docker network rm $$NET >/dev/null 2>&1 || true; \
+		fi; \
+	done
 	@echo "✅ Shutdown complete"
 
 
@@ -708,6 +1043,10 @@ attach-agw:
 attach-sim:
 	@echo "Attaching to DPU Sim container: $(DSC_INSTANCE)"
 	@docker exec -it $(DSC_INSTANCE) bash
+
+attach-fwa:
+	@echo "Attaching to FWA test container: $(FWA_CONTAINER_PREFIX)-1"
+	@docker exec -it $(FWA_CONTAINER_PREFIX)-1 sh
 
 
 # ============================================================================

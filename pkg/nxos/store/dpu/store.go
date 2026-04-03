@@ -241,9 +241,15 @@ func (s *dpuStore) Update(ctx context.Context, dpu types.DPU) error {
 	if exists {
 		oldDPU = &old
 	}
-	if !dpu.CalculatePortRange(s.globalPortLow, s.globalPortHigh, s.dpuCount) {
-		logger.GetLogger().Error("Failed to calculate port range for DPU", "dpu", dpu.Name, "moduleNum", dpu.ModuleNum, "dpuCount", s.dpuCount, "portLow", s.globalPortLow, "portHigh", s.globalPortHigh)
+	portCalculated := dpu.CalculatePortRange(s.globalPortLow, s.globalPortHigh, s.dpuCount)
+	if !portCalculated {
+		if s.dpuCount > 0 {
+			logger.GetLogger().Error("Failed to calculate port range for DPU", "dpu", dpu.Name, "moduleNum", dpu.ModuleNum, "dpuCount", s.dpuCount, "portLow", s.globalPortLow, "portHigh", s.globalPortHigh)
+		} else {
+			logger.GetLogger().Debug("Deferring port range calculation until DPU count is known", "dpu", dpu.Name)
+		}
 	}
+	portChanged := portCalculated && (oldDPU == nil || oldDPU.PortLow != dpu.PortLow || oldDPU.PortHigh != dpu.PortHigh)
 	s.dpus[dpu.Name] = dpu
 	s.mu.Unlock()
 
@@ -253,6 +259,10 @@ func (s *dpuStore) Update(ctx context.Context, dpu types.DPU) error {
 	}
 
 	s.persist(ctx)
+
+	if portChanged {
+		s.writeDpuPortRange(ctx, dpu)
+	}
 
 	eventType := store.EventUpdated
 	if !exists {
@@ -273,6 +283,10 @@ func (s *dpuStore) Remove(ctx context.Context, name string) error {
 	s.mu.Unlock()
 
 	s.persist(ctx)
+
+	if err := s.DeleteDpuPortRange(ctx, dpu.ModuleNum); err != nil {
+		logger.GetLogger().Warn("Failed to delete DPU port range from gNMI", "dpu", name, "error", err)
+	}
 
 	s.notify(Event{Type: store.EventDeleted, DPU: dpu, OldDPU: &dpu})
 	return nil
@@ -297,19 +311,27 @@ func (s *dpuStore) persist(ctx context.Context) {
 	}
 }
 
-func (s *dpuStore) SetExpectedCount(count int) {
+func (s *dpuStore) SetExpectedCount(ctx context.Context, count int) {
 	s.mu.Lock()
 	s.dpuCount = count
 	// Recalculate per-DPU port ranges for all known DPUs now that dpuCount is known.
+	var toWrite []types.DPU
 	for name, dpu := range s.dpus {
+		old := dpu
 		if !dpu.CalculatePortRange(s.globalPortLow, s.globalPortHigh, s.dpuCount) {
 			logger.GetLogger().Error("Failed to calculate port range for DPU", "dpu", dpu.Name, "moduleNum", dpu.ModuleNum, "dpuCount", s.dpuCount, "portLow", s.globalPortLow, "portHigh", s.globalPortHigh)
+		} else if old.PortLow != dpu.PortLow || old.PortHigh != dpu.PortHigh {
+			toWrite = append(toWrite, dpu)
 		}
 		s.dpus[name] = dpu
 	}
 	s.mu.Unlock()
 	// Signal waiters that expected count changed
 	s.inventoryCond.Broadcast()
+
+	for _, dpu := range toWrite {
+		s.writeDpuPortRange(ctx, dpu)
+	}
 }
 
 func (s *dpuStore) SetInventoryComplete(complete bool) {
@@ -446,17 +468,25 @@ func (s *dpuStore) GetGlobalPortRange() (uint16, uint16) {
 }
 
 // SetGlobalPortRange sets the fleet-wide port range and recalculates all per-DPU ranges.
-func (s *dpuStore) SetGlobalPortRange(low, high uint16) {
+func (s *dpuStore) SetGlobalPortRange(ctx context.Context, low, high uint16) {
 	s.mu.Lock()
 	s.globalPortLow = low
 	s.globalPortHigh = high
+	var toWrite []types.DPU
 	for name, dpu := range s.dpus {
+		old := dpu
 		if !dpu.CalculatePortRange(s.globalPortLow, s.globalPortHigh, s.dpuCount) {
 			logger.GetLogger().Error("Failed to calculate port range for DPU", "dpu", dpu.Name, "moduleNum", dpu.ModuleNum, "dpuCount", s.dpuCount, "portLow", s.globalPortLow, "portHigh", s.globalPortHigh)
+		} else if old.PortLow != dpu.PortLow || old.PortHigh != dpu.PortHigh {
+			toWrite = append(toWrite, dpu)
 		}
 		s.dpus[name] = dpu
 	}
 	s.mu.Unlock()
+
+	for _, dpu := range toWrite {
+		s.writeDpuPortRange(ctx, dpu)
+	}
 }
 
 // IsSkipDPU returns true if the store is operating in DPUless mode.
@@ -464,6 +494,19 @@ func (s *dpuStore) IsSkipDPU() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.skipDPU
+}
+
+// writeDpuPortRange formats and writes the TCP/UDP port range for a DPU to gNMI.
+func (s *dpuStore) writeDpuPortRange(ctx context.Context, dpu types.DPU) {
+	portRange := formatPortRange(dpu)
+	if err := s.SetDpuPortRange(ctx, dpu.ModuleNum, portRange, portRange); err != nil {
+		logger.GetLogger().Warn("Failed to write DPU port range to gNMI", "dpu", dpu.Name, "range", portRange, "error", err)
+	}
+}
+
+// formatPortRange formats a DPU's port range as "low-high".
+func formatPortRange(dpu types.DPU) string {
+	return fmt.Sprintf("%d-%d", dpu.PortLow, dpu.PortHigh)
 }
 
 // parsePort parses a port number string into a uint16 value.

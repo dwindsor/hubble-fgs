@@ -91,4 +91,12 @@ type Store interface {
 	// HandleGnmiNotification processes a gNMI notification for device state.
 	// It is called by the notification dispatcher when a device-related update is received.
 	HandleGnmiNotification(ctx context.Context, path string, update *gnmiproto.Update, isDelete bool)
+
+	// SetPreInServiceHook registers a hook that runs BEFORE the in-service state changes.
+	// Used to program redirects before the device transitions to in-service.
+	SetPreInServiceHook(hook func(ctx context.Context, newState string))
+
+	// SetPostInServiceHook registers a hook that runs AFTER the in-service state changes.
+	// Used to remove redirects after the device transitions to out-of-service.
+	SetPostInServiceHook(hook func(ctx context.Context, oldState string))
 }

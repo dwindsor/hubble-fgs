@@ -27,6 +27,10 @@ import (
 // HandleGnmiNotification processes a gNMI notification for DPU state.
 // It matches incoming paths against the DPUStore* subscription paths defined in the paths package.
 func (s *dpuStore) HandleGnmiNotification(ctx context.Context, path string, update *gnmiproto.Update, isDelete bool) {
+	if s.IsSkipDPU() {
+		return
+	}
+
 	// Handle delete notifications for per-DPU paths
 	if isDelete {
 		if moduleNum, ok := paths.ExtractDPUModuleNum(path); ok {
@@ -51,11 +55,11 @@ func (s *dpuStore) HandleGnmiNotification(ctx context.Context, path string, upda
 
 	case paths.PathMatches(path, paths.DPUStoreNumDPUs):
 		if uintVal, ok := gnmi.ExtractUint32Value(value); ok {
-			s.SetExpectedCount(int(uintVal))
+			s.SetExpectedCount(ctx, int(uintVal))
 			logger.GetLogger().Debug("DPU numDpus updated via gNMI notification", "count", uintVal)
 		} else if strVal, ok := gnmi.ExtractStringValue(value); ok {
 			if count, err := strconv.Atoi(strVal); err == nil {
-				s.SetExpectedCount(count)
+				s.SetExpectedCount(ctx, count)
 				logger.GetLogger().Debug("DPU numDpus updated via gNMI notification", "count", count)
 			}
 		}

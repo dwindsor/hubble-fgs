@@ -253,13 +253,13 @@ func HATree(enabled bool, sourceIP string, peers ...HAPeer) map[string]interface
 		peerList := make([]interface{}, 0, len(peers))
 		for _, p := range peers {
 			peerList = append(peerList, map[string]interface{}{
-				"ip":         p.IP,
-				"priority":   p.Priority,
-				"state":      p.State,
-				"ipConfigOk": true,
+				"ipAddr":        p.IP,
+				"priority":      p.Priority,
+				"state":         p.State,
+				"ipConfigState": "success",
 			})
 		}
-		peerJSON, _ := json.Marshal(map[string]interface{}{"HaPeer-list": peerList})
+		peerJSON, _ := json.Marshal(peerList)
 		haItems["peer-items"] = map[string]interface{}{
 			"HaPeer-list": string(peerJSON),
 		}

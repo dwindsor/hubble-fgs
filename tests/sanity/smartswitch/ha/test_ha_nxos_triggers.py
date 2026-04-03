@@ -21,6 +21,7 @@ Recovery path (HA-states.md):
   ha-fail (active/standby) -> ha-degraded (active/standby) -> ha-ok (active/active)
 """
 
+import json
 import time
 
 import pytest
@@ -123,3 +124,43 @@ class TestNxosTriggers:
             ha_cmd_leader,
             ["ha-ready", "ha-unavailable", "ha-switchover", "ha-ready"],
         )
+
+    def test_nxos_peer_list_update_sets_ip_config_criterion(self, ha_cmd_leader, ha_cmd_follower, wait_for_ha_ready_both, reset_ha_state_class):
+        """Setting peer list via HA_PEERS_PATH with ipConfigState=success should set peer_ip_config criterion.
+
+        Tests that the bare JSON array format [{"ipAddr":"...","ipConfigState":"success"}]
+        is correctly parsed and sets the peer_ip_config adjacency criterion.
+        """
+        # Set peer list with ipConfigState=success
+        peer_list_json = json.dumps([{"ipAddr": FOLLOWER_IP, "ipConfigState": "success"}])
+        ha_cmd_leader.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
+        time.sleep(3)
+
+        # Verify peer_ip_config adjacency criterion is true
+        peers_data = ha_cmd_leader.agw_ha_peers_show_json()
+        peers = peers_data.get("peers", {})
+        assert FOLLOWER_IP in peers, \
+            f"Follower {FOLLOWER_IP} not found in leader's peers after gNMI update"
+
+        peer = peers[FOLLOWER_IP]
+        adjacency_criteria = peer.get("adjacency_criteria", {})
+        assert adjacency_criteria.get("peer_ip_config") is True, \
+            f"Expected peer_ip_config=true after ipConfigState=success, got {adjacency_criteria.get('peer_ip_config')}"
+
+    def test_nxos_peer_list_update_ipconfig_failed(self, ha_cmd_leader, ha_cmd_follower, wait_for_ha_ready_both, reset_ha_state_class):
+        """Setting peer list with ipConfigState=failed should set peer_ip_config to false."""
+        # Set peer list with ipConfigState=failed
+        peer_list_json = json.dumps([{"ipAddr": FOLLOWER_IP, "ipConfigState": "failed"}])
+        ha_cmd_leader.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
+        time.sleep(3)
+
+        # Verify peer_ip_config adjacency criterion is false
+        peers_data = ha_cmd_leader.agw_ha_peers_show_json()
+        peers = peers_data.get("peers", {})
+        assert FOLLOWER_IP in peers, \
+            f"Follower {FOLLOWER_IP} not found in leader's peers after gNMI update"
+
+        peer = peers[FOLLOWER_IP]
+        adjacency_criteria = peer.get("adjacency_criteria", {})
+        assert adjacency_criteria.get("peer_ip_config") is False, \
+            f"Expected peer_ip_config=false after ipConfigState=failed, got {adjacency_criteria.get('peer_ip_config')}"

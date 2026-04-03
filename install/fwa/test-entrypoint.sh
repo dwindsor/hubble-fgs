@@ -32,6 +32,9 @@ fi
 if [ "$FWA_DEBUG" = "true" ]; then
     ARGS="$ARGS --debug"
 fi
+if [ "$FWA_ENABLE_EVENT_STREAM" = "false" ]; then
+    ARGS="$ARGS --enable-event-stream=false"
+fi
 if [ -n "$FWA_DP_SOCKET_PATH" ]; then
     ARGS="$ARGS --dp-socket-path=$FWA_DP_SOCKET_PATH"
 fi

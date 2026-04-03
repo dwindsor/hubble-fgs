@@ -409,7 +409,7 @@ func TestStore_RedirectProgramsAllSteps(t *testing.T) {
 	handler := mock.NewHandler()
 	vs := NewStore(context.Background())
 	vs.SetGnmiHandler(handler)
-	vs.SetRedirectsReady()
+	vs.SetInService(true)
 	ctx := context.Background()
 
 	// Make VRF active (all three flags set); GID is auto-allocated on activation
@@ -650,11 +650,92 @@ func TestStore_AutoGIDAllocation_NotOnPartialFlags(t *testing.T) {
 	}
 }
 
+func TestStore_RedirectBlockedWhenNotInService(t *testing.T) {
+	handler := mock.NewHandler()
+	vs := NewStore(context.Background())
+	vs.SetGnmiHandler(handler)
+	// inService defaults to false — reactive redirects should be blocked
+	ctx := context.Background()
+
+	// Make VRF active
+	vs.SetGlobal(ctx, "prod-vrf", true)
+	vs.SetService(ctx, "prod-vrf", true)
+	vs.SetAffinity(ctx, "prod-vrf", 0)
+
+	// fwPolicyState should NOT be programmed because inService=false
+	vals, err := handler.Get(ctx, paths.FwPolicyStateVrf)
+	if err != nil {
+		t.Fatalf("failed to get fwPolicyState: %v", err)
+	}
+	if len(vals) != 0 {
+		t.Error("expected no fwPolicyState when inService=false, but got data")
+	}
+}
+
+func TestStore_ProgramAllRedirects_BypassesInServiceGate(t *testing.T) {
+	handler := mock.NewHandler()
+	vs := NewStore(context.Background())
+	vs.SetGnmiHandler(handler)
+	// inService is false — but ProgramAllRedirects should bypass the gate
+	ctx := context.Background()
+
+	// Make VRF active (redirects not programmed reactively since inService=false)
+	vs.SetGlobal(ctx, "prod-vrf", true)
+	vs.SetService(ctx, "prod-vrf", true)
+	vs.SetAffinity(ctx, "prod-vrf", 0)
+
+	// Explicitly program all redirects (bypasses gate)
+	vs.ProgramAllRedirects(ctx)
+
+	// fwPolicyState should now be programmed
+	vals, err := handler.Get(ctx, paths.FwPolicyStateVrf)
+	if err != nil {
+		t.Fatalf("failed to get fwPolicyState: %v", err)
+	}
+	if len(vals) == 0 {
+		t.Error("expected fwPolicyState after ProgramAllRedirects, but got none")
+	}
+
+	// Enforcement should be programmed
+	vals, err = handler.Get(ctx, paths.ServiceRedirDomItems)
+	if err != nil {
+		t.Fatalf("failed to get enforcement: %v", err)
+	}
+	if len(vals) == 0 {
+		t.Error("expected enforcement binding after ProgramAllRedirects, but got none")
+	}
+}
+
+func TestStore_CleanupAllRedirects(t *testing.T) {
+	handler := mock.NewHandler()
+	vs := NewStore(context.Background())
+	vs.SetGnmiHandler(handler)
+	vs.SetInService(true)
+	ctx := context.Background()
+
+	// Make multiple VRFs active — redirects are programmed
+	vs.SetGlobal(ctx, "vrf-a", true)
+	vs.SetService(ctx, "vrf-a", true)
+	vs.SetAffinity(ctx, "vrf-a", 0)
+	vs.SetGlobal(ctx, "vrf-b", true)
+	vs.SetService(ctx, "vrf-b", true)
+	vs.SetAffinity(ctx, "vrf-b", 0)
+
+	active := vs.ListActive()
+	if len(active) != 2 {
+		t.Fatalf("expected 2 active VRFs, got %d", len(active))
+	}
+
+	// CleanupAllRedirects should run without error for all active VRFs.
+	// (Individual cleanup paths are tested by TestStore_CleanupRedirects_OnDeactivation.)
+	vs.CleanupAllRedirects(ctx)
+}
+
 func TestStore_AutoGIDAllocation_TriggersRedirect(t *testing.T) {
 	handler := mock.NewHandler()
 	vs := NewStore(context.Background())
 	vs.SetGnmiHandler(handler)
-	vs.SetRedirectsReady()
+	vs.SetInService(true)
 	ctx := context.Background()
 
 	// Make VRF active — GID auto-allocated, redirect programmed

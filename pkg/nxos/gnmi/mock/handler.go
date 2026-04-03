@@ -199,8 +199,9 @@ func (h *Handler) StartSubscriptions(_ context.Context) {
 	routeOne(normalizePath(paths.DeviceStoreServiceIP))
 	routeOne(normalizePath(paths.DeviceStoreInService))
 
-	// HA: admin state, peers (stored as pre-marshaled JSON blob), source IP
+	// HA: admin state, switch oper state, peers (stored as pre-marshaled JSON blob), source IP
 	routeOne(normalizePath(paths.HAStoreEnabled))
+	routeOne(normalizePath(paths.HAStoreSwitchState))
 	routeOne(normalizePath(paths.HAStorePeers))
 	routeOne(normalizePath(paths.HAStoreHaIp))
 }

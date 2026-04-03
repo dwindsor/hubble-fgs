@@ -71,9 +71,17 @@ type Store interface {
 	// Called after DPU inventory completes.
 	SetDPUCount(count uint16)
 
-	// SetRedirectsReady marks the store as ready to program redirects.
-	// Called after shared redirect infrastructure and reconciliation are complete.
-	SetRedirectsReady()
+	// SetInService controls the in-service gate for reactive redirect programming.
+	// When false, programRedirects no-ops for newly activated VRFs/VLANs.
+	SetInService(inService bool)
+
+	// ProgramAllRedirects programs redirects for all active VRFs.
+	// Used during in-service transition and startup reconciliation.
+	ProgramAllRedirects(ctx context.Context) int
+
+	// CleanupAllRedirects removes redirects for all active VRFs.
+	// Used during out-of-service transition.
+	CleanupAllRedirects(ctx context.Context)
 
 	// ReconcileRedirects reprograms redirects for all active VRFs.
 	// Called during startup after shared infrastructure is in place.

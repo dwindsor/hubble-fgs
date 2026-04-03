@@ -264,25 +264,7 @@ func (s *server) Notify(ctx context.Context, req *hav1.NotifyRequest) (*hav1.Not
 	// Build response with local HaInfo so peer learns our state immediately.
 	var responseHaInfo *hav1.HaInfo
 	if s.haStore != nil {
-		local := s.haStore.Local()
-		svc := hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE
-		if local.CriteriaMet && !local.CriteriaRecoveryPending {
-			svc = hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS
-		}
-		haState := hav1.HA_STATE_HA_NOTREADY
-		switch local.HaState {
-		case types.HAStateReady:
-			haState = hav1.HA_STATE_HA_READY
-		case types.HAStateDegraded:
-			haState = hav1.HA_STATE_HA_DEGRADED
-		case types.HAStateSwitchover:
-			haState = hav1.HA_STATE_HA_SWITCHOVER
-		case types.HAStateTakeover:
-			haState = hav1.HA_STATE_HA_TAKEOVER
-		case types.HAStateUnavailable:
-			haState = hav1.HA_STATE_HA_UNAVAILABLE
-		}
-		responseHaInfo = &hav1.HaInfo{LocalSvcState: svc, Ha: haState}
+		responseHaInfo = buildLocalHaInfoFromStore(s.haStore)
 	}
 
 	return &hav1.NotifyResponse{
@@ -325,6 +307,58 @@ func (s *server) buildLocalMbrInfo(peerIP string) *hav1.MbrInfo {
 	return mbrInfo
 }
 
+// haStateToProto converts a types.HAState* string to the proto enum.
+func haStateToProto(s string) hav1.HA_STATE {
+	switch s {
+	case types.HAStateReady:
+		return hav1.HA_STATE_HA_READY
+	case types.HAStateDegraded:
+		return hav1.HA_STATE_HA_DEGRADED
+	case types.HAStateSwitchover:
+		return hav1.HA_STATE_HA_SWITCHOVER
+	case types.HAStateTakeover:
+		return hav1.HA_STATE_HA_TAKEOVER
+	case types.HAStateUnavailable:
+		return hav1.HA_STATE_HA_UNAVAILABLE
+	default:
+		return hav1.HA_STATE_HA_NOTREADY
+	}
+}
+
+// protoToHaState converts a proto HA_STATE enum to a types.HAState* string.
+// Returns "" for unrecognised values.
+func protoToHaState(p hav1.HA_STATE) string {
+	switch p {
+	case hav1.HA_STATE_HA_READY:
+		return types.HAStateReady
+	case hav1.HA_STATE_HA_DEGRADED:
+		return types.HAStateDegraded
+	case hav1.HA_STATE_HA_NOTREADY:
+		return types.HAStateNotReady
+	case hav1.HA_STATE_HA_SWITCHOVER:
+		return types.HAStateSwitchover
+	case hav1.HA_STATE_HA_TAKEOVER:
+		return types.HAStateTakeover
+	case hav1.HA_STATE_HA_UNAVAILABLE:
+		return types.HAStateUnavailable
+	default:
+		return ""
+	}
+}
+
+// buildLocalHaInfoFromStore builds a HaInfo proto from the current HA store local state.
+func buildLocalHaInfoFromStore(store hastore.Reader) *hav1.HaInfo {
+	local := store.Local()
+	svc := hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE
+	if local.CriteriaMet && !local.CriteriaRecoveryPending {
+		svc = hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS
+	}
+	return &hav1.HaInfo{
+		LocalSvcState: svc,
+		Ha:            haStateToProto(local.HaState),
+	}
+}
+
 // convertMbrInfoToPeerMember converts proto MbrInfo to types.HAPeerMember.
 func convertMbrInfoToPeerMember(info *hav1.MbrInfo) types.HAPeerMember {
 	if info == nil {
@@ -350,20 +384,7 @@ func convertMbrInfoToPeerMember(info *hav1.MbrInfo) types.HAPeerMember {
 		member.PolicyCheck = info.PolInfo.Watching
 	}
 	if info.HaInfo != nil {
-		switch info.HaInfo.Ha {
-		case hav1.HA_STATE_HA_READY:
-			member.HaState = types.HAStateReady
-		case hav1.HA_STATE_HA_DEGRADED:
-			member.HaState = types.HAStateDegraded
-		case hav1.HA_STATE_HA_NOTREADY:
-			member.HaState = types.HAStateNotReady
-		case hav1.HA_STATE_HA_SWITCHOVER:
-			member.HaState = types.HAStateSwitchover
-		case hav1.HA_STATE_HA_TAKEOVER:
-			member.HaState = types.HAStateTakeover
-		case hav1.HA_STATE_HA_UNAVAILABLE:
-			member.HaState = types.HAStateUnavailable
-		}
+		member.HaState = protoToHaState(info.HaInfo.Ha)
 		switch info.HaInfo.GetLocalSvcState() {
 		case hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS:
 			member.Service = types.SvcStateSuccess
@@ -406,22 +427,9 @@ func convertPeerMemberToMbrInfo(info types.HAPeerMember) *hav1.MbrInfo {
 	if info.Service == types.SvcStateSuccess {
 		svc = hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS
 	}
-	haState := hav1.HA_STATE_HA_NOTREADY
-	switch info.HaState {
-	case types.HAStateReady:
-		haState = hav1.HA_STATE_HA_READY
-	case types.HAStateDegraded:
-		haState = hav1.HA_STATE_HA_DEGRADED
-	case types.HAStateSwitchover:
-		haState = hav1.HA_STATE_HA_SWITCHOVER
-	case types.HAStateTakeover:
-		haState = hav1.HA_STATE_HA_TAKEOVER
-	case types.HAStateUnavailable:
-		haState = hav1.HA_STATE_HA_UNAVAILABLE
-	}
 	mbrInfo.HaInfo = &hav1.HaInfo{
 		LocalSvcState: svc,
-		Ha:            haState,
+		Ha:            haStateToProto(info.HaState),
 	}
 
 	// Debug overrides.

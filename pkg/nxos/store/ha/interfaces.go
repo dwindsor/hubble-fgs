@@ -61,7 +61,7 @@ type Store interface {
 	SetLeader(ctx context.Context, isLeader bool)
 	UpdateLocalCriterion(ctx context.Context, crit types.HACriterion, val bool)
 	RemoveLocalCriterion(ctx context.Context, crit types.HACriterion)
-	SetLocalDerivedStates(ctx context.Context, haState, svcState string, haReason, svcReason types.ReasonString)
+	SetLocalDerivedStates(ctx context.Context, haState, svcState string, haReason, svcReason types.ReasonString, pushSvcToNx bool)
 	SetLocalPolicyRevision(ctx context.Context, rev string)
 	SetLocalPolicyCheck(ctx context.Context, check bool)
 	SetLocalCriteriaMet(ctx context.Context, local types.HALocalState)
@@ -73,10 +73,13 @@ type Store interface {
 	RemovePeerMemberCriterion(ctx context.Context, ip string, crit types.HACriterion)
 	UpdatePeerAdjacencyCriterion(ctx context.Context, ip string, crit types.HACriterion, val bool)
 	RemovePeerAdjacencyCriterion(ctx context.Context, ip string, crit types.HACriterion)
+	UpdatePeerServiceCriterion(ctx context.Context, ip string, crit types.HACriterion, val bool)
+	RemovePeerServiceCriterion(ctx context.Context, ip string, crit types.HACriterion)
 	UpdatePeerMember(ctx context.Context, ip string, member *types.HAPeerMember)
+	UpdatePeerMemberHaState(ctx context.Context, ip string, haState string)
 	UpdatePeerHaState(ctx context.Context, ip string, haState string, reason types.ReasonString)
 	UpdatePeerSvcState(ctx context.Context, ip string, svcState string, reason types.ReasonString)
-	UpdatePeerAdjacency(ctx context.Context, ip string, connected bool, epoch int64)
+	UpdatePeerConnected(ctx context.Context, ip string, connected bool, epoch int64)
 	UpdatePeerDPUStatuses(ctx context.Context, ip string, statuses map[string]types.DPUHAStatus)
 
 	// gNMI integration
@@ -84,11 +87,7 @@ type Store interface {
 	HandleGnmiNotification(ctx context.Context, path string, update *gnmiproto.Update, isDelete bool)
 
 	// gNMI SET
-	SetLocalHaState(ctx context.Context, state string, reason types.ReasonString) error
 	SetLocalHaStateToNotReady(ctx context.Context, reason types.ReasonString) error
-	SetLocalSvcState(ctx context.Context, state string, reason types.ReasonString) error
 	SetLocalSvcStateToFailure(ctx context.Context, reason types.ReasonString) error
-	SetRemotePeerHaState(ctx context.Context, peerIP string, state string, reason types.ReasonString) error
-	SetRemoteSvcState(ctx context.Context, peerIP string, state string, reason types.ReasonString) error
 	SetRemoteStatesAdjDown(ctx context.Context, peerIP string) error
 }

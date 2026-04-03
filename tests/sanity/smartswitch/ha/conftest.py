@@ -8,6 +8,7 @@
 #  or reproduction of this material is strictly forbidden unless prior written
 #  permission is obtained from Isovalent Inc.
 
+import json
 import time
 import logging
 from pathlib import Path
@@ -17,7 +18,12 @@ import pytest
 from config.testing_config import TestingConfig
 from helper.command_executor import CommandExecutor
 from helper.ha_helpers import LEADER_IP, FOLLOWER_IP, wait_for_ha_ready
-from helper.gnmi_paths import HA_ADMIN_STATE_PATH, HA_IP_PATH
+from helper.gnmi_paths import (
+    HA_ADMIN_STATE_PATH,
+    HA_IP_PATH,
+    HA_PEERS_PATH,
+    HA_SWITCH_STATE_PATH,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +66,8 @@ def skip_ha_if_unavailable(config):
             pytest.skip(f"HA container '{name}' not available — run 'make launch-ha-agw' first")
 
 
-def _seed_gnmi_and_enable_ha(cmd, gnmi_file, ha_ip):
-    """Seed mock gNMI from file, then enable HA with the given source IP."""
+def _seed_gnmi_and_enable_ha(cmd, gnmi_file, ha_ip, peer_ip):
+    """Seed mock gNMI from file, then enable HA with the given source IP and peer."""
     if not gnmi_file.exists():
         logger.warning(f"gNMI seed file not found: {gnmi_file}")
         return
@@ -74,8 +80,12 @@ def _seed_gnmi_and_enable_ha(cmd, gnmi_file, ha_ip):
     # Enable HA and set source IP via gNMI SET
     try:
         cmd.agw_mock_gnmi_set(HA_ADMIN_STATE_PATH, '"enabled"')
+        cmd.agw_mock_gnmi_set(HA_SWITCH_STATE_PATH, '"ha-ready"')
         cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
-        logger.info(f"Enabled HA with source IP {ha_ip}")
+        # Seed peer list using real NX-OS array format
+        peer_list_json = json.dumps([{"ipAddr": peer_ip, "ipConfigState": "success"}])
+        cmd.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
+        logger.info(f"Enabled HA with source IP {ha_ip} and peer {peer_ip}")
     except Exception as e:
         logger.warning(f"Failed to enable HA: {e}")
     time.sleep(3)
@@ -84,15 +94,15 @@ def _seed_gnmi_and_enable_ha(cmd, gnmi_file, ha_ip):
 @pytest.fixture(scope="session")
 def seed_gnmi_leader(ha_cmd_leader):
     """Seed the mock gNMI handler on the leader and enable HA."""
-    gnmi_file = TESTDATA_DIR / "default_gnmi.json"
-    _seed_gnmi_and_enable_ha(ha_cmd_leader, gnmi_file, LEADER_IP)
+    gnmi_file = TESTDATA_DIR / "default_gnmi_skip_dpu.json"
+    _seed_gnmi_and_enable_ha(ha_cmd_leader, gnmi_file, LEADER_IP, FOLLOWER_IP)
 
 
 @pytest.fixture(scope="session")
 def seed_gnmi_follower(ha_cmd_follower):
     """Seed the mock gNMI handler on the follower and enable HA."""
-    gnmi_file = TESTDATA_DIR / "default_gnmi.json"
-    _seed_gnmi_and_enable_ha(ha_cmd_follower, gnmi_file, FOLLOWER_IP)
+    gnmi_file = TESTDATA_DIR / "default_gnmi_skip_dpu.json"
+    _seed_gnmi_and_enable_ha(ha_cmd_follower, gnmi_file, FOLLOWER_IP, LEADER_IP)
 
 
 @pytest.fixture(scope="session")
@@ -116,7 +126,10 @@ def _restore_ha_baseline(ha_cmd_leader, ha_cmd_follower):
     - Restores in-service state
     - Waits for ha-ready on both (short timeout — callers gate readiness)
     """
-    for cmd, ha_ip in [(ha_cmd_leader, LEADER_IP), (ha_cmd_follower, FOLLOWER_IP)]:
+    for cmd, ha_ip, peer_ip in [
+        (ha_cmd_leader, LEADER_IP, FOLLOWER_IP),
+        (ha_cmd_follower, FOLLOWER_IP, LEADER_IP),
+    ]:
         # Ensure container is running
         try:
             container = cmd._get_agw_container()
@@ -135,7 +148,7 @@ def _restore_ha_baseline(ha_cmd_leader, ha_cmd_follower):
                 else:
                     logger.warning("Container did not become healthy within 30s during baseline restore")
                 # Re-seed gNMI after restart (mock state lost)
-                gnmi_file = TESTDATA_DIR / "default_gnmi.json"
+                gnmi_file = TESTDATA_DIR / "default_gnmi_skip_dpu.json"
                 if gnmi_file.exists():
                     try:
                         cmd.agw_mock_gnmi_set_file(str(gnmi_file))
@@ -151,7 +164,11 @@ def _restore_ha_baseline(ha_cmd_leader, ha_cmd_follower):
         # Re-enable HA and restore in-service
         try:
             cmd.agw_mock_gnmi_set(HA_ADMIN_STATE_PATH, '"enabled"')
+            cmd.agw_mock_gnmi_set(HA_SWITCH_STATE_PATH, '"ha-ready"')
             cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
+            # Re-seed peer list
+            peer_list_json = json.dumps([{"ipAddr": peer_ip, "ipConfigState": "success"}])
+            cmd.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
             from helper.gnmi_paths import DEVICE_IN_SERVICE_PATH
             cmd.agw_mock_gnmi_set(DEVICE_IN_SERVICE_PATH, '"in-service"')
         except Exception:

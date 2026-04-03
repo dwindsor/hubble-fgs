@@ -11,12 +11,18 @@
 package peers
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha"
+	"github.com/isovalent/hubble-fgs/pkg/ipc"
 )
 
 func init() {
+	PeersCmd.Flags().StringP("filter", "", "", "Regex filter on peer IP")
 	ha.HaCmd.AddCommand(PeersCmd)
 }
 
@@ -24,6 +30,29 @@ func init() {
 var PeersCmd = &cobra.Command{
 	Use:          "peers",
 	SilenceUsage: true,
-	Short:        "Manage peer data",
-	Long:         `Manage peer data - show peer details.`,
+	Short:        "Show HA peer details",
+	Long:         `Show per-peer HA state details. Use --filter to match peer IPs by regex.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		filter, err := cmd.Flags().GetString("filter")
+		if err != nil {
+			return err
+		}
+
+		data := ipc.MessageData{
+			Flags: map[string]string{
+				"filter": filter,
+				"json":   fmt.Sprintf("%t", agwctl.JSON),
+			},
+		}
+
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_HA_PEERS, data)
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, agwctl.JSON)
+		return nil
+	},
 }

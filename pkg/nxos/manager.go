@@ -103,7 +103,7 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 
 	// Create the device store first so VRF/VLAN stores can reference its LbMode.
 	devStore := device.NewStore(ctx, device.WithStorage(storageBackend), device.WithAgentTokenProvider(token.GetAgentToken()))
-	dpuSt := dpu.NewStore(ctx, dpu.WithStorage(storageBackend), dpu.WithSkipDPU(options.skipDPU))
+	dpuSt := dpu.NewStore(ctx, dpu.WithStorage(storageBackend))
 
 	// lbModePinning is a callback shared by VRF and VLAN stores to check
 	// whether per-DPU pinning is active at redirect-programming time.
@@ -218,12 +218,19 @@ func (m *manager) Setup(ctx context.Context) error {
 		return err
 	}
 
-	// Reconcile active VRF/VLAN redirects from persisted state, then enable
-	// the readiness gate so that future gNMI notifications program redirects.
+	// Reconcile active VRF/VLAN redirects from persisted state.
 	m.vrfStore.ReconcileRedirects(ctx)
 	m.vlanStore.ReconcileRedirects(ctx)
-	m.vrfStore.SetRedirectsReady()
-	m.vlanStore.SetRedirectsReady()
+
+	// If the device is already in-service, enable the reactive redirect gate
+	// so that future gNMI notifications program redirects immediately.
+	if m.deviceStore.IsInService() {
+		m.vrfStore.SetInService(true)
+		m.vlanStore.SetInService(true)
+	}
+
+	// Register hooks to manage redirects around in-service state transitions.
+	m.setupInServiceHooks()
 
 	// Advance to RedirDone — signals to NXOS that service redirects are configured.
 	if err := m.advancePhase(ctx, PhaseRedirDone); err != nil {
@@ -411,7 +418,7 @@ func (m *manager) programSharedRedirects(ctx context.Context) error {
 	}
 
 	dpuCount := uint16(m.dpuStore.DpuCount())
-	if dpuCount == 0 && !m.opts.skipDPU {
+	if dpuCount == 0 && !m.dpuStore.IsSkipDPU() {
 		logger.GetLogger().Warn("No DPUs discovered, skipping shared redirect programming")
 		return nil
 	}
@@ -433,6 +440,31 @@ func (m *manager) programSharedRedirects(ctx context.Context) error {
 
 	logger.GetLogger().Info("Shared redirect infrastructure programmed", "dpuCount", dpuCount)
 	return nil
+}
+
+// setupInServiceHooks registers pre/post hooks on the device store that
+// manage redirect programming around in-service state transitions.
+//
+// Going in-service: program all redirects, then enable the reactive gate.
+// Going out-of-service: disable the reactive gate, then remove all redirects.
+func (m *manager) setupInServiceHooks() {
+	m.deviceStore.SetPreInServiceHook(func(ctx context.Context, newState string) {
+		if newState == device.InServiceStateInService {
+			m.vrfStore.ProgramAllRedirects(ctx)
+			m.vlanStore.ProgramAllRedirects(ctx)
+			m.vrfStore.SetInService(true)
+			m.vlanStore.SetInService(true)
+		}
+	})
+
+	m.deviceStore.SetPostInServiceHook(func(ctx context.Context, oldState string) {
+		if oldState == device.InServiceStateInService {
+			m.vrfStore.SetInService(false)
+			m.vlanStore.SetInService(false)
+			m.vrfStore.CleanupAllRedirects(ctx)
+			m.vlanStore.CleanupAllRedirects(ctx)
+		}
+	})
 }
 
 // setupVRFPolicyWatcher registers a watcher on the VRF store that keeps the
@@ -686,8 +718,8 @@ func (m *manager) ShowStatus(ctx context.Context) string {
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "=== NXOS Manager Status ===")
 	fmt.Fprintf(w, "Phase:\t%s\n", m.Phase())
-	fmt.Fprintf(w, "Ready:\t%v\n", m.dpuStore.IsReady() || m.opts.skipDPU)
-	if m.opts.skipDPU {
+	fmt.Fprintf(w, "Ready:\t%v\n", m.dpuStore.IsReady() || m.dpuStore.IsSkipDPU())
+	if m.dpuStore.IsSkipDPU() {
 		fmt.Fprintf(w, "DPU Mode:\tDPUless mode\n")
 	}
 	fmt.Fprintf(w, "VRF Count:\t%d\n", len(m.vrfStore.List()))
@@ -723,8 +755,7 @@ func (m *manager) ShowHa(ctx context.Context) string {
 	peers := m.haStore.AllPeers()
 	fmt.Fprintf(w, "\nPeers (%d):\n", len(peers))
 	for ip, peer := range peers {
-		ipCfgOk := peer.AdjacencyCriteria[types.HACritPeerIpConfig]
-		fmt.Fprintf(w, "  %s:\tSvcState=%s, IpConfigOk=%v\n", ip, peer.SvcState, ipCfgOk)
+		fmt.Fprintf(w, "  %s:\tSvcState=%s, IpConfigState=%s\n", ip, peer.SvcState, peer.IpConfigState)
 	}
 
 	if len(local.Criteria) > 0 {
@@ -749,9 +780,9 @@ func (m *manager) ShowAdj(ctx context.Context) string {
 	peers := m.haStore.AllPeers()
 	for ip, peer := range peers {
 		fmt.Fprintf(w, "Peer:\t%s\n", ip)
-		fmt.Fprintf(w, "  Connected:\t%v\n", peer.AdjacencyConnected)
-		if peer.AdjacencyConnectedEpoch > 0 {
-			fmt.Fprintf(w, "  Last Adj:\t%d\n", peer.AdjacencyConnectedEpoch)
+		fmt.Fprintf(w, "  Connected:\t%v\n", peer.Connected)
+		if peer.ConnectedEpoch > 0 {
+			fmt.Fprintf(w, "  Last Adj:\t%d\n", peer.ConnectedEpoch)
 		}
 	}
 
@@ -799,7 +830,7 @@ func (m *manager) DelTokens(ctx context.Context) string {
 func (m *manager) Status() Status {
 	return Status{
 		Phase:     m.Phase(),
-		Ready:     m.dpuStore.IsReady() || m.opts.skipDPU,
+		Ready:     m.dpuStore.IsReady() || m.dpuStore.IsSkipDPU(),
 		VRFCount:  len(m.vrfStore.List()),
 		VLANCount: len(m.vlanStore.List()),
 		DPUCount:  m.dpuStore.Count(),
@@ -818,7 +849,7 @@ func (s Status) String() string {
 // DpuInSync updates the DPU in-sync status.
 // No-op when skipDPU is enabled (DPUless mode).
 func (m *manager) DpuInSync(ctx context.Context, inSync bool) {
-	if m.opts.skipDPU {
+	if m.dpuStore.IsSkipDPU() {
 		return
 	}
 	m.dpuStore.SetInSync(inSync)
@@ -833,7 +864,7 @@ func (m *manager) GnmiHandler() gnmi.GnmiHandler {
 // cleanupDPUPortRanges deletes the TCP/UDP port range allocations for all discovered DPUs.
 // Used during Close() and handleSvcInstanceDelete().
 func (m *manager) cleanupDPUPortRanges(ctx context.Context) {
-	if m.opts.skipDPU {
+	if m.dpuStore.IsSkipDPU() {
 		return
 	}
 	logger.GetLogger().Info("Cleaning up DPU port ranges")
@@ -896,7 +927,7 @@ func (m *manager) handleSvcFwPolicyDelete(ctx context.Context) {
 // DpuHealth updates the DPU health status and reports system state to NXOS.
 // No-op when skipDPU is enabled (DPUless mode).
 func (m *manager) DpuHealth(ctx context.Context, healthy bool, count int) {
-	if m.opts.skipDPU {
+	if m.dpuStore.IsSkipDPU() {
 		return
 	}
 	m.dpuStore.SetHealth(healthy, count)

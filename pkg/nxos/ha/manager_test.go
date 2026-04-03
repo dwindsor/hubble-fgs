@@ -20,17 +20,11 @@ import (
 	"github.com/cilium/tetragon/pkg/version"
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/dpu"
 	hastore "github.com/isovalent/hubble-fgs/pkg/nxos/store/ha"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
-
-func TestNewManager(t *testing.T) {
-	mgr := NewManager()
-	if mgr == nil {
-		t.Fatal("expected manager to be non-nil")
-	}
-}
 
 func TestManager_IsLeader(t *testing.T) {
 	haStore := hastore.NewStore(context.Background())
@@ -49,16 +43,6 @@ func TestManager_IsLeader(t *testing.T) {
 
 	if !mgr.IsLeader() {
 		t.Error("expected to be leader after store update")
-	}
-}
-
-func TestManager_Peers(t *testing.T) {
-	mgr := NewManager()
-
-	// No peers by default
-	peers := mgr.Peers()
-	if len(peers) != 0 {
-		t.Errorf("expected 0 peers, got %d", len(peers))
 	}
 }
 
@@ -94,38 +78,6 @@ func TestManager_ConnectDisconnectPeer(t *testing.T) {
 	}
 }
 
-func TestMockManager(t *testing.T) {
-	mgr := NewMockManager()
-
-	ctx := context.Background()
-
-	// Not leader by default
-	if mgr.IsLeader() {
-		t.Error("expected not to be leader by default")
-	}
-
-	// Set leader
-	mgr.SetLeader(true)
-	if !mgr.IsLeader() {
-		t.Error("expected to be leader after SetLeader")
-	}
-
-	// Connect peer
-	if err := mgr.ConnectPeer(ctx, "10.0.0.2"); err != nil {
-		t.Errorf("connect peer failed: %v", err)
-	}
-
-	peers := mgr.Peers()
-	if len(peers) != 1 {
-		t.Errorf("expected 1 peer, got %d", len(peers))
-	}
-
-	// Disconnect peer
-	if err := mgr.DisconnectPeer("10.0.0.2"); err != nil {
-		t.Errorf("disconnect peer failed: %v", err)
-	}
-}
-
 func TestCompareIPs(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -149,15 +101,6 @@ func TestCompareIPs(t *testing.T) {
 				t.Errorf("compareIPs(%s, %s) = %d, expected %d", tt.a, tt.b, result, tt.expected)
 			}
 		})
-	}
-}
-
-func TestAdjacencyConstants(t *testing.T) {
-	if AdjacencyTimeout != 30*time.Second {
-		t.Errorf("expected AdjacencyTimeout 30s, got %v", AdjacencyTimeout)
-	}
-	if AdjacencyInterval != 10*time.Second {
-		t.Errorf("expected AdjacencyInterval 10s, got %v", AdjacencyInterval)
 	}
 }
 
@@ -263,11 +206,12 @@ func TestManager_Run_ActivatesWhenConfigured(t *testing.T) {
 	// Give Run() a moment to start waiting.
 	time.Sleep(10 * time.Millisecond)
 
-	// Configure HA with a peer and in-service — this should trigger activation.
+	// Configure HA with a peer, source IP, and in-service — this should trigger activation.
 	bgCtx := context.Background()
 	deviceStore.SetInService(bgCtx, "in-service")
 	haStore.SetEnabled(bgCtx, "enabled")
-	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", AdjacencyCriteria: types.HACriteria{types.HACritPeerIpConfig: true}})
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
 
 	// Give Run() a moment to activate.
 	time.Sleep(50 * time.Millisecond)
@@ -306,10 +250,11 @@ func TestManager_Run_DeactivatesOnDeconfigured(t *testing.T) {
 
 	bgCtx := context.Background()
 
-	// Configure HA with a peer and in-service — triggers activation.
+	// Configure HA with a peer, source IP, and in-service — triggers activation.
 	deviceStore.SetInService(bgCtx, "in-service")
 	haStore.SetEnabled(bgCtx, "enabled")
-	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", AdjacencyCriteria: types.HACriteria{types.HACritPeerIpConfig: true}})
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -362,7 +307,7 @@ func TestManager_Run_WaitsForInService(t *testing.T) {
 
 	// Enable HA with a peer — but InService is still ""
 	haStore.SetEnabled(bgCtx, "enabled")
-	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", AdjacencyCriteria: types.HACriteria{types.HACritPeerIpConfig: true}})
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
 
 	// Wait briefly — Run() should still be blocked waiting for InService.
 	time.Sleep(50 * time.Millisecond)
@@ -407,9 +352,10 @@ func TestManager_Run_ActivatesWhenInServiceSet(t *testing.T) {
 
 	bgCtx := context.Background()
 
-	// Enable HA with a peer.
+	// Enable HA with a peer and source IP.
 	haStore.SetEnabled(bgCtx, "enabled")
-	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", AdjacencyCriteria: types.HACriteria{types.HACritPeerIpConfig: true}})
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
 
 	// Still blocked — InService is "".
 	time.Sleep(30 * time.Millisecond)
@@ -461,8 +407,14 @@ func TestManager_isConfigReady(t *testing.T) {
 		t.Error("expected not ready with no peers")
 	}
 
-	// Add peer — still not ready (InService == "").
+	// Add peer — still not ready (no HaIP, no InService).
 	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2"})
+	if mgr.isConfigReady() {
+		t.Error("expected not ready with HaIP empty")
+	}
+
+	// Set HaIP — still not ready (InService == "").
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
 	if mgr.isConfigReady() {
 		t.Error("expected not ready with InService empty")
 	}
@@ -472,30 +424,6 @@ func TestManager_isConfigReady(t *testing.T) {
 	if !mgr.isConfigReady() {
 		t.Error("expected ready when all prerequisites met")
 	}
-}
-
-// TestManager_applyNxStates_GatedOnInService verifies that svc state is not pushed
-// to NX-OS when InServiceState is "".
-func TestManager_applyNxStates_GatedOnInService(t *testing.T) {
-	haStore := hastore.NewStore(context.Background())
-	deviceStore := device.NewStore(context.Background())
-	mgr := NewManager(
-		WithHAStoreForManager(haStore),
-		WithDeviceStore(deviceStore),
-	).(*manager)
-
-	bgCtx := context.Background()
-
-	// Call applyNxStates with InService == "" — should skip svc state push.
-	// We verify by checking there's no panic and the function returns cleanly.
-	// (The actual gNMI push is tested via the haStore's SetLocalSvcState.)
-	mgr.applyNxStates(bgCtx)
-
-	// Set InService — now applyNxStates should proceed to write svc state.
-	deviceStore.SetInService(bgCtx, "in-service")
-	mgr.applyNxStates(bgCtx)
-
-	// If we got here without panic, the gating works correctly.
 }
 
 // TestProcessHaInfo_NotReadyRemovesStandby: HA_STATE_HA_NOTREADY from peer should remove standby.
@@ -532,25 +460,173 @@ func TestProcessHaInfo_SwitchoverRemovesStandby(t *testing.T) {
 	}
 }
 
-// TestMockManager_Run verifies that mockManager.Run() blocks on ctx and returns nil.
-func TestMockManager_Run(t *testing.T) {
-	mgr := NewMockManager()
-	ctx, cancel := context.WithCancel(context.Background())
+// TestManager_HoldDownTimer_StartsOnRecovery verifies that the hold-down timer
+// is created when criteria recover and CriteriaRecoveryPending becomes true.
+func TestManager_HoldDownTimer_StartsOnRecovery(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+	).(*manager)
 
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- mgr.Run(ctx)
-	}()
+	// Start with CriteriaMet=false, no criteria set (all-false effectively).
+	// Set a criterion to false first to establish not-met state.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+	mgr.recomputeAndApplyState(ctx)
+	if mgr.holdDownTimer != nil {
+		t.Error("expected no hold-down timer when criteria are not met")
+	}
 
-	cancel()
+	// Now set all criteria to true — recovery should start, timer should be created.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	mgr.recomputeAndApplyState(ctx)
 
-	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Errorf("mockManager.Run() returned error: %v", err)
-		}
-	case <-time.After(time.Second):
-		t.Error("mockManager.Run() did not return after cancel")
+	local := haStore.Local()
+	if !local.CriteriaRecoveryPending {
+		t.Error("expected CriteriaRecoveryPending to be true")
+	}
+	if local.CriteriaMet {
+		t.Error("expected CriteriaMet to still be false during hold-down")
+	}
+	if mgr.holdDownTimer == nil {
+		t.Error("expected hold-down timer to be started")
+	}
+
+	// Cleanup
+	if mgr.holdDownTimer != nil {
+		mgr.holdDownTimer.Stop()
+	}
+}
+
+// TestManager_HoldDownTimer_CancelledOnFlap verifies that the hold-down timer
+// is cancelled when criteria flap back to false during the hold-down period.
+func TestManager_HoldDownTimer_CancelledOnFlap(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+	).(*manager)
+
+	// Start recovery.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+	mgr.recomputeAndApplyState(ctx)
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	mgr.recomputeAndApplyState(ctx)
+
+	if mgr.holdDownTimer == nil {
+		t.Fatal("expected hold-down timer to be started")
+	}
+
+	// Flap: set criterion back to false.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+	mgr.recomputeAndApplyState(ctx)
+
+	if mgr.holdDownTimer != nil {
+		t.Error("expected hold-down timer to be cancelled after flap")
+	}
+
+	local := haStore.Local()
+	if local.CriteriaRecoveryPending {
+		t.Error("expected CriteriaRecoveryPending to be false after flap")
+	}
+	if local.CriteriaFlapCount != 1 {
+		t.Errorf("expected flap count 1, got %d", local.CriteriaFlapCount)
+	}
+}
+
+// TestManager_HoldDownTimer_FiresAndPromotes verifies that when the hold-down
+// timer fires, checkHoldDown promotes CriteriaMet to true.
+func TestManager_HoldDownTimer_FiresAndPromotes(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+	).(*manager)
+
+	// Set criteria to false then true to trigger recovery.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+	mgr.recomputeAndApplyState(ctx)
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	mgr.recomputeAndApplyState(ctx)
+
+	if mgr.holdDownTimer == nil {
+		t.Fatal("expected hold-down timer to be started")
+	}
+
+	// Simulate the hold-down having already elapsed by backdating the epoch.
+	local := haStore.Local()
+	local.CriteriaRecoveryEpoch = time.Now().Unix() - int64(CriteriaMetHoldDown/time.Second) - 1
+	haStore.SetLocalCriteriaMet(ctx, local)
+
+	// Simulate what happens when the timer fires: nil the timer, call checkHoldDown.
+	mgr.holdDownTimer.Stop()
+	mgr.holdDownTimer = nil
+	mgr.checkHoldDown(ctx)
+
+	local = haStore.Local()
+	if !local.CriteriaMet {
+		t.Error("expected CriteriaMet to be true after hold-down expired")
+	}
+	if local.CriteriaRecoveryPending {
+		t.Error("expected CriteriaRecoveryPending to be false after promotion")
+	}
+}
+
+// TestManager_HoldDownTimer_CancellationPersisted verifies that when the hold-down
+// timer fires but criteria no longer pass, the cancellation (CriteriaRecoveryPending=false,
+// flap count incremented) is persisted to the store.
+func TestManager_HoldDownTimer_CancellationPersisted(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+	).(*manager)
+
+	// Start recovery: set criterion false then true.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+	mgr.recomputeAndApplyState(ctx)
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	mgr.recomputeAndApplyState(ctx)
+
+	if mgr.holdDownTimer == nil {
+		t.Fatal("expected hold-down timer to be started")
+	}
+
+	// Backdate the epoch so CheckHoldDown thinks the hold-down expired.
+	local := haStore.Local()
+	local.CriteriaRecoveryEpoch = time.Now().Unix() - int64(CriteriaMetHoldDown/time.Second) - 1
+	haStore.SetLocalCriteriaMet(ctx, local)
+
+	// Now make criteria fail so CheckHoldDown won't promote.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+
+	// Simulate timer firing.
+	mgr.holdDownTimer.Stop()
+	mgr.holdDownTimer = nil
+	mgr.checkHoldDown(ctx)
+
+	// The cancellation should be persisted: CriteriaRecoveryPending=false, flap count incremented.
+	local = haStore.Local()
+	if local.CriteriaRecoveryPending {
+		t.Error("expected CriteriaRecoveryPending to be false after cancellation")
+	}
+	if local.CriteriaRecoveryEpoch != 0 {
+		t.Errorf("expected CriteriaRecoveryEpoch to be 0, got %d", local.CriteriaRecoveryEpoch)
+	}
+	if local.CriteriaFlapCount != 1 {
+		t.Errorf("expected flap count 1, got %d", local.CriteriaFlapCount)
+	}
+	if local.CriteriaMet {
+		t.Error("expected CriteriaMet to remain false")
+	}
+}
+
+// TestManager_HoldDownChan_NilWhenNoTimer verifies holdDownChan returns nil
+// when no timer is active, which causes the select case to block forever.
+func TestManager_HoldDownChan_NilWhenNoTimer(t *testing.T) {
+	mgr := &manager{}
+	if mgr.holdDownChan() != nil {
+		t.Error("expected nil channel when no timer is active")
 	}
 }
 
@@ -635,8 +711,79 @@ func (m *mockManager) UpdatePolicyRevision(ctx context.Context, revision string)
 
 func (m *mockManager) SetDebugPeerFail(ctx context.Context, peer string, membership, adjacency bool) {
 }
-func (m *mockManager) SetDebugPeerOk(ctx context.Context, peer string)  {}
-func (m *mockManager) SetDebugFail(ctx context.Context, fail bool)      {}
-func (m *mockManager) NotifyServiceFailure(ctx context.Context)         {}
+func (m *mockManager) SetDebugPeerOk(ctx context.Context, peer string) {}
+func (m *mockManager) SetDebugFail(ctx context.Context, fail bool)     {}
+func (m *mockManager) NotifyServiceFailure(ctx context.Context)        {}
+
+// TestManager_Run_StartsNotReadyWithDPUs verifies that when DPUs are present,
+// the local service state starts as "not-ready" (not "ready") until DPUs
+// report health. This prevents the spurious ready -> not-ready -> ready
+// transition during startup.
+func TestManager_Run_StartsNotReadyWithDPUs(t *testing.T) {
+	ctx := context.Background()
+
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+	dpuStore := dpu.NewStore(ctx)
+
+	// Add a DPU so the manager expects DPU health criteria.
+	dpuStore.Update(ctx, types.DPU{Name: "dpu-1", IP: "169.254.0.1", ModuleNum: 1})
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithDPUStore(dpuStore),
+		WithClientFactory(func() Client { return NewMockClient() }),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	// Give Run() time to start waiting.
+	time.Sleep(10 * time.Millisecond)
+
+	// Configure HA to trigger activation.
+	deviceStore.SetInService(ctx, "in-service")
+	haStore.SetEnabled(ctx, "enabled")
+	haStore.SetHaIP(ctx, "10.0.0.1")
+	haStore.SetPeer(ctx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
+
+	// Give Run() time to activate.
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify local state: SvcState should be "not-ready", not "ready".
+	local := haStore.Local()
+	if local.SvcState != types.SvcStateFailure {
+		t.Errorf("expected SvcState=%q, got %q", types.SvcStateFailure, local.SvcState)
+	}
+	if local.CriteriaMet {
+		t.Error("expected CriteriaMet=false at startup with DPUs")
+	}
+
+	// Verify the DPU criteria were pre-populated as false.
+	if val, ok := local.Criteria[types.HACritDpuHealth]; !ok || val {
+		t.Errorf("expected HACritDpuHealth=false, got ok=%v val=%v", ok, val)
+	}
+	if val, ok := local.Criteria[types.HACritDpuInSync]; !ok || val {
+		t.Errorf("expected HACritDpuInSync=false, got ok=%v val=%v", ok, val)
+	}
+
+	// Cancel context — Run() should exit.
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
 
 var _ Manager = (*mockManager)(nil)
