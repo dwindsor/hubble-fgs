@@ -531,8 +531,6 @@ func (agw *AgentGateway) InitializeMTLS() bool {
 		return false
 	}
 
-	logger.GetLogger().Info("mTLS certificates path configured from AGW config",
-		"path", agw.Cfg.Env.MTLSPath)
 	return true
 }
 

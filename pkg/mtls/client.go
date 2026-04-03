@@ -343,8 +343,22 @@ func (cm *CertificateManager) SubmitCSRToKubernetes(ctx context.Context, csrPEM 
 
 			// Check if the existing CSR is already approved and issued
 			if len(existingCSR.Status.Certificate) > 0 {
-				// Continue with the existing CSR
-				logger.GetLogger().Info("existing CSR is already approved and issued, using existing certificate")
+				// The existing certificate was generated with a different private key
+				// We need to delete it and create a new one with our current private key
+				logger.GetLogger().Info("existing CSR has different private key, deleting and recreating")
+
+				deleteErr := kubeClient.CertificatesV1().CertificateSigningRequests().Delete(submitCtx, cm.clientConfig.CSRName, metav1.DeleteOptions{})
+				if deleteErr != nil {
+					return fmt.Errorf("failed to delete existing CSR: %w", deleteErr)
+				}
+
+				// Retry creating the CSR
+				result, retryErr := kubeClient.CertificatesV1().CertificateSigningRequests().Create(submitCtx, csr, metav1.CreateOptions{})
+				if retryErr != nil {
+					return fmt.Errorf("failed to create CSR after deletion: %w", retryErr)
+				}
+
+				logger.GetLogger().Info("successfully recreated CSR to Kubernetes", "csrName", result.Name, "uid", result.UID)
 				return nil
 			}
 
@@ -533,10 +547,19 @@ func (cm *CertificateManager) persistCertificates() error {
 	}
 
 	// Validate the certificate-key pair before persistence
+	logger.GetLogger().Debug("validating certificate-key pair before persistence")
 	_, err = tls.X509KeyPair(clientCertPEM, privateKeyPEM)
 	if err != nil {
+		// Log additional debug information
+		logger.GetLogger().Error("certificate-key pair validation failed",
+			"error", err,
+			"certPEMLength", len(clientCertPEM),
+			"keyPEMLength", len(privateKeyPEM),
+			"certSubject", cm.clientCertificate.Subject.String(),
+			"certNotAfter", cm.clientCertificate.NotAfter)
 		return fmt.Errorf("invalid mTLS certificate-key pair for persistence: %w", err)
 	}
+	logger.GetLogger().Info("certificate-key pair validation successful")
 
 	// Persist all certificates
 	err = mtlsCerts.SetAndPersistCertificates(
@@ -548,7 +571,6 @@ func (cm *CertificateManager) persistCertificates() error {
 		return fmt.Errorf("failed to persist mTLS certificates: %w", err)
 	}
 
-	logger.GetLogger().Info("successfully persisted mTLS certificates to file")
 	return nil
 }
 
@@ -580,7 +602,7 @@ func (cm *CertificateManager) GetTLSConfig() (*tls.Config, error) {
 		tlsConfig.RootCAs = certPool
 	}
 
-	logger.GetLogger().Info("created mTLS config for authentication")
+	logger.GetLogger().Debug("created mTLS config for authentication")
 	return tlsConfig, nil
 }
 
@@ -694,7 +716,7 @@ func (cm *CertificateManager) completeCertificateFlow(ctx context.Context, isRen
 	} else {
 		logger.GetLogger().Info("Complete mTLS certificate flow successful")
 		// Start renewal monitoring after successful certificate acquisition (only for initial flow)
-		cm.StartRenewalMonitoring(ctx)
+		cm.startRenewalMonitoring(ctx)
 	}
 
 	return nil
@@ -710,8 +732,8 @@ func (cm *CertificateManager) IsValid() bool {
 	return now.After(cm.clientCertificate.NotBefore) && now.Before(cm.clientCertificate.NotAfter)
 }
 
-// NeedsAutoRenewal checks if the certificate needs automatic renewal (within 5 days of expiry)
-func (cm *CertificateManager) NeedsAutoRenewal() bool {
+// needsAutoRenewal checks if the certificate needs automatic renewal
+func (cm *CertificateManager) needsAutoRenewal() bool {
 	if cm.clientCertificate == nil {
 		return true
 	}
@@ -720,9 +742,9 @@ func (cm *CertificateManager) NeedsAutoRenewal() bool {
 	return time.Until(cm.clientCertificate.NotAfter) < autoRenewalThreshold
 }
 
-// StartRenewalMonitoring starts the background certificate renewal monitoring
+// startRenewalMonitoring starts the background certificate renewal monitoring
 // It checks daily if the certificate needs renewal (within 3 days of expiry)
-func (cm *CertificateManager) StartRenewalMonitoring(ctx context.Context) {
+func (cm *CertificateManager) startRenewalMonitoring(ctx context.Context) {
 	cm.renewalMutex.Lock()
 	defer cm.renewalMutex.Unlock()
 
@@ -738,8 +760,8 @@ func (cm *CertificateManager) StartRenewalMonitoring(ctx context.Context) {
 	logger.GetLogger().Info("started mTLS certificate renewal monitoring")
 }
 
-// StopRenewalMonitoring stops the background mTLS certificate renewal monitoring
-func (cm *CertificateManager) StopRenewalMonitoring() {
+// stopRenewalMonitoring stops the background mTLS certificate renewal monitoring
+func (cm *CertificateManager) stopRenewalMonitoring() {
 	cm.renewalMutex.Lock()
 	defer cm.renewalMutex.Unlock()
 
@@ -757,6 +779,12 @@ func (cm *CertificateManager) renewalMonitorLoop(ctx context.Context) {
 	ticker := time.NewTicker(24 * time.Hour) // Check daily
 	defer ticker.Stop()
 
+	// Ensure cleanup on exit
+	defer func() {
+		logger.GetLogger().Debug("renewalMonitorLoop exiting, performing cleanup")
+		cm.stopRenewalMonitoring()
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -773,7 +801,7 @@ func (cm *CertificateManager) renewalMonitorLoop(ctx context.Context) {
 
 // checkAndRenewCertificate checks if renewal is needed and initiates renewal process
 func (cm *CertificateManager) checkAndRenewCertificate(ctx context.Context) {
-	if !cm.NeedsAutoRenewal() {
+	if !cm.needsAutoRenewal() {
 		return
 	}
 

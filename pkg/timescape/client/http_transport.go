@@ -78,15 +78,36 @@ func HttpTransportWithMTLS(config types.HTTPTransportConfig) (*HTTPTransport, er
 		config.Timeout = types.DefaultHTTPRequestTimeout
 	}
 
+	// Try to get TLS config from CertificateManager first (preferred for active certificate lifecycle)
 	certManager := mtls.GetExistingCertificateManager()
-	if certManager == nil {
-		return nil, fmt.Errorf("no existing CertificateManager instance found")
+	var tlsConfig *tls.Config
+	var err error
+
+	if certManager != nil {
+		tlsConfig, err = certManager.GetTLSConfig()
+		if err != nil {
+			logger.GetLogger().Debug("Failed to get mTLS configuration from CertificateManager", "error", err)
+		}
 	}
 
-	// Get TLS configuration with client certificate
-	tlsConfig, err := certManager.GetTLSConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get mTLS configuration: %w", err)
+	// MTLSCertificate persisted certificates
+	if tlsConfig == nil {
+		mtlsCerts := mtls.GetMTLSCertificates()
+		if mtlsCerts == nil {
+			return nil, fmt.Errorf("no CertificateManager and no MTLSCertificates available for mTLS")
+		}
+
+		// Certificates should already be loaded by loadMTLSCertificates()
+		isLoaded := mtlsCerts.IsLoaded()
+		if !isLoaded {
+			return nil, fmt.Errorf("MTLSCertificates are not loaded")
+		}
+
+		tlsConfig, err = mtlsCerts.GetTLSConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get mTLS configuration from persisted certificates: %w", err)
+		}
+		logger.GetLogger().Debug("Successfully using persisted mTLS certificates for HTTP transport")
 	}
 
 	// Apply InsecureSkipVerify setting from config for development environments

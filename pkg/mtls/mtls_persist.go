@@ -158,14 +158,14 @@ func (m *MTLSCertificates) ConfigureCertificatePath(mtlsPath string) error {
 	return nil
 }
 
-// SetCertificates sets all three certificates at once.
+// setCertificates sets all three certificates at once.
 // It acquires a lock to ensure thread-safe access when updating all certificates.
 //
 // Parameters:
 //   - certPEM: The client certificate in PEM format.
 //   - keyPEM: The private key in PEM format.
 //   - caCertPEM: The CA certificate in PEM format.
-func (m *MTLSCertificates) SetCertificates(certPEM, keyPEM, caCertPEM string) {
+func (m *MTLSCertificates) setCertificates(certPEM, keyPEM, caCertPEM string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.certPEM = certPEM
@@ -173,14 +173,13 @@ func (m *MTLSCertificates) SetCertificates(certPEM, keyPEM, caCertPEM string) {
 	m.caCertPEM = caCertPEM
 }
 
-// Persist saves the mTLS certificates to a file in JSON format.
+// persist saves the mTLS certificates to a file in JSON format.
 // The file is created or overwritten at the path returned by CertsPath(), and contains
 // the certificates under "client_cert", "private_key", and "ca_cert" keys.
 // After writing, the file permissions are set to 0600 (read and write for the owner only)
 // to ensure the certificates' security.
-// Returns an error if writing the file or setting
-// permissions fails.
-func (m *MTLSCertificates) Persist() error {
+// Returns an error if writing the file or setting permissions fails.
+func (m *MTLSCertificates) persist() error {
 	certPEM := m.CertPEM()
 	keyPEM := m.KeyPEM()
 	caCertPEM := m.CACertPEM()
@@ -299,20 +298,20 @@ func (m *MTLSCertificates) Load() (bool, error) {
 	}
 
 	// Validate certificates before setting them
-	if err = m.ValidateCertificates(certPEM, keyPEM, caCertPEM); err != nil {
+	if err = m.validateCertificates(certPEM, keyPEM, caCertPEM); err != nil {
 		return false, fmt.Errorf("invalid mTLS certificates: %w", err)
 	}
 
 	// Setting certificates in MTLSCertificates object.
-	m.SetCertificates(certPEM, keyPEM, caCertPEM)
+	m.setCertificates(certPEM, keyPEM, caCertPEM)
 	logger.GetLogger().Debug("successfully loaded and validated mTLS certificates from file")
 	return true, nil
 }
 
-// ValidateCertificates validates the provided PEM-encoded certificates and private key.
+// validateCertificates validates the provided PEM-encoded certificates and private key.
 // It checks that the certificates can be parsed and that the private key matches the client certificate.
 // Returns an error if validation fails.
-func (m *MTLSCertificates) ValidateCertificates(certPEM, keyPEM, caCertPEM string) error {
+func (m *MTLSCertificates) validateCertificates(certPEM, keyPEM, caCertPEM string) error {
 	logger.GetLogger().Debug("validating mTLS certificates")
 
 	// Validate client certificate
@@ -346,12 +345,12 @@ func (m *MTLSCertificates) SetAndPersistCertificates(certPEM, keyPEM, caCertPEM 
 	}
 
 	// Validate certificates before setting them
-	if err := m.ValidateCertificates(certPEM, keyPEM, caCertPEM); err != nil {
+	if err := m.validateCertificates(certPEM, keyPEM, caCertPEM); err != nil {
 		return fmt.Errorf("certificate validation failed: %w", err)
 	}
 
-	m.SetCertificates(certPEM, keyPEM, caCertPEM)
-	err := m.Persist()
+	m.setCertificates(certPEM, keyPEM, caCertPEM)
+	err := m.persist()
 	if err != nil {
 		logger.GetLogger().Error("failed to persist mTLS certificates", logfields.Error, err)
 		return err

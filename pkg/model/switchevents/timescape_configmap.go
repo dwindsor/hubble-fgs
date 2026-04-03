@@ -98,7 +98,7 @@ func SubscribeTimescapeConfig(oldConfig, newConfig *v1alpha.ConfigObject) error 
 		// Call Setup to start or restart the timescape client
 		if setupContext != nil && setupAgw != nil {
 			logger.GetLogger().Debug("Starting Timescape client...")
-			err := Setup(setupContext, setupAgw, setupEnableNxos, setupControllerManager)
+			err := Setup(setupContext, setupAgw, setupEnableNxos)
 			if err != nil {
 				logger.GetLogger().Error("Failed to setup Timescape client from Config", "error", err)
 				return fmt.Errorf("timescape client setup failed: %w", err)
@@ -303,12 +303,6 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 		"caSecretName", config.MTLSCASecretName,
 		"caSecretNamespace", config.MTLSCASecretNamespace)
 
-	// Load the certificate if they are present in persistence file
-	if loadMTLSCertificates() {
-		logger.GetLogger().Info("timescape: mTLS certificates loaded successfully, mTLS authentication will be used")
-		return nil
-	}
-
 	// Create mTLS client configuration for certificate manager
 	clientConfig := mtls.NewClientConfig(serialNumber, saNamespace,
 		serviceIp, config.MTLSCASecretName, config.MTLSCASecretNamespace, config.MTLSIssuerName, config.MTLSIssuerGroup, config.MTLSIssuerKind)
@@ -320,6 +314,12 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 	certManager := mtls.GetCertificateManagerInstance(setupControllerManager, clientConfig)
 	if certManager == nil {
 		return fmt.Errorf("timescape: failed to create mTLS certificate manager")
+	}
+
+	// Load the certificate if they are present in persistence file
+	if loadMTLSCertificates() {
+		logger.GetLogger().Info("timescape: mTLS certificates loaded successfully, mTLS authentication will be used")
+		return nil
 	}
 
 	return certManager.CompleteCertificateFlow(ctx)
@@ -345,7 +345,7 @@ func loadMTLSCertificates() bool {
 	}
 
 	if !loaded {
-		logger.GetLogger().Info("timescape: mTLS certificate file not found, certificates not loaded",
+		logger.GetLogger().Info("timescape: mTLS certificate file not found",
 			"path", mtlsCerts.CertsPath())
 		return false
 	}

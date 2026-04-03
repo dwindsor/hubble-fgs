@@ -18,7 +18,6 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/manager"
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/policystatus"
@@ -220,7 +219,7 @@ func (h *TimescapeHandler) ReportPolicyStatus(ctx context.Context) error {
 //
 // It blocks until the context is cancelled, at which point it gracefully shuts down the handler
 // and closes the client connection.
-func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, _ *manager.ControllerManager) error {
+func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 	// Get configuration from the config manager
 	config := CurrentTimescapeConfig()
 	if config == nil {
