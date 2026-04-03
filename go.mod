@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.14
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.21
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.98.0
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.19.2
 	github.com/cilium/ebpf v0.21.0
@@ -56,7 +56,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 	github.com/stretchr/testify v1.11.1
-	github.com/vishvananda/netlink v1.3.2-0.20260320193013-72a8cd7e0a73
+	github.com/vishvananda/netlink v1.3.2-0.20260403072639-188504cbe7c1
 	github.com/vishvananda/netns v0.0.5
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/xlab/treeprint v1.2.0
@@ -66,7 +66,7 @@ require (
 	golang.org/x/net v0.52.0
 	golang.org/x/sys v0.42.0
 	golang.org/x/time v0.15.0
-	google.golang.org/api v0.273.1
+	google.golang.org/api v0.274.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
