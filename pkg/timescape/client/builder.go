@@ -12,7 +12,6 @@ package client
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -52,13 +51,6 @@ func (b *ClientBuilder) WithAuth(username, password string) *ClientBuilder {
 // WithMTLS enables mTLS authentication and sets the kubernetes client
 func (b *ClientBuilder) WithMTLS() *ClientBuilder {
 	b.config.UseMTLS = true
-	return b
-}
-
-// WithAuthFromEnv sets basic authentication from environment variables
-func (b *ClientBuilder) WithAuthFromEnv() *ClientBuilder {
-	b.config.Username = os.Getenv("TIMESCAPE_USERNAME")
-	b.config.Password = os.Getenv("TIMESCAPE_PASSWORD")
 	return b
 }
 
@@ -108,9 +100,8 @@ func (b *ClientBuilder) WithRetryConfig(maxRetries int, baseBackoff time.Duratio
 	return b
 }
 
-// WithBatchConfig sets batching configuration
-func (b *ClientBuilder) WithBatchConfig(maxBatchSize int, batchTimeout time.Duration) *ClientBuilder {
-	b.queueConfig.MaxBatchSize = maxBatchSize
+// WithBatchTimeout sets batch timeout configuration
+func (b *ClientBuilder) WithBatchTimeout(batchTimeout time.Duration) *ClientBuilder {
 	b.queueConfig.BatchTimeout = batchTimeout
 	return b
 }
@@ -141,7 +132,6 @@ func (b *ClientBuilder) Build(ctx context.Context) (types.Client, error) {
 		"requestTimeout", b.queueConfig.SendTimeout,
 		"connectionTimeout", b.config.ConnectionTimeout,
 		"maxRetries", b.queueConfig.MaxRetries,
-		"batchSize", b.queueConfig.MaxBatchSize,
 		"batchTimeout", b.queueConfig.BatchTimeout,
 	)
 	return client, nil

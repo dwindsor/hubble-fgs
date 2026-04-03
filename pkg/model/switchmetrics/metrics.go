@@ -15,6 +15,7 @@ package switchmetrics
 
 import (
 	"bufio"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -200,6 +201,14 @@ func (m *AGWMetrics) getProcessMemoryUsage() float64 {
 	return 0.0
 }
 
+// safeFloatToInt64 converts float64 to int64 safely, handling NaN and Inf values
+func safeFloatToInt64(f float64) int64 {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0
+	}
+	return int64(f)
+}
+
 // GetCurrentMetrics returns current metric values
 func (m *AGWMetrics) GetCurrentMetrics(policyK8sCount int64, totalDPURules int64) *CurrentMetrics {
 	// Update gauges with current values
@@ -212,9 +221,9 @@ func (m *AGWMetrics) GetCurrentMetrics(policyK8sCount int64, totalDPURules int64
 		CPUUsagePercent:            m.getCurrentCPUUsage(),
 		PolicyK8sIDs:               policyK8sCount,
 		PolicyDPURules:             totalDPURules,
-		PolicyDPUInsertErrors:      int64(m.GetInsertErrorCount()),
-		PolicyDPUDeleteErrors:      int64(m.GetDeleteErrorCount()),
-		PolicyDPUUpdateErrors:      int64(m.GetUpdateErrorCount()),
+		PolicyDPUInsertErrors:      safeFloatToInt64(m.GetInsertErrorCount()),
+		PolicyDPUDeleteErrors:      safeFloatToInt64(m.GetDeleteErrorCount()),
+		PolicyDPUUpdateErrors:      safeFloatToInt64(m.GetUpdateErrorCount()),
 	}
 }
 

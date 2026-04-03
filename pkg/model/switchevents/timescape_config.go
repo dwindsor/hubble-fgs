@@ -55,8 +55,8 @@ type TimescapeConfig struct {
 	RequestTimeoutSec    uint32 `json:"request_timeout_sec"`
 
 	// Batching configuration
-	MaxBatchSize   uint32 `json:"max_batch_size"`
-	BatchTimeoutMs uint32 `json:"batch_timeout_ms"`
+
+	PolicystatusReportingIntervalMins uint32 `json:"policystatus_reporting_interval_mins"`
 }
 
 // TimescapeConfigManager manages the timescape configuration with thread safety
@@ -113,8 +113,7 @@ func (tcm *TimescapeConfigManager) GetTimescapeConfig() *TimescapeConfig {
 		MaxRetries:           tcm.config.MaxRetries,
 		ConnectionTimeoutSec: tcm.config.ConnectionTimeoutSec,
 		RequestTimeoutSec:    tcm.config.RequestTimeoutSec,
-		MaxBatchSize:         tcm.config.MaxBatchSize,
-		BatchTimeoutMs:       tcm.config.BatchTimeoutMs,
+		PolicystatusReportingIntervalMins: tcm.config.PolicystatusReportingIntervalMins,
 	}
 }
 
@@ -148,8 +147,7 @@ func (tcm *TimescapeConfigManager) SetTimescapeConfig(config *TimescapeConfig) {
 		MaxRetries:            config.MaxRetries,
 		ConnectionTimeoutSec:  config.ConnectionTimeoutSec,
 		RequestTimeoutSec:     config.RequestTimeoutSec,
-		MaxBatchSize:          config.MaxBatchSize,
-		BatchTimeoutMs:        config.BatchTimeoutMs,
+		PolicystatusReportingIntervalMins: config.PolicystatusReportingIntervalMins,
 	}
 }
 
@@ -391,8 +389,7 @@ func GetConfigForDisplay() map[string]interface{} {
 		serverInfo["connection_timeout_sec"] = tcm.config.ConnectionTimeoutSec
 		serverInfo["request_timeout_sec"] = tcm.config.RequestTimeoutSec
 		serverInfo["max_retries"] = tcm.config.MaxRetries
-		serverInfo["max_batch_size"] = tcm.config.MaxBatchSize
-		serverInfo["batch_timeout_ms"] = tcm.config.BatchTimeoutMs
+		serverInfo["policystatus_reporting_interval_mins"] = tcm.config.PolicystatusReportingIntervalMins
 	}
 
 	return config

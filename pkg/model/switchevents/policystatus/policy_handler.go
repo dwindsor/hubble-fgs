@@ -26,9 +26,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/systemstatus"
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 
 	l3l4networkpolicyv1alpha "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
@@ -37,11 +35,7 @@ import (
 
 const (
 	POLICY_VALIDATION_ERROR = "POLICY_VALIDATION_ERROR"
-	// DefaultPolicyGroupId is used when no policyGroupId is specified in annotations
-	// This value matches switchpolicy.DefaultPolicyGroupId to avoid import cycles
-	DefaultPolicyGroupId = "NotFound"
-	// MaxPolicyGroupIdCacheSize limits the cache size to prevent memory leaks
-	MaxPolicyGroupIdCacheSize = 1000
+	DefaultPolicyGroupId    = "NotFound"
 )
 
 type PolicyStatusHandler interface {
@@ -55,12 +49,14 @@ type PolicyStatusHandler interface {
 	SetClient(client types.Client)
 	// SetPolicyGroupId sets the PolicyGroupId for a specific policy
 	SetPolicyGroupId(policyName string, policyGroupId string)
-	// RemovePolicyGroupId removes the PolicyGroupId cache entry for a policy
-	RemovePolicyGroupId(policyName string)
 	// ProcessPolicyRuleEvent processes a policy rule event from StreamEvents
 	ProcessPolicyRuleEvent(ctx context.Context, agentUID string, ruleEvent *l3l4networkpolicyv1alpha.PolicyRuleEvent) error
+	// SetExpectedRuleCount sets the expected number of rules for a policy
+	SetExpectedRuleCount(policyName string, expectedRuleCount int)
 	// Update the expected agent count (dpus) from data provider
 	UpdateExpectedAgentCountFromProvider()
+	// MarkPolicyForDeletion marks a policy to be deleted from the store after successful completion
+	MarkPolicyForDeletion(policyName string)
 }
 
 // PolicyStatusDataProvider provides data needed by the policy status handler
@@ -71,38 +67,42 @@ type PolicyStatusDataProvider struct {
 	GetNumDpu func() int
 }
 
-// policyStatusHandler implements PolicyStatusHandler
+// policyStatusHandler implements PolicyStatusHandler with periodic bulk reporting
 type policyStatusHandler struct {
-	mu                 sync.RWMutex
-	running            bool
-	stopCh             chan struct{}
-	client             types.Client
-	dataProvider       PolicyStatusDataProvider
-	policyAggregator   *PolicyAggregator
-	policyGroupIdCache map[string]string // policyName -> policyGroupId cache
-	cacheMu            sync.RWMutex      // separate mutex for cache operations
+	mu                    sync.RWMutex
+	running               bool
+	stopCh                chan struct{}
+	client                types.Client
+	dataProvider          PolicyStatusDataProvider
+	policyAggregator      *PolicyAggregator
+	policyStatusStore     PolicyStatusStore
+	bulkPolicyReporter    *BulkPolicyReporter
+	bulkReportingInterval time.Duration // Configured reporting interval for bulk policy reporter
 }
 
 // NewPolicyStatusHandler creates a new policy status handler with default configuration
 func NewPolicyStatusHandler(dataProvider PolicyStatusDataProvider) PolicyStatusHandler {
-	return NewPolicyStatusHandlerWithConfig(dataProvider, DefaultAggregationTimeout, DefaultMaxBatchSize)
+	return NewPolicyStatusHandlerWithConfig(dataProvider, types.DefaultPolicyStatusReportingInterval)
 }
 
 // NewPolicyStatusHandlerWithConfig creates a new policy status handler with custom configuration
-func NewPolicyStatusHandlerWithConfig(dataProvider PolicyStatusDataProvider, aggregationTimeout time.Duration, maxBatchSize int) PolicyStatusHandler {
+func NewPolicyStatusHandlerWithConfig(dataProvider PolicyStatusDataProvider, bulkReportingInterval time.Duration) PolicyStatusHandler {
+	// Create policy status store
+	policyStatusStore := NewInMemoryPolicyStatusStore()
+
+	// Create policy aggregator with store
+	policyAggregator := NewPolicyAggregator(DefaultExpectedAgentCount, bulkReportingInterval, policyStatusStore)
+
 	handler := &policyStatusHandler{
-		running:            false,
-		stopCh:             make(chan struct{}),
-		client:             nil, // Client will be set when needed
-		dataProvider:       dataProvider,
-		policyGroupIdCache: make(map[string]string),
-
-		// Default to 4 FWA agents, 1 minute timeout
-		policyAggregator: NewPolicyAggregator(DefaultExpectedAgentCount, aggregationTimeout, maxBatchSize),
+		running:               false,
+		stopCh:                make(chan struct{}),
+		client:                nil, // Client will be set when needed
+		dataProvider:          dataProvider,
+		policyAggregator:      policyAggregator,
+		policyStatusStore:     policyStatusStore,
+		bulkPolicyReporter:    nil, // Will be created when timescape queue is available
+		bulkReportingInterval: bulkReportingInterval,
 	}
-
-	// Set policy batch callback
-	handler.policyAggregator.SetBatchCallback(handler.handleAggregatedPolicyBatch)
 
 	// Set expected agent count from data provider
 	if dataProvider.GetNumDpu != nil {
@@ -120,9 +120,7 @@ func NewPolicyStatusHandlerWithConfig(dataProvider PolicyStatusDataProvider, agg
 
 // setExpectedAgentCount sets the expected number of FWA agents (2 or 4)
 func (h *policyStatusHandler) setExpectedAgentCount(count int) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.policyAggregator.expectedAgentCount = count
+	h.policyAggregator.SetExpectedAgentCount(count)
 	logger.GetLogger().Debug("updated expected agent count", "count", count)
 }
 
@@ -132,9 +130,7 @@ func (h *policyStatusHandler) UpdateExpectedAgentCountFromProvider() {
 	if h.dataProvider.GetNumDpu != nil {
 		numDpu := h.dataProvider.GetNumDpu()
 
-		h.mu.RLock()
-		currentCount := h.policyAggregator.expectedAgentCount
-		h.mu.RUnlock()
+		currentCount := h.policyAggregator.GetExpectedAgentCount()
 
 		logger.GetLogger().Debug("checking DPU count update",
 			"newCount", numDpu,
@@ -148,6 +144,8 @@ func (h *policyStatusHandler) UpdateExpectedAgentCountFromProvider() {
 		if numDpu > 0 {
 			h.setExpectedAgentCount(numDpu)
 			logger.GetLogger().Info("dynamically updated expected agent count from data provider", "numDpu", numDpu)
+		} else {
+			logger.GetLogger().Warn("GetNumDpu returned non-positive count, ignoring", "numDpu", numDpu)
 		}
 	}
 }
@@ -160,9 +158,7 @@ func (h *policyStatusHandler) periodicDpuCountUpdate(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			// Check if we have a valid expected agent count
-			h.mu.RLock()
-			currentCount := h.policyAggregator.expectedAgentCount
-			h.mu.RUnlock()
+			currentCount := h.policyAggregator.GetExpectedAgentCount()
 
 			if currentCount > 0 {
 				logger.GetLogger().Info("stopping periodic DPU count updates, valid count already set", "count", currentCount)
@@ -190,7 +186,7 @@ func (h *policyStatusHandler) SetClient(client types.Client) {
 	h.client = client
 }
 
-// Start begins policy status monitoring
+// Start begins policy status monitoring with bulk reporting
 func (h *policyStatusHandler) Start(ctx context.Context) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -205,18 +201,38 @@ func (h *policyStatusHandler) Start(ctx context.Context) error {
 		return fmt.Errorf("client is nil")
 	}
 
+	// Initialize bulk policy reporter if not already created
+	if h.bulkPolicyReporter == nil {
+		if timescapeQueue := h.client.GetQueue(); timescapeQueue != nil {
+			h.bulkPolicyReporter = NewBulkPolicyReporter(h.policyStatusStore, timescapeQueue, h.dataProvider, h.policyAggregator, h.bulkReportingInterval)
+			logger.GetLogger().Info("initialized bulk policy reporter", "interval", h.bulkReportingInterval)
+		} else {
+			logger.GetLogger().Error("timescape queue not available for bulk reporting")
+			return fmt.Errorf("timescape queue not available")
+		}
+	}
+
 	h.running = true
 	h.policyAggregator.Start(ctx)
+
+	// Start bulk policy reporter
+	if h.bulkPolicyReporter != nil {
+		err := h.bulkPolicyReporter.Start(ctx)
+		if err != nil {
+			logger.GetLogger().Error("failed to start bulk policy reporter", "error", err)
+			return fmt.Errorf("failed to start bulk policy reporter: %w", err)
+		}
+	}
 
 	// Start periodic DPU count updates (every 5 minutes)
 	go h.periodicDpuCountUpdate(ctx)
 
-	logger.GetLogger().Debug("timescape: policy status handler started")
+	logger.GetLogger().Debug("timescape: policy status handler started with bulk reporting")
 	return nil
 }
 
 // Stop terminates policy status monitoring
-func (h *policyStatusHandler) Stop(_ context.Context) {
+func (h *policyStatusHandler) Stop(ctx context.Context) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -225,20 +241,24 @@ func (h *policyStatusHandler) Stop(_ context.Context) {
 	}
 
 	h.running = false
+
+	// Stop bulk policy reporter first
+	if h.bulkPolicyReporter != nil {
+		h.bulkPolicyReporter.Stop(ctx)
+	}
+
 	h.policyAggregator.Stop()
 	close(h.stopCh) // Signal goroutines to stop
-
-	// Clear the PolicyGroupId cache
-	h.cacheMu.Lock()
-	h.policyGroupIdCache = make(map[string]string)
-	h.cacheMu.Unlock()
 
 	logger.GetLogger().Info("timescape: policy status handler stopped")
 }
 
 // ReportPolicyStatus manually triggers a policy status report
-func (h *policyStatusHandler) ReportPolicyStatus(_ context.Context) error {
+func (h *policyStatusHandler) ReportPolicyStatus(ctx context.Context) error {
 	logger.GetLogger().Debug("timescape: manual policy status report triggered")
+	if h.bulkPolicyReporter != nil {
+		h.bulkPolicyReporter.TriggerReport(ctx)
+	}
 	return nil
 }
 
@@ -254,14 +274,18 @@ func (h *policyStatusHandler) writePolicyStatusUpdate(ctx context.Context, event
 		return fmt.Errorf("timescape: policy handler not running")
 	}
 
+	logger.GetLogger().Info("timescape: sending policy status update to timescape",
+		"hasEvent", event != nil,
+		"clientSet", h.client != nil)
+
 	errCode := h.client.Send(ctx, event, types.PriorityLow)
 	if errCode == types.ErrCodeQueueBusy {
-		logger.GetLogger().Debug("timescape: queue full, waiting before retry for policy event")
+		logger.GetLogger().Info("timescape: queue full, waiting before retry for policy event")
 
 		// Wait and retry once
 		select {
 		case <-ctx.Done():
-			logger.GetLogger().Debug("timescape: context cancelled while waiting to retry policy event")
+			logger.GetLogger().Info("timescape: context cancelled while waiting to retry policy event")
 			return ctx.Err()
 		case <-h.stopCh:
 			logger.GetLogger().Debug("timescape: policy handler stopped while waiting to retry policy event")
@@ -297,140 +321,15 @@ func (h *policyStatusHandler) ProcessPolicyRuleEvent(_ context.Context, agentUID
 	// Pass to rule aggregator
 	h.policyAggregator.ProcessRuleEvent(agentUID, ruleEvent)
 
-	// Check if we have a cached PolicyGroupId for this policy and set it
-	h.cacheMu.RLock()
-	if policyGroupId, exists := h.policyGroupIdCache[ruleEvent.PolicyName]; exists {
-		h.cacheMu.RUnlock()
-		// Set PolicyGroupId in the aggregator for this policy
-		h.policyAggregator.SetPolicyGroupId(ruleEvent.PolicyName, policyGroupId)
-	} else {
-		h.cacheMu.RUnlock()
-		logger.GetLogger().Debug("timescape: no cached PolicyGroupId found for policy",
-			"policyName", ruleEvent.PolicyName)
-	}
-
 	return nil
 }
 
-func (h *policyStatusHandler) handleAggregatedPolicyBatch(policies []*PolicyAggregationResult) {
-	logger.GetLogger().Debug("handling aggregated policy batch",
-		"policyCount", len(policies))
-
-	// Convert batch of policies to PolicyStatusUpdate
-	policyStatusUpdate := h.convertPolicyBatchToPolicyStatus(policies)
-
-	// Create SystemStatusEvent with policy update
-	now := time.Now()
-	event := &v1alpha.SystemStatusEvent{
-		Time: timestamppb.New(now),
-		Event: &v1alpha.SystemStatusEvent_Policy{
-			Policy: policyStatusUpdate,
-		},
-	}
-
-	// Send to timescape
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := h.writePolicyStatusUpdate(ctx, event); err != nil {
-		logger.GetLogger().Error("failed to send aggregated policy batch",
-			"policyCount", len(policies),
-			"error", err)
-	}
-}
-
-func (h *policyStatusHandler) convertPolicyBatchToPolicyStatus(policies []*PolicyAggregationResult) *v1alpha.PolicyStatusUpdate {
-	serialNumber := "unknown"
-	if h.dataProvider.GetSerialNumber != nil {
-		serialNumber = strings.ToLower(h.dataProvider.GetSerialNumber())
-	}
-
-	var statuses []*v1alpha.PolicyStatus
-
-	for _, policyResult := range policies {
-		// Extract namespace from PolicyName (kind/namespace/name)
-		namespace := h.extractNamespaceFromPolicyName(policyResult.PolicyName)
-
-		// Use PolicyGroupId from annotations if available, otherwise use default value
-		policyNameForTimescape := DefaultPolicyGroupId
-		if policyResult.PolicyGroupId != "" {
-			policyNameForTimescape = policyResult.PolicyGroupId
-
-			// Remove PolicyGroupId from cache after using it to prevent cache growth
-			// This is safe because the policy aggregation is complete at this point
-			h.cacheMu.Lock()
-			delete(h.policyGroupIdCache, policyResult.PolicyName)
-			h.cacheMu.Unlock()
-
-			logger.GetLogger().Debug("timescape: removed PolicyGroupId from cache after use",
-				"policyName", policyResult.PolicyName,
-				"policyGroupId", policyResult.PolicyGroupId)
-		}
-
-		// Aggregate all failures across all rules in this policy
-		var failingConditions []*v1alpha.FailingCondition
-
-		// For example, there are 4 agents response expected.
-		// If any agent reports failure for a rule, overallSuccess is false.
-		// Let's say, there are 4 agents.
-		// 2 agents report success, 1 reports failure, and 1 times out with no response.
-		// The failingConditions will have the 2 failingConditions:
-		//   -  failure from 1 agent,
-		//   -  and a timeout condition.
-		ruleIndex := 1
-		for _, ruleResult := range policyResult.RuleResults {
-			for agentUID, agentResult := range ruleResult.AgentResults {
-				if !agentResult.IsSuccess {
-					failingConditions = append(failingConditions, &v1alpha.FailingCondition{
-						ConditionId: agentResult.Error.String(),
-						Severity:    h.convertErrorToSeverity(agentResult.Error),
-						Message:     fmt.Sprintf("Rule %d, Agent %s: %s", ruleIndex, agentUID, h.getErrorMessage(agentResult)),
-					})
-				}
-			}
-			ruleIndex++
-		}
-
-		// If some agents didn't respond for any rule, add timeout conditions
-		// Aggregate message (if all rules have same issue)
-		if len(policyResult.RuleResults) > 1 {
-			// Check if all rules have the same timeout pattern
-			failingRuleCount := 0
-			for _, ruleResult := range policyResult.RuleResults {
-				if len(ruleResult.AgentResults) < policyResult.ExpectedCount {
-					failingRuleCount++
-				}
-			}
-			if failingRuleCount > 0 {
-				failingConditions = append(failingConditions, &v1alpha.FailingCondition{
-					ConditionId: "TIMEOUT_AGENT_RESPONSES",
-					Severity:    v1alpha.Severity_SEVERITY_MAJOR,
-					Message: fmt.Sprintf("%d rules: Expected %d agents. Did not receive responses from some agents",
-						failingRuleCount, policyResult.ExpectedCount),
-				})
-			}
-		}
-
-		policyStatus := &v1alpha.PolicyStatus{
-			Type:              v1alpha.PolicyType_POLICY_TYPE_SMARTSWITCH_NETWORK_POLICY,
-			Id:                policyResult.PolicyName, // PolicyName (kind/namespace/name)
-			Name:              policyResult.Policy,     // Policy name
-			Namespace:         namespace,
-			Version:           policyResult.Version,
-			FailingConditions: failingConditions,
-		}
-		policyStatus.ExtraData = map[string]string{
-			"PolicyGroupId": policyNameForTimescape,
-		}
-
-		statuses = append(statuses, policyStatus)
-	}
-
-	return &v1alpha.PolicyStatusUpdate{
-		ClusterName: systemstatus.ClusterName,
-		NodeName:    serialNumber,
-		Statuses:    statuses, // Up to 3 policy statuses
-	}
+// StoreValidationError stores a policy with validation error for bulk reporting
+func (h *policyStatusHandler) StoreValidationError(policyName, errorMsg string) {
+	h.policyAggregator.StoreValidationError(policyName, errorMsg)
+	logger.GetLogger().Debug("stored validation error for bulk reporting",
+		"policyName", policyName,
+		"error", errorMsg)
 }
 
 // convertErrorToSeverity maps PolicyRuleError to Severity
@@ -499,111 +398,24 @@ func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, 
 		"isSuccess", isSuccess,
 		"error", validationError)
 
-	// Create policy status with validation failure
-	policyStatus := h.createPolicyValidationStatus(policyName, namespace, resourceVersion, policyGroupId, validationError)
-
-	// Create PolicyStatusUpdate
-	serialNumber := "unknown"
-	if h.dataProvider.GetSerialNumber != nil {
-		serialNumber = strings.ToLower(h.dataProvider.GetSerialNumber())
-	}
-
-	policyStatusUpdate := &v1alpha.PolicyStatusUpdate{
-		ClusterName: systemstatus.ClusterName,
-		NodeName:    serialNumber,
-		Statuses:    []*v1alpha.PolicyStatus{policyStatus},
-	}
-
-	// Create SystemStatusEvent
-	now := time.Now()
-	event := &v1alpha.SystemStatusEvent{
-		Time: timestamppb.New(now),
-		Event: &v1alpha.SystemStatusEvent_Policy{
-			Policy: policyStatusUpdate,
-		},
-	}
-
-	// Send to timescape
-	if err := h.writePolicyStatusUpdate(ctx, event); err != nil {
-		logger.GetLogger().Error("failed to send policy validation result to timescape",
+	// Store validation error in policy store for periodic bulk reporting
+	if validationError != nil {
+		h.policyAggregator.StoreValidationError(policyName, validationError.Error())
+		logger.GetLogger().Info("stored policy validation error for periodic reporting",
 			"policyName", policyName,
-			"isSuccess", isSuccess,
-			"error", err)
-		return err
+			"error", validationError.Error())
+	} else {
+		// For successful validation, we could store a success status or just let it be handled by normal policy processing
+		logger.GetLogger().Debug("policy validation successful, will be handled by normal policy flow",
+			"policyName", policyName)
 	}
-
-	// Remove PolicyGroupId from cache after successful validation report to prevent cache growth
-	if policyGroupId != "" {
-		h.cacheMu.Lock()
-		delete(h.policyGroupIdCache, policyName)
-		h.cacheMu.Unlock()
-	}
-
-	logger.GetLogger().Debug("successfully reported policy validation result to timescape",
-		"policyName", policyName,
-		"resourceVersion", resourceVersion,
-		"isSuccess", isSuccess)
 
 	return nil
 }
 
-// createPolicyValidationStatus creates a PolicyStatus for a validation failure or success
-func (h *policyStatusHandler) createPolicyValidationStatus(policyName string, namespace string, resourceVersion string, policyGroupId string, validationError error) *v1alpha.PolicyStatus {
-	// Use policyGroupId if available, otherwise use default
-	policyGroupIdForTimescape := DefaultPolicyGroupId
-	if policyGroupId != "" {
-		policyGroupIdForTimescape = policyGroupId
-	}
-
-	// Extract just the policy name (third part) from the full "kind/namespace/name" path
-	extractedPolicyName := h.policyAggregator.extractPolicyNameFromPath(policyName)
-
-	policyStatus := &v1alpha.PolicyStatus{
-		Type:      v1alpha.PolicyType_POLICY_TYPE_SMARTSWITCH_NETWORK_POLICY,
-		Id:        policyName,          // Full policy name (kind/namespace/name)
-		Name:      extractedPolicyName, // Just the policy name part
-		Namespace: namespace,
-		Version:   resourceVersion,
-	}
-	policyStatus.ExtraData = map[string]string{
-		"PolicyGroupId": policyGroupIdForTimescape,
-	}
-
-	// Only populate FailingConditions if there's an error (failure case)
-	if validationError != nil {
-		// Set error severity, condition ID and error message
-		errorMsg := validationError.Error()
-		failingCondition := &v1alpha.FailingCondition{
-			ConditionId: POLICY_VALIDATION_ERROR,
-			Severity:    v1alpha.Severity_SEVERITY_MAJOR,
-			Message:     fmt.Sprintf("Policy validation failed: %s", errorMsg),
-		}
-
-		policyStatus.FailingConditions = []*v1alpha.FailingCondition{failingCondition}
-	}
-	return policyStatus
-}
-
-// SetPolicyGroupId sets the PolicyGroupId for a specific policy and caches it
+// SetPolicyGroupId sets the PolicyGroupId for a specific policy
 func (h *policyStatusHandler) SetPolicyGroupId(policyName string, policyGroupId string) {
-	h.cacheMu.Lock()
-	defer h.cacheMu.Unlock()
-
-	// Enforce cache size limit to prevent unbounded growth
-	if len(h.policyGroupIdCache) >= MaxPolicyGroupIdCacheSize {
-		// Remove oldest entry (simple eviction strategy)
-		for k := range h.policyGroupIdCache {
-			delete(h.policyGroupIdCache, k)
-			logger.GetLogger().Debug("timescape: evicted PolicyGroupId from cache due to size limit",
-				"evictedPolicy", k, "cacheSize", len(h.policyGroupIdCache))
-			break
-		}
-	}
-
-	// Cache the PolicyGroupId for future use
-	h.policyGroupIdCache[policyName] = policyGroupId
-
-	// Set it in the aggregator if policy exists
+	// Set it in the aggregator directly
 	if h.policyAggregator != nil {
 		h.policyAggregator.SetPolicyGroupId(policyName, policyGroupId)
 	}
@@ -613,12 +425,19 @@ func (h *policyStatusHandler) SetPolicyGroupId(policyName string, policyGroupId 
 		"policyGroupId", policyGroupId)
 }
 
-// RemovePolicyGroupId removes the PolicyGroupId cache entry for a policy
-func (h *policyStatusHandler) RemovePolicyGroupId(policyName string) {
-	h.cacheMu.Lock()
-	defer h.cacheMu.Unlock()
+// SetExpectedRuleCount sets the expected number of rules for a policy
+func (h *policyStatusHandler) SetExpectedRuleCount(policyName string, expectedRuleCount int) {
+	if h.policyAggregator != nil {
+		h.policyAggregator.SetExpectedRuleCount(policyName, expectedRuleCount)
+	}
+	logger.GetLogger().Debug("timescape: set expected rule count",
+		"policyName", policyName,
+		"expectedRuleCount", expectedRuleCount)
+}
 
-	delete(h.policyGroupIdCache, policyName)
-	logger.GetLogger().Debug("timescape: removed cached PolicyGroupId for policy",
-		"policyName", policyName)
+// MarkPolicyForDeletion marks a policy to be deleted from the store after successful completion
+func (h *policyStatusHandler) MarkPolicyForDeletion(policyName string) {
+	if h.policyAggregator != nil {
+		h.policyAggregator.MarkPolicyForDeletion(policyName)
+	}
 }

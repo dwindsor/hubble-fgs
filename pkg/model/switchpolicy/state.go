@@ -332,8 +332,6 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *DPU
 				Vrf:   rule.Policy.Source.Endpoint.VRF,
 				VrfId: uint32(sourceVRFId),
 			},
-			// The current policy resolution does not include destination
-			// Vlan and VRF this will be added soon.
 			Destination: DPUSubject{
 				Cidr:  rule.Policy.Destination.Endpoint.CIDR,
 				Ports: rule.Policy.Destination.ProtoPorts,

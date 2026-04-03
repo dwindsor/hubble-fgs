@@ -516,16 +516,10 @@ func printTimescapeConfigTable(response string) {
 			fmt.Fprintf(&result, "%d", maxRetries)
 			result.WriteString("\n")
 		}
-		if batchTimeoutFloat, ok := serverInfo["batch_timeout_ms"].(float64); ok {
-			batchTimeout := uint32(batchTimeoutFloat)
-			result.WriteString("  Batch Timeout (ms):      ")
-			fmt.Fprintf(&result, "%d", batchTimeout)
-			result.WriteString("\n")
-		}
-		if maxBatchSizeFloat, ok := serverInfo["max_batch_size"].(float64); ok {
-			maxBatchSize := uint32(maxBatchSizeFloat)
-			result.WriteString("  Max Batch Size:      ")
-			fmt.Fprintf(&result, "%d", maxBatchSize)
+		if bulkReportingIntervalFloat, ok := serverInfo["policystatus_reporting_interval_mins"].(float64); ok {
+			bulkReportingInterval := uint32(bulkReportingIntervalFloat)
+			result.WriteString("  Policy Status Reporting Interval (mins): ")
+			fmt.Fprintf(&result, "%d", bulkReportingInterval)
 			result.WriteString("\n")
 		}
 	}

@@ -19,14 +19,13 @@ import (
 
 const (
 	// DefaultHTTPRequestTimeout is the default HTTP timeout for timescape client
-	DefaultHTTPRequestTimeout    = 60 * time.Second
-	DefaultHTTPConnectionTimeout = 30 * time.Second
-	DefaultMaxRetries            = 3
-	DefaultBaseBackoff           = 100 * time.Millisecond
-	DefaultMaxBatchSize          = 2
-	DefaultBatchTimeout          = 30000 * time.Millisecond
-	DefaultTLSHandshakeTimeout   = 20 * time.Second
-	DefaultInsecureSkipVerify    = true // For development only; always verify in production
+	DefaultHTTPRequestTimeout            = 60 * time.Second
+	DefaultHTTPConnectionTimeout         = 30 * time.Second
+	DefaultMaxRetries                    = 3
+	DefaultBaseBackoff                   = 100 * time.Millisecond
+	DefaultPolicyStatusReportingInterval = 15 * time.Minute
+	DefaultTLSHandshakeTimeout           = 20 * time.Second
+	DefaultInsecureSkipVerify            = true // For development only; always verify in production
 )
 
 // Transport defines the interface for sending messages to timescape
@@ -37,17 +36,26 @@ type Transport interface {
 	Name() string
 }
 
+// TimescapeQueue defines the interface for directly enqueueing messages
+type TimescapeQueue interface {
+	// EnqueueHighPriority queues a message for high priority (immediate) processing
+	EnqueueHighPriority(ctx context.Context, msg interface{}) error
+	// EnqueueLowPriority queues a message for low priority (batched) processing
+	EnqueueLowPriority(ctx context.Context, msg interface{}) error
+}
+
 // Client provides the main interface for sending events to timescape
 type Client interface {
 	// Send queues an event for delivery with specified priority
 	Send(ctx context.Context, event *systemstatus.SystemStatusEvent, priority Priority) ErrorCode
 	// Close gracefully shuts down the client
 	Close() error
+	// GetQueue returns the TimescapeQueue for direct message enqueuing
+	GetQueue() TimescapeQueue
 }
 
 // Config holds configuration for the timescape client
 type Config struct {
-	MaxBatchSize int           // e.g., 10
 	BatchTimeout time.Duration // e.g., 200ms (for low priority queue only)
 	SendTimeout  time.Duration // Timeout for individual send operations
 	MaxRetries   int           // Maximum retry attempts with exponential backoff
@@ -85,8 +93,7 @@ type HTTPTransportConfig struct {
 // DefaultConfig returns a sensible default configuration
 func DefaultConfig() Config {
 	return Config{
-		MaxBatchSize: DefaultMaxBatchSize,
-		BatchTimeout: DefaultBatchTimeout,
+		BatchTimeout: DefaultPolicyStatusReportingInterval,
 		SendTimeout:  DefaultHTTPRequestTimeout,
 		MaxRetries:   DefaultMaxRetries,
 		BaseBackoff:  DefaultBaseBackoff,

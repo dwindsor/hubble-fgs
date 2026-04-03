@@ -53,7 +53,7 @@ type TimescapeHandlerConfig struct {
 	Client types.Client
 }
 
-// NewTimescapeHandler creates a new timescape handler
+// NewTimescapeHandler creates a new timescape handler with bulk policy reporting
 func NewTimescapeHandler(config TimescapeHandlerConfig) ITimescape {
 	systemHandler := systemstatus.NewSystemConnectionHandler(config.SystemStatusDataProvider)
 	logger.GetLogger().Debug("Setting client on system handler", "clientPtr", fmt.Sprintf("%p", config.Client))
@@ -61,25 +61,17 @@ func NewTimescapeHandler(config TimescapeHandlerConfig) ITimescape {
 
 	// Get timescape configuration for policy aggregator settings
 	timescapeConfig := CurrentTimescapeConfig()
-	var aggregationTimeout time.Duration
-	var maxBatchSize int
+	var bulkReportingInterval time.Duration
 
-	if timescapeConfig != nil && timescapeConfig.BatchTimeoutMs > 0 {
-		aggregationTimeout = time.Duration(timescapeConfig.BatchTimeoutMs) * time.Millisecond
+	if timescapeConfig != nil && timescapeConfig.PolicystatusReportingIntervalMins > 0 {
+		bulkReportingInterval = time.Duration(timescapeConfig.PolicystatusReportingIntervalMins) * time.Minute
 	} else {
-		aggregationTimeout = policystatus.DefaultAggregationTimeout
-	}
-
-	if timescapeConfig != nil && timescapeConfig.MaxBatchSize > 0 {
-		maxBatchSize = int(timescapeConfig.MaxBatchSize)
-	} else {
-		maxBatchSize = policystatus.DefaultMaxBatchSize
+		bulkReportingInterval = types.DefaultPolicyStatusReportingInterval
 	}
 
 	policyHandler := policystatus.NewPolicyStatusHandlerWithConfig(
 		config.PolicyStatusDataProvider,
-		aggregationTimeout,
-		maxBatchSize,
+		bulkReportingInterval,
 	)
 	policyHandler.SetClient(config.Client)
 
@@ -265,11 +257,8 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 	if timescapeConfig.MaxRetries == 0 {
 		timescapeConfig.MaxRetries = types.DefaultMaxRetries // Default max retries
 	}
-	if config.MaxBatchSize == 0 {
-		config.MaxBatchSize = types.DefaultMaxBatchSize // Default max batch size
-	}
-	if config.BatchTimeoutMs == 0 {
-		config.BatchTimeoutMs = uint32(types.DefaultBatchTimeout.Milliseconds()) // Default batch timeout in ms
+	if config.PolicystatusReportingIntervalMins == 0 {
+		config.PolicystatusReportingIntervalMins = uint32(types.DefaultPolicyStatusReportingInterval.Minutes()) // Default bulk reporting interval in mins
 	}
 
 	logger.GetLogger().Info("Setting up timescape client",
@@ -279,11 +268,10 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 		"max_retries", timescapeConfig.MaxRetries,
 		"connection_timeout_sec", timescapeConfig.ConnectionTimeout.Seconds(),
 		"request_timeout_sec", timescapeConfig.Timeout.Seconds(),
-		"max_batch_size", config.MaxBatchSize,
-		"batch_timeout_ms", config.BatchTimeoutMs)
+		"policystatus_reporting_interval_mins", config.PolicystatusReportingIntervalMins)
 
 	// Build the timescape client with isolated context
-	client, err := timescape.NewTimescapeClient(ctx, timescapeConfig, int(config.MaxBatchSize), config.BatchTimeoutMs)
+	client, err := timescape.NewTimescapeClient(ctx, timescapeConfig, config.PolicystatusReportingIntervalMins*60*1000)
 	if err != nil {
 		logger.GetLogger().Error("failed to create timescape client", logfields.Error, err)
 		return fmt.Errorf("timescape client setup failed: %w", err)

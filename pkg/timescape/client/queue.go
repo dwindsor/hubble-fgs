@@ -12,6 +12,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -30,7 +31,7 @@ const (
 	priorityKey contextKey = "priority"
 )
 
-// Queue implements the Client interface with 2-queue priority-based processing
+// Queue implements both the Client and TimescapeQueue interfaces with 2-queue priority-based processing
 type Queue struct {
 	cfg       types.Config
 	transport types.Transport
@@ -79,6 +80,67 @@ func (q *Queue) Send(_ context.Context, event *systemstatus.SystemStatusEvent, p
 		Event:    event,
 	}
 	return q.Enqueue(msg)
+}
+
+// GetQueue returns this queue as a TimescapeQueue interface
+func (q *Queue) GetQueue() types.TimescapeQueue {
+	return q
+}
+
+// EnqueueHighPriority queues a message for high priority (immediate) processing
+func (q *Queue) EnqueueHighPriority(ctx context.Context, msg interface{}) error {
+	// Convert the generic message to a SystemStatusEvent
+	var event *systemstatus.SystemStatusEvent
+	if systemEvent, ok := msg.(*systemstatus.SystemStatusEvent); ok {
+		event = systemEvent
+	} else {
+		// For other message types, wrap them in a SystemStatusEvent
+		// This is a simplified approach - you might want more sophisticated handling
+		logger.GetLogger().Debug("converting non-SystemStatusEvent to timescape message", "msgType", msg)
+		// For now, we'll create a generic event - this may need to be more sophisticated
+		// depending on what types of messages the bulk reporter sends
+		event = &systemstatus.SystemStatusEvent{
+			// You would populate this based on the actual message type
+		}
+	}
+
+	queueMsg := types.Msg{
+		ID:       uuid.New().String(),
+		Priority: types.PriorityHigh,
+		Event:    event,
+	}
+
+	errorCode := q.Enqueue(queueMsg)
+	if errorCode != types.ErrCodeSuccess {
+		return errors.New("failed to enqueue high priority message") // Convert error code to Go error
+	}
+	return nil
+}
+
+// EnqueueLowPriority queues a message for low priority (batched) processing
+func (q *Queue) EnqueueLowPriority(ctx context.Context, msg interface{}) error {
+	// Similar logic as EnqueueHighPriority but with low priority
+	var event *systemstatus.SystemStatusEvent
+	if systemEvent, ok := msg.(*systemstatus.SystemStatusEvent); ok {
+		event = systemEvent
+	} else {
+		logger.GetLogger().Debug("converting non-SystemStatusEvent to timescape message", "msgType", msg)
+		event = &systemstatus.SystemStatusEvent{
+			// You would populate this based on the actual message type
+		}
+	}
+
+	queueMsg := types.Msg{
+		ID:       uuid.New().String(),
+		Priority: types.PriorityLow,
+		Event:    event,
+	}
+
+	errorCode := q.Enqueue(queueMsg)
+	if errorCode != types.ErrCodeSuccess {
+		return errors.New("failed to enqueue low priority message") // Convert error code to Go error
+	}
+	return nil
 }
 
 // Enqueue adds a message to the appropriate priority queue
@@ -150,42 +212,18 @@ func (q *Queue) highPriorityWorker() {
 	}
 }
 
-// lowPriorityWorker processes low priority messages with batching
+// lowPriorityWorker processes low priority messages immediately (no batching)
 func (q *Queue) lowPriorityWorker() {
-	batch := make([]types.Msg, 0, q.cfg.MaxBatchSize)
-	timer := time.NewTimer(q.cfg.BatchTimeout)
-	defer timer.Stop()
-
-	logger.GetLogger().Debug("timescape low priority worker started with batch timeout", "batchsize", q.cfg.MaxBatchSize, "batchTimeout", q.cfg.BatchTimeout)
+	logger.GetLogger().Debug("timescape low priority worker started with immediate sending (no batching)")
 	for {
 		select {
 		case <-q.ctx.Done():
-			// Flush remaining batch before shutting down
-			if len(batch) > 0 {
-				q.flushBatch(q.ctx, types.PriorityLow, batch)
-			}
 			return
 
 		case msg := <-q.lowCh:
-			batch = append(batch, msg)
-			if len(batch) >= q.cfg.MaxBatchSize {
-				q.flushBatch(q.ctx, msg.Priority, batch)
-				batch = batch[:0]
-				resetTimer(timer, q.cfg.BatchTimeout)
-			}
-
-		case <-timer.C:
-			if len(batch) > 0 {
-				// Use the priority of the first message in batch
-				priority := types.PriorityLow
-				if len(batch) > 0 {
-					priority = batch[0].Priority
-				}
-				logger.GetLogger().Debug("timescape: low priority batch timeout reached, flushing batch", "batchSize", len(batch))
-				q.flushBatch(q.ctx, priority, batch)
-				batch = batch[:0]
-			}
-			resetTimer(timer, q.cfg.BatchTimeout)
+			// Send immediately as single message batch
+			batch := []types.Msg{msg}
+			q.flushBatch(q.ctx, msg.Priority, batch)
 		}
 	}
 }

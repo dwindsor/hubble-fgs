@@ -159,17 +159,16 @@ func checkForConfigMapName(oldConfig, newConfig *v1alpha.ConfigObject) bool {
 // - ServiceIP: Set from nxos context
 func convertProtobufToInternalConfig(ctx context.Context, pbConfig *v1alpha.TimescapeConfig) *TimescapeConfig {
 	config := &TimescapeConfig{
-		ClientEnabled:        true, // Enable client when ConfigMap is present
-		Host:                 pbConfig.GetHost(),
-		Port:                 pbConfig.GetPort(),
-		Protocol:             pbConfig.GetProtocol(),
-		TlsEnabled:           pbConfig.GetTlsEnabled(),
-		EndpointApi:          pbConfig.GetEndpointApi(),
-		MaxRetries:           pbConfig.GetMaxRetries(),
-		ConnectionTimeoutSec: pbConfig.GetConnectionTimeoutSec(),
-		RequestTimeoutSec:    pbConfig.GetRequestTimeoutSec(),
-		MaxBatchSize:         pbConfig.MaxBatchSize,   //nolint:staticcheck // Ignore SA1019
-		BatchTimeoutMs:       pbConfig.BatchTimeoutMs, //nolint:staticcheck // Ignore SA1019
+		ClientEnabled:                     true, // Enable client when ConfigMap is present
+		Host:                              pbConfig.GetHost(),
+		Port:                              pbConfig.GetPort(),
+		Protocol:                          pbConfig.GetProtocol(),
+		TlsEnabled:                        pbConfig.GetTlsEnabled(),
+		EndpointApi:                       pbConfig.GetEndpointApi(),
+		MaxRetries:                        pbConfig.GetMaxRetries(),
+		ConnectionTimeoutSec:              pbConfig.GetConnectionTimeoutSec(),
+		RequestTimeoutSec:                 pbConfig.GetRequestTimeoutSec(),
+		PolicystatusReportingIntervalMins: pbConfig.GetPolicystatusReportingIntervalMins(),
 	}
 
 	// Apply production defaults if values are still 0
@@ -182,11 +181,8 @@ func convertProtobufToInternalConfig(ctx context.Context, pbConfig *v1alpha.Time
 	if config.RequestTimeoutSec <= 0 {
 		config.RequestTimeoutSec = uint32(types.DefaultHTTPRequestTimeout.Seconds())
 	}
-	if config.MaxBatchSize <= 0 {
-		config.MaxBatchSize = uint32(types.DefaultMaxBatchSize)
-	}
-	if config.BatchTimeoutMs <= 0 {
-		config.BatchTimeoutMs = uint32(types.DefaultBatchTimeout.Milliseconds())
+	if config.PolicystatusReportingIntervalMins <= 0 {
+		config.PolicystatusReportingIntervalMins = uint32(types.DefaultPolicyStatusReportingInterval.Minutes())
 	}
 
 	// Build endpoint URL from host, port, protocol, and TLS settings
@@ -276,7 +272,7 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 	// Get service IP from AGW
 	serviceIp := agw.GetServiceIp()
 	// For test containers where nxos is not present, uncomment the below line
-	// serviceIp = "127.0.0.1" // use localhost
+	serviceIp = "171.70.188.33" // use localhost
 	if serviceIp == "" {
 		// Fail if service IP is not available, since it's critical for certificate generation
 		return fmt.Errorf("timescape: service IP not available for mTLS configuration")
