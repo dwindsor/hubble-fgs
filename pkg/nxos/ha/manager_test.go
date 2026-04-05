@@ -786,4 +786,68 @@ func TestManager_Run_StartsNotReadyWithDPUs(t *testing.T) {
 	}
 }
 
+func TestManager_Run_ServerStartsOnAdminEnabledOnly(t *testing.T) {
+	ctx := context.Background()
+
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithClientFactory(func() Client { return NewMockClient() }),
+	).(*manager)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	// Give Run() time to start waiting.
+	time.Sleep(10 * time.Millisecond)
+
+	// Enable admin state but don't configure peers yet.
+	// Server should start even without full config.
+	haStore.SetEnabled(ctx, "enabled")
+
+	// Give time for server to start.
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify server is running.
+	mgr.mu.RLock()
+	serverRunning := mgr.server != nil
+	mgr.mu.RUnlock()
+
+	if !serverRunning {
+		t.Error("expected server to be running after admin enabled, even without peers")
+	}
+
+	// Now disable admin state — server should stop.
+	haStore.SetEnabled(ctx, "disabled")
+	time.Sleep(50 * time.Millisecond)
+
+	mgr.mu.RLock()
+	serverStopped := mgr.server == nil
+	mgr.mu.RUnlock()
+
+	if !serverStopped {
+		t.Error("expected server to be stopped after admin disabled")
+	}
+
+	// Cancel context — Run() should exit.
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
 var _ Manager = (*mockManager)(nil)

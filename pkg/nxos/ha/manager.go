@@ -40,6 +40,121 @@ func (m *manager) haPort() (uint16, error) {
 	return m.deviceStore.ReservePort(device.HAService)
 }
 
+// syncServerToAdminState starts or stops the HA server based on the current admin state.
+func (m *manager) syncServerToAdminState(ctx context.Context) {
+	if m.haStore.Enabled() == "enabled" {
+		m.startServer(ctx)
+	} else {
+		m.stopServer()
+	}
+}
+
+// startServer starts the HA gRPC server if not already running.
+// Should only be called when admin state is enabled.
+func (m *manager) startServer(ctx context.Context) {
+	// Fast path: check without write lock first.
+	m.mu.RLock()
+	if m.server != nil {
+		m.mu.RUnlock()
+		return
+	}
+	m.mu.RUnlock()
+
+	// Prepare server and port outside the lock to minimise lock contention.
+	srv := NewServer(
+		WithHAStore(m.haStore),
+		WithManager(m),
+		WithMemberInfoProvider(m.buildMemberInfo),
+		WithServerVRFStore(m.vrfStore),
+		WithServerVLANStore(m.vlanStore),
+		WithServerReconciler(m.reconciler),
+	)
+
+	port, err := m.haPort()
+	if err != nil {
+		logger.GetLogger().Error("Failed to reserve HA port, cannot start server", logfields.Error, err)
+		return
+	}
+
+	serverCtx, serverCancel := context.WithCancel(ctx)
+
+	// Re-check under write lock to guard against a concurrent startServer call.
+	m.mu.Lock()
+	if m.server != nil {
+		m.mu.Unlock()
+		serverCancel()
+		return
+	}
+	m.server = srv
+	m.serverCtx = serverCtx
+	m.serverCancel = serverCancel
+	// Add to WaitGroup inside the lock so stopServer's Wait() never misses this goroutine.
+	m.serverWg.Add(1)
+	m.mu.Unlock()
+
+	logger.GetLogger().Info("Starting HA server", "port", port)
+
+	if err := m.haStore.SetHaPort(serverCtx, port); err != nil {
+		logger.GetLogger().Warn("Failed to SET HA port to gNMI", "port", port, "error", err)
+	}
+
+	// Start server in background with retry/backoff.
+	go func() {
+		defer m.serverWg.Done()
+
+		// Single goroutine to trigger GracefulStop on context cancellation.
+		go func() {
+			<-serverCtx.Done()
+			srv.Stop()
+		}()
+
+		backoff := 5 * time.Second
+		const maxBackoff = 60 * time.Second
+		for {
+			if err := srv.Start(serverCtx, port); err != nil {
+				select {
+				case <-serverCtx.Done():
+					return
+				default:
+				}
+				logger.GetLogger().Error("HA server start failed, retrying",
+					"error", err, "port", port, "backoff", backoff)
+				select {
+				case <-serverCtx.Done():
+					return
+				case <-time.After(backoff):
+				}
+				if backoff *= 2; backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+			} else {
+				return
+			}
+		}
+	}()
+}
+
+// stopServer stops the HA gRPC server if running.
+func (m *manager) stopServer() {
+	m.mu.Lock()
+	if m.server == nil {
+		m.mu.Unlock()
+		return
+	}
+	serverCancel := m.serverCancel
+	m.mu.Unlock()
+
+	logger.GetLogger().Info("Stopping HA server")
+	serverCancel()
+	m.serverWg.Wait()
+
+	m.mu.Lock()
+	m.server = nil
+	m.serverCtx = nil
+	m.serverCancel = nil
+	m.mu.Unlock()
+}
+
 // holdDownChan returns the channel for the hold-down timer, or nil if no timer is active.
 // A nil channel blocks forever in a select, effectively disabling the case.
 func (m *manager) holdDownChan() <-chan time.Time {
@@ -301,8 +416,11 @@ type manager struct {
 	// nil when no recovery is pending. Only accessed from the runActive goroutine.
 	holdDownTimer *time.Timer
 
-	// Server owned by this manager during Run() activation
-	server Server
+	// Server lifecycle — managed independently by startServer/stopServer
+	server       Server
+	serverCtx    context.Context
+	serverCancel context.CancelFunc
+	serverWg     sync.WaitGroup
 }
 
 // NewManager creates a new HA manager.
@@ -445,6 +563,12 @@ func (m *manager) Run(ctx context.Context) error {
 
 	logger.GetLogger().Info("HA manager Run started")
 
+	// Start server if already enabled at startup.
+	m.syncServerToAdminState(ctx)
+
+	// Ensure server is stopped on exit
+	defer m.stopServer()
+
 	for {
 		// Wait until all prerequisites are met: HA enabled, peers configured, SF configured.
 		if !m.isConfigReady() {
@@ -455,7 +579,8 @@ func (m *manager) Run(ctx context.Context) error {
 			}
 		}
 
-		// Activate: read local IP, create server, run event loop.
+		// Activate: read local IP, run event loop.
+		// Server lifecycle is managed independently via EventAdminStateChanged.
 		localIP := m.haStore.HaIP()
 		m.mu.Lock()
 		if localIP != "" {
@@ -477,58 +602,7 @@ func (m *manager) Run(ctx context.Context) error {
 			}
 		}()
 
-		// Create and start the HA server in a sub-context.
-		serverCtx, serverCancel := context.WithCancel(ctx)
-		srv := NewServer(
-			WithHAStore(m.haStore),
-			WithManager(m),
-			WithMemberInfoProvider(m.buildMemberInfo),
-			WithServerVRFStore(m.vrfStore),
-			WithServerVLANStore(m.vlanStore),
-			WithServerReconciler(m.reconciler),
-		)
-		m.mu.Lock()
-		m.server = srv
-		m.mu.Unlock()
-
 		logger.GetLogger().Info("HA manager activating", "localIP", m.localIP)
-		port, err := m.haPort()
-		if err != nil {
-			serverCancel()
-			return fmt.Errorf("HA manager activation failed: %w", err)
-		}
-		if err := m.haStore.SetHaPort(serverCtx, port); err != nil {
-			logger.GetLogger().Warn("Failed to SET HA port to gNMI", "port", port, "error", err)
-		}
-		// Track the server goroutine so we can wait for it during shutdown.
-		var serverWg sync.WaitGroup
-		serverWg.Add(1)
-		go func() {
-			defer serverWg.Done()
-			backoff := 5 * time.Second
-			const maxBackoff = 60 * time.Second
-			for {
-				if err := srv.Start(serverCtx, port); err != nil {
-					select {
-					case <-serverCtx.Done():
-						return
-					default:
-					}
-					logger.GetLogger().Error("HA server start failed, retrying",
-						"error", err, "port", port, "backoff", backoff)
-					select {
-					case <-serverCtx.Done():
-						return
-					case <-time.After(backoff):
-					}
-					if backoff *= 2; backoff > maxBackoff {
-						backoff = maxBackoff
-					}
-				} else {
-					return
-				}
-			}
-		}()
 
 		// Set initial HACritInService criterion based on current in-service state.
 		if m.deviceStore != nil {
@@ -552,17 +626,13 @@ func (m *manager) Run(ctx context.Context) error {
 		m.computeAndPushHaConfig()
 
 		// Run the active event loop (blocks until deactivation or ctx cancellation).
-		done := m.runActive(ctx, serverCancel, storeCh, deviceCh)
+		done := m.runActive(ctx, storeCh, deviceCh)
 
-		// Cleanup: clear HaConfig, stop server, disconnect all peers.
+		// Cleanup: clear HaConfig, disconnect all peers.
+		// Server lifecycle is managed independently.
 		if err := library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_HA); err != nil {
 			logger.GetLogger().Debug("Failed to delete HaConfig on deactivation", logfields.Error, err)
 		}
-		serverCancel()
-		serverWg.Wait() // Wait for server goroutine to exit before proceeding.
-		m.mu.Lock()
-		m.server = nil
-		m.mu.Unlock()
 		m.disconnectAllPeers()
 
 		if done {
@@ -583,7 +653,12 @@ func (m *manager) waitForConfig(ctx context.Context, storeCh <-chan hastore.Even
 			return true
 		case event := <-storeCh:
 			switch event.Type {
-			case hastore.EventAdminStateChanged, hastore.EventSwitchStateChanged,
+			case hastore.EventAdminStateChanged:
+				m.syncServerToAdminState(ctx)
+				if m.isConfigReady() {
+					return false
+				}
+			case hastore.EventSwitchStateChanged,
 				hastore.EventPeerAdded, hastore.EventHaIPChanged:
 				if m.isConfigReady() {
 					return false
@@ -601,7 +676,7 @@ func (m *manager) waitForConfig(ctx context.Context, storeCh <-chan hastore.Even
 
 // runActive is the active event loop. It blocks until HA is deconfigured or ctx is cancelled.
 // Returns true if the caller should exit (ctx done), false if HA was deconfigured.
-func (m *manager) runActive(ctx context.Context, serverCancel context.CancelFunc, storeCh <-chan hastore.Event, deviceCh <-chan device.Event) bool {
+func (m *manager) runActive(ctx context.Context, storeCh <-chan hastore.Event, deviceCh <-chan device.Event) bool {
 	// Track peer connection goroutines so they don't outlive the active event loop.
 	var peerWg sync.WaitGroup
 	defer peerWg.Wait()
@@ -618,13 +693,13 @@ func (m *manager) runActive(ctx context.Context, serverCancel context.CancelFunc
 				m.holdDownTimer.Stop()
 				m.holdDownTimer = nil
 			}
-			serverCancel()
 			logger.GetLogger().Debug("HA active event loop stopped (ctx done)")
 			return true
 
 		case event := <-storeCh:
 			switch event.Type {
 			case hastore.EventAdminStateChanged:
+				m.syncServerToAdminState(ctx)
 				// Recompute config — if HA became disabled, computeAndPushHaConfig
 				// pushes enabled=false. If still enabled, it recomputes normally.
 				m.computeAndPushHaConfig()
@@ -633,7 +708,6 @@ func (m *manager) runActive(ctx context.Context, serverCancel context.CancelFunc
 						m.holdDownTimer.Stop()
 						m.holdDownTimer = nil
 					}
-					serverCancel()
 					logger.GetLogger().Info("HA disabled, deactivating")
 					return false
 				}

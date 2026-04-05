@@ -83,7 +83,6 @@ func WithServerReconciler(r *Reconciler) ServerOption {
 // server implements the Server interface and the gRPC Ha service.
 type server struct {
 	hav1.UnimplementedHaServer
-	ctx                context.Context
 	grpcServer         *grpc.Server
 	haStore            hastore.Store
 	manager            Manager
@@ -103,10 +102,10 @@ func NewServer(opts ...ServerOption) Server {
 	return s
 }
 
-// Start starts the HA gRPC server.
+// Start starts the HA gRPC server. It blocks until the server stops or an
+// error occurs. The caller is responsible for calling Stop (e.g. on context
+// cancellation) to unblock Serve.
 func (s *server) Start(ctx context.Context, port uint16) error {
-	s.ctx = ctx
-
 	conn, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		logger.GetLogger().Error("HA server failed to listen", logfields.Error, err, "port", port)
@@ -119,19 +118,13 @@ func (s *server) Start(ctx context.Context, port uint16) error {
 
 	logger.GetLogger().Info("HA server starting", "port", port)
 
-	go func() {
-		<-ctx.Done()
-		s.Stop()
-	}()
-
 	err = s.grpcServer.Serve(conn)
+	s.running.Store(false)
 	if err != nil {
 		logger.GetLogger().Error("HA server failed to serve", logfields.Error, err)
-		s.running.Store(false)
 		return err
 	}
 
-	s.running.Store(false)
 	return nil
 }
 
