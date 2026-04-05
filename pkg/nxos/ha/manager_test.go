@@ -727,7 +727,7 @@ func TestManager_Run_StartsNotReadyWithDPUs(t *testing.T) {
 	dpuStore := dpu.NewStore(ctx)
 
 	// Add a DPU so the manager expects DPU health criteria.
-	dpuStore.Update(ctx, types.DPU{Name: "dpu-1", IP: "169.254.0.1", ModuleNum: 1})
+	dpuStore.Update(ctx, types.DPU{Name: "dpu1", IP: "169.254.0.1", ModuleNum: 1})
 
 	mgr := NewManager(
 		WithHAStoreForManager(haStore),

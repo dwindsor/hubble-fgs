@@ -84,9 +84,9 @@ func TestHandleGnmiNotification_IP(t *testing.T) {
 	notifPath := "device:/System/sas-items/dpu-items/inst-items/Inst-list[moduleNum=1]/ext-items/ip"
 	s.HandleGnmiNotification(ctx, notifPath, makeStringUpdate("10.0.0.1"), false)
 
-	dpu, ok := s.Get("dpu-1")
+	dpu, ok := s.Get("dpu1")
 	if !ok {
-		t.Fatal("expected DPU dpu-1 to exist")
+		t.Fatal("expected DPU dpu1 to exist")
 	}
 	if dpu.IP != "10.0.0.1" {
 		t.Errorf("expected IP '10.0.0.1', got %q", dpu.IP)
@@ -103,9 +103,9 @@ func TestHandleGnmiNotification_State(t *testing.T) {
 	notifPath := "device:/System/sas-items/dpu-items/inst-items/Inst-list[moduleNum=2]/ext-items/state"
 	s.HandleGnmiNotification(ctx, notifPath, makeStringUpdate("online"), false)
 
-	dpu, ok := s.Get("dpu-2")
+	dpu, ok := s.Get("dpu2")
 	if !ok {
-		t.Fatal("expected DPU dpu-2 to exist")
+		t.Fatal("expected DPU dpu2 to exist")
 	}
 	if dpu.State != nxosmodel.Cisco_NX_OSDevice_Sas_DpuStateE_online {
 		t.Errorf("expected state online, got %v", dpu.State)
@@ -119,9 +119,9 @@ func TestHandleGnmiNotification_Version(t *testing.T) {
 	notifPath := "device:/System/sas-items/dpu-items/inst-items/Inst-list[moduleNum=3]/ext-items/mainFwVer"
 	s.HandleGnmiNotification(ctx, notifPath, makeStringUpdate("1.2.3"), false)
 
-	dpu, ok := s.Get("dpu-3")
+	dpu, ok := s.Get("dpu3")
 	if !ok {
-		t.Fatal("expected DPU dpu-3 to exist")
+		t.Fatal("expected DPU dpu3 to exist")
 	}
 	if dpu.Version != "1.2.3" {
 		t.Errorf("expected version '1.2.3', got %q", dpu.Version)
@@ -144,9 +144,9 @@ func TestHandleGnmiNotification_UpsertPreservesFields(t *testing.T) {
 	versionPath := "device:/System/sas-items/dpu-items/inst-items/Inst-list[moduleNum=1]/ext-items/mainFwVer"
 	s.HandleGnmiNotification(ctx, versionPath, makeStringUpdate("2.0.0"), false)
 
-	dpu, ok := s.Get("dpu-1")
+	dpu, ok := s.Get("dpu1")
 	if !ok {
-		t.Fatal("expected DPU dpu-1 to exist")
+		t.Fatal("expected DPU dpu1 to exist")
 	}
 	if dpu.IP != "10.0.0.1" {
 		t.Errorf("expected IP '10.0.0.1', got %q", dpu.IP)
@@ -167,16 +167,16 @@ func TestHandleGnmiNotification_Delete(t *testing.T) {
 	ipPath := "device:/System/sas-items/dpu-items/inst-items/Inst-list[moduleNum=1]/ext-items/ip"
 	s.HandleGnmiNotification(ctx, ipPath, makeStringUpdate("10.0.0.1"), false)
 
-	if _, ok := s.Get("dpu-1"); !ok {
-		t.Fatal("expected DPU dpu-1 to exist before delete")
+	if _, ok := s.Get("dpu1"); !ok {
+		t.Fatal("expected DPU dpu1 to exist before delete")
 	}
 
 	// Delete notification
 	deletePath := "device:/System/sas-items/dpu-items/inst-items/Inst-list[moduleNum=1]/ext-items/state"
 	s.HandleGnmiNotification(ctx, deletePath, &gnmiproto.Update{}, true)
 
-	if _, ok := s.Get("dpu-1"); ok {
-		t.Error("expected DPU dpu-1 to be removed after delete")
+	if _, ok := s.Get("dpu1"); ok {
+		t.Error("expected DPU dpu1 to be removed after delete")
 	}
 }
 
@@ -196,7 +196,7 @@ func TestUpdate_WritesPortRangeToGnmi(t *testing.T) {
 	s.SetGnmiHandler(handler)
 
 	// Without dpuCount, port range cannot be calculated — no gNMI write expected.
-	_ = s.Update(ctx, types.DPU{Name: "dpu-1", ModuleNum: 1})
+	_ = s.Update(ctx, types.DPU{Name: "dpu1", ModuleNum: 1})
 	tcpPath := fmt.Sprintf(paths.DPUStoreTCPPorts, 1)
 	vals, _ := handler.Get(ctx, tcpPath)
 	if len(vals) != 0 {
@@ -205,7 +205,7 @@ func TestUpdate_WritesPortRangeToGnmi(t *testing.T) {
 
 	// Set dpuCount, then update DPU — port range should be written.
 	s.SetExpectedCount(ctx, 2)
-	_ = s.Update(ctx, types.DPU{Name: "dpu-1", ModuleNum: 1})
+	_ = s.Update(ctx, types.DPU{Name: "dpu1", ModuleNum: 1})
 
 	vals, err := handler.Get(ctx, tcpPath)
 	if err != nil {
@@ -232,14 +232,14 @@ func TestUpdate_PortRangeNotWrittenWhenUnchanged(t *testing.T) {
 	s.SetExpectedCount(ctx, 2)
 
 	// First update — writes port range.
-	_ = s.Update(ctx, types.DPU{Name: "dpu-1", ModuleNum: 1})
+	_ = s.Update(ctx, types.DPU{Name: "dpu1", ModuleNum: 1})
 
 	// Overwrite with a different field (state) — port range unchanged, so no second write.
 	// We verify by checking the value is still the expected range (not overwritten to something wrong).
 	tcpPath := fmt.Sprintf(paths.DPUStoreTCPPorts, 1)
 	first, _ := handler.Get(ctx, tcpPath)
 
-	_ = s.Update(ctx, types.DPU{Name: "dpu-1", ModuleNum: 1, IP: "10.0.0.1"})
+	_ = s.Update(ctx, types.DPU{Name: "dpu1", ModuleNum: 1, IP: "10.0.0.1"})
 	second, _ := handler.Get(ctx, tcpPath)
 
 	if len(first) == 0 || len(second) == 0 {
@@ -258,7 +258,7 @@ func TestRemove_DeletesPortRangeFromGnmi(t *testing.T) {
 	s.SetExpectedCount(ctx, 1)
 
 	// Create DPU and verify port range is written.
-	_ = s.Update(ctx, types.DPU{Name: "dpu-1", ModuleNum: 1})
+	_ = s.Update(ctx, types.DPU{Name: "dpu1", ModuleNum: 1})
 	tcpPath := fmt.Sprintf(paths.DPUStoreTCPPorts, 1)
 	vals, _ := handler.Get(ctx, tcpPath)
 	if len(vals) == 0 {
@@ -266,7 +266,7 @@ func TestRemove_DeletesPortRangeFromGnmi(t *testing.T) {
 	}
 
 	// Remove DPU — port range should be deleted.
-	_ = s.Remove(ctx, "dpu-1")
+	_ = s.Remove(ctx, "dpu1")
 	vals, _ = handler.Get(ctx, tcpPath)
 	if len(vals) != 0 {
 		t.Errorf("expected port range deleted after remove, got %v", vals)
@@ -285,8 +285,8 @@ func TestSetExpectedCount_WritesPortRangesToGnmi(t *testing.T) {
 	s.SetGnmiHandler(handler)
 
 	// Add DPUs before dpuCount is known — no port range written yet.
-	_ = s.Update(ctx, types.DPU{Name: "dpu-1", ModuleNum: 1})
-	_ = s.Update(ctx, types.DPU{Name: "dpu-2", ModuleNum: 2})
+	_ = s.Update(ctx, types.DPU{Name: "dpu1", ModuleNum: 1})
+	_ = s.Update(ctx, types.DPU{Name: "dpu2", ModuleNum: 2})
 
 	// Setting expected count triggers recalculation and gNMI write for all DPUs.
 	s.SetExpectedCount(ctx, 2)
@@ -310,8 +310,8 @@ func TestSetGlobalPortRange_WritesUpdatedRangesToGnmi(t *testing.T) {
 	s.SetGnmiHandler(handler)
 	s.SetExpectedCount(ctx, 2)
 
-	_ = s.Update(ctx, types.DPU{Name: "dpu-1", ModuleNum: 1})
-	_ = s.Update(ctx, types.DPU{Name: "dpu-2", ModuleNum: 2})
+	_ = s.Update(ctx, types.DPU{Name: "dpu1", ModuleNum: 1})
+	_ = s.Update(ctx, types.DPU{Name: "dpu2", ModuleNum: 2})
 
 	// Get initial values.
 	tcpPath1 := fmt.Sprintf(paths.DPUStoreTCPPorts, 1)

@@ -37,19 +37,19 @@ func TestRegisterDpu_AddsEntry(t *testing.T) {
 	ctx := context.Background()
 	m, _ := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
-	m.RegisterDpu(ctx, "dpu-2")
+	m.RegisterDpu(ctx, "dpu1")
+	m.RegisterDpu(ctx, "dpu2")
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if _, ok := m.dpuStatuses["dpu-1"]; !ok {
-		t.Error("expected dpu-1 to be registered")
+	if _, ok := m.dpuStatuses["dpu1"]; !ok {
+		t.Error("expected dpu1 to be registered")
 	}
-	if _, ok := m.dpuStatuses["dpu-2"]; !ok {
-		t.Error("expected dpu-2 to be registered")
+	if _, ok := m.dpuStatuses["dpu2"]; !ok {
+		t.Error("expected dpu2 to be registered")
 	}
 	// Default values should be false
-	if m.dpuStatuses["dpu-1"].keepaliveUp {
+	if m.dpuStatuses["dpu1"].keepaliveUp {
 		t.Error("expected keepaliveUp to be false for new dpu")
 	}
 }
@@ -58,17 +58,17 @@ func TestRegisterDpu_Idempotent(t *testing.T) {
 	ctx := context.Background()
 	m, _ := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
+	m.RegisterDpu(ctx, "dpu1")
 	m.mu.Lock()
-	m.dpuStatuses["dpu-1"].keepaliveUp = true
+	m.dpuStatuses["dpu1"].keepaliveUp = true
 	m.mu.Unlock()
 
 	// Re-registering should not overwrite existing state.
-	m.RegisterDpu(ctx, "dpu-1")
+	m.RegisterDpu(ctx, "dpu1")
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if !m.dpuStatuses["dpu-1"].keepaliveUp {
+	if !m.dpuStatuses["dpu1"].keepaliveUp {
 		t.Error("expected keepaliveUp to be preserved on re-register")
 	}
 }
@@ -77,11 +77,11 @@ func TestKeepaliveAggregation_AllUpBecomesTrue(t *testing.T) {
 	ctx := context.Background()
 	m, hs := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
-	m.RegisterDpu(ctx, "dpu-2")
+	m.RegisterDpu(ctx, "dpu1")
+	m.RegisterDpu(ctx, "dpu2")
 
 	// One up, one still down — criterion should be false.
-	m.UpdateKeepalive(ctx, "dpu-1", true)
+	m.UpdateKeepalive(ctx, "dpu1", true)
 	peer, ok := hs.Peer("10.0.0.2")
 	if !ok {
 		t.Fatal("peer not found")
@@ -91,14 +91,14 @@ func TestKeepaliveAggregation_AllUpBecomesTrue(t *testing.T) {
 	}
 
 	// Both up — criterion should be true.
-	m.UpdateKeepalive(ctx, "dpu-2", true)
+	m.UpdateKeepalive(ctx, "dpu2", true)
 	peer, _ = hs.Peer("10.0.0.2")
 	if !peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
 		t.Error("expected keepalive criterion true when all DPUs are up")
 	}
 
 	// One goes down — criterion should revert to false.
-	m.UpdateKeepalive(ctx, "dpu-1", false)
+	m.UpdateKeepalive(ctx, "dpu1", false)
 	peer, _ = hs.Peer("10.0.0.2")
 	if peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
 		t.Error("expected keepalive criterion false after one DPU goes down")
@@ -109,12 +109,12 @@ func TestKeepaliveDown_ResetsBulkSync(t *testing.T) {
 	ctx := context.Background()
 	m, hs := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
+	m.RegisterDpu(ctx, "dpu1")
 
 	// Set keepalive up and complete bulk sync.
-	m.UpdateKeepalive(ctx, "dpu-1", true)
-	m.UpdateBulkSyncLocal(ctx, "dpu-1", true)
-	m.UpdateBulkSyncPeer(ctx, "dpu-1", true)
+	m.UpdateKeepalive(ctx, "dpu1", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu1", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu1", true)
 
 	peer, _ := hs.Peer("10.0.0.2")
 	if !peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
@@ -122,7 +122,7 @@ func TestKeepaliveDown_ResetsBulkSync(t *testing.T) {
 	}
 
 	// Keepalive goes down — bulk sync should reset.
-	m.UpdateKeepalive(ctx, "dpu-1", false)
+	m.UpdateKeepalive(ctx, "dpu1", false)
 
 	peer, _ = hs.Peer("10.0.0.2")
 	if peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
@@ -131,7 +131,7 @@ func TestKeepaliveDown_ResetsBulkSync(t *testing.T) {
 
 	// Verify internal state was actually reset.
 	m.mu.RLock()
-	s := m.dpuStatuses["dpu-1"]
+	s := m.dpuStatuses["dpu1"]
 	if s.bulkSyncLocal || s.bulkSyncPeer {
 		t.Error("expected bulkSyncLocal and bulkSyncPeer to be reset when keepalive goes down")
 	}
@@ -142,17 +142,17 @@ func TestBulkSyncAggregation_RequiresBothLocalAndPeer(t *testing.T) {
 	ctx := context.Background()
 	m, hs := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
+	m.RegisterDpu(ctx, "dpu1")
 
 	// Only local done — criterion false.
-	m.UpdateBulkSyncLocal(ctx, "dpu-1", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu1", true)
 	peer, _ := hs.Peer("10.0.0.2")
 	if peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
 		t.Error("expected bulk_sync criterion false with only local done")
 	}
 
 	// Both local and peer done — criterion true.
-	m.UpdateBulkSyncPeer(ctx, "dpu-1", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu1", true)
 	peer, _ = hs.Peer("10.0.0.2")
 	if !peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
 		t.Error("expected bulk_sync criterion true when both local and peer are done")
@@ -163,20 +163,20 @@ func TestBulkSyncAggregation_MultipleDPUs_AllMustComplete(t *testing.T) {
 	ctx := context.Background()
 	m, hs := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
-	m.RegisterDpu(ctx, "dpu-2")
+	m.RegisterDpu(ctx, "dpu1")
+	m.RegisterDpu(ctx, "dpu2")
 
-	m.UpdateBulkSyncLocal(ctx, "dpu-1", true)
-	m.UpdateBulkSyncPeer(ctx, "dpu-1", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu1", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu1", true)
 
-	// dpu-2 not done — criterion false.
+	// dpu2 not done — criterion false.
 	peer, _ := hs.Peer("10.0.0.2")
 	if peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
-		t.Error("expected bulk_sync criterion false when dpu-2 not done")
+		t.Error("expected bulk_sync criterion false when dpu2 not done")
 	}
 
-	m.UpdateBulkSyncLocal(ctx, "dpu-2", true)
-	m.UpdateBulkSyncPeer(ctx, "dpu-2", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu2", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu2", true)
 
 	peer, _ = hs.Peer("10.0.0.2")
 	if !peer.AdjacencyCriteria[types.HACritPeerDPUBulkSync] {
@@ -215,18 +215,18 @@ func TestDPUStatusesVisibleOnPeer(t *testing.T) {
 	ctx := context.Background()
 	m, hs := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
-	m.UpdateKeepalive(ctx, "dpu-1", true)
-	m.UpdateBulkSyncLocal(ctx, "dpu-1", true)
-	m.UpdateBulkSyncPeer(ctx, "dpu-1", true)
+	m.RegisterDpu(ctx, "dpu1")
+	m.UpdateKeepalive(ctx, "dpu1", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu1", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu1", true)
 
 	peer, ok := hs.Peer("10.0.0.2")
 	if !ok {
 		t.Fatal("peer not found")
 	}
-	s, ok := peer.DPUStatuses["dpu-1"]
+	s, ok := peer.DPUStatuses["dpu1"]
 	if !ok {
-		t.Fatal("dpu-1 status not found on peer")
+		t.Fatal("dpu1 status not found on peer")
 	}
 	if !s.KeepaliveUp {
 		t.Error("expected KeepaliveUp true")
@@ -248,8 +248,8 @@ func TestRegisterDpu_ResolvesIPToName(t *testing.T) {
 	})
 
 	ds := dpu.NewStore(ctx)
-	ds.Update(ctx, types.DPU{Name: "dpu-1", IP: "169.254.0.1"})
-	ds.Update(ctx, types.DPU{Name: "dpu-2", IP: "169.254.0.2"})
+	ds.Update(ctx, types.DPU{Name: "dpu1", IP: "169.254.0.1"})
+	ds.Update(ctx, types.DPU{Name: "dpu2", IP: "169.254.0.2"})
 
 	m := NewManager(
 		WithHAStoreForManager(hs),
@@ -262,8 +262,8 @@ func TestRegisterDpu_ResolvesIPToName(t *testing.T) {
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if _, ok := m.dpuStatuses["dpu-1"]; !ok {
-		t.Error("expected IP 169.254.0.1 to resolve to dpu-1")
+	if _, ok := m.dpuStatuses["dpu1"]; !ok {
+		t.Error("expected IP 169.254.0.1 to resolve to dpu1")
 	}
 	if _, ok := m.dpuStatuses["169.254.0.1"]; ok {
 		t.Error("expected no entry under raw IP 169.254.0.1")
@@ -279,7 +279,7 @@ func TestUpdateKeepalive_ResolvesIPToName(t *testing.T) {
 	})
 
 	ds := dpu.NewStore(ctx)
-	ds.Update(ctx, types.DPU{Name: "dpu-1", IP: "169.254.0.1"})
+	ds.Update(ctx, types.DPU{Name: "dpu1", IP: "169.254.0.1"})
 
 	m := NewManager(
 		WithHAStoreForManager(hs),
@@ -292,9 +292,9 @@ func TestUpdateKeepalive_ResolvesIPToName(t *testing.T) {
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	s, ok := m.dpuStatuses["dpu-1"]
+	s, ok := m.dpuStatuses["dpu1"]
 	if !ok {
-		t.Fatal("expected IP to resolve to dpu-1")
+		t.Fatal("expected IP to resolve to dpu1")
 	}
 	if !s.keepaliveUp {
 		t.Error("expected keepaliveUp true after update via IP")
@@ -305,14 +305,14 @@ func TestAggregateDPUStatus_RestoredAfterPeerReconnect(t *testing.T) {
 	ctx := context.Background()
 	m, hs := newTestManager(ctx)
 
-	m.RegisterDpu(ctx, "dpu-1")
-	m.RegisterDpu(ctx, "dpu-2")
-	m.UpdateKeepalive(ctx, "dpu-1", true)
-	m.UpdateKeepalive(ctx, "dpu-2", true)
-	m.UpdateBulkSyncLocal(ctx, "dpu-1", true)
-	m.UpdateBulkSyncPeer(ctx, "dpu-1", true)
-	m.UpdateBulkSyncLocal(ctx, "dpu-2", true)
-	m.UpdateBulkSyncPeer(ctx, "dpu-2", true)
+	m.RegisterDpu(ctx, "dpu1")
+	m.RegisterDpu(ctx, "dpu2")
+	m.UpdateKeepalive(ctx, "dpu1", true)
+	m.UpdateKeepalive(ctx, "dpu2", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu1", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu1", true)
+	m.UpdateBulkSyncLocal(ctx, "dpu2", true)
+	m.UpdateBulkSyncPeer(ctx, "dpu2", true)
 
 	peer, _ := hs.Peer("10.0.0.2")
 	if !peer.MemberCriteria[types.HACritPeerDPUKeepalive] {
@@ -353,8 +353,8 @@ func TestInitDPUCriteriaFromStore_InitializesFalse(t *testing.T) {
 
 	ds := dpu.NewStore(ctx)
 	ds.SetExpectedCount(ctx, 2)
-	ds.Update(ctx, types.DPU{Name: "dpu-1", IP: "169.254.0.1"})
-	ds.Update(ctx, types.DPU{Name: "dpu-2", IP: "169.254.0.2"})
+	ds.Update(ctx, types.DPU{Name: "dpu1", IP: "169.254.0.1"})
+	ds.Update(ctx, types.DPU{Name: "dpu2", IP: "169.254.0.2"})
 	ds.SetInventoryComplete(true)
 	ds.SetInSyncCount(2)
 
@@ -374,7 +374,7 @@ func TestInitDPUCriteriaFromStore_InitializesFalse(t *testing.T) {
 
 	// Verify dpuStatuses entries exist with all fields false.
 	m.mu.RLock()
-	for _, name := range []string{"dpu-1", "dpu-2"} {
+	for _, name := range []string{"dpu1", "dpu2"} {
 		s, ok := m.dpuStatuses[name]
 		if !ok {
 			t.Errorf("expected %s to be in dpuStatuses", name)

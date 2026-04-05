@@ -34,7 +34,7 @@ func (s *dpuStore) HandleGnmiNotification(ctx context.Context, path string, upda
 	// Handle delete notifications for per-DPU paths
 	if isDelete {
 		if moduleNum, ok := paths.ExtractDPUModuleNum(path); ok {
-			dpuName := fmt.Sprintf("dpu-%d", moduleNum)
+			dpuName := fmt.Sprintf("dpu%d", moduleNum)
 			if err := s.Remove(ctx, dpuName); err != nil {
 				if !IsNotFound(err) {
 					logger.GetLogger().Warn("Failed to remove DPU on gNMI delete", "name", dpuName, "error", err)
@@ -111,7 +111,7 @@ func (s *dpuStore) HandleGnmiNotification(ctx context.Context, path string, upda
 
 // upsertDPUField gets or creates a DPU by moduleNum and applies the given update function.
 func (s *dpuStore) upsertDPUField(ctx context.Context, moduleNum int, updateFn func(dpu *types.DPU)) {
-	dpuName := fmt.Sprintf("dpu-%d", moduleNum)
+	dpuName := fmt.Sprintf("dpu%d", moduleNum)
 	dpu, exists := s.Get(dpuName)
 	if !exists {
 		dpu = types.DPU{
