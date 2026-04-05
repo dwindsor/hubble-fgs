@@ -99,8 +99,9 @@ func TestPhaseValidTransition(t *testing.T) {
 		{PhaseDisabled, PhaseDpuReady, false},
 		{PhaseDisabled, PhaseRedirDone, false},
 		{PhaseDpuPending, PhaseRedirDone, false},
-		// Backwards (except health fluctuation): invalid
-		{PhaseRedirDone, PhaseDpuReady, false},
+		// Bidirectional redirect fluctuation: valid
+		{PhaseRedirDone, PhaseDpuReady, true},
+		// Backwards (except health/redirect fluctuation): invalid
 		{PhaseRedirDone, PhaseDpuPending, false},
 		{PhaseRedirDone, PhaseDisabled, false},
 		{PhaseDpuPending, PhaseDisabled, false},

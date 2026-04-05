@@ -8,7 +8,6 @@
 #  or reproduction of this material is strictly forbidden unless prior written
 #  permission is obtained from Isovalent Inc.
 
-import json
 import time
 import logging
 from pathlib import Path
@@ -23,6 +22,8 @@ from helper.gnmi_paths import (
     HA_IP_PATH,
     HA_PEERS_PATH,
     HA_SWITCH_STATE_PATH,
+    ha_peer_ip_path,
+    ha_peer_ip_config_state_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,14 +78,16 @@ def _seed_gnmi_and_enable_ha(cmd, gnmi_file, ha_ip, peer_ip):
     except Exception as e:
         logger.warning(f"Failed to seed mock gNMI: {e}")
         return
-    # Enable HA and set source IP via gNMI SET
+    # Enable HA and set source IP via gNMI SET.
+    # Order: source IP first, then admin/oper state, then peer ipAddr + ipConfigState.
+    # ipConfigState must be set as a per-peer leaf (not embedded in list JSON)
+    # because the HA store expects individual leaf updates for each peer field.
     try:
+        cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
         cmd.agw_mock_gnmi_set(HA_ADMIN_STATE_PATH, '"enabled"')
         cmd.agw_mock_gnmi_set(HA_SWITCH_STATE_PATH, '"ha-ready"')
-        cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
-        # Seed peer list using real NX-OS array format
-        peer_list_json = json.dumps([{"ipAddr": peer_ip, "ipConfigState": "success"}])
-        cmd.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
+        cmd.agw_mock_gnmi_set(ha_peer_ip_path(peer_ip), f'"{peer_ip}"')
+        cmd.agw_mock_gnmi_set(ha_peer_ip_config_state_path(peer_ip), '"success"')
         logger.info(f"Enabled HA with source IP {ha_ip} and peer {peer_ip}")
     except Exception as e:
         logger.warning(f"Failed to enable HA: {e}")
@@ -163,12 +166,11 @@ def _restore_ha_baseline(ha_cmd_leader, ha_cmd_follower):
             pass
         # Re-enable HA and restore in-service
         try:
+            cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
             cmd.agw_mock_gnmi_set(HA_ADMIN_STATE_PATH, '"enabled"')
             cmd.agw_mock_gnmi_set(HA_SWITCH_STATE_PATH, '"ha-ready"')
-            cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
-            # Re-seed peer list
-            peer_list_json = json.dumps([{"ipAddr": peer_ip, "ipConfigState": "success"}])
-            cmd.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
+            cmd.agw_mock_gnmi_set(ha_peer_ip_path(peer_ip), f'"{peer_ip}"')
+            cmd.agw_mock_gnmi_set(ha_peer_ip_config_state_path(peer_ip), '"success"')
             from helper.gnmi_paths import DEVICE_IN_SERVICE_PATH
             cmd.agw_mock_gnmi_set(DEVICE_IN_SERVICE_PATH, '"in-service"')
         except Exception:

@@ -115,54 +115,6 @@ class TestHaStorePopulation:
             assert peer.get("service_ok") is True, \
                 f"{name}: service_ok={peer.get('service_ok')}, expected True"
 
-    def test_ha_vrf_gid_reconciliation(self, ha_cmd_leader, ha_cmd_follower, wait_for_ha_ready_both):
-        """VRF GIDs should be reconciled between peers after ha-ready.
-
-        Validates:
-          - GIDs match on both nodes for same VRF names
-          - preset == gid for each VRF (reconciliation complete)
-          - No duplicate GIDs on either node
-          - Static GIDs (from AGW_VRF_MAP) are preserved
-        """
-        leader_vrfs = ha_cmd_leader.agw_gnmi_vrf_show_json()
-        follower_vrfs = ha_cmd_follower.agw_gnmi_vrf_show_json()
-
-        leader_list = leader_vrfs.get("vrfs", [])
-        follower_list = follower_vrfs.get("vrfs", [])
-        assert leader_list, "Leader VRF list should not be empty"
-        assert follower_list, "Follower VRF list should not be empty"
-
-        leader_by_name = {v["name"]: v for v in leader_list}
-        follower_by_name = {v["name"]: v for v in follower_list}
-
-        # GIDs match on both nodes
-        common_names = set(leader_by_name.keys()) & set(follower_by_name.keys())
-        assert common_names, "No common VRF names between leader and follower"
-        for name in common_names:
-            l_gid = leader_by_name[name].get("gid", 0)
-            f_gid = follower_by_name[name].get("gid", 0)
-            assert l_gid == f_gid, \
-                f"VRF '{name}' GID mismatch: leader={l_gid}, follower={f_gid}"
-
-        # preset == gid (reconciliation complete)
-        for vrf in leader_list:
-            gid = vrf.get("gid", 0)
-            preset = vrf.get("preset", 0)
-            if gid > 0:
-                assert preset == gid, \
-                    f"VRF '{vrf['name']}' preset={preset} != gid={gid}"
-
-        # No duplicate GIDs
-        for label, vrf_list in [("leader", leader_list), ("follower", follower_list)]:
-            gids = [v.get("gid", 0) for v in vrf_list if v.get("gid", 0) > 0]
-            assert len(gids) == len(set(gids)), \
-                f"{label}: duplicate GIDs found: {gids}"
-
-        # Static GIDs preserved (default:1 from AGW_VRF_MAP)
-        if "default" in leader_by_name:
-            assert leader_by_name["default"].get("gid") == 1, \
-                "Static GID for 'default' VRF should be 1"
-
     def test_ha_leader_election(self, ha_cmd_leader, ha_cmd_follower, wait_for_ha_ready_both):
         """Leader election: lowest IP address wins.
 

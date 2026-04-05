@@ -169,6 +169,17 @@ HA_PEERS_PATH = (
     "SvcInstance-list[name=hypershield]/ha-items/peer-items/HaPeer-list"
 )
 
+
+def ha_peer_ip_path(peer_ip):
+    """Build per-peer gNMI path for the ipAddr leaf (creates the peer)."""
+    return f"{HA_PEERS_PATH}[ipAddr={peer_ip}]/ipAddr"
+
+
+def ha_peer_ip_config_state_path(peer_ip):
+    """Build per-peer gNMI path for ipConfigState (gates peer connection)."""
+    return f"{HA_PEERS_PATH}[ipAddr={peer_ip}]/ipConfigState"
+
+
 HA_IP_PATH = (
     "device:/System/sas-items/state-items/agent-items/"
     "SasAgent-list[svcName=hypershield]/agentHaSrcIntfAddr"

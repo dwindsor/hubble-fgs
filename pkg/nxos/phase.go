@@ -63,6 +63,7 @@ func (p Phase) String() string {
 //   - Same phase is always valid (no-op).
 //   - Forward sequential transitions are valid (no skipping).
 //   - DpuReady ↔ DpuPending is valid to accommodate health fluctuation.
+//   - RedirDone ↔ DpuReady is valid to accommodate in-service/out-of-service.
 func (p Phase) ValidTransition(target Phase) bool {
 	if p == target {
 		return true
@@ -70,6 +71,12 @@ func (p Phase) ValidTransition(target Phase) bool {
 	// Allow bidirectional health fluctuation between DpuPending and DpuReady.
 	if (p == PhaseDpuPending && target == PhaseDpuReady) ||
 		(p == PhaseDpuReady && target == PhaseDpuPending) {
+		return true
+	}
+	// Allow bidirectional redirect fluctuation between DpuReady and RedirDone
+	// to accommodate in-service/out-of-service transitions.
+	if (p == PhaseDpuReady && target == PhaseRedirDone) ||
+		(p == PhaseRedirDone && target == PhaseDpuReady) {
 		return true
 	}
 	// Forward sequential only (no skipping, no other backwards).

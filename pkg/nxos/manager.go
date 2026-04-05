@@ -454,6 +454,9 @@ func (m *manager) setupInServiceHooks() {
 			m.vlanStore.ProgramAllRedirects(ctx)
 			m.vrfStore.SetInService(true)
 			m.vlanStore.SetInService(true)
+			if err := m.advancePhase(ctx, PhaseRedirDone); err != nil {
+				logger.GetLogger().Warn("Failed to advance to RedirDone on in-service", logfields.Error, err)
+			}
 		}
 	})
 
@@ -463,6 +466,9 @@ func (m *manager) setupInServiceHooks() {
 			m.vlanStore.SetInService(false)
 			m.vrfStore.CleanupAllRedirects(ctx)
 			m.vlanStore.CleanupAllRedirects(ctx)
+			if err := m.advancePhase(ctx, PhaseDpuReady); err != nil {
+				logger.GetLogger().Warn("Failed to regress to DpuReady on out-of-service", logfields.Error, err)
+			}
 		}
 	})
 }

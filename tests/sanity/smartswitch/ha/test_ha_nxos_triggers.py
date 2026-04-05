@@ -21,7 +21,6 @@ Recovery path (HA-states.md):
   ha-fail (active/standby) -> ha-degraded (active/standby) -> ha-ok (active/active)
 """
 
-import json
 import time
 
 import pytest
@@ -32,7 +31,12 @@ from helper.ha_helpers import (
     poll_peer_service_ok, assert_no_state_flapping,
     assert_state_transition_order,
 )
-from helper.gnmi_paths import DEVICE_IN_SERVICE_PATH, HA_ADMIN_STATE_PATH, HA_PEERS_PATH
+from helper.gnmi_paths import (
+    DEVICE_IN_SERVICE_PATH,
+    HA_ADMIN_STATE_PATH,
+    HA_PEERS_PATH,
+    ha_peer_ip_config_state_path,
+)
 
 
 @pytest.mark.ha
@@ -126,14 +130,12 @@ class TestNxosTriggers:
         )
 
     def test_nxos_peer_list_update_sets_ip_config_criterion(self, ha_cmd_leader, ha_cmd_follower, wait_for_ha_ready_both, reset_ha_state_class):
-        """Setting peer list via HA_PEERS_PATH with ipConfigState=success should set peer_ip_config criterion.
+        """Setting per-peer ipConfigState=success should set peer_ip_config criterion.
 
-        Tests that the bare JSON array format [{"ipAddr":"...","ipConfigState":"success"}]
-        is correctly parsed and sets the peer_ip_config adjacency criterion.
+        The HA store expects individual leaf updates per peer field. Setting
+        ipConfigState via the per-peer leaf path gates peer connections.
         """
-        # Set peer list with ipConfigState=success
-        peer_list_json = json.dumps([{"ipAddr": FOLLOWER_IP, "ipConfigState": "success"}])
-        ha_cmd_leader.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
+        ha_cmd_leader.agw_mock_gnmi_set(ha_peer_ip_config_state_path(FOLLOWER_IP), '"success"')
         time.sleep(3)
 
         # Verify peer_ip_config adjacency criterion is true
@@ -148,10 +150,8 @@ class TestNxosTriggers:
             f"Expected peer_ip_config=true after ipConfigState=success, got {adjacency_criteria.get('peer_ip_config')}"
 
     def test_nxos_peer_list_update_ipconfig_failed(self, ha_cmd_leader, ha_cmd_follower, wait_for_ha_ready_both, reset_ha_state_class):
-        """Setting peer list with ipConfigState=failed should set peer_ip_config to false."""
-        # Set peer list with ipConfigState=failed
-        peer_list_json = json.dumps([{"ipAddr": FOLLOWER_IP, "ipConfigState": "failed"}])
-        ha_cmd_leader.agw_mock_gnmi_set(HA_PEERS_PATH, f'"{peer_list_json}"')
+        """Setting per-peer ipConfigState=failed should set peer_ip_config to false."""
+        ha_cmd_leader.agw_mock_gnmi_set(ha_peer_ip_config_state_path(FOLLOWER_IP), '"failed"')
         time.sleep(3)
 
         # Verify peer_ip_config adjacency criterion is false
