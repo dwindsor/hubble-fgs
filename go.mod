@@ -56,7 +56,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 	github.com/stretchr/testify v1.11.1
-	github.com/vishvananda/netlink v1.3.2-0.20260403072639-188504cbe7c1
+	github.com/vishvananda/netlink v1.3.2-0.20260404173425-c822ed716ea1
 	github.com/vishvananda/netns v0.0.5
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/xlab/treeprint v1.2.0
