@@ -355,8 +355,8 @@ github.com/iceber/iouring-go v0.0.0-20230403020409-002cfd2e2a90 h1:xrtfZokN++5ke
 github.com/iceber/iouring-go v0.0.0-20230403020409-002cfd2e2a90/go.mod h1:LEzdaZarZ5aqROlLIwJ4P7h3+4o71008fSy6wpaEB+s=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/isovalent/ipa v1.19.0-pre.12.0.20260402172528-0281250ffa22 h1:SV2Sx0OK96u5FulajTbFRm0MneHuJK9gucf3hw0CkhA=
-github.com/isovalent/ipa v1.19.0-pre.12.0.20260402172528-0281250ffa22/go.mod h1:kexScyW+nvsC/o13bJ/L+ppp9Yf/4NVnbon9z+D9i0Q=
+github.com/isovalent/ipa v1.19.0-pre.12.0.20260406163432-df6937cacd3e h1:HWHjG8XFQPBAJZlMPPCNauGjdxHpOQIDJmef2KFGg3A=
+github.com/isovalent/ipa v1.19.0-pre.12.0.20260406163432-df6937cacd3e/go.mod h1:kexScyW+nvsC/o13bJ/L+ppp9Yf/4NVnbon9z+D9i0Q=
 github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260212220503-f8352aa1affd h1:6qmMLWEk6/fUnTfNpRU3tww2fvObLVZIOPXtGMgOwuQ=
 github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260212220503-f8352aa1affd/go.mod h1:O3r5XAxFQlpXd1RGTHv7VD9mUD2/wOcVo/TCKPZuKss=
 github.com/isovalent/metricstool v0.1.4 h1:+73vMhYhB8uDWLV/nuvV81XA5smLvGefKRJ2KIDbXP0=

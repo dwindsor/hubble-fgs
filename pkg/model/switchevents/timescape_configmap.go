@@ -168,8 +168,8 @@ func convertProtobufToInternalConfig(ctx context.Context, pbConfig *v1alpha.Time
 		MaxRetries:           pbConfig.GetMaxRetries(),
 		ConnectionTimeoutSec: pbConfig.GetConnectionTimeoutSec(),
 		RequestTimeoutSec:    pbConfig.GetRequestTimeoutSec(),
-		MaxBatchSize:         pbConfig.GetMaxBatchSize(),
-		BatchTimeoutMs:       pbConfig.GetBatchTimeoutMs(),
+		MaxBatchSize:         pbConfig.MaxBatchSize,   //nolint:staticcheck // Ignore SA1019
+		BatchTimeoutMs:       pbConfig.BatchTimeoutMs, //nolint:staticcheck // Ignore SA1019
 	}
 
 	// Apply production defaults if values are still 0

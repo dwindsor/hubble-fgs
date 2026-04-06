@@ -727,10 +727,11 @@ CONFIG_TYPE_TIMESCAPE
 | max_retries | [uint32](#uint32) |  | Transport configuration for production deployments Maximum number of retry attempts for failed requests |
 | connection_timeout_sec | [uint32](#uint32) |  | Connection establishment timeout in seconds |
 | request_timeout_sec | [uint32](#uint32) |  | Request timeout in seconds |
-| max_batch_size | [uint32](#uint32) |  | Batching configuration for message processing Maximum number of messages to batch together (default: 1, max: 3, recommended: 2) |
-| batch_timeout_ms | [uint32](#uint32) |  | Batch timeout in milliseconds (force send batch after timeout, default: 30000ms) |
+| max_batch_size | [uint32](#uint32) |  | **Deprecated.** Deprecated: Batching configuration for message processing Maximum number of messages to batch together (default: 1, max: 3, recommended: 2) |
+| batch_timeout_ms | [uint32](#uint32) |  | **Deprecated.** Batch timeout in milliseconds (force send batch after timeout, default: 30000ms) |
 | basic_auth | [BasicAuth](#l3l4networkpolicy-v1alpha-BasicAuth) |  | BasicAuth configuration |
 | mtls | [MTLSConfig](#l3l4networkpolicy-v1alpha-MTLSConfig) |  | mTLS configuration |
+| policystatus_reporting_interval_mins | [uint32](#uint32) |  | Policy status reporting interval in minutes |
 
 
 

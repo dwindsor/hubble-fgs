@@ -1101,17 +1101,19 @@ export declare type TimescapeConfig = Message<"l3l4networkpolicy.v1alpha.Timesca
   requestTimeoutSec: number;
 
   /**
-   * Batching configuration for message processing
+   * Deprecated: Batching configuration for message processing
    * Maximum number of messages to batch together (default: 1, max: 3, recommended: 2)
    *
-   * @generated from field: uint32 max_batch_size = 12;
+   * @generated from field: uint32 max_batch_size = 12 [deprecated = true];
+   * @deprecated
    */
   maxBatchSize: number;
 
   /**
    * Batch timeout in milliseconds (force send batch after timeout, default: 30000ms)
    *
-   * @generated from field: uint32 batch_timeout_ms = 13;
+   * @generated from field: uint32 batch_timeout_ms = 13 [deprecated = true];
+   * @deprecated
    */
   batchTimeoutMs: number;
 
@@ -1138,6 +1140,13 @@ export declare type TimescapeConfig = Message<"l3l4networkpolicy.v1alpha.Timesca
     value: MTLSConfig;
     case: "mtls";
   } | { case: undefined; value?: undefined };
+
+  /**
+   * Policy status reporting interval in minutes
+   *
+   * @generated from field: uint32 policystatus_reporting_interval_mins = 16;
+   */
+  policystatusReportingIntervalMins: number;
 };
 
 /**

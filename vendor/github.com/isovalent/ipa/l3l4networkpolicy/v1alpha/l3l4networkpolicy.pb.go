@@ -2469,10 +2469,14 @@ type TimescapeConfig struct {
 	ConnectionTimeoutSec uint32 `protobuf:"varint,10,opt,name=connection_timeout_sec,json=connectionTimeoutSec,proto3" json:"connection_timeout_sec,omitempty"`
 	// Request timeout in seconds
 	RequestTimeoutSec uint32 `protobuf:"varint,11,opt,name=request_timeout_sec,json=requestTimeoutSec,proto3" json:"request_timeout_sec,omitempty"`
-	// Batching configuration for message processing
+	// Deprecated: Batching configuration for message processing
 	// Maximum number of messages to batch together (default: 1, max: 3, recommended: 2)
+	//
+	// Deprecated: Marked as deprecated in l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
 	MaxBatchSize uint32 `protobuf:"varint,12,opt,name=max_batch_size,json=maxBatchSize,proto3" json:"max_batch_size,omitempty"`
 	// Batch timeout in milliseconds (force send batch after timeout, default: 30000ms)
+	//
+	// Deprecated: Marked as deprecated in l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
 	BatchTimeoutMs uint32 `protobuf:"varint,13,opt,name=batch_timeout_ms,json=batchTimeoutMs,proto3" json:"batch_timeout_ms,omitempty"`
 	// Services: PolicyStatusUpdate and SystemStatusUpdate are enabled by default
 	// Authentication configuration (exactly one should be configured)
@@ -2481,9 +2485,11 @@ type TimescapeConfig struct {
 	//
 	//	*TimescapeConfig_BasicAuth
 	//	*TimescapeConfig_Mtls
-	Auth          isTimescapeConfig_Auth `protobuf_oneof:"auth"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Auth isTimescapeConfig_Auth `protobuf_oneof:"auth"`
+	// Policy status reporting interval in minutes
+	PolicystatusReportingIntervalMins uint32 `protobuf:"varint,16,opt,name=policystatus_reporting_interval_mins,json=policystatusReportingIntervalMins,proto3" json:"policystatus_reporting_interval_mins,omitempty"`
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *TimescapeConfig) Reset() {
@@ -2593,6 +2599,7 @@ func (x *TimescapeConfig) GetRequestTimeoutSec() uint32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
 func (x *TimescapeConfig) GetMaxBatchSize() uint32 {
 	if x != nil {
 		return x.MaxBatchSize
@@ -2600,6 +2607,7 @@ func (x *TimescapeConfig) GetMaxBatchSize() uint32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
 func (x *TimescapeConfig) GetBatchTimeoutMs() uint32 {
 	if x != nil {
 		return x.BatchTimeoutMs
@@ -2630,6 +2638,13 @@ func (x *TimescapeConfig) GetMtls() *MTLSConfig {
 		}
 	}
 	return nil
+}
+
+func (x *TimescapeConfig) GetPolicystatusReportingIntervalMins() uint32 {
+	if x != nil {
+		return x.PolicystatusReportingIntervalMins
+	}
+	return 0
 }
 
 type isTimescapeConfig_Auth interface {
@@ -3445,7 +3460,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\vcertmanager\x18\x02 \x01(\v2*.l3l4networkpolicy.v1alpha.MTLSCertManagerR\vcertmanager\x12H\n" +
 	"\n" +
 	"managed_ca\x18\x03 \x01(\v2'.l3l4networkpolicy.v1alpha.MTLSClientCAH\x00R\tmanagedCaB\v\n" +
-	"\tca_config\"\xc2\x04\n" +
+	"\tca_config\"\x9b\x05\n" +
 	"\x0fTimescapeConfig\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -3460,12 +3475,13 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"maxRetries\x124\n" +
 	"\x16connection_timeout_sec\x18\n" +
 	" \x01(\rR\x14connectionTimeoutSec\x12.\n" +
-	"\x13request_timeout_sec\x18\v \x01(\rR\x11requestTimeoutSec\x12$\n" +
-	"\x0emax_batch_size\x18\f \x01(\rR\fmaxBatchSize\x12(\n" +
-	"\x10batch_timeout_ms\x18\r \x01(\rR\x0ebatchTimeoutMs\x12E\n" +
+	"\x13request_timeout_sec\x18\v \x01(\rR\x11requestTimeoutSec\x12(\n" +
+	"\x0emax_batch_size\x18\f \x01(\rB\x02\x18\x01R\fmaxBatchSize\x12,\n" +
+	"\x10batch_timeout_ms\x18\r \x01(\rB\x02\x18\x01R\x0ebatchTimeoutMs\x12E\n" +
 	"\n" +
 	"basic_auth\x18\x0e \x01(\v2$.l3l4networkpolicy.v1alpha.BasicAuthH\x00R\tbasicAuth\x12;\n" +
-	"\x04mtls\x18\x0f \x01(\v2%.l3l4networkpolicy.v1alpha.MTLSConfigH\x00R\x04mtlsB\x06\n" +
+	"\x04mtls\x18\x0f \x01(\v2%.l3l4networkpolicy.v1alpha.MTLSConfigH\x00R\x04mtls\x12O\n" +
+	"$policystatus_reporting_interval_mins\x18\x10 \x01(\rR!policystatusReportingIntervalMinsB\x06\n" +
 	"\x04auth\"\xcf\x06\n" +
 	"\fConfigObject\x129\n" +
 	"\x04type\x18\x01 \x01(\x0e2%.l3l4networkpolicy.v1alpha.ConfigTypeR\x04type\x12?\n" +
