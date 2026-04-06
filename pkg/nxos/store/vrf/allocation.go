@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/openconfig/ygot/ygot"
 
@@ -45,7 +44,7 @@ func (s *vrfStore) rebuildGIDStateLocked() {
 	var maxGID uint16
 	for name, vrf := range s.vrfs {
 		if vrf.GID > 0 {
-			s.gidsInUse[vrf.GID] = true
+			s.gidsInUse[vrf.GID]++
 			if vrf.GID >= maxGID {
 				maxGID = vrf.GID
 			}
@@ -55,6 +54,9 @@ func (s *vrfStore) rebuildGIDStateLocked() {
 				vrf.Preset = vrf.GID
 				s.vrfs[name] = vrf
 			}
+		} else if vrf.Preset > 0 {
+			// Skeleton VRF: count its reserved Preset in gidsInUse.
+			s.gidsInUse[vrf.Preset]++
 		}
 	}
 	// Set nextGID to one past the maximum allocated, with wrap-around
@@ -84,28 +86,42 @@ func (s *vrfStore) allocateGIDLocked(vrf types.VRF) types.VRF {
 	if vrf.Name == DefaultVRFName {
 		vrf.GID = DefaultVRFGID
 		vrf.Preset = DefaultVRFGID
-		s.gidsInUse[DefaultVRFGID] = true
+		s.gidsInUse[DefaultVRFGID]++
 		return vrf
 	}
 
-	// Honor Preset if available and not already taken.
-	if vrf.Preset > 0 && !s.gidsInUse[vrf.Preset] {
-		vrf.GID = vrf.Preset
-		s.gidsInUse[vrf.Preset] = true
-		if s.nextGID <= vrf.Preset {
-			s.nextGID = vrf.Preset + 1
-			if s.nextGID > GIDAllocationMax {
-				s.nextGID = GIDAllocationStart
+	// Honor Preset if no other VRF actively holds it.
+	// A refcount of 1 in gidsInUse may come from this VRF's own skeleton reservation
+	// (via ReservePreset); the skeleton → active transition reuses that slot.
+	if vrf.Preset > 0 {
+		otherHasIt := false
+		for otherName, otherVRF := range s.vrfs {
+			if otherName != vrf.Name && otherVRF.GID == vrf.Preset {
+				otherHasIt = true
+				break
 			}
 		}
-		return vrf
+		if !otherHasIt {
+			vrf.GID = vrf.Preset
+			if s.gidsInUse[vrf.Preset] == 0 {
+				s.gidsInUse[vrf.Preset]++ // fresh allocation
+			}
+			// else: skeleton reservation (refcount=1) transitions to active GID — no change
+			if s.nextGID <= vrf.Preset {
+				s.nextGID = vrf.Preset + 1
+				if s.nextGID > GIDAllocationMax {
+					s.nextGID = GIDAllocationStart
+				}
+			}
+			return vrf
+		}
 	}
 
 	// Sequential allocation: skip GIDs in use OR claimed as Preset by another VRF.
 	gid := s.nextGID
 	start := gid
 	for {
-		if !s.gidsInUse[gid] {
+		if s.gidsInUse[gid] == 0 {
 			// Check if any other VRF claims this as a preset
 			presetClaimed := false
 			for otherName, otherVRF := range s.vrfs {
@@ -129,7 +145,7 @@ func (s *vrfStore) allocateGIDLocked(vrf types.VRF) types.VRF {
 	}
 	vrf.GID = gid
 	vrf.Preset = gid
-	s.gidsInUse[gid] = true
+	s.gidsInUse[gid]++
 	s.nextGID = gid + 1
 	if s.nextGID > GIDAllocationMax {
 		s.nextGID = GIDAllocationStart
@@ -140,7 +156,7 @@ func (s *vrfStore) allocateGIDLocked(vrf types.VRF) types.VRF {
 // reconcilePresets applies pending Preset→GID transitions for all active VRFs
 // where GID != Preset. Uses two-phase batching and in-place endpoint updates
 // to avoid teardown+rebuild and transient GID conflicts.
-func (s *vrfStore) reconcilePresets(ctx context.Context) {
+func (s *vrfStore) reconcilePresets(ctx context.Context) error {
 	type entry struct {
 		oldGID uint16
 		vrf    types.VRF // snapshot with updated GID
@@ -158,20 +174,23 @@ func (s *vrfStore) reconcilePresets(ctx context.Context) {
 
 	if len(entries) == 0 {
 		s.mu.Unlock()
-		return
+		return nil
 	}
 
 	// Free all old GIDs first to avoid blocking new GID assignments.
 	for _, e := range entries {
 		if e.oldGID > 0 {
-			delete(s.gidsInUse, e.oldGID)
+			s.gidsInUse[e.oldGID]--
+			if s.gidsInUse[e.oldGID] <= 0 {
+				delete(s.gidsInUse, e.oldGID)
+			}
 		}
 	}
 	// Assign new GIDs and capture updated VRF snapshots.
 	for i, e := range entries {
 		vrf := e.vrf
 		vrf.GID = vrf.Preset
-		s.gidsInUse[vrf.Preset] = true
+		s.gidsInUse[vrf.Preset]++
 		s.vrfs[vrf.Name] = vrf
 		entries[i].vrf = vrf
 		logger.GetLogger().Info("Applying preset GID change", "vrf", vrf.Name, "oldGID", e.oldGID, "newGID", vrf.GID)
@@ -182,7 +201,7 @@ func (s *vrfStore) reconcilePresets(ctx context.Context) {
 	s.mu.Unlock()
 
 	if handler == nil || !inService {
-		return
+		return nil
 	}
 
 	// Two-phase batching: contested GIDs first (their old GID is needed by another VRF),
@@ -201,15 +220,17 @@ func (s *vrfStore) reconcilePresets(ctx context.Context) {
 		}
 	}
 
-	s.sendGIDUpdateBatch(ctx, handler, batch1)
-	s.sendGIDUpdateBatch(ctx, handler, batch2)
+	if err := s.sendGIDUpdateBatch(ctx, handler, batch1); err != nil {
+		return err
+	}
+	return s.sendGIDUpdateBatch(ctx, handler, batch2)
 }
 
 // sendGIDUpdateBatch issues a single gNMI SET that updates only the VLAN (GID) field
 // on existing service endpoints. Does NOT set Type or Vrf fields — preserved by MERGE.
-func (s *vrfStore) sendGIDUpdateBatch(ctx context.Context, handler gnmi.GnmiHandler, vrfs []types.VRF) {
+func (s *vrfStore) sendGIDUpdateBatch(ctx context.Context, handler gnmi.GnmiHandler, vrfs []types.VRF) error {
 	if len(vrfs) == 0 {
-		return
+		return nil
 	}
 
 	serviceItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems{
@@ -239,12 +260,12 @@ func (s *vrfStore) sendGIDUpdateBatch(ctx context.Context, handler gnmi.GnmiHand
 		RFC7951Config: &ygot.RFC7951JSONConfig{},
 	})
 	if err != nil {
-		logger.GetLogger().Error("Failed to marshal GID update batch", logfields.Error, err)
-		return
+		return fmt.Errorf("failed to marshal GID update batch: %w", err)
 	}
 	if err := handler.Set(ctx, paths.ServiceRedirServiceItems, jstr); err != nil {
-		logger.GetLogger().Error("Failed to send GID update batch via gNMI", logfields.Error, err)
+		return fmt.Errorf("failed to send GID update batch via gNMI: %w", err)
 	}
+	return nil
 }
 
 // assignPinningLocked sets DPUPinned based on lb mode and VRF affinity.

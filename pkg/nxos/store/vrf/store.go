@@ -37,7 +37,7 @@ type vrfStore struct {
 	gnmiHandler gnmi.GnmiHandler
 	// GID allocation state
 	nextGID   uint16
-	gidsInUse map[uint16]bool
+	gidsInUse map[uint16]int
 	// DPU pinning configuration
 	dpuCount        uint16      // number of DPUs for hash-based pinning
 	isLbModePinning func() bool // returns true when per-DPU pinning is active
@@ -93,7 +93,7 @@ func NewStore(ctx context.Context, opts ...Option) Store {
 	s := &vrfStore{
 		vrfs:      make(map[string]types.VRF),
 		nextGID:   GIDAllocationStart,
-		gidsInUse: make(map[uint16]bool),
+		gidsInUse: make(map[uint16]int),
 		callbacks: make(map[int]func(Event)),
 	}
 
@@ -288,7 +288,7 @@ func (s *vrfStore) SetGIDs(ctx context.Context, changes map[string]uint16) error
 		gid := s.nextGID
 		start := gid
 		for {
-			if !s.gidsInUse[gid] {
+			if s.gidsInUse[gid] == 0 {
 				presetClaimed := false
 				for otherName, otherVRF := range s.vrfs {
 					if otherName != name && otherVRF.Preset == gid {
@@ -308,7 +308,7 @@ func (s *vrfStore) SetGIDs(ctx context.Context, changes map[string]uint16) error
 				break // exhausted, leave preset as-is
 			}
 		}
-		if !s.gidsInUse[gid] {
+		if s.gidsInUse[gid] == 0 {
 			vrf.Preset = gid
 			s.vrfs[name] = vrf
 		}
@@ -317,7 +317,9 @@ func (s *vrfStore) SetGIDs(ctx context.Context, changes map[string]uint16) error
 	s.mu.Unlock()
 
 	// Step 3: Apply preset→GID transitions and reprogram redirects.
-	s.reconcilePresets(ctx)
+	if err := s.reconcilePresets(ctx); err != nil {
+		return err
+	}
 
 	// Step 4: Persist.
 	s.persist(ctx)
@@ -360,6 +362,16 @@ func (s *vrfStore) ReservePreset(ctx context.Context, name string, gid uint16) {
 	if vrf.GID > 0 {
 		s.mu.Unlock()
 		return
+	}
+	// Decrement refcount for old preset if changing it.
+	if vrf.Preset > 0 && vrf.Preset != gid {
+		s.gidsInUse[vrf.Preset]--
+		if s.gidsInUse[vrf.Preset] <= 0 {
+			delete(s.gidsInUse, vrf.Preset)
+		}
+	}
+	if vrf.Preset != gid {
+		s.gidsInUse[gid]++
 	}
 	vrf.Name = name
 	vrf.Preset = gid

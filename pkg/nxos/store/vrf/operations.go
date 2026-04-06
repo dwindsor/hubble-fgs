@@ -41,7 +41,10 @@ func (s *vrfStore) handleActivateLocked(vrf types.VRF, oldVRF *types.VRF) (types
 			// Free the GID allocation so it can be reused, but keep Preset
 			// intact so re-activation honors the same GID.
 			if vrf.GID > 0 {
-				delete(s.gidsInUse, vrf.GID)
+				s.gidsInUse[vrf.GID]--
+				if s.gidsInUse[vrf.GID] <= 0 {
+					delete(s.gidsInUse, vrf.GID)
+				}
 				vrf.GID = 0
 			}
 			vrf.DPUPinned = 0
@@ -72,6 +75,13 @@ func (s *vrfStore) SetGlobal(ctx context.Context, name string, isGlobal bool) er
 		if !exists {
 			s.mu.Unlock()
 			return nil
+		}
+		// Free skeleton preset refcount if this was a skeleton VRF.
+		if vrf.GID == 0 && vrf.Preset > 0 {
+			s.gidsInUse[vrf.Preset]--
+			if s.gidsInUse[vrf.Preset] <= 0 {
+				delete(s.gidsInUse, vrf.Preset)
+			}
 		}
 		delete(s.vrfs, name)
 		s.mu.Unlock()
@@ -130,6 +140,13 @@ func (s *vrfStore) SetService(ctx context.Context, name string, isService bool) 
 		if !exists {
 			s.mu.Unlock()
 			return nil
+		}
+		// Free skeleton preset refcount if this was a skeleton VRF.
+		if vrf.GID == 0 && vrf.Preset > 0 {
+			s.gidsInUse[vrf.Preset]--
+			if s.gidsInUse[vrf.Preset] <= 0 {
+				delete(s.gidsInUse, vrf.Preset)
+			}
 		}
 		delete(s.vrfs, name)
 		s.mu.Unlock()

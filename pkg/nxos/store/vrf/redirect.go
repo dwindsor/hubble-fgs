@@ -539,6 +539,23 @@ func (s *vrfStore) CleanupAllFwPolicyState(ctx context.Context) {
 	}
 }
 
+// modulePinningToDPU converts a SvcModulePinning enum to the corresponding DPU number.
+// Returns 0 for the "all" enum value.
+func modulePinningToDPU(pin model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning) uint16 {
+	switch pin {
+	case model.Cisco_NX_OSDevice_Sas_SvcModulePinning_1:
+		return 1
+	case model.Cisco_NX_OSDevice_Sas_SvcModulePinning_2:
+		return 2
+	case model.Cisco_NX_OSDevice_Sas_SvcModulePinning_3:
+		return 3
+	case model.Cisco_NX_OSDevice_Sas_SvcModulePinning_4:
+		return 4
+	default:
+		return 0 // "all"
+	}
+}
+
 // dpuToModulePinning converts a DPU number to the corresponding SvcModulePinning enum.
 func dpuToModulePinning(dpu uint16) model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning {
 	switch dpu {

@@ -60,13 +60,18 @@ func (s *vrfStore) RestoreGIDsFromGnmi(ctx context.Context) error {
 		return fmt.Errorf("failed to unmarshal service-items: %w", err)
 	}
 
-	// Extract VRF names and GIDs from ServiceList
+	// Extract VRF names, GIDs, and all DPU keys from ServiceList.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	type switchVRFState struct {
+		gid  uint16
+		dpus []uint16 // all DPU enum keys found on the switch
+	}
+	switchVRFs := make(map[string]switchVRFState)
+
 	var maxGID uint16
 	restoredCount := 0
-	switchVRFs := make(map[string]bool) // VRF names found on the switch
 	for name, svc := range items.ServiceList {
 		if svc == nil || svc.DpuepItems == nil || svc.Type != model.Cisco_NX_OSDevice_Epbr_EpbrType_dpu {
 			continue
@@ -74,26 +79,46 @@ func (s *vrfStore) RestoreGIDsFromGnmi(ctx context.Context) error {
 		// Extract VRF name from service name "__<vrfname>_dpu_redir"
 		vrfName := strings.TrimPrefix(name, "__")
 		vrfName = strings.TrimSuffix(vrfName, "_dpu_redir")
-		switchVRFs[vrfName] = true
 
-		// Get GID from first endpoint with a VLAN value
-		for _, ep := range svc.DpuepItems.SvcEndPointDpuList {
-			if ep != nil && ep.Vlan != nil {
+		state := switchVRFs[vrfName]
+		gidFound := false
+		for dpuEnum, ep := range svc.DpuepItems.SvcEndPointDpuList {
+			dpuKey := modulePinningToDPU(dpuEnum)
+			state.dpus = append(state.dpus, dpuKey)
+			if ep != nil && ep.Vlan != nil && !gidFound {
 				gid := *ep.Vlan
-				s.gidsInUse[gid] = true
+				state.gid = gid
+				gidFound = true
 				if gid > maxGID {
 					maxGID = gid
 				}
 				// Update VRF if it exists in store
 				if vrf, ok := s.vrfs[vrfName]; ok {
+					// Decrement old refcounts before overwriting.
+					if vrf.GID > 0 && vrf.GID != gid {
+						s.gidsInUse[vrf.GID]--
+						if s.gidsInUse[vrf.GID] <= 0 {
+							delete(s.gidsInUse, vrf.GID)
+						}
+					}
+					if vrf.GID == 0 && vrf.Preset > 0 && vrf.Preset != gid {
+						// Skeleton preset being replaced by actual GID from switch.
+						s.gidsInUse[vrf.Preset]--
+						if s.gidsInUse[vrf.Preset] <= 0 {
+							delete(s.gidsInUse, vrf.Preset)
+						}
+					}
+					s.gidsInUse[gid]++
 					vrf.GID = gid
 					vrf.Preset = gid
 					s.vrfs[vrfName] = vrf
 					restoredCount++
+				} else {
+					s.gidsInUse[gid]++
 				}
-				break
 			}
 		}
+		switchVRFs[vrfName] = state
 	}
 
 	if maxGID >= s.nextGID {
@@ -122,6 +147,26 @@ func (s *vrfStore) RestoreGIDsFromGnmi(ctx context.Context) error {
 		logger.GetLogger().Info("Cleaned up stale VRF redirects", "count", staleCount)
 	}
 
+	// Delete stale DPU endpoints for VRFs whose DPU pinning has changed.
+	// gNMI MERGE adds new DPU keys but doesn't remove old ones.
+	// Mirrors hubble-fgs/pkg/nxos/nxos.go:933-939.
+	repinCount := 0
+	for vrfName, switchState := range switchVRFs {
+		if !activeVRFs[vrfName] {
+			continue // already handled by stale cleanup above
+		}
+		vrf := s.vrfs[vrfName]
+		for _, switchDPU := range switchState.dpus {
+			if !dpuMatchesDesired(switchDPU, vrf.DPUPinned) {
+				s.deleteDpuEndpoint(ctx, handler, vrfName, switchDPU)
+				repinCount++
+			}
+		}
+	}
+	if repinCount > 0 {
+		logger.GetLogger().Info("Deleted stale DPU endpoints due to repinning", "count", repinCount)
+	}
+
 	// Allocate GIDs to any active VRFs that weren't found in gNMI
 	for name, vrf := range s.vrfs {
 		if vrf.Active && vrf.GID == 0 {
@@ -132,4 +177,20 @@ func (s *vrfStore) RestoreGIDsFromGnmi(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// dpuMatchesDesired returns true if the given switchDPU key (from the switch state)
+// matches the desired DPUPinned value.
+//   - DPUPinned == 0: no endpoint expected, delete all (returns false for any switchDPU)
+//   - DPUPinned == 65535: "all" mode, only key 0 ("all") is correct
+//   - DPUPinned == 1..4: pinning mode, only the matching key is correct
+func dpuMatchesDesired(switchDPU uint16, dpuPinned uint16) bool {
+	switch dpuPinned {
+	case 0:
+		return false // no endpoint expected
+	case 65535:
+		return switchDPU == 0 // "all" mode: only the "all" key (0) is correct
+	default:
+		return switchDPU == dpuPinned
+	}
 }

@@ -1554,6 +1554,520 @@ func TestStore_RestoreGIDsFromGnmi_UpdatesNextGID(t *testing.T) {
 	}
 }
 
+// --- Fix 1: Error Propagation Tests ---
+
+// TestReconcilePresets_Batch1FailureSkipsBatch2 verifies that if the batch1 gNMI SET
+// fails, batch2 is not attempted and an error is returned.
+func TestReconcilePresets_Batch1FailureSkipsBatch2(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	handler := mock.NewHandlerBuilder().
+		WithSetError(paths.ServiceRedirServiceItems, fmt.Errorf("gNMI error")).
+		WithPersistPath(tmpDir+"/mock.json").
+		Build()
+	defer handler.Close()
+
+	vs := NewStore(ctx)
+	vs.SetGnmiHandler(handler)
+
+	// Activate with inService=false so no gNMI SET calls happen during activation.
+	activateVRF(vs, "vrf-a", 0)
+	activateVRF(vs, "vrf-b", 0)
+	gidA, _ := vs.GetGID("vrf-a")
+	gidB, _ := vs.GetGID("vrf-b")
+
+	// Now enable in-service so reconcilePresets will attempt gNMI SETs.
+	vs.SetInService(true)
+
+	// Swap GIDs: contested ordering means both VRFs must be in batch1.
+	// If batch1 fails, batch2 must not run.
+	err := vs.SetGIDs(ctx, map[string]uint16{"vrf-a": gidB, "vrf-b": gidA})
+	if err == nil {
+		t.Fatal("expected error from SetGIDs when gNMI SET fails")
+	}
+
+	// TxLog should show exactly 1 "set" for ServiceRedirServiceItems (batch1 only).
+	entries, txErr := handler.TxLog().ReadEntries("", paths.ServiceRedirServiceItems, "set")
+	if txErr != nil {
+		t.Fatalf("failed to read TxLog: %v", txErr)
+	}
+	if len(entries) != 1 {
+		t.Errorf("expected 1 SET attempt (batch1 only), got %d", len(entries))
+	}
+}
+
+// TestSetGIDs_PropagatesReconcileError verifies SetGIDs returns error when gNMI SET fails.
+func TestSetGIDs_PropagatesReconcileError(t *testing.T) {
+	ctx := context.Background()
+
+	handler := mock.NewHandlerBuilder().
+		WithSetError(paths.ServiceRedirServiceItems, fmt.Errorf("gNMI error")).
+		Build()
+
+	vs := NewStore(ctx)
+	vs.SetGnmiHandler(handler)
+	vs.SetInService(true)
+
+	activateVRF(vs, "vrf-a", 0)
+
+	// Changing the GID will trigger reconcilePresets → sendGIDUpdateBatch which will fail.
+	err := vs.SetGIDs(ctx, map[string]uint16{"vrf-a": 50})
+	if err == nil {
+		t.Error("expected SetGIDs to propagate gNMI error")
+	}
+}
+
+// --- Fix 2: Cross-Peer GID Overlap Tests ---
+
+// TestSetGIDs_CrossPeerOverlap_Reallocates verifies that a local VRF whose GID is
+// claimed by an incoming preset (for a differently-named VRF) gets a new GID.
+func TestSetGIDs_CrossPeerOverlap_Reallocates(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx)
+
+	// Activate local VRF "alpha" — gets GID=10.
+	activateVRF(vs, "alpha", 0)
+	alphaGID, _ := vs.GetGID("alpha")
+	if alphaGID == 0 {
+		t.Fatal("expected alpha to have a GID")
+	}
+
+	// Peer has VRF "beta" with the same GID as "alpha".
+	// SetGIDs should detect the collision and reallocate "alpha".
+	if err := vs.SetGIDs(ctx, map[string]uint16{"beta": alphaGID}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	newAlphaGID, _ := vs.GetGID("alpha")
+	if newAlphaGID == alphaGID {
+		t.Errorf("expected alpha to be reallocated away from GID %d (claimed by beta)", alphaGID)
+	}
+}
+
+// TestSetGIDs_CrossPeerOverlap_ChainedConflict verifies multiple local VRFs are all
+// reallocated when they conflict with incoming presets.
+func TestSetGIDs_CrossPeerOverlap_ChainedConflict(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx)
+
+	activateVRF(vs, "a", 0)
+	activateVRF(vs, "b", 0)
+	gidA, _ := vs.GetGID("a")
+	gidB, _ := vs.GetGID("b")
+
+	// Peer claims both GIDs for different VRFs.
+	if err := vs.SetGIDs(ctx, map[string]uint16{"x": gidA, "y": gidB}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	newGIDA, _ := vs.GetGID("a")
+	newGIDB, _ := vs.GetGID("b")
+	if newGIDA == gidA {
+		t.Errorf("expected 'a' to be reallocated from GID %d", gidA)
+	}
+	if newGIDB == gidB {
+		t.Errorf("expected 'b' to be reallocated from GID %d", gidB)
+	}
+}
+
+// TestSetGIDs_SameNameNotCrossPeer verifies that same-name VRF gets preset adoption,
+// not treated as a cross-peer conflict.
+func TestSetGIDs_SameNameNotCrossPeer(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx)
+
+	activateVRF(vs, "alpha", 0)
+	originalGID, _ := vs.GetGID("alpha")
+
+	// SetGIDs for the same name: this is a same-name adoption, not cross-peer.
+	if err := vs.SetGIDs(ctx, map[string]uint16{"alpha": 20}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	gid, _ := vs.GetGID("alpha")
+	if gid != 20 {
+		t.Errorf("expected alpha GID=20 after preset adoption (was %d), got %d", originalGID, gid)
+	}
+}
+
+// --- Fix 3: Refcount Map Tests ---
+
+// TestReservePreset_BlocksAllocation verifies that a reserved preset blocks
+// sequential GID allocation for other VRFs.
+func TestReservePreset_BlocksAllocation(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx)
+
+	// Reserve GID=10 for a peer VRF.
+	vs.ReservePreset(ctx, "peer-vrf", GIDAllocationStart)
+
+	// Activate a different VRF; it must not get GID=10.
+	activateVRF(vs, "local-vrf", 0)
+	gid, ok := vs.GetGID("local-vrf")
+	if !ok {
+		t.Fatal("expected GID to be allocated for local-vrf")
+	}
+	if gid == GIDAllocationStart {
+		t.Errorf("expected local-vrf to skip GID=%d (reserved by peer-vrf), got %d", GIDAllocationStart, gid)
+	}
+}
+
+// TestReservePreset_CleanupOnDelete verifies that auto-removing a skeleton VRF
+// frees its reserved GID, allowing future allocations to use it.
+func TestReservePreset_CleanupOnDelete(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx)
+
+	// Reserve GID=10 for peer-vrf by giving it both global+service flags (skeleton).
+	// Actually ReservePreset only creates a skeleton; SetGlobal then SetService would
+	// auto-remove when both are false. Let's use SetGlobal+SetService to test the cleanup.
+	vs.ReservePreset(ctx, "peer-vrf", GIDAllocationStart)
+
+	// Trigger auto-remove: set global true then false with no service flag.
+	vs.SetGlobal(ctx, "peer-vrf", true)
+	// Now peer-vrf exists with Global=true. GID is still 0 (not active yet, no service/affinity).
+	// Clearing global should auto-remove it (no service flag).
+	vs.SetGlobal(ctx, "peer-vrf", false)
+
+	if _, ok := vs.Get("peer-vrf"); ok {
+		t.Fatal("expected peer-vrf to be auto-removed")
+	}
+
+	// After removal, GID=10 should be allocatable.
+	activateVRF(vs, "new-vrf", 0)
+	gid, ok := vs.GetGID("new-vrf")
+	if !ok {
+		t.Fatal("expected GID for new-vrf")
+	}
+	if gid != GIDAllocationStart {
+		t.Errorf("expected new-vrf to get GID=%d (freed by peer-vrf removal), got %d", GIDAllocationStart, gid)
+	}
+}
+
+// TestReservePreset_NoDoubleFree verifies refcount correctness when a VRF transitions
+// from skeleton (Preset-only) to active (GID set) then deactivates.
+func TestReservePreset_NoDoubleFree(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx)
+
+	// Reserve GID=10 for "alpha".
+	vs.ReservePreset(ctx, "alpha", GIDAllocationStart)
+
+	// Activate "alpha": should use preset GID=10.
+	activateVRF(vs, "alpha", 0)
+	gid, _ := vs.GetGID("alpha")
+	if gid != GIDAllocationStart {
+		t.Fatalf("expected alpha to use preset GID=%d, got %d", GIDAllocationStart, gid)
+	}
+
+	// Deactivate by clearing service (global still set).
+	vs.SetService(ctx, "alpha", false)
+
+	vrf, ok := vs.Get("alpha")
+	if !ok {
+		t.Fatal("expected alpha to survive (global still set)")
+	}
+	if vrf.GID != 0 {
+		t.Errorf("expected GID=0 after deactivation, got %d", vrf.GID)
+	}
+
+	// Activate a second VRF — it must not get GID=10 (Preset still holds it).
+	activateVRF(vs, "beta", 0)
+	betaGID, _ := vs.GetGID("beta")
+	if betaGID == GIDAllocationStart {
+		t.Errorf("expected beta to skip GID=%d (still held by alpha's Preset), got %d", GIDAllocationStart, betaGID)
+	}
+}
+
+// TestRefcount_RestoreOverwrite verifies that RestoreGIDsFromGnmi correctly manages
+// refcounts when overwriting a VRF's GID with a different value from the switch.
+func TestRefcount_RestoreOverwrite(t *testing.T) {
+	ctx := context.Background()
+	handler := mock.NewHandler()
+	vs := NewStore(ctx)
+	vs.SetGnmiHandler(handler)
+
+	// Activate "vrf-a" — gets GID=10 in memory.
+	activateVRF(vs, "vrf-a", 0)
+	originalGID, _ := vs.GetGID("vrf-a")
+	if originalGID == 0 {
+		t.Fatal("expected GID to be allocated")
+	}
+
+	// Switch has vrf-a with a different GID (77).
+	differentGID := uint16(77)
+	serviceItemsJSON := fmt.Sprintf(`{
+		"Cisco-NX-OS-device:Service-list": [
+			{
+				"name": "__vrf-a_dpu_redir",
+				"type": "dpu",
+				"vrf": "vrf-a",
+				"dpuep-items": {
+					"SvcEndPointDpu-list": [
+						{"dpuNum": "all", "vlan": %d}
+					]
+				}
+			}
+		]
+	}`, differentGID)
+	handler.Set(ctx, paths.ServiceRedirServiceItems, serviceItemsJSON)
+
+	if err := vs.RestoreGIDsFromGnmi(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// vrf-a should now have GID=77.
+	newGID, _ := vs.GetGID("vrf-a")
+	if newGID != differentGID {
+		t.Errorf("expected vrf-a GID=%d after restore, got %d", differentGID, newGID)
+	}
+
+	// Activate a second VRF — it must not get originalGID (should be freed)
+	// and must not get differentGID (still in use by vrf-a).
+	activateVRF(vs, "vrf-b", 0)
+	bGID, _ := vs.GetGID("vrf-b")
+	if bGID == differentGID {
+		t.Errorf("expected vrf-b to skip GID=%d (in use by vrf-a), got %d", differentGID, bGID)
+	}
+}
+
+// TestRefcount_RebuildCountsSkeletons verifies that rebuildGIDStateLocked counts
+// skeleton VRF presets in gidsInUse, blocking allocation of those GIDs.
+func TestRefcount_RebuildCountsSkeletons(t *testing.T) {
+	ctx := context.Background()
+	mem := storage.NewMemoryStorage()
+
+	// Create store and add skeleton VRF with Preset=GIDAllocationStart via SetGID.
+	vs1 := NewStore(ctx, WithStorage(mem))
+	if err := vs1.SetGID(ctx, "skeleton-vrf", GIDAllocationStart); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Reload from storage — rebuildGIDStateLocked should count the skeleton preset.
+	vs2 := NewStore(ctx, WithStorage(mem))
+
+	// Activating a new VRF in vs2 must skip GID=GIDAllocationStart.
+	activateVRF(vs2, "new-vrf", 0)
+	gid, ok := vs2.GetGID("new-vrf")
+	if !ok {
+		t.Fatal("expected GID for new-vrf")
+	}
+	if gid == GIDAllocationStart {
+		t.Errorf("expected new-vrf to skip GID=%d (held by skeleton preset), got %d", GIDAllocationStart, gid)
+	}
+}
+
+// --- Fix 4: DPU Repinning Tests ---
+
+// TestRestoreGIDsFromGnmi_RepinDeletesOldEndpoint verifies that if the switch has a VRF
+// with a DPU endpoint that doesn't match the desired DPUPinned, a DELETE is issued.
+func TestRestoreGIDsFromGnmi_RepinDeletesOldEndpoint(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	handler := mock.NewHandlerBuilder().
+		WithPersistPath(tmpDir + "/mock.json").
+		Build()
+	defer handler.Close()
+
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs.SetGnmiHandler(handler)
+
+	// Activate vrf-a with DPUPinned=2 (affinity=2 in pinning mode).
+	activateVRF(vs, "vrf-a", 2)
+	_, ok := vs.GetGID("vrf-a")
+	if !ok {
+		t.Fatal("expected vrf-a to be activated")
+	}
+
+	// Switch has vrf-a with DPU=1 endpoint (stale from before repinning to DPU=2).
+	serviceItemsJSON := `{
+		"Cisco-NX-OS-device:Service-list": [
+			{
+				"name": "__vrf-a_dpu_redir",
+				"type": "dpu",
+				"vrf": "vrf-a",
+				"dpuep-items": {
+					"SvcEndPointDpu-list": [
+						{"dpuNum": "1", "vlan": 10}
+					]
+				}
+			}
+		]
+	}`
+	handler.Set(ctx, paths.ServiceRedirServiceItems, serviceItemsJSON)
+
+	if err := vs.RestoreGIDsFromGnmi(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// A DELETE should have been issued for the DPU=1 endpoint.
+	entries, err := handler.TxLog().ReadEntries("", paths.ServiceRedirServiceItems, "delete")
+	if err != nil {
+		t.Fatalf("failed to read TxLog: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Error("expected DELETE for stale DPU=1 endpoint, but none was issued")
+	}
+}
+
+// TestRestoreGIDsFromGnmi_SamePinningNoDelete verifies that when switch DPU matches
+// desired DPUPinned, no DELETE is issued.
+func TestRestoreGIDsFromGnmi_SamePinningNoDelete(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	handler := mock.NewHandlerBuilder().
+		WithPersistPath(tmpDir + "/mock.json").
+		Build()
+	defer handler.Close()
+
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs.SetGnmiHandler(handler)
+
+	// Activate vrf-a with DPUPinned=1.
+	activateVRF(vs, "vrf-a", 1)
+
+	// Switch also has DPU=1 (matching).
+	serviceItemsJSON := `{
+		"Cisco-NX-OS-device:Service-list": [
+			{
+				"name": "__vrf-a_dpu_redir",
+				"type": "dpu",
+				"vrf": "vrf-a",
+				"dpuep-items": {
+					"SvcEndPointDpu-list": [
+						{"dpuNum": "1", "vlan": 10}
+					]
+				}
+			}
+		]
+	}`
+	handler.Set(ctx, paths.ServiceRedirServiceItems, serviceItemsJSON)
+
+	if err := vs.RestoreGIDsFromGnmi(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// No DELETE should be issued for the DPU=1 endpoint (it matches).
+	entries, err := handler.TxLog().ReadEntries("", paths.ServiceRedirServiceItems, "delete")
+	if err != nil {
+		t.Fatalf("failed to read TxLog: %v", err)
+	}
+	if len(entries) > 0 {
+		t.Errorf("expected no DELETE (DPU matches), but got %d", len(entries))
+	}
+}
+
+// TestRestoreGIDsFromGnmi_NoPinningDeletesAll verifies that when DPUPinned=0 (no
+// endpoint expected), all switch DPU endpoints are deleted.
+func TestRestoreGIDsFromGnmi_NoPinningDeletesAll(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	handler := mock.NewHandlerBuilder().
+		WithPersistPath(tmpDir + "/mock.json").
+		Build()
+	defer handler.Close()
+
+	vs := NewStore(ctx)
+	vs.SetGnmiHandler(handler)
+
+	// Add vrf-a with no pinning (DPUPinned=0, not active).
+	// We need it to be "active" in the store but with DPUPinned=0.
+	// In symmetric-hash mode, active VRFs get DPUPinned=65535, not 0.
+	// Let's manually set up a VRF with DPUPinned=0 by not having dpuCount set.
+	// Actually, with dpuCount=0 and affinity=0 in pinning mode, DPUPinned=0.
+	vs2 := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(0))
+	vs2.SetGnmiHandler(handler)
+	activateVRF(vs2, "vrf-a", 0)
+	vrf, _ := vs2.Get("vrf-a")
+	if vrf.DPUPinned != 0 {
+		t.Skipf("skipping: expected DPUPinned=0 with dpuCount=0, got %d", vrf.DPUPinned)
+	}
+
+	// Switch has DPU=1 endpoint for vrf-a.
+	serviceItemsJSON := `{
+		"Cisco-NX-OS-device:Service-list": [
+			{
+				"name": "__vrf-a_dpu_redir",
+				"type": "dpu",
+				"vrf": "vrf-a",
+				"dpuep-items": {
+					"SvcEndPointDpu-list": [
+						{"dpuNum": "1", "vlan": 10}
+					]
+				}
+			}
+		]
+	}`
+	handler.Set(ctx, paths.ServiceRedirServiceItems, serviceItemsJSON)
+
+	if err := vs2.RestoreGIDsFromGnmi(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// DELETE should be issued for DPU=1 (DPUPinned=0 means no endpoint expected).
+	entries, err := handler.TxLog().ReadEntries("", paths.ServiceRedirServiceItems, "delete")
+	if err != nil {
+		t.Fatalf("failed to read TxLog: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Error("expected DELETE for DPU=1 when DPUPinned=0, but none issued")
+	}
+}
+
+// TestRestoreGIDsFromGnmi_MultipleStaleEndpoints verifies that when a VRF has multiple
+// stale DPU endpoints on the switch, DELETEs are issued for each stale one.
+func TestRestoreGIDsFromGnmi_MultipleStaleEndpoints(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	handler := mock.NewHandlerBuilder().
+		WithPersistPath(tmpDir + "/mock.json").
+		Build()
+	defer handler.Close()
+
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs.SetGnmiHandler(handler)
+
+	// Activate vrf-a with DPUPinned=2.
+	activateVRF(vs, "vrf-a", 2)
+
+	// Switch has DPU=1, DPU=2, and "all" endpoints (only DPU=2 is correct).
+	serviceItemsJSON := `{
+		"Cisco-NX-OS-device:Service-list": [
+			{
+				"name": "__vrf-a_dpu_redir",
+				"type": "dpu",
+				"vrf": "vrf-a",
+				"dpuep-items": {
+					"SvcEndPointDpu-list": [
+						{"dpuNum": "1", "vlan": 10},
+						{"dpuNum": "2", "vlan": 10},
+						{"dpuNum": "all", "vlan": 10}
+					]
+				}
+			}
+		]
+	}`
+	handler.Set(ctx, paths.ServiceRedirServiceItems, serviceItemsJSON)
+
+	if err := vs.RestoreGIDsFromGnmi(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// DELETEs should be issued for DPU=1 and "all", but NOT for DPU=2.
+	entries, err := handler.TxLog().ReadEntries("", paths.ServiceRedirServiceItems, "delete")
+	if err != nil {
+		t.Fatalf("failed to read TxLog: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Errorf("expected 2 DELETEs (for DPU=1 and all), got %d", len(entries))
+	}
+}
+
 // --- Idempotency Tests ---
 
 func TestStore_Idempotency_SetService(t *testing.T) {
