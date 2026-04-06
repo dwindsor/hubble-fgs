@@ -13,6 +13,7 @@ package netpolstate
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -1190,4 +1191,102 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	deleted, err = aState.podRemove(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
+}
+
+// This is a regression test for a bug that was introduced with objectAdd
+// mutating the labels of the original Pod object from the cache. This could
+// have happened at the same time as another go routine was iterating the Pod's
+// labels (in our situation it was during pkg/workloadid Reconcile loop).
+//
+// This test simulates the race condition by:
+// 1. Creating a Pod with labels (simulating cached object)
+// 2. Running objectAdd in one goroutine (which adds namespace labels)
+// 3. Running DeepCopy in another goroutine (which iterates labels)
+//
+// Without the patch, running this test with the Go race detector:
+//
+//	go test -race ./pkg/netpolstate -run TestObjectAddConcurrentPodLabelAccess
+//
+// should fail with:
+//
+//	FAIL: TestObjectAddConcurrentPodLabelAccess (0.00s)
+//	testing.go:1712: race detected during execution of test
+func TestObjectAddConcurrentPodLabelAccess(t *testing.T) {
+	// Create a Pod with labels that will be shared (like in controller-runtime cache)
+	sharedPod := &v1alpha1.PodInfo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "default",
+			UID:       "test-uid-123",
+			Labels: map[string]string{
+				"app":     "test",
+				"version": "v1",
+				"tier":    "backend",
+			},
+		},
+		WorkloadObject: v1alpha1.WorkloadObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "default",
+		},
+		WorkloadType: metav1.TypeMeta{
+			Kind: "Deployment",
+		},
+	}
+
+	state := newTestPolicyState(t)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Goroutine 1: Call objectAdd which would modify labels (adds _tnp_* keys)
+	// This simulates the netpolstate processing a pod add event
+	go func() {
+		defer wg.Done()
+		state.objectAdd(sharedPod)
+	}()
+
+	// Goroutine 2: Simulate controller-runtime cache DeepCopy during Get()
+	// This is what happens when the workloadid reconciler calls Get() on the pod
+	go func() {
+		defer wg.Done()
+		// DeepCopy iterates over the Labels map
+		sharedPod.DeepCopy()
+	}()
+
+	wg.Wait()
+}
+
+// This is a regression test to make sure objectAdd is not mutating the Pod's labels
+func TestObjectAddPodLabelsNotModified(t *testing.T) {
+	originalLabels := map[string]string{
+		"app":     "test",
+		"version": "v1",
+	}
+	originalLen := len(originalLabels)
+	pod := &v1alpha1.PodInfo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "default",
+			UID:       "test-uid-999",
+			Labels:    originalLabels,
+		},
+		WorkloadObject: v1alpha1.WorkloadObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "default",
+		},
+		WorkloadType: metav1.TypeMeta{
+			Kind: "Deployment",
+		},
+	}
+
+	state := newTestPolicyState(t)
+	// Call objectAdd which should not modify the original labels
+	_, err := state.objectAdd(pod)
+	require.NoError(t, err)
+	require.Equal(t, originalLen, len(pod.Labels), "original pod labels should not be modified")
+	require.Equal(t, "test", pod.Labels["app"])
+	require.Equal(t, "v1", pod.Labels["version"])
+	for k := range pod.Labels {
+		require.NotContains(t, k, "_tnp_", "namespace labels should not be added to original pod labels")
+	}
 }
