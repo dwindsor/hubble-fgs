@@ -588,14 +588,12 @@ func (state *PolicyState) getNamespaceLabels(ns string) map[string]string {
 	return l
 }
 
-func (state *PolicyState) addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) error {
+func (state *PolicyState) addNamespaceLabels(endpointObject metav1.Object, labels map[string]string) {
 	ns := endpointObject.GetNamespace()
-	labels := state.getNamespaceLabels(ns)
-	for k, v := range labels {
-		tnpKey := fmt.Sprintf("_tnp_%s", k)
-		ml.Labels[tnpKey] = v
+	nsLabels := state.getNamespaceLabels(ns)
+	for k, v := range nsLabels {
+		labels["_tnp_"+k] = v
 	}
-	return nil
 }
 
 func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.DatapathRecord, error) {
@@ -603,10 +601,16 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 	if endpointObject.GetLabels() == nil {
 		ml.Labels = make(map[string]string, 1)
 	} else {
-		ml.Labels = endpointObject.GetLabels()
+		// Copy labels to avoid modifying the original Pod object's map
+		// which is shared within the controller-runtime cache. This
+		// might provoke concurrent map iteration and map write.
+		ml.Labels = make(map[string]string, len(endpointObject.GetLabels())+1)
+		for k, v := range endpointObject.GetLabels() {
+			ml.Labels[k] = v
+		}
 	}
 
-	state.addNamespaceLabels(endpointObject, ml)
+	state.addNamespaceLabels(endpointObject, ml.Labels)
 
 	ep := createObjectEndpoint(endpointObject)
 
