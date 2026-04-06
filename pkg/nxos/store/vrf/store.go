@@ -18,6 +18,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 )
 
@@ -317,8 +318,29 @@ func (s *vrfStore) SetGIDs(ctx context.Context, changes map[string]uint16) error
 	s.mu.Unlock()
 
 	// Step 3: Apply preset→GID transitions and reprogram redirects.
-	if err := s.reconcilePresets(ctx); err != nil {
+	notified, err := s.reconcilePresets(ctx)
+	if err != nil {
 		return err
+	}
+
+	// Step 3b: When reconcilePresets found no GID changes (all GIDs already
+	// matched their presets), emit a notification so watchers like the
+	// PolicyHandler and NetworkConfig are updated. This handles startup GID
+	// restoration where stored GIDs match the switch state.
+	if !notified {
+		s.mu.RLock()
+		var trigger *types.VRF
+		for name := range changes {
+			if v, ok := s.vrfs[name]; ok && v.Active && v.GID > 0 {
+				cp := v
+				trigger = &cp
+				break
+			}
+		}
+		s.mu.RUnlock()
+		if trigger != nil {
+			s.notify(Event{Type: store.EventUpdated, VRF: *trigger, OldVRF: trigger})
+		}
 	}
 
 	// Step 4: Persist.

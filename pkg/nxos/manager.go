@@ -44,6 +44,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// fwState represents the firewall readiness dimension of systemState.
+type fwState int
+
+const (
+	fwStateDisabled   fwState = iota // neither DpuPending nor FwReady
+	fwStateDpuPending                // SysStDpuPending — waiting for DPU inventory/health
+	fwStateFwReady                   // SysStFwReady — DPUs healthy and in-service
+)
+
 // Status represents the current status of the NXOS manager.
 type Status struct {
 	Phase     Phase
@@ -58,9 +67,12 @@ type Status struct {
 
 // manager implements the Manager interface.
 type manager struct {
-	// Phase tracking
-	phaseMu sync.RWMutex
-	phase   Phase
+	// SystemState bits — all guarded by stateMu.
+	// ConnPending is managed by the device store (SetConnectionStatus), not here.
+	stateMu         sync.Mutex
+	fwStatus        fwState // disabled / dpuPending / fwReady
+	redirDone       bool    // true = SysStRedirDone set
+	lastSystemState int     // last written composite state; -1 = never written
 
 	// Domain stores
 	vrfStore    vrf.Store
@@ -115,8 +127,9 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 	}
 
 	m := &manager{
-		// Phase starts at PhaseDisabled (0x0) — systemState not yet written
-		phase: PhaseDisabled,
+		fwStatus:        fwStateDisabled, // starts disabled
+		redirDone:       false,           // no redirects yet
+		lastSystemState: -1,              // not yet written
 		// Create stores with integrated storage - they load persisted state automatically
 		vrfStore: vrf.NewStore(ctx,
 			vrf.WithStorage(storageBackend),
@@ -170,11 +183,12 @@ func (m *manager) Setup(ctx context.Context) error {
 	// Register VRF change watcher to keep policyHandler and config library in sync.
 	m.setupVRFPolicyWatcher()
 
-	// Advance to DpuPending — signals to NXOS that we are waiting for DPU inventory.
-	if err := m.advancePhase(ctx, PhaseDpuPending); err != nil {
-		logger.GetLogger().Error("Failed to advance to DpuPending phase", logfields.Error, err)
-		return err
-	}
+	// Set dpuPending — signals to NXOS that we are waiting for DPU inventory.
+	m.setDpuPending(ctx)
+
+	// Register hooks BEFORE starting subscriptions so hooks are in place before
+	// any in-service notifications arrive.
+	m.setupInServiceHooks()
 
 	// Start gNMI subscriptions
 	if err := m.setupGnmiSubscriptions(ctx); err != nil {
@@ -192,18 +206,6 @@ func (m *manager) Setup(ctx context.Context) error {
 		m.vlanStore.SetGnmiHandler(m.gnmiHandler)
 		m.dpuStore.SetGnmiHandler(m.gnmiHandler)
 		m.haStore.SetGnmiHandler(m.gnmiHandler)
-
-		// Restore GIDs from existing service redirect configuration on the switch.
-		// This ensures GID allocation matches what's actually configured after restart.
-		if err := m.vrfStore.RestoreGIDsFromGnmi(ctx); err != nil {
-			logger.GetLogger().Warn("Failed to restore GIDs from gNMI", "error", err)
-		}
-
-		// Restore VLAN pinning from existing BD enforcement on the switch.
-		// Selectively cleans up stale/repinned VLANs before reconciliation.
-		if err := m.vlanStore.RestorePinningFromGnmi(ctx); err != nil {
-			logger.GetLogger().Warn("Failed to restore VLAN pinning from gNMI", "error", err)
-		}
 	}
 
 	// Wait for DPU inventory to complete and all expected DPUs to be discovered.
@@ -215,40 +217,6 @@ func (m *manager) Setup(ctx context.Context) error {
 	// Update VRF and VLAN stores with discovered DPU count for hash-based pinning.
 	m.vrfStore.SetDPUCount(uint16(m.dpuStore.DpuCount()))
 	m.vlanStore.SetDPUCount(uint16(m.dpuStore.DpuCount()))
-
-	// Advance to DpuReady — signals to NXOS that DPU subsystem is ready.
-	if err := m.advancePhase(ctx, PhaseDpuReady); err != nil {
-		logger.GetLogger().Error("Failed to advance to DpuReady phase", logfields.Error, err)
-		return err
-	}
-
-	// Program shared redirect infrastructure: ACLs, BD service endpoints, and
-	// BD policy maps. These are prerequisites for per-VRF/VLAN redirect
-	// programming that happens reactively via store callbacks.
-	if err := m.programSharedRedirects(ctx); err != nil {
-		logger.GetLogger().Error("Failed to program shared redirects", logfields.Error, err)
-		return err
-	}
-
-	// Reconcile active VRF/VLAN redirects from persisted state.
-	m.vrfStore.ReconcileRedirects(ctx)
-	m.vlanStore.ReconcileRedirects(ctx)
-
-	// If the device is already in-service, enable the reactive redirect gate
-	// so that future gNMI notifications program redirects immediately.
-	if m.deviceStore.IsInService() {
-		m.vrfStore.SetInService(true)
-		m.vlanStore.SetInService(true)
-	}
-
-	// Register hooks to manage redirects around in-service state transitions.
-	m.setupInServiceHooks()
-
-	// Advance to RedirDone — signals to NXOS that service redirects are configured.
-	if err := m.advancePhase(ctx, PhaseRedirDone); err != nil {
-		logger.GetLogger().Error("Failed to advance to RedirDone phase", logfields.Error, err)
-		return err
-	}
 
 	return nil
 }
@@ -500,6 +468,16 @@ func (m *manager) programSharedRedirects(ctx context.Context) error {
 func (m *manager) setupInServiceHooks() {
 	m.deviceStore.SetPreInServiceHook(func(ctx context.Context, newState string) {
 		if newState == device.InServiceStateInService {
+			// Restore GIDs from switch state. On first boot this populates GIDs;
+			// on return-to-in-service (no restart) the switch has no redirect state
+			// so this is effectively a no-op.
+			if err := m.vrfStore.RestoreGIDsFromGnmi(ctx); err != nil {
+				logger.GetLogger().Warn("Failed to restore GIDs from gNMI", "error", err)
+			}
+			if err := m.vlanStore.RestorePinningFromGnmi(ctx); err != nil {
+				logger.GetLogger().Warn("Failed to restore VLAN pinning from gNMI", "error", err)
+			}
+
 			// Reprogram shared BD infrastructure (ACLs, BD service endpoints,
 			// BD policy maps) which may have been removed by a prior bulk
 			// serviceredir delete during out-of-service. Idempotent: gNMI SET
@@ -510,11 +488,24 @@ func (m *manager) setupInServiceHooks() {
 
 			m.vrfStore.ProgramAllRedirects(ctx)
 			m.vlanStore.ProgramAllRedirects(ctx)
+
+			// Sync policy handler and network config with current VRF state.
+			// Needed for VRFs loaded from storage whose gNMI notifications
+			// matched stored values (no change events fired).
+			m.updateVRFPolicyMap()
+
 			m.vrfStore.SetInService(true)
 			m.vlanStore.SetInService(true)
-			if err := m.advancePhase(ctx, PhaseRedirDone); err != nil {
-				logger.GetLogger().Warn("Failed to advance to RedirDone on in-service", logfields.Error, err)
+			// On in-service: start at dpuPending, promote to fwReady if DPUs are healthy.
+			healthy := m.dpuStore.IsHealthy()
+			count := m.dpuStore.HealthyCount()
+			dpuCount := m.dpuStore.DpuCount()
+			if healthy && count == dpuCount && count > 0 {
+				m.setFwReady(ctx)
+			} else {
+				m.setDpuPending(ctx)
 			}
+			m.setRedirDone(ctx, true)
 		}
 	})
 
@@ -522,6 +513,7 @@ func (m *manager) setupInServiceHooks() {
 		if oldState == device.InServiceStateInService {
 			logger.GetLogger().Info("Out-of-service transition, removing redirects")
 			m.removeAllRedirects(ctx)
+			m.setFwDisabled(ctx)
 		}
 	})
 }
@@ -535,6 +527,11 @@ func (m *manager) setupVRFPolicyWatcher() {
 	}
 
 	m.vrfStore.Watch(func(event vrf.Event) {
+		oldActive := event.OldVRF != nil && event.OldVRF.Active
+		newActive := event.VRF.Active
+		if !oldActive && !newActive {
+			return
+		}
 		m.updateVRFPolicyMap()
 	})
 }
@@ -618,10 +615,11 @@ func (m *manager) removeAllRedirects(ctx context.Context) {
 	// Per-VLAN redirects: bd-items bindings.
 	m.vlanStore.CleanupAllRedirects(ctx)
 
-	// Shared BD service endpoints and policy maps.
+	// Shared BD policy maps and service endpoints. Policy maps must be deleted
+	// first because they reference service endpoints.
 	dpuCount := uint16(m.dpuStore.DpuCount())
-	m.vlanStore.CleanupBDServiceEndpoints(ctx, dpuCount)
 	m.vlanStore.CleanupBDPolicyMaps(ctx, dpuCount)
+	m.vlanStore.CleanupBDServiceEndpoints(ctx, dpuCount)
 
 	// Redirect ACLs.
 	if m.gnmiHandler != nil {
@@ -630,47 +628,69 @@ func (m *manager) removeAllRedirects(ctx context.Context) {
 		}
 	}
 
-	// Regress phase to DpuReady (redirects removed, DPUs still present).
-	if err := m.advancePhase(ctx, PhaseDpuReady); err != nil {
-		logger.GetLogger().Warn("Failed to regress to DpuReady after out-of-service", logfields.Error, err)
-	}
+	// Clear redirDone — redirects removed.
+	m.setRedirDone(ctx, false)
 }
 
-// advancePhase validates and applies a phase transition, then writes the
-// corresponding systemState to the device store (preserving the ConnPending bit).
-func (m *manager) advancePhase(ctx context.Context, p Phase) error {
-	// Need to use a closure to ensure lock is released
-	current, changed, err := func() (Phase, bool, error) {
-		m.phaseMu.Lock()
-		defer m.phaseMu.Unlock()
-		current := m.phase
-		if !current.ValidTransition(p) {
-			return current, false, fmt.Errorf("invalid phase transition: %s -> %s", current, p)
-		}
-		if current == p {
-			return current, false, nil
-		}
-		m.phase = p
-		return current, true, nil
-	}()
-	if err != nil {
-		return err
+// writeSystemStateLocked computes the composite systemState from fwStatus,
+// redirDone, and connPending, then writes it to the device store.
+// Must be called with stateMu held.
+func (m *manager) writeSystemStateLocked(ctx context.Context) {
+	state := 0
+	switch m.fwStatus {
+	case fwStateDpuPending:
+		state |= SysStDpuPending
+	case fwStateFwReady:
+		state |= SysStFwReady
+	} // fwStateDisabled: neither bit set
+	if m.redirDone {
+		state |= SysStRedirDone
 	}
-	if !changed {
-		return nil
+	if state == m.lastSystemState {
+		return
 	}
-
-	logger.GetLogger().Info("Phase transition", "from", current, "to", p)
-	connBit := m.deviceStore.SystemState() & SysStConnPending
-	m.deviceStore.SetSystemState(ctx, int(p)|connBit)
-	return nil
+	m.lastSystemState = state
+	logger.GetLogger().Info("SystemState update", "state", fmt.Sprintf("0x%X", state),
+		"fwStatus", m.fwStatus, "redirDone", m.redirDone)
+	// Use UpdateSystemState to preserve the ConnPending bit owned by the device store.
+	m.deviceStore.UpdateSystemState(ctx, state)
 }
 
-// Phase returns the current phase.
+// setFwDisabled sets fwStatus to disabled (neither DpuPending nor FwReady) and writes systemState.
+func (m *manager) setFwDisabled(ctx context.Context) {
+	m.stateMu.Lock()
+	defer m.stateMu.Unlock()
+	m.fwStatus = fwStateDisabled
+	m.writeSystemStateLocked(ctx)
+}
+
+// setDpuPending sets fwStatus to dpuPending and writes systemState.
+func (m *manager) setDpuPending(ctx context.Context) {
+	m.stateMu.Lock()
+	defer m.stateMu.Unlock()
+	m.fwStatus = fwStateDpuPending
+	m.writeSystemStateLocked(ctx)
+}
+
+// setFwReady sets fwStatus to fwReady and writes systemState.
+func (m *manager) setFwReady(ctx context.Context) {
+	m.stateMu.Lock()
+	defer m.stateMu.Unlock()
+	m.fwStatus = fwStateFwReady
+	m.writeSystemStateLocked(ctx)
+}
+
+// setRedirDone sets the redirDone bit and writes systemState.
+func (m *manager) setRedirDone(ctx context.Context, done bool) {
+	m.stateMu.Lock()
+	defer m.stateMu.Unlock()
+	m.redirDone = done
+	m.writeSystemStateLocked(ctx)
+}
+
+// Phase returns the current phase as a composite bitmask read from the device store.
 func (m *manager) Phase() Phase {
-	m.phaseMu.RLock()
-	defer m.phaseMu.RUnlock()
-	return m.phase
+	return Phase(m.deviceStore.SystemState())
 }
 
 // DeviceStore returns the device store.
@@ -752,23 +772,17 @@ func (m *manager) SetRegOk(ctx context.Context, reason string) {
 }
 
 // SetConnFail sets the connection failure status.
-// State synchronization to gNMI is handled by the controller store.
+// ConnPending bit is managed atomically by SetConnectionStatus in the device store.
 func (m *manager) SetConnFail(ctx context.Context, reason string) {
 	logger.GetLogger().Debug("SetConnFail", "reason", reason)
 	m.deviceStore.SetConnectionStatus(ctx, device.CommonStateFailure, reason)
-	// Update system state: set connection pending bit
-	currentState := m.deviceStore.SystemState()
-	m.deviceStore.SetSystemState(ctx, currentState|SysStConnPending)
 }
 
 // SetConnOk sets the connection success status.
-// State synchronization to gNMI is handled by the controller store.
+// ConnPending bit is managed atomically by SetConnectionStatus in the device store.
 func (m *manager) SetConnOk(ctx context.Context, reason string) {
 	logger.GetLogger().Debug("SetConnOk", "reason", reason)
 	m.deviceStore.SetConnectionStatus(ctx, device.CommonStateSuccess, reason)
-	// Update system state: clear connection pending bit
-	currentState := m.deviceStore.SystemState()
-	m.deviceStore.SetSystemState(ctx, currentState&^SysStConnPending)
 }
 
 // ResetReg resets the registration status.
@@ -1038,10 +1052,14 @@ func (m *manager) DpuHealth(ctx context.Context, healthy bool, count int) {
 	m.dpuStore.SetHealth(healthy, count)
 	m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, healthy)
 
-	// Advance or regress phase based on DPU health; advancePhase preserves ConnPending bit.
+	// Update fw status: gate on in-service so DpuHealth during out-of-service
+	// doesn't change the disabled state.
+	if !m.deviceStore.IsInService() {
+		return
+	}
 	if healthy && count == m.dpuStore.DpuCount() && count > 0 {
-		m.advancePhase(ctx, PhaseDpuReady)
+		m.setFwReady(ctx)
 	} else {
-		m.advancePhase(ctx, PhaseDpuPending)
+		m.setDpuPending(ctx)
 	}
 }

@@ -583,58 +583,74 @@ func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 }
 
 func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
-	dpu.mtx.Lock()
-	defer dpu.mtx.Unlock()
+	// Snapshot peers while holding the lock for the ruleSet mutation, then
+	// release before fanning out to peers. SendPolicy can block on channel
+	// sends with a 2s timeout per peer; holding the write lock during that
+	// I/O starves every other caller (StateCheck, addPeer, gRPC streams).
+	peers, err := func() (map[string]*peer, error) {
+		dpu.mtx.Lock()
+		defer dpu.mtx.Unlock()
 
-	csum, err := HashRule(rule.Policy)
-	if err != nil {
-		logger.GetLogger().Error("Failed to hash policy rule",
+		csum, err := HashRule(rule.Policy)
+		if err != nil {
+			logger.GetLogger().Error("Failed to hash policy rule",
+				"policyName", rule.Policy.PolicyName,
+				"ruleName", rule.Policy.RuleName,
+				"error", err)
+			return nil, err
+		}
+
+		hexCsum := hex.EncodeToString(csum[:])
+		logger.GetLogger().Debug("Processing policy rule submission",
+			"operation", rule.Oper.String(),
 			"policyName", rule.Policy.PolicyName,
 			"ruleName", rule.Policy.RuleName,
-			"error", err)
+			"ruleChecksum", hexCsum[:16], // First 16 chars
+			"currentRuleSetSize", len(dpu.ruleSet),
+			"targetPeers", len(dpu.peerGroup))
+
+		uid := rule.Policy.RuleUID()
+
+		switch rule.Oper {
+		case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
+			// If this rule UID already exists with a different hash (e.g., VRF ID
+			// change), remove the old hash entry so it doesn't linger in the ruleSet.
+			if oldCsum, ok := dpu.ruleUIDToHash[uid]; ok && oldCsum != csum {
+				delete(dpu.ruleSet, oldCsum)
+			}
+			dpu.ruleSet[csum] = rule.Policy
+			dpu.ruleUIDToHash[uid] = csum
+		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
+			if _, exists := dpu.ruleSet[csum]; exists {
+				delete(dpu.ruleSet, csum)
+			} else {
+				logger.GetLogger().Warn("Attempted to delete non-existent rule",
+					"ruleChecksum", hexCsum[:16],
+					"policyName", rule.Policy.PolicyName,
+					"ruleName", rule.Policy.RuleName)
+			}
+			delete(dpu.ruleUIDToHash, uid)
+		default:
+			return nil, fmt.Errorf("unknown operation type %d", rule.Oper)
+		}
+		dpu.checksumValid = false
+
+		// Snapshot the peer map so we can fan out without the lock.
+		snapshot := make(map[string]*peer, len(dpu.peerGroup))
+		for k, v := range dpu.peerGroup {
+			snapshot[k] = v
+		}
+		return snapshot, nil
+	}()
+	if err != nil {
 		return err
 	}
 
-	hexCsum := hex.EncodeToString(csum[:])
-	logger.GetLogger().Debug("Processing policy rule submission",
-		"operation", rule.Oper.String(),
-		"policyName", rule.Policy.PolicyName,
-		"ruleName", rule.Policy.RuleName,
-		"ruleChecksum", hexCsum[:16], // First 16 chars
-		"currentRuleSetSize", len(dpu.ruleSet),
-		"targetPeers", len(dpu.peerGroup))
-
-	uid := rule.Policy.RuleUID()
-
-	switch rule.Oper {
-	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
-		// If this rule UID already exists with a different hash (e.g., VRF ID
-		// change), remove the old hash entry so it doesn't linger in the ruleSet.
-		if oldCsum, ok := dpu.ruleUIDToHash[uid]; ok && oldCsum != csum {
-			delete(dpu.ruleSet, oldCsum)
-		}
-		dpu.ruleSet[csum] = rule.Policy
-		dpu.ruleUIDToHash[uid] = csum
-	case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
-		if _, exists := dpu.ruleSet[csum]; exists {
-			delete(dpu.ruleSet, csum)
-		} else {
-			logger.GetLogger().Warn("Attempted to delete non-existent rule",
-				"ruleChecksum", hexCsum[:16],
-				"policyName", rule.Policy.PolicyName,
-				"ruleName", rule.Policy.RuleName)
-		}
-		delete(dpu.ruleUIDToHash, uid)
-	default:
-		return fmt.Errorf("unknown operation type %d", rule.Oper)
-	}
-	dpu.checksumValid = false
-
-	// Send to all peers
+	// Send to all peers without holding the lock.
 	successCount := 0
 	failureCount := 0
-	for peerUID, dpu := range dpu.peerGroup {
-		err := dpu.SendPolicy(rule)
+	for peerUID, p := range peers {
+		err := p.SendPolicy(rule)
 		if err != nil {
 			failureCount++
 			logger.GetLogger().Error("Failed to send policy rule to peer",
@@ -643,8 +659,8 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 				"policyName", rule.Policy.PolicyName,
 				"ruleName", rule.Policy.RuleName,
 				"operation", rule.Oper.String(),
-				"peerLastEpoch", dpu.lastEpoch,
-				"peerFailCount", dpu.syncFailCount.Load())
+				"peerLastEpoch", p.lastEpoch,
+				"peerFailCount", p.syncFailCount.Load())
 		} else {
 			successCount++
 		}
@@ -656,7 +672,7 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 		"operation", rule.Oper.String(),
 		"successCount", successCount,
 		"failureCount", failureCount,
-		"totalPeers", len(dpu.peerGroup))
+		"totalPeers", len(peers))
 
 	return nil
 }

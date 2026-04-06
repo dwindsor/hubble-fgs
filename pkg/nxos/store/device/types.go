@@ -26,6 +26,10 @@ var (
 	InServiceStateOutOfService = nxosmodel.Cisco_NX_OSDevice_Sas_SasInstState_out_of_service.String()
 )
 
+// sysStConnPending is the ConnPending bit in the systemState bitmask.
+// Defined locally to avoid circular imports with the nxos package.
+const sysStConnPending = 0x2
+
 // EventType represents the type of device event.
 type EventType string
 

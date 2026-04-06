@@ -1564,7 +1564,7 @@ func TestReconcilePresets_Batch1FailureSkipsBatch2(t *testing.T) {
 
 	handler := mock.NewHandlerBuilder().
 		WithSetError(paths.ServiceRedirServiceItems, fmt.Errorf("gNMI error")).
-		WithPersistPath(tmpDir+"/mock.json").
+		WithPersistPath(tmpDir + "/mock.json").
 		Build()
 	defer handler.Close()
 

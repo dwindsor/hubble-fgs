@@ -79,6 +79,9 @@ type Store interface {
 	SetControllerPort(ctx context.Context, port uint32)
 	SetControllerVersion(ctx context.Context, version string)
 	SetSystemState(ctx context.Context, systemState int)
+	// UpdateSystemState atomically writes the non-ConnPending bits of systemState,
+	// preserving the ConnPending bit which is owned by SetConnectionStatus.
+	UpdateSystemState(ctx context.Context, bits int)
 	DeleteSystemState(ctx context.Context) error
 
 	// ReservePort returns the port for the given service type within the HSA range.

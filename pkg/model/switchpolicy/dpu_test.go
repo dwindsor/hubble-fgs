@@ -13,6 +13,7 @@ package switchpolicy
 import (
 	"context"
 	"encoding/hex"
+	"sync"
 	"testing"
 	"time"
 
@@ -529,6 +530,69 @@ func TestSubmitDPURuleToDPU_VRFIDSwap(t *testing.T) {
 	dpuFresh.SubmitDPURuleToDPU(ruleRedSwapped)
 	dpuFresh.SubmitDPURuleToDPU(ruleBlueSwapped)
 	assert.Equal(t, dpu.Checksum(), dpuFresh.Checksum(), "checksums should match fresh listener after GID swap")
+}
+
+// TestSubmitDPURuleToDPU_NoLockDuringFanOut verifies that SubmitDPURuleToDPU
+// does not hold the DPUListener lock while sending to peers. A slow peer
+// (unbuffered polCh that nobody drains) must not block Checksum() or addPeer().
+func TestSubmitDPURuleToDPU_NoLockDuringFanOut(t *testing.T) {
+	dpu := NewDPUListener(context.Background(), "127.0.0.1:8080")
+
+	// Add a peer with an unbuffered polCh — sends will block until the
+	// 2-second timeout in SendPolicy fires.
+	slowPeer := dpu.addPeer("slow-peer")
+	slowPeer.polCh = make(chan *DPUPolicyRule) // unbuffered, never drained
+
+	rule := &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			PolicyName:  "lock-test-policy",
+			RuleName:    "lock-test-rule",
+			Source:      DPUSubject{Cidr: "10.0.0.0/8", Ports: &[]SmartSwitchNetworkProtocolPorts{}},
+			Destination: DPUSubject{Cidr: "192.168.0.0/16", Ports: &[]SmartSwitchNetworkProtocolPorts{}},
+		},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		dpu.SubmitDPURuleToDPU(rule)
+	}()
+
+	// Give SubmitDPURuleToDPU a moment to acquire and release the lock
+	// before entering the fan-out. The critical section (ruleSet update)
+	// is fast; if the lock were held during SendPolicy we'd block here
+	// for the full 2-second timeout.
+	deadline := 500 * time.Millisecond
+
+	// Checksum() needs the write lock when checksumValid is false.
+	done := make(chan struct{})
+	go func() {
+		dpu.Checksum()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(deadline):
+		t.Fatal("Checksum() blocked — lock is held during peer fan-out")
+	}
+
+	// addPeer() also needs the write lock.
+	done2 := make(chan struct{})
+	go func() {
+		dpu.addPeer("new-peer")
+		close(done2)
+	}()
+	select {
+	case <-done2:
+	case <-time.After(deadline):
+		t.Fatal("addPeer() blocked — lock is held during peer fan-out")
+	}
+
+	// Drain the slow peer's channel so SubmitDPURuleToDPU can finish,
+	// or just wait for the 2-second SendPolicy timeout.
+	wg.Wait()
 }
 
 func TestSendConfigTimeoutForcesReconnect(t *testing.T) {

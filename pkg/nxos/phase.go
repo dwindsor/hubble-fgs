@@ -10,80 +10,34 @@
 
 package nxos
 
-// Phase represents the systemState progression reported to NXOS over gNMI.
-// Phase values map directly to the SysSt* bitmask constants, so an int
-// cast always yields the correct systemState to write to the device store.
+import "strings"
+
+// Phase represents the composite systemState bitmask reported to NXOS over gNMI.
+// It is an int so that Phase(deviceStore.SystemState()).String() works for display.
 type Phase int
 
-const (
-	// PhaseDisabled means FW is disabled (systemState = 0x0).
-	PhaseDisabled Phase = SysStFwDisable
-	// PhaseDpuPending means we are waiting for DPU inventory (systemState = 0x1).
-	PhaseDpuPending Phase = SysStDpuPending
-	// PhaseDpuReady means the DPU subsystem is ready (systemState = 0x4).
-	PhaseDpuReady Phase = SysStDpuReady
-	// PhaseRedirDone means DPU ready and service redirects are programmed (systemState = 0xC).
-	PhaseRedirDone Phase = SysStDpuReady | SysStRedirDone
-)
-
-// Order returns the sequential order of the phase for comparison.
-func (p Phase) Order() int {
-	switch p {
-	case PhaseDisabled:
-		return 0
-	case PhaseDpuPending:
-		return 1
-	case PhaseDpuReady:
-		return 2
-	case PhaseRedirDone:
-		return 3
-	default:
-		return -1
-	}
-}
-
-// String returns a human-readable name for the phase.
+// String returns a human-readable representation of the bitmask state.
+// Each set bit is listed as a component; multiple bits are joined with "|".
 func (p Phase) String() string {
-	switch p {
-	case PhaseDisabled:
+	state := int(p)
+	if state == SysStFwDisable {
 		return "disabled"
-	case PhaseDpuPending:
-		return "dpu-pending"
-	case PhaseDpuReady:
-		return "dpu-ready"
-	case PhaseRedirDone:
-		return "redir-done"
-	default:
+	}
+	var parts []string
+	if state&SysStDpuPending != 0 {
+		parts = append(parts, "dpu-pending")
+	}
+	if state&SysStFwReady != 0 {
+		parts = append(parts, "fw-ready")
+	}
+	if state&SysStRedirDone != 0 {
+		parts = append(parts, "redir-done")
+	}
+	if state&SysStConnPending != 0 {
+		parts = append(parts, "conn-pending")
+	}
+	if len(parts) == 0 {
 		return "unknown"
 	}
-}
-
-// ValidTransition returns true if transitioning from p to target is allowed.
-// Rules:
-//   - Same phase is always valid (no-op).
-//   - Forward sequential transitions are valid (no skipping).
-//   - DpuReady ↔ DpuPending is valid to accommodate health fluctuation.
-//   - RedirDone ↔ DpuReady is valid to accommodate in-service/out-of-service.
-func (p Phase) ValidTransition(target Phase) bool {
-	if p == target {
-		return true
-	}
-	// Allow bidirectional health fluctuation between DpuPending and DpuReady.
-	if (p == PhaseDpuPending && target == PhaseDpuReady) ||
-		(p == PhaseDpuReady && target == PhaseDpuPending) {
-		return true
-	}
-	// Allow bidirectional redirect fluctuation between DpuReady and RedirDone
-	// to accommodate in-service/out-of-service transitions.
-	if (p == PhaseDpuReady && target == PhaseRedirDone) ||
-		(p == PhaseRedirDone && target == PhaseDpuReady) {
-		return true
-	}
-	// Forward sequential only (no skipping, no other backwards).
-	return target.Order() == p.Order()+1
-}
-
-// IsAtLeast returns true if p is at least as advanced as other.
-func (p Phase) IsAtLeast(other Phase) bool {
-	return p.Order() >= other.Order()
+	return strings.Join(parts, "|")
 }

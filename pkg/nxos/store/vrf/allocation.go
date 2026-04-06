@@ -20,6 +20,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 )
@@ -156,9 +157,12 @@ func (s *vrfStore) allocateGIDLocked(vrf types.VRF) types.VRF {
 // reconcilePresets applies pending Preset→GID transitions for all active VRFs
 // where GID != Preset. Uses two-phase batching and in-place endpoint updates
 // to avoid teardown+rebuild and transient GID conflicts.
-func (s *vrfStore) reconcilePresets(ctx context.Context) error {
+//
+// Returns true if any GID changes were applied and watchers were notified.
+func (s *vrfStore) reconcilePresets(ctx context.Context) (bool, error) {
 	type entry struct {
 		oldGID uint16
+		oldVRF types.VRF // snapshot before GID change
 		vrf    types.VRF // snapshot with updated GID
 	}
 
@@ -169,12 +173,12 @@ func (s *vrfStore) reconcilePresets(ctx context.Context) error {
 		if !vrf.Active || vrf.Preset == 0 || vrf.GID == vrf.Preset {
 			continue
 		}
-		entries = append(entries, entry{oldGID: vrf.GID, vrf: vrf})
+		entries = append(entries, entry{oldGID: vrf.GID, oldVRF: vrf, vrf: vrf})
 	}
 
 	if len(entries) == 0 {
 		s.mu.Unlock()
-		return nil
+		return false, nil
 	}
 
 	// Free all old GIDs first to avoid blocking new GID assignments.
@@ -200,8 +204,14 @@ func (s *vrfStore) reconcilePresets(ctx context.Context) error {
 	inService := s.inService
 	s.mu.Unlock()
 
+	// Notify watchers of GID changes (e.g. PolicyHandler, NetworkConfig).
+	for _, e := range entries {
+		oldVRF := e.oldVRF
+		s.notify(Event{Type: store.EventUpdated, VRF: e.vrf, OldVRF: &oldVRF})
+	}
+
 	if handler == nil || !inService {
-		return nil
+		return true, nil
 	}
 
 	// Two-phase batching: contested GIDs first (their old GID is needed by another VRF),
@@ -221,9 +231,9 @@ func (s *vrfStore) reconcilePresets(ctx context.Context) error {
 	}
 
 	if err := s.sendGIDUpdateBatch(ctx, handler, batch1); err != nil {
-		return err
+		return true, err
 	}
-	return s.sendGIDUpdateBatch(ctx, handler, batch2)
+	return true, s.sendGIDUpdateBatch(ctx, handler, batch2)
 }
 
 // sendGIDUpdateBatch issues a single gNMI SET that updates only the VLAN (GID) field

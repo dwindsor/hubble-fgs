@@ -27,7 +27,7 @@ const (
 	SysStFwDisable   = 0x0
 	SysStDpuPending  = 0x1
 	SysStConnPending = 0x2
-	SysStDpuReady    = 0x4
+	SysStFwReady     = 0x4
 	SysStRedirDone   = 0x8
 )
 

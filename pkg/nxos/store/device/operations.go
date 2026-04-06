@@ -124,17 +124,29 @@ func (s *deviceStore) updateProxyEnvVars() {
 
 func (s *deviceStore) SetConnectionStatus(ctx context.Context, status string, reason string) {
 	s.mu.Lock()
-	changed := s.connectionStatus != status
+	connChanged := s.connectionStatus != status
 	s.connectionStatus = status
 	s.rejectReason = reason
+
+	// Update ConnPending bit in systemState atomically.
+	// In headless mode, ConnPending is never set.
+	oldState := s.systemState
+	if !s.headlessMode {
+		if status == CommonStateSuccess {
+			s.systemState &^= sysStConnPending
+		} else {
+			s.systemState |= sysStConnPending
+		}
+	}
+	stateChanged := s.systemState != oldState
+	newState := s.systemState
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
-	if changed {
+	if connChanged {
 		s.notify(Event{Type: EventConnectionChanged, Status: status, Reason: reason})
-		s.persist(ctx)
 
-		// Sync state to NXOS via gNMI
+		// Sync connection status to NXOS via gNMI
 		if handler != nil {
 			if err := handler.Set(ctx, paths.DeviceStoreConnectionStatus, status); err != nil {
 				logger.GetLogger().Warn("Failed to sync connection status to gNMI", "status", status, "error", err)
@@ -146,6 +158,15 @@ func (s *deviceStore) SetConnectionStatus(ctx context.Context, status string, re
 			}
 		}
 	}
+
+	if stateChanged && handler != nil {
+		hexState := fmt.Sprintf("0x%X", newState)
+		if err := handler.Set(ctx, paths.DeviceStoreSystemState, hexState); err != nil {
+			logger.GetLogger().Warn("Failed to sync system state to gNMI", "state", hexState, "error", err)
+		}
+	}
+
+	s.persist(ctx)
 }
 
 func (s *deviceStore) SetAdmissionStatus(ctx context.Context, status string, reason string) {
@@ -323,10 +344,7 @@ func (s *deviceStore) ResetRegistration(ctx context.Context) {
 }
 
 func (s *deviceStore) ResetConnection(ctx context.Context) {
-	s.mu.Lock()
-	s.connectionStatus = CommonStateUnknown
-	s.mu.Unlock()
-	s.persist(ctx)
+	s.SetConnectionStatus(ctx, CommonStateUnknown, "")
 }
 
 func (s *deviceStore) SetControllerEndpoint(ctx context.Context, endpoint string) {
@@ -384,6 +402,26 @@ func (s *deviceStore) SetSystemState(ctx context.Context, systemState int) {
 
 	if handler != nil && changed {
 		hexState := fmt.Sprintf("0x%X", systemState)
+		if err := handler.Set(ctx, paths.DeviceStoreSystemState, hexState); err != nil {
+			logger.GetLogger().Warn("Failed to sync system state to gNMI", "state", hexState, "error", err)
+		}
+	}
+}
+
+// UpdateSystemState atomically updates the non-ConnPending bits of systemState
+// while preserving the ConnPending bit (which is owned by SetConnectionStatus).
+func (s *deviceStore) UpdateSystemState(ctx context.Context, bits int) {
+	s.mu.Lock()
+	old := s.systemState
+	s.systemState = bits | (old & sysStConnPending)
+	changed := s.systemState != old
+	handler := s.gnmiHandler
+	newState := s.systemState
+	s.mu.Unlock()
+	s.persist(ctx)
+
+	if handler != nil && changed {
+		hexState := fmt.Sprintf("0x%X", newState)
 		if err := handler.Set(ctx, paths.DeviceStoreSystemState, hexState); err != nil {
 			logger.GetLogger().Warn("Failed to sync system state to gNMI", "state", hexState, "error", err)
 		}

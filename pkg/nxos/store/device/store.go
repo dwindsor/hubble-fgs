@@ -122,6 +122,13 @@ func WithAgentTokenProvider(p AgentTokenProvider) Option {
 	}
 }
 
+// WithHeadlessMode forces headless mode on, bypassing the /etc/sas.cfg check.
+func WithHeadlessMode(headless bool) Option {
+	return func(ds *deviceStore) {
+		ds.headlessMode = headless
+	}
+}
+
 // NewStore creates a new device store with optional storage backend.
 // If storage is provided, it loads initial state and persists changes automatically.
 func NewStore(ctx context.Context, opts ...Option) Store {
@@ -185,6 +192,11 @@ func NewStore(ctx context.Context, opts ...Option) Store {
 	} else if v.GetString("NX_AGENT_HEADLESS_MODE") == "1" {
 		logger.GetLogger().Info("Headless mode set")
 		s.headlessMode = true
+	}
+
+	// Non-headless mode: start with ConnPending since connection isn't established yet.
+	if !s.headlessMode {
+		s.systemState |= sysStConnPending
 	}
 
 	return s
