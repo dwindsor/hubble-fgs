@@ -191,6 +191,14 @@ type HAPeerState struct {
 	ConnectedEpoch            int64  // last successful keepalive
 	IpConfigState             string // gNMI-managed IP config state (e.g. "success", "not-started", "failed")
 
+	// VrfGIDs is the peer's last-known VRF GID map (name -> GID),
+	// populated from adjacency exchange MbrInfo.VrfInfo.
+	VrfGIDs map[string]uint16
+
+	// VlanIDs is the peer's last-known VLAN ID map (name -> ID),
+	// populated from adjacency exchange MbrInfo.VlanIdRanges.
+	VlanIDs map[string]uint16
+
 	// Per-DPU HA status (for CLI visibility)
 	DPUStatuses map[string]DPUHAStatus
 
@@ -217,6 +225,18 @@ func (p HAPeerState) Copy() HAPeerState {
 		cp.DPUStatuses = make(map[string]DPUHAStatus, len(p.DPUStatuses))
 		for k, v := range p.DPUStatuses {
 			cp.DPUStatuses[k] = v
+		}
+	}
+	if p.VrfGIDs != nil {
+		cp.VrfGIDs = make(map[string]uint16, len(p.VrfGIDs))
+		for k, v := range p.VrfGIDs {
+			cp.VrfGIDs[k] = v
+		}
+	}
+	if p.VlanIDs != nil {
+		cp.VlanIDs = make(map[string]uint16, len(p.VlanIDs))
+		for k, v := range p.VlanIDs {
+			cp.VlanIDs[k] = v
 		}
 	}
 	return cp

@@ -81,6 +81,8 @@ type Store interface {
 	UpdatePeerSvcState(ctx context.Context, ip string, svcState string, reason types.ReasonString)
 	UpdatePeerConnected(ctx context.Context, ip string, connected bool, epoch int64)
 	UpdatePeerDPUStatuses(ctx context.Context, ip string, statuses map[string]types.DPUHAStatus)
+	UpdatePeerVrfGIDs(ctx context.Context, ip string, gids map[string]uint16)
+	UpdatePeerVlanIDs(ctx context.Context, ip string, ids map[string]uint16)
 
 	// gNMI integration
 	SetGnmiHandler(handler gnmi.GnmiHandler)

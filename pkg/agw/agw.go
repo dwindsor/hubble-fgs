@@ -1933,16 +1933,40 @@ func (agw *AgentGateway) GnmiShowHaInfo(_ context.Context, msgData ipc.MessageDa
 	haStore := agw.nxosManager.HAStore()
 	local := haStore.Local()
 
+	deviceStore := agw.nxosManager.DeviceStore()
+	dpuStore := agw.nxosManager.DPUStore()
+
 	if msgData.Flags["json"] == "true" {
+		type DPUVersionData struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+		}
+		type MemberInfoData struct {
+			SerialNum    string           `json:"serial_num"`
+			Model        string           `json:"model"`
+			SWVersion    string           `json:"sw_version"`
+			AgentVersion string           `json:"agent_version"`
+			HaState      string           `json:"ha_state"`
+			Service      string           `json:"service"`
+			LbMode       string           `json:"lb_mode"`
+			PolicyCheck  bool             `json:"policy_check"`
+			PolicyRev    string           `json:"policy_rev"`
+			DPUs         []DPUVersionData `json:"dpus"`
+		}
+		dpus := make([]DPUVersionData, 0)
+		for _, d := range dpuStore.List() {
+			dpus = append(dpus, DPUVersionData{Name: d.Name, Version: d.Version})
+		}
 		result := struct {
-			AdminState  string `json:"admin_state"`
-			OperState   string `json:"oper_state"`
-			IsLeader    bool   `json:"is_leader"`
-			LocalIP     string `json:"local_ip"`
-			HaPort      uint16 `json:"ha_port"`
-			PolicyCheck bool   `json:"policy_check"`
-			PolicyRev   string `json:"policy_rev"`
-			PeerCount   int    `json:"peer_count"`
+			AdminState  string         `json:"admin_state"`
+			OperState   string         `json:"oper_state"`
+			IsLeader    bool           `json:"is_leader"`
+			LocalIP     string         `json:"local_ip"`
+			HaPort      uint16         `json:"ha_port"`
+			PolicyCheck bool           `json:"policy_check"`
+			PolicyRev   string         `json:"policy_rev"`
+			PeerCount   int            `json:"peer_count"`
+			MemberInfo  MemberInfoData `json:"member_info"`
 		}{
 			AdminState:  haStore.Enabled(),
 			OperState:   haStore.SwitchState(),
@@ -1952,6 +1976,18 @@ func (agw *AgentGateway) GnmiShowHaInfo(_ context.Context, msgData ipc.MessageDa
 			PolicyCheck: local.PolicyCheck,
 			PolicyRev:   local.PolicyRev,
 			PeerCount:   len(haStore.PeerIPs()),
+			MemberInfo: MemberInfoData{
+				SerialNum:    deviceStore.SerialNumber(),
+				Model:        deviceStore.Model(),
+				SWVersion:    deviceStore.SoftwareVersion(),
+				AgentVersion: deviceStore.CPAVersion(),
+				HaState:      local.HaState,
+				Service:      local.SvcState,
+				LbMode:       deviceStore.LbMode(),
+				PolicyCheck:  local.PolicyCheck,
+				PolicyRev:    local.PolicyRev,
+				DPUs:         dpus,
+			},
 		}
 		jsonData, err := json.Marshal(result)
 		if err != nil {
@@ -1977,6 +2013,26 @@ func (agw *AgentGateway) GnmiShowHaInfo(_ context.Context, msgData ipc.MessageDa
 	} else {
 		fmt.Fprintf(w, "Configured Peers:\t(none)\n")
 	}
+
+	fmt.Fprintln(w, "\nMember Info:")
+	fmt.Fprintf(w, "  Serial:\t%s\n", deviceStore.SerialNumber())
+	fmt.Fprintf(w, "  Model:\t%s\n", deviceStore.Model())
+	fmt.Fprintf(w, "  SW Version:\t%s\n", deviceStore.SoftwareVersion())
+	fmt.Fprintf(w, "  CPA Version:\t%s\n", deviceStore.CPAVersion())
+	fmt.Fprintf(w, "  Reported HA State:\t%s\n", local.HaState)
+	fmt.Fprintf(w, "  Service:\t%s\n", local.SvcState)
+	fmt.Fprintf(w, "  LB Mode:\t%s\n", deviceStore.LbMode())
+	fmt.Fprintf(w, "  Policy Rev:\t%s\n", local.PolicyRev)
+	fmt.Fprintf(w, "  Policy Check:\t%t\n", local.PolicyCheck)
+	dpus := dpuStore.List()
+	if len(dpus) > 0 {
+		dpuParts := make([]string, len(dpus))
+		for i, d := range dpus {
+			dpuParts[i] = d.Name + "(" + d.Version + ")"
+		}
+		fmt.Fprintf(w, "  DPUs:\t%s\n", strings.Join(dpuParts, ", "))
+	}
+
 	w.Flush()
 	return buf.String()
 }
@@ -3327,6 +3383,251 @@ func (agw *AgentGateway) MockVlanAdd(ctx context.Context, msgData ipc.MessageDat
 	}
 
 	return fmt.Sprintf("VLAN %q added (affinity=%s)", id, affinity)
+}
+
+// GnmiShowHaGids returns a combined view of local and peer VRF GID allocations
+// for HA reconciliation visibility.
+func (agw *AgentGateway) GnmiShowHaGids(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show HA VRFs")
+
+	// Local VRFs with GID or Preset
+	allVRFs := agw.nxosManager.VRFStore().List()
+	var localVRFs []nxtypes.VRF
+	for _, v := range allVRFs {
+		if v.GID > 0 || v.Preset > 0 {
+			localVRFs = append(localVRFs, v)
+		}
+	}
+	sort.Slice(localVRFs, func(i, j int) bool {
+		if localVRFs[i].GID != localVRFs[j].GID {
+			return localVRFs[i].GID < localVRFs[j].GID
+		}
+		return localVRFs[i].Name < localVRFs[j].Name
+	})
+	nextGID := agw.nxosManager.VRFStore().NextGID()
+
+	// Peer VRF GIDs from HA store
+	haStore := agw.nxosManager.HAStore()
+	allPeers := haStore.AllPeers()
+	peerIPs := make([]string, 0, len(allPeers))
+	for ip := range allPeers {
+		peerIPs = append(peerIPs, ip)
+	}
+	sort.Strings(peerIPs)
+
+	if msgData.Flags["json"] == "true" {
+		type VRFEntry struct {
+			Name   string `json:"name"`
+			GID    uint16 `json:"gid"`
+			Preset uint16 `json:"preset"`
+			Active bool   `json:"active"`
+		}
+		type PeerVRFEntry struct {
+			Name string `json:"name"`
+			GID  uint16 `json:"gid"`
+		}
+		type PeerData struct {
+			IP       string         `json:"ip"`
+			VrfGidOK bool           `json:"vrf_gid_ok"`
+			VRFs     []PeerVRFEntry `json:"vrfs"`
+		}
+		result := struct {
+			LocalCount int        `json:"local_count"`
+			NextGID    uint16     `json:"next_gid"`
+			Local      []VRFEntry `json:"local"`
+			Peers      []PeerData `json:"peers"`
+		}{
+			LocalCount: len(localVRFs),
+			NextGID:    nextGID,
+		}
+		for _, v := range localVRFs {
+			result.Local = append(result.Local, VRFEntry{
+				Name:   v.Name,
+				GID:    v.GID,
+				Preset: v.Preset,
+				Active: v.Active,
+			})
+		}
+		for _, ip := range peerIPs {
+			peer := allPeers[ip]
+			pd := PeerData{
+				IP:       ip,
+				VrfGidOK: peer.MemberCriteria[nxtypes.HACritPeerVrfGid],
+			}
+			names := make([]string, 0, len(peer.VrfGIDs))
+			for name := range peer.VrfGIDs {
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				pd.VRFs = append(pd.VRFs, PeerVRFEntry{Name: name, GID: peer.VrfGIDs[name]})
+			}
+			result.Peers = append(result.Peers, pd)
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal HA VRFs: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Text output
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+
+	fmt.Fprintf(w, "=== HA VRF GIDs (next=%d) ===\n", nextGID)
+	fmt.Fprintln(w, "\n--- Local ---")
+	if len(localVRFs) == 0 {
+		fmt.Fprintln(w, "  (no VRFs with GID or preset)")
+	} else {
+		fmt.Fprintf(w, "  %-30s\t%s\t%s\t%s\n", "VRF Name", "GID", "Preset", "Active")
+		for _, v := range localVRFs {
+			gidStr := ""
+			if v.GID > 0 {
+				gidStr = fmt.Sprintf("%d", v.GID)
+			}
+			presetStr := ""
+			if v.Preset > 0 {
+				presetStr = fmt.Sprintf("%d", v.Preset)
+			}
+			fmt.Fprintf(w, "  %-30s\t%s\t%s\t%v\n", v.Name, gidStr, presetStr, v.Active)
+		}
+	}
+
+	for _, ip := range peerIPs {
+		peer := allPeers[ip]
+		vrfGidOK := peer.MemberCriteria[nxtypes.HACritPeerVrfGid]
+		okStr := "[OK]"
+		if !vrfGidOK {
+			okStr = "[FAIL]"
+		}
+		fmt.Fprintf(w, "\n--- Peer: %s (vrf_gid: %s) ---\n", ip, okStr)
+		if len(peer.VrfGIDs) == 0 {
+			fmt.Fprintln(w, "  (no VRF GIDs received)")
+		} else {
+			names := make([]string, 0, len(peer.VrfGIDs))
+			for name := range peer.VrfGIDs {
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			fmt.Fprintf(w, "  %-30s\t%s\n", "VRF Name", "GID")
+			for _, name := range names {
+				fmt.Fprintf(w, "  %-30s\t%d\n", name, peer.VrfGIDs[name])
+			}
+		}
+	}
+
+	w.Flush()
+	return buf.String()
+}
+
+// GnmiShowHaVlans returns a combined view of local and peer VLAN ID allocations
+// for HA reconciliation visibility.
+func (agw *AgentGateway) GnmiShowHaVlans(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show HA VLANs")
+
+	// Local VLANs with ID > 0
+	allVLANs := agw.nxosManager.VLANStore().List()
+	var localVLANs []nxtypes.VLAN
+	for _, v := range allVLANs {
+		if v.ID > 0 {
+			localVLANs = append(localVLANs, v)
+		}
+	}
+	sort.Slice(localVLANs, func(i, j int) bool {
+		return localVLANs[i].ID < localVLANs[j].ID
+	})
+
+	// Peer info from HA store
+	haStore := agw.nxosManager.HAStore()
+	allPeers := haStore.AllPeers()
+	peerIPs := make([]string, 0, len(allPeers))
+	for ip := range allPeers {
+		peerIPs = append(peerIPs, ip)
+	}
+	sort.Strings(peerIPs)
+
+	if msgData.Flags["json"] == "true" {
+		type VLANEntry struct {
+			Name string `json:"name"`
+			ID   uint16 `json:"id"`
+		}
+		type PeerVLANEntry struct {
+			Name string `json:"name"`
+			ID   uint16 `json:"id"`
+		}
+		type PeerData struct {
+			IP    string          `json:"ip"`
+			VLANs []PeerVLANEntry `json:"vlans"`
+		}
+		result := struct {
+			LocalCount int         `json:"local_count"`
+			Local      []VLANEntry `json:"local"`
+			Peers      []PeerData  `json:"peers"`
+		}{
+			LocalCount: len(localVLANs),
+		}
+		for _, v := range localVLANs {
+			result.Local = append(result.Local, VLANEntry{
+				Name: v.Name,
+				ID:   v.ID,
+			})
+		}
+		for _, ip := range peerIPs {
+			peer := allPeers[ip]
+			pd := PeerData{IP: ip}
+			names := make([]string, 0, len(peer.VlanIDs))
+			for name := range peer.VlanIDs {
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				pd.VLANs = append(pd.VLANs, PeerVLANEntry{Name: name, ID: peer.VlanIDs[name]})
+			}
+			result.Peers = append(result.Peers, pd)
+		}
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal HA VLANs: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Text output
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+
+	fmt.Fprintln(w, "=== HA VLANs ===")
+	fmt.Fprintln(w, "\n--- Local ---")
+	if len(localVLANs) == 0 {
+		fmt.Fprintln(w, "  (no VLANs with ID)")
+	} else {
+		fmt.Fprintf(w, "  %-30s\t%s\t%s\n", "VLAN Name", "ID", "Active")
+		for _, v := range localVLANs {
+			fmt.Fprintf(w, "  %-30s\t%d\t%v\n", v.Name, v.ID, v.Active)
+		}
+	}
+
+	for _, ip := range peerIPs {
+		peer := allPeers[ip]
+		fmt.Fprintf(w, "\n--- Peer: %s ---\n", ip)
+		if len(peer.VlanIDs) == 0 {
+			fmt.Fprintln(w, "  (no VLAN data received)")
+		} else {
+			names := make([]string, 0, len(peer.VlanIDs))
+			for name := range peer.VlanIDs {
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			fmt.Fprintf(w, "  %-30s\t%s\n", "VLAN Name", "ID")
+			for _, name := range names {
+				fmt.Fprintf(w, "  %-30s\t%d\n", name, peer.VlanIDs[name])
+			}
+		}
+	}
+
+	w.Flush()
+	return buf.String()
 }
 
 // MockVlanDelete removes a VLAN from the mock gNMI handler by deleting both

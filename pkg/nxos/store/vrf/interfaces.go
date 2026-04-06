@@ -28,6 +28,9 @@ type Reader interface {
 	GetPinning(name string) (uint16, bool)
 	// NextGID returns the next sequential GID that would be allocated (for diagnostics).
 	NextGID() uint16
+	// GIDs returns a snapshot of all allocated VRF GIDs (name -> GID).
+	// Only includes VRFs with GID > 0.
+	GIDs() map[string]uint16
 }
 
 // Watcher allows subscribing to VRF changes.
@@ -67,6 +70,12 @@ type Store interface {
 	// Used during HA reconciliation so the non-leader adopts the leader's GIDs.
 	SetGIDs(ctx context.Context, changes map[string]uint16) error
 
+	// ReservePreset creates a skeleton VRF with the given Preset if the VRF
+	// does not exist, or updates the Preset on an inactive VRF (GID == 0).
+	// Active VRFs (GID > 0) are not modified. This is a soft preference for
+	// future GID allocation.
+	ReservePreset(ctx context.Context, name string, gid uint16)
+
 	// SetDPUCount updates the number of DPUs for hash-based dynamic pinning.
 	// Called after DPU inventory completes.
 	SetDPUCount(count uint16)
@@ -90,11 +99,4 @@ type Store interface {
 	// CleanupAllFwPolicyState deletes fwPolicyState for all active VRFs.
 	// Called during Close() to clean up stale state on the switch.
 	CleanupAllFwPolicyState(ctx context.Context)
-
-	// SetPeerGIDs stores the peer's GID allocations for HA-aware allocation.
-	// Non-leader nodes prefer peer GIDs when allocating for new VRFs.
-	SetPeerGIDs(peerGIDs map[string]uint16)
-
-	// ClearPeerGIDs removes peer GID information (e.g., on peer disconnect).
-	ClearPeerGIDs()
 }

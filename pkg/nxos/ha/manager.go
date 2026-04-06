@@ -1255,6 +1255,7 @@ func (m *manager) sendAdjacency(ctx context.Context, peer string, localInfo type
 	}
 	if m.vlanStore != nil {
 		req.MbrInfo.VlanInfo = BuildLocalVLANInfo(m.vlanStore)
+		req.MbrInfo.VlanIdRanges = BuildLocalVLANIdRanges(m.vlanStore)
 	}
 
 	// Add HA state info

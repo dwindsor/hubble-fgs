@@ -93,6 +93,8 @@ const (
 	CMD_HA_INFO
 	CMD_HA_PEER_FAIL
 	CMD_HA_PEER_OK
+	CMD_HA_GIDS
+	CMD_HA_VLANS
 )
 
 const (
@@ -661,6 +663,16 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		membership := data.Flags["membership"] == "true"
 		adjacency := data.Flags["adjacency"] == "true"
 		res := agwAgent.HaSetDebugPeerOk(ctx, peer, membership, adjacency)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_HA_GIDS:
+		res := agwAgent.GnmiShowHaGids(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_HA_VLANS:
+		res := agwAgent.GnmiShowHaVlans(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = res
 

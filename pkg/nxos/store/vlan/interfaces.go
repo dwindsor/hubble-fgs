@@ -62,6 +62,14 @@ type Store interface {
 	// Called once during setup after DPU inventory completes.
 	ProgramBDPolicyMaps(ctx context.Context, dpuCount uint16) error
 
+	// CleanupBDServiceEndpoints removes per-DPU BD service endpoints.
+	// Called during out-of-service cleanup.
+	CleanupBDServiceEndpoints(ctx context.Context, dpuCount uint16)
+
+	// CleanupBDPolicyMaps removes per-DPU BD policy maps.
+	// Called during out-of-service cleanup.
+	CleanupBDPolicyMaps(ctx context.Context, dpuCount uint16)
+
 	// SetDPUCount updates the number of DPUs for hash-based dynamic pinning.
 	// Called after DPU inventory completes.
 	SetDPUCount(count uint16)

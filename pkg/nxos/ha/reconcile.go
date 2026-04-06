@@ -13,6 +13,7 @@ package ha
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,50 @@ func NewReconciler(haStore hastore.Store, vrfStore vrf.Store, vlanStore vlan.Sto
 	}
 }
 
+// computeLeaderAdoptions determines which conflicting VRFs the leader should
+// adopt from the peer's assignment to minimize total GID changes across the
+// pair. For each conflict, the side whose adoption would cause fewer cascading
+// collisions is chosen. The leader breaks ties (keeps its own GID).
+//
+// Returns a map of VRF name -> peer GID for VRFs the leader should change.
+func (r *Reconciler) computeLeaderAdoptions(peerGids map[string]uint16) map[string]uint16 {
+	localGids := r.vrfStore.GIDs()
+
+	// Build reverse index: GID -> count of VRFs using that GID.
+	localByGID := make(map[uint16]int, len(localGids))
+	for _, gid := range localGids {
+		localByGID[gid]++
+	}
+	peerByGID := make(map[uint16]int, len(peerGids))
+	for _, gid := range peerGids {
+		peerByGID[gid]++
+	}
+
+	leaderAdopts := make(map[string]uint16)
+
+	for name, peerGID := range peerGids {
+		localGID, exists := localGids[name]
+		if !exists || localGID == peerGID {
+			continue // one-sided or already agreed
+		}
+
+		// peerAdoptsCost: if peer changes this VRF to localGID,
+		// how many OTHER peer VRFs already use localGID?
+		peerCost := peerByGID[localGID]
+
+		// leaderAdoptsCost: if leader changes this VRF to peerGID,
+		// how many OTHER leader VRFs already use peerGID?
+		leaderCost := localByGID[peerGID]
+
+		if leaderCost < peerCost {
+			leaderAdopts[name] = peerGID
+		}
+		// Tie or leaderCost > peerCost: peer adopts (leader wins tie).
+	}
+
+	return leaderAdopts
+}
+
 // Reconcile performs GID and VLAN reconciliation between the local node and a peer.
 // The peer's VRF and VLAN info comes from the adjacency exchange.
 // Returns true if all reconciliation steps succeeded, false if any step failed.
@@ -57,15 +102,37 @@ func (r *Reconciler) Reconcile(ctx context.Context, peer string, peerMbrInfo *ha
 		peerGids[vrfInfo.Name] = uint16(vrfInfo.Id)
 	}
 
-	// Store peer GIDs for HA-aware allocation of new VRFs on non-leader.
-	r.vrfStore.SetPeerGIDs(peerGids)
+	// Store peer GIDs on HAPeerState (source of truth).
+	r.haStore.UpdatePeerVrfGIDs(ctx, peer, peerGids)
+
+	// Store peer VLAN IDs on HAPeerState.
+	peerVlanIDs := ExpandVlanIdRanges(peerMbrInfo.VlanIdRanges)
+	r.haStore.UpdatePeerVlanIDs(ctx, peer, peerVlanIDs)
+
+	// Reserve presets for VRFs the peer has but we don't have active.
+	for name, gid := range peerGids {
+		r.vrfStore.ReservePreset(ctx, name, gid)
+	}
 
 	reconCount := 0
 	reconcileOk := true
 
-	// Non-leader adopts peer's GIDs. SetGIDs sets the Preset for each peer VRF,
-	// resolves collisions, and applies GID transitions via reconcilePresets.
-	if !isLeader {
+	if isLeader {
+		// Leader: compute minimum-disruption reconciliation.
+		// Adopt peer GIDs where it costs less to change the leader side.
+		leaderAdopts := r.computeLeaderAdoptions(peerGids)
+		if len(leaderAdopts) > 0 {
+			if err := r.vrfStore.SetGIDs(ctx, leaderAdopts); err != nil {
+				logger.GetLogger().Warn("Leader failed to adopt peer GIDs, falling back to peer-adopts",
+					"peer", peer, "count", len(leaderAdopts), "error", err)
+				// Non-fatal: peer-side reconciliation still works via response.
+			} else {
+				reconCount += len(leaderAdopts)
+			}
+		}
+	} else {
+		// Non-leader adopts peer's GIDs. The peer's GIDs now reflect any
+		// leader-side adoptions from the previous exchange.
 		if err := r.vrfStore.SetGIDs(ctx, peerGids); err != nil {
 			logger.GetLogger().Error("Failed to apply peer GIDs", "peer", peer, "error", err)
 			reconcileOk = false
@@ -192,6 +259,51 @@ func BuildLocalVRFInfo(vrfStore vrf.Store) []*hav1.VrfInfo {
 		})
 	}
 	return vrfInfos
+}
+
+// BuildLocalVLANIdRanges builds a compact list of VLAN ID ranges from the local VLAN store.
+// Active VLANs are sorted by ID and consecutive IDs are merged into ranges to minimize
+// the number of entries sent over the wire.
+func BuildLocalVLANIdRanges(vlanStore vlan.Store) []*hav1.VlanIdRange {
+	vlans := vlanStore.ListActive()
+
+	// Collect and sort VLAN IDs.
+	ids := make([]uint32, 0, len(vlans))
+	for _, v := range vlans {
+		id, ok := ParseVLANName(v.Name)
+		if !ok || id <= 0 {
+			continue
+		}
+		ids = append(ids, uint32(id))
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+
+	// Compress into ranges.
+	var ranges []*hav1.VlanIdRange
+	for _, id := range ids {
+		if len(ranges) > 0 && id == ranges[len(ranges)-1].End+1 {
+			ranges[len(ranges)-1].End = id
+		} else {
+			ranges = append(ranges, &hav1.VlanIdRange{Start: id, End: id})
+		}
+	}
+	return ranges
+}
+
+// ExpandVlanIdRanges expands a list of VlanIdRange messages into a map of VLAN name -> ID.
+// The map keys use the "vlan-N" format consistent with the VLAN store.
+func ExpandVlanIdRanges(ranges []*hav1.VlanIdRange) map[string]uint16 {
+	result := make(map[string]uint16)
+	for _, r := range ranges {
+		if r == nil {
+			continue
+		}
+		for id := r.Start; id <= r.End; id++ {
+			name := fmt.Sprintf("vlan-%d", id)
+			result[name] = uint16(id)
+		}
+	}
+	return result
 }
 
 // BuildLocalVLANInfo builds the VLAN info for adjacency exchange from the local VLAN store.

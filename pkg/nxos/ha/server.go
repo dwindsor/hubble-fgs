@@ -283,6 +283,7 @@ func (s *server) buildLocalMbrInfo(peerIP string) *hav1.MbrInfo {
 	}
 	if s.vlanStore != nil {
 		mbrInfo.VlanInfo = BuildLocalVLANInfo(s.vlanStore)
+		mbrInfo.VlanIdRanges = BuildLocalVLANIdRanges(s.vlanStore)
 	}
 
 	// Include local debug override flags for this peer.

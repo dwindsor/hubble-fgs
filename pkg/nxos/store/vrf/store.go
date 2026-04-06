@@ -44,9 +44,6 @@ type vrfStore struct {
 	// In-service gate: when false, reactive programRedirects no-ops.
 	// Set to true when the device transitions to in-service.
 	inService bool
-	// HA-aware allocation: non-leader prefers peer GIDs to avoid conflicts.
-	peerGIDs map[string]uint16 // peer's VRF→GID map (set by SetPeerGIDs)
-	isLeader func() bool       // returns true if this node is HA leader
 }
 
 // Option configures Store.
@@ -87,14 +84,6 @@ func WithDPUCount(count uint16) Option {
 func WithLbModePinning(fn func() bool) Option {
 	return func(vs *vrfStore) {
 		vs.isLbModePinning = fn
-	}
-}
-
-// WithIsLeader sets a callback that returns true if this node is the HA leader.
-// Used during GID allocation: non-leaders prefer the peer's GID to avoid conflicts.
-func WithIsLeader(fn func() bool) Option {
-	return func(vs *vrfStore) {
-		vs.isLeader = fn
 	}
 }
 
@@ -349,19 +338,34 @@ func (s *vrfStore) SetInService(inService bool) {
 	s.inService = inService
 }
 
-// SetPeerGIDs stores the peer's GID allocations for HA-aware allocation.
-// Non-leader nodes will prefer peer GIDs when allocating for new VRFs.
-func (s *vrfStore) SetPeerGIDs(peerGIDs map[string]uint16) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.peerGIDs = peerGIDs
+// GIDs returns a snapshot of all allocated VRF GIDs (name -> GID).
+func (s *vrfStore) GIDs() map[string]uint16 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make(map[string]uint16, len(s.vrfs))
+	for name, vrf := range s.vrfs {
+		if vrf.GID > 0 {
+			result[name] = vrf.GID
+		}
+	}
+	return result
 }
 
-// ClearPeerGIDs removes peer GID information (e.g., on peer disconnect).
-func (s *vrfStore) ClearPeerGIDs() {
+// ReservePreset creates a skeleton VRF with the given Preset if the VRF
+// does not exist, or updates the Preset on an inactive VRF (GID == 0).
+// Active VRFs (GID > 0) are not modified.
+func (s *vrfStore) ReservePreset(ctx context.Context, name string, gid uint16) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.peerGIDs = nil
+	vrf := s.vrfs[name]
+	if vrf.GID > 0 {
+		s.mu.Unlock()
+		return
+	}
+	vrf.Name = name
+	vrf.Preset = gid
+	s.vrfs[name] = vrf
+	s.mu.Unlock()
+	s.persist(ctx)
 }
 
 // isPinningActive returns true when per-DPU pinning is active.

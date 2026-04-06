@@ -190,13 +190,14 @@ var showDpuCmd = &cobra.Command{
 var showVrfCmd = &cobra.Command{
 	Use:          "show_vrf",
 	SilenceUsage: true,
-	Short:        "Show VRF status",
-	Long:         "Show VRF status",
+	Short:        "Deprecated, use 'agwctl vrf show' instead",
+	Long:         "Deprecated, use 'agwctl vrf show' instead.",
+	Deprecated:   "use 'agwctl vrf show' instead",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_VRF, ipc.MessageData{})
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_VRF_SHOW, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -343,13 +344,14 @@ var restartFwaCmd = &cobra.Command{
 var showHaCmd = &cobra.Command{
 	Use:          "show_ha",
 	SilenceUsage: true,
-	Short:        "Show high availability",
-	Long:         "Show high availability",
+	Short:        "Deprecated, use 'agwctl ha show' instead",
+	Long:         "Deprecated, use 'agwctl ha show' instead.",
+	Deprecated:   "use 'agwctl ha show' instead",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_HA, ipc.MessageData{})
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_HA_SHOW, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -361,13 +363,14 @@ var showHaCmd = &cobra.Command{
 var showAdjCmd = &cobra.Command{
 	Use:          "show_adj",
 	SilenceUsage: true,
-	Short:        "Show HA adjacencies",
-	Long:         "Show HA adjacencies",
+	Short:        "Deprecated, use 'agwctl ha peers' instead",
+	Long:         "Deprecated, use 'agwctl ha peers' instead.",
+	Deprecated:   "use 'agwctl ha peers' instead",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_ADJ, ipc.MessageData{})
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_HA_PEERS, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -379,13 +382,14 @@ var showAdjCmd = &cobra.Command{
 var showMbrCmd = &cobra.Command{
 	Use:          "show_mbr",
 	SilenceUsage: true,
-	Short:        "Show HA members",
-	Long:         "Show HA members",
+	Short:        "Deprecated, use 'agwctl ha peers' instead",
+	Long:         "Deprecated, use 'agwctl ha peers' instead.",
+	Deprecated:   "use 'agwctl ha peers' instead",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_MBR, ipc.MessageData{})
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_HA_PEERS, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -397,13 +401,14 @@ var showMbrCmd = &cobra.Command{
 var showGidCmd = &cobra.Command{
 	Use:          "show_gid",
 	SilenceUsage: true,
-	Short:        "Show global IDs",
-	Long:         "Show global IDs",
+	Short:        "Deprecated, use 'agwctl ha gids' instead",
+	Long:         "Deprecated, use 'agwctl ha gids' instead.",
+	Deprecated:   "use 'agwctl ha gids' instead",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_GID, ipc.MessageData{})
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_HA_GIDS, ipc.MessageData{})
 		if err != nil {
 			return err
 		}

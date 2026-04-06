@@ -603,6 +603,56 @@ func (s *vlanStore) ProgramBDPolicyMaps(ctx context.Context, dpuCount uint16) er
 	return nil
 }
 
+// CleanupBDServiceEndpoints removes per-DPU BD service endpoints via targeted
+// gNMI DELETEs. Counterpart to ProgramBDServiceEndpoints.
+func (s *vlanStore) CleanupBDServiceEndpoints(ctx context.Context, dpuCount uint16) {
+	s.mu.RLock()
+	handler := s.gnmiHandler
+	s.mu.RUnlock()
+	if handler == nil {
+		return
+	}
+
+	for dpu := uint16(1); dpu <= dpuCount+1; dpu++ {
+		var name string
+		if dpu <= dpuCount {
+			name = dpuToPolicyName(dpu)
+		} else {
+			name = dpuToPolicyName(0)
+		}
+		path := fmt.Sprintf("%s/Service-list[name=%s]", paths.ServiceRedirServiceItems, name)
+		if err := handler.Delete(ctx, path); err != nil {
+			logger.GetLogger().Warn("Failed to delete BD service endpoint", "name", name, logfields.Error, err)
+		}
+	}
+	logger.GetLogger().Debug("BD service endpoints cleaned up", "dpuCount", dpuCount)
+}
+
+// CleanupBDPolicyMaps removes per-DPU BD policy maps via targeted gNMI DELETEs.
+// Counterpart to ProgramBDPolicyMaps.
+func (s *vlanStore) CleanupBDPolicyMaps(ctx context.Context, dpuCount uint16) {
+	s.mu.RLock()
+	handler := s.gnmiHandler
+	s.mu.RUnlock()
+	if handler == nil {
+		return
+	}
+
+	for dpu := uint16(1); dpu <= dpuCount+1; dpu++ {
+		var name string
+		if dpu <= dpuCount {
+			name = dpuToPolicyName(dpu)
+		} else {
+			name = dpuToPolicyName(0)
+		}
+		path := fmt.Sprintf("%s/PolicyMap-list[name=%s]", paths.ServiceRedirPmapItems, name)
+		if err := handler.Delete(ctx, path); err != nil {
+			logger.GetLogger().Warn("Failed to delete BD policy map", "name", name, logfields.Error, err)
+		}
+	}
+	logger.GetLogger().Debug("BD policy maps cleaned up", "dpuCount", dpuCount)
+}
+
 // buildBDPolicyMap builds a policy map with the given name.
 // The structure is identical to VRF policy maps: IPv4 + IPv6 redirect matches
 // with failaction=drop and statistics enabled.

@@ -47,6 +47,11 @@ message VlanInfo {
     uint32 affinity = 2;
 }
 
+message VlanIdRange {
+    uint32 start = 1;
+    uint32 end = 2; // inclusive; when start == end, represents a single VLAN
+}
+
 message HaInfo {
     LOCAL_SVC_STATE local_svc_state = 1;
     HA_STATE ha = 2;
@@ -80,6 +85,7 @@ message MbrInfo {
     repeated VlanInfo vlan_info = 5;
     bool debug_membership_fail = 6; // sender has injected a membership failure for this peer
     bool debug_adjacency_fail = 7;  // sender has injected an adjacency failure for this peer
+    repeated VlanIdRange vlan_id_ranges = 8; // compact VLAN ID ranges for peer visibility
 }
 
 message AdjRequest {

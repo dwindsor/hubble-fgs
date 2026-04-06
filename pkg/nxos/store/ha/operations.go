@@ -532,6 +532,28 @@ func (s *haStore) UpdatePeerConnected(ctx context.Context, ip string, connected 
 	// Not persisted — peer connected state is runtime state rebuilt via HA protocol.
 }
 
+func (s *haStore) UpdatePeerVrfGIDs(ctx context.Context, ip string, gids map[string]uint16) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	peer, ok := s.peers[ip]
+	if !ok {
+		return
+	}
+	peer.VrfGIDs = gids
+	s.peers[ip] = peer
+}
+
+func (s *haStore) UpdatePeerVlanIDs(ctx context.Context, ip string, ids map[string]uint16) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	peer, ok := s.peers[ip]
+	if !ok {
+		return
+	}
+	peer.VlanIDs = ids
+	s.peers[ip] = peer
+}
+
 func (s *haStore) UpdatePeerDPUStatuses(ctx context.Context, ip string, statuses map[string]types.DPUHAStatus) {
 	s.mu.Lock()
 	peer, ok := s.peers[ip]

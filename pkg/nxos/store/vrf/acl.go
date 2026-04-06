@@ -33,6 +33,21 @@ func ProgramAccessLists(ctx context.Context, handler gnmi.GnmiHandler) error {
 	return programIPv6ACL(ctx, handler)
 }
 
+// DeleteAccessLists removes the IPv4 and IPv6 redirect ACLs via gNMI DELETE.
+// Counterpart to ProgramAccessLists, called during out-of-service and shutdown
+// cleanup so only agent-managed MOs are removed.
+func DeleteAccessLists(ctx context.Context, handler gnmi.GnmiHandler) error {
+	ipv4Path := fmt.Sprintf(paths.AclIPv4Redirect, paths.AclNameIPv4, seqNum)
+	if err := handler.Delete(ctx, ipv4Path); err != nil {
+		logger.GetLogger().Warn("Failed to delete IPv4 redirect ACL", logfields.Error, err)
+	}
+	ipv6Path := fmt.Sprintf(paths.AclIPv6Redirect, paths.AclNameIPv6, seqNum)
+	if err := handler.Delete(ctx, ipv6Path); err != nil {
+		logger.GetLogger().Warn("Failed to delete IPv6 redirect ACL", logfields.Error, err)
+	}
+	return nil
+}
+
 func programIPv4ACL(ctx context.Context, handler gnmi.GnmiHandler) error {
 	ipv4Any := "0.0.0.0"
 	proto := uint8(0)

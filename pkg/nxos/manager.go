@@ -122,7 +122,6 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 			vrf.WithStorage(storageBackend),
 			vrf.WithPreSeededGIDs(options.vrfGIDs),
 			vrf.WithLbModePinning(lbModePinning),
-			vrf.WithIsLeader(func() bool { return haSt.IsLeader() }),
 		),
 		vlanStore: vlan.NewStore(ctx,
 			vlan.WithStorage(storageBackend),
@@ -593,7 +592,6 @@ func (m *manager) updateVRFPolicyMap() {
 
 // removeAllRedirects cleans up redirect state without tearing down the manager.
 // Called on out-of-service transitions so the process keeps running.
-//
 func (m *manager) removeAllRedirects(ctx context.Context) {
 	// Signal local svc state to not-ready BEFORE removing any redirects.
 	if m.gnmiHandler != nil {
@@ -610,10 +608,25 @@ func (m *manager) removeAllRedirects(ctx context.Context) {
 	m.vrfStore.CleanupAllFwPolicyState(ctx)
 	m.vlanStore.CleanupAllFwPolicyState(ctx)
 
-	// Bulk-delete all service redirect items.
+	// Delete agent-managed service redirect items individually rather than
+	// bulk-deleting the entire /System/serviceredir-items container, which
+	// would destroy MOs the agent did not create.
+
+	// Per-VRF redirects: dom-items bindings, per-VRF policy maps and service endpoints.
+	m.vrfStore.CleanupAllRedirects(ctx)
+
+	// Per-VLAN redirects: bd-items bindings.
+	m.vlanStore.CleanupAllRedirects(ctx)
+
+	// Shared BD service endpoints and policy maps.
+	dpuCount := uint16(m.dpuStore.DpuCount())
+	m.vlanStore.CleanupBDServiceEndpoints(ctx, dpuCount)
+	m.vlanStore.CleanupBDPolicyMaps(ctx, dpuCount)
+
+	// Redirect ACLs.
 	if m.gnmiHandler != nil {
-		if err := m.gnmiHandler.Delete(ctx, "/System/serviceredir-items"); err != nil {
-			logger.GetLogger().Warn("Failed to delete service redirect items", logfields.Error, err)
+		if err := vrf.DeleteAccessLists(ctx, m.gnmiHandler); err != nil {
+			logger.GetLogger().Warn("Failed to delete redirect ACLs", logfields.Error, err)
 		}
 	}
 

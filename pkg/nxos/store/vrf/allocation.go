@@ -101,17 +101,6 @@ func (s *vrfStore) allocateGIDLocked(vrf types.VRF) types.VRF {
 		return vrf
 	}
 
-	// HA-aware: non-leader prefers peer's GID to avoid conflicts at startup.
-	if s.isLeader != nil && !s.isLeader() && s.peerGIDs != nil {
-		if peerGID, ok := s.peerGIDs[vrf.Name]; ok && peerGID > 0 && !s.gidsInUse[peerGID] {
-			logger.GetLogger().Debug("Non-leader using peer GID", "vrf", vrf.Name, "gid", peerGID)
-			vrf.GID = peerGID
-			vrf.Preset = peerGID
-			s.gidsInUse[peerGID] = true
-			return vrf
-		}
-	}
-
 	// Sequential allocation: skip GIDs in use OR claimed as Preset by another VRF.
 	gid := s.nextGID
 	start := gid
