@@ -90,4 +90,11 @@ type Store interface {
 	// CleanupAllFwPolicyState deletes fwPolicyState for all active VRFs.
 	// Called during Close() to clean up stale state on the switch.
 	CleanupAllFwPolicyState(ctx context.Context)
+
+	// SetPeerGIDs stores the peer's GID allocations for HA-aware allocation.
+	// Non-leader nodes prefer peer GIDs when allocating for new VRFs.
+	SetPeerGIDs(peerGIDs map[string]uint16)
+
+	// ClearPeerGIDs removes peer GID information (e.g., on peer disconnect).
+	ClearPeerGIDs()
 }

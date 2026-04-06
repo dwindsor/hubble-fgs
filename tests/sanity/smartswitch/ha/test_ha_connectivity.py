@@ -30,7 +30,6 @@ from helper.ha_helpers import (
     wait_for_ha_ready, get_local_ha_state,
     assert_no_state_flapping,
 )
-from helper.gnmi_paths import HA_ADMIN_STATE_PATH, HA_IP_PATH, HA_SWITCH_STATE_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,8 @@ class TestConnectivity:
         """Start container, wait for health, and re-seed gNMI + HA config.
 
         After a container restart the AGW process needs time to initialize
-        and the mock gNMI state is lost, so we must re-seed.
+        and the mock gNMI state is lost, so we must re-seed from the
+        per-node HA JSON file which already contains all HA configuration.
         """
         container = cmd._get_agw_container()
         container.start()
@@ -63,14 +63,14 @@ class TestConnectivity:
                 break
             except Exception:
                 time.sleep(2)
-        # Re-seed gNMI and enable HA
+        # Re-seed gNMI from HA-preconfigured JSON (includes HA IP, admin state, peer)
         from pathlib import Path
-        gnmi_file = Path(__file__).parent.parent / "testdata" / "gnmi" / "default_gnmi.json"
+        if ha_ip == LEADER_IP:
+            gnmi_file = Path(__file__).parent.parent / "testdata" / "gnmi" / "default_gnmi_ha_leader.json"
+        else:
+            gnmi_file = Path(__file__).parent.parent / "testdata" / "gnmi" / "default_gnmi_ha_follower.json"
         try:
             cmd.agw_mock_gnmi_set_file(str(gnmi_file))
-            cmd.agw_mock_gnmi_set(HA_ADMIN_STATE_PATH, '"enabled"')
-            cmd.agw_mock_gnmi_set(HA_SWITCH_STATE_PATH, '"ha-ready"')
-            cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
         except Exception as e:
             logger.warning(f"Failed to re-seed gNMI after container restart: {e}")
         time.sleep(3)

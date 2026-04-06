@@ -12,6 +12,7 @@ package gnmi
 
 import (
 	"context"
+	"time"
 
 	gnmiproto "github.com/openconfig/gnmi/proto/gnmi"
 )
@@ -66,4 +67,8 @@ type GnmiHandler interface {
 
 	// StopSubscriptions stops the active subscription.
 	StopSubscriptions()
+
+	// LastNotificationTime returns the time of the last received gNMI notification.
+	// Returns zero time if no notification has been received yet.
+	LastNotificationTime() time.Time
 }

@@ -12,11 +12,17 @@ package vrf
 
 import (
 	"context"
+	"fmt"
 	"hash/fnv"
 
+	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/openconfig/ygot/ygot"
 
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
+	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 )
 
 const (
@@ -95,6 +101,17 @@ func (s *vrfStore) allocateGIDLocked(vrf types.VRF) types.VRF {
 		return vrf
 	}
 
+	// HA-aware: non-leader prefers peer's GID to avoid conflicts at startup.
+	if s.isLeader != nil && !s.isLeader() && s.peerGIDs != nil {
+		if peerGID, ok := s.peerGIDs[vrf.Name]; ok && peerGID > 0 && !s.gidsInUse[peerGID] {
+			logger.GetLogger().Debug("Non-leader using peer GID", "vrf", vrf.Name, "gid", peerGID)
+			vrf.GID = peerGID
+			vrf.Preset = peerGID
+			s.gidsInUse[peerGID] = true
+			return vrf
+		}
+	}
+
 	// Sequential allocation: skip GIDs in use OR claimed as Preset by another VRF.
 	gid := s.nextGID
 	start := gid
@@ -132,60 +149,112 @@ func (s *vrfStore) allocateGIDLocked(vrf types.VRF) types.VRF {
 }
 
 // reconcilePresets applies pending Preset→GID transitions for all active VRFs
-// where GID != Preset. It cleans up old redirects then programs new ones.
+// where GID != Preset. Uses two-phase batching and in-place endpoint updates
+// to avoid teardown+rebuild and transient GID conflicts.
 func (s *vrfStore) reconcilePresets(ctx context.Context) {
-	type change struct {
-		name   string
+	type entry struct {
 		oldGID uint16
-		newVRF types.VRF
+		vrf    types.VRF // snapshot with updated GID
 	}
 
 	s.mu.Lock()
 
-	var changes []change
-	for name, vrf := range s.vrfs {
-		if !vrf.Active {
+	var entries []entry
+	for _, vrf := range s.vrfs {
+		if !vrf.Active || vrf.Preset == 0 || vrf.GID == vrf.Preset {
 			continue
 		}
-		if vrf.Preset > 0 && vrf.GID != vrf.Preset {
-			changes = append(changes, change{
-				name:   name,
-				oldGID: vrf.GID,
-				newVRF: vrf,
-			})
-		}
+		entries = append(entries, entry{oldGID: vrf.GID, vrf: vrf})
 	}
 
-	if len(changes) == 0 {
+	if len(entries) == 0 {
 		s.mu.Unlock()
 		return
 	}
 
-	// Free all old GIDs first to avoid blocking the new GID assignments.
-	for _, c := range changes {
-		if c.oldGID > 0 {
-			delete(s.gidsInUse, c.oldGID)
+	// Free all old GIDs first to avoid blocking new GID assignments.
+	for _, e := range entries {
+		if e.oldGID > 0 {
+			delete(s.gidsInUse, e.oldGID)
 		}
 	}
-	// Assign new GIDs.
-	for i, c := range changes {
-		c.newVRF.GID = c.newVRF.Preset
-		s.gidsInUse[c.newVRF.Preset] = true
-		s.vrfs[c.name] = c.newVRF
-		changes[i] = c
+	// Assign new GIDs and capture updated VRF snapshots.
+	for i, e := range entries {
+		vrf := e.vrf
+		vrf.GID = vrf.Preset
+		s.gidsInUse[vrf.Preset] = true
+		s.vrfs[vrf.Name] = vrf
+		entries[i].vrf = vrf
+		logger.GetLogger().Info("Applying preset GID change", "vrf", vrf.Name, "oldGID", e.oldGID, "newGID", vrf.GID)
 	}
 
+	handler := s.gnmiHandler
+	inService := s.inService
 	s.mu.Unlock()
 
-	// Cleanup old redirects, then program new ones.
-	for _, c := range changes {
-		logger.GetLogger().Info("Applying preset GID change", "vrf", c.name, "oldGID", c.oldGID, "newGID", c.newVRF.Preset)
-		s.cleanupRedirects(ctx, c.name)
+	if handler == nil || !inService {
+		return
 	}
-	for _, c := range changes {
-		if v, ok := s.Get(c.name); ok && v.Active {
-			s.programRedirects(ctx, v)
+
+	// Two-phase batching: contested GIDs first (their old GID is needed by another VRF),
+	// then non-contested. This prevents transient GID conflicts.
+	newGIDs := make(map[uint16]bool)
+	for _, e := range entries {
+		newGIDs[e.vrf.GID] = true
+	}
+
+	var batch1, batch2 []types.VRF
+	for _, e := range entries {
+		if newGIDs[e.oldGID] {
+			batch1 = append(batch1, e.vrf) // contested
+		} else {
+			batch2 = append(batch2, e.vrf) // non-contested
 		}
+	}
+
+	s.sendGIDUpdateBatch(ctx, handler, batch1)
+	s.sendGIDUpdateBatch(ctx, handler, batch2)
+}
+
+// sendGIDUpdateBatch issues a single gNMI SET that updates only the VLAN (GID) field
+// on existing service endpoints. Does NOT set Type or Vrf fields — preserved by MERGE.
+func (s *vrfStore) sendGIDUpdateBatch(ctx context.Context, handler gnmi.GnmiHandler, vrfs []types.VRF) {
+	if len(vrfs) == 0 {
+		return
+	}
+
+	serviceItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems{
+		ServiceList: make(map[string]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList),
+	}
+
+	for _, vrf := range vrfs {
+		svcName := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
+		gid := vrf.GID
+		dpuNum := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
+		if vrf.DPUPinned > 0 && s.isPinningActive() {
+			dpuNum = dpuToModulePinning(vrf.DPUPinned)
+		}
+		serviceItems.ServiceList[svcName] = &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList{
+			Name: &svcName,
+			DpuepItems: &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems{
+				SvcEndPointDpuList: map[model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{
+					dpuNum: {Vlan: &gid, DpuNum: dpuNum},
+				},
+			},
+		}
+	}
+
+	jstr, err := ygot.EmitJSON(&serviceItems, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to marshal GID update batch", logfields.Error, err)
+		return
+	}
+	if err := handler.Set(ctx, paths.ServiceRedirServiceItems, jstr); err != nil {
+		logger.GetLogger().Error("Failed to send GID update batch via gNMI", logfields.Error, err)
 	}
 }
 

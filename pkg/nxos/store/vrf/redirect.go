@@ -253,6 +253,21 @@ func (s *vrfStore) cleanupRedirects(ctx context.Context, name string) {
 		return
 	}
 
+	s.deleteRedirectsWithHandler(ctx, handler, name)
+}
+
+// cleanupRedirectsLocked performs targeted gNMI DELETE for all redirect components
+// of a specific VRF. Must be called with at least a read lock held (or write lock).
+func (s *vrfStore) cleanupRedirectsLocked(ctx context.Context, name string) {
+	handler := s.gnmiHandler
+	if handler == nil {
+		return
+	}
+	s.deleteRedirectsWithHandler(ctx, handler, name)
+}
+
+// deleteRedirectsWithHandler issues gNMI DELETEs for all redirect components of a VRF.
+func (s *vrfStore) deleteRedirectsWithHandler(ctx context.Context, handler gnmi.GnmiHandler, name string) {
 	// Delete enforcement binding
 	path := fmt.Sprintf("%s/Dom-list[name=%s]", paths.ServiceRedirDomItems, name)
 	if err := handler.Delete(ctx, path); err != nil {
@@ -280,7 +295,142 @@ func (s *vrfStore) cleanupRedirects(ctx context.Context, name string) {
 	logger.GetLogger().Debug("VRF redirect cleanup completed", "vrf", name)
 }
 
-// ProgramAllRedirects programs redirects for all active VRFs.
+// programFwPolicyStateBatch programs fwPolicyState for all VRFs in a single gNMI SET.
+func (s *vrfStore) programFwPolicyStateBatch(ctx context.Context, handler gnmi.GnmiHandler, vrfs []types.VRF) {
+	domItems := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_IpvrfstateItems_DomItems{
+		DomStateList: make(map[string]*model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_IpvrfstateItems_DomItems_DomStateList),
+	}
+
+	for _, vrf := range vrfs {
+		reason := ""
+		affinity := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
+		if vrf.DPUPinned > 0 && s.isPinningActive() {
+			affinity = dpuToModulePinning(vrf.DPUPinned)
+		}
+		name := vrf.Name
+		domItems.DomStateList[vrf.Name] = &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_IpvrfstateItems_DomItems_DomStateList{
+			Name: &name,
+			ExtItems: &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_IpvrfstateItems_DomItems_DomStateList_ExtItems{
+				PolicyStatus:       model.Cisco_NX_OSDevice_Sas_PolicyStatusE_success,
+				PolicyStatusReason: &reason,
+				Affinity:           affinity,
+			},
+		}
+	}
+
+	jstr, err := ygot.EmitJSON(&domItems, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to emit JSON for batch VRF fwPolicyState", logfields.Error, err)
+		return
+	}
+	if err := handler.Set(ctx, paths.FwPolicyStateVrf, jstr); err != nil {
+		logger.GetLogger().Error("Failed to batch program VRF fwPolicyState via gNMI", logfields.Error, err)
+	}
+}
+
+// programServiceEndpointsBatch programs service endpoints for all VRFs in a single gNMI SET.
+func (s *vrfStore) programServiceEndpointsBatch(ctx context.Context, handler gnmi.GnmiHandler, vrfs []types.VRF) {
+	serviceItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems{
+		ServiceList: make(map[string]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList),
+	}
+
+	for _, vrf := range vrfs {
+		if vrf.GID == 0 {
+			logger.GetLogger().Warn("VRF has no GID allocated, skipping batch service endpoint", "vrf", vrf.Name)
+			continue
+		}
+		gid := vrf.GID
+		dpuNum := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
+		if vrf.DPUPinned > 0 && s.isPinningActive() {
+			dpuNum = dpuToModulePinning(vrf.DPUPinned)
+		}
+		name := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
+		vrfName := vrf.Name
+		serviceItems.ServiceList[name] = &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList{
+			Name: &name,
+			Type: model.Cisco_NX_OSDevice_Epbr_EpbrType_dpu,
+			Vrf:  &vrfName,
+			DpuepItems: &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems{
+				SvcEndPointDpuList: map[model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{
+					dpuNum: {Vlan: &gid, DpuNum: dpuNum},
+				},
+			},
+		}
+	}
+
+	jstr, err := ygot.EmitJSON(&serviceItems, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to emit JSON for batch VRF service endpoints", logfields.Error, err)
+		return
+	}
+	if err := handler.Set(ctx, paths.ServiceRedirServiceItems, jstr); err != nil {
+		logger.GetLogger().Error("Failed to batch program VRF service endpoints via gNMI", logfields.Error, err)
+	}
+}
+
+// programPolicyMapBatch programs policy maps for all VRFs in a single gNMI SET.
+func (s *vrfStore) programPolicyMapBatch(ctx context.Context, handler gnmi.GnmiHandler, vrfs []types.VRF) {
+	pmapItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_PmapItems{
+		PolicyMapList: make(map[string]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_PmapItems_PolicyMapList),
+	}
+
+	for _, vrf := range vrfs {
+		name := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
+		pmapItems.PolicyMapList[name] = s.buildPolicyMap(name)
+	}
+
+	jstr, err := ygot.EmitJSON(&pmapItems, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to emit JSON for batch VRF policy maps", logfields.Error, err)
+		return
+	}
+	if err := handler.Set(ctx, paths.ServiceRedirPmapItems, jstr); err != nil {
+		logger.GetLogger().Error("Failed to batch program VRF policy maps via gNMI", logfields.Error, err)
+	}
+}
+
+// programEnforcementBatch programs enforcement bindings for all VRFs in a single gNMI SET.
+func (s *vrfStore) programEnforcementBatch(ctx context.Context, handler gnmi.GnmiHandler, vrfs []types.VRF) {
+	domItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_DomItems{
+		DomList: make(map[string]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_DomItems_DomList),
+	}
+
+	for _, vrf := range vrfs {
+		name := vrf.Name
+		policy := fmt.Sprintf("__%s_dpu_redir", name)
+		domItems.DomList[name] = &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_DomItems_DomList{
+			Name:   &name,
+			Policy: &policy,
+		}
+	}
+
+	jstr, err := ygot.EmitJSON(&domItems, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to emit JSON for batch VRF enforcement", logfields.Error, err)
+		return
+	}
+	if err := handler.Set(ctx, paths.ServiceRedirDomItems, jstr); err != nil {
+		logger.GetLogger().Error("Failed to batch program VRF enforcement via gNMI", logfields.Error, err)
+	}
+}
+
+// ProgramAllRedirects programs redirects for all active VRFs using batched gNMI SETs.
 // Used during in-service transition. Bypasses the inService gate.
 func (s *vrfStore) ProgramAllRedirects(ctx context.Context) int {
 	s.mu.RLock()
@@ -290,13 +440,69 @@ func (s *vrfStore) ProgramAllRedirects(ctx context.Context) int {
 		return 0
 	}
 	active := s.ListActive()
-	for _, v := range active {
-		s.programFwPolicyState(ctx, handler, v)
-		s.programServiceEndpoints(ctx, handler, v)
-		s.programPolicyMap(ctx, handler, v)
-		s.programEnforcement(ctx, handler, v)
+	if len(active) == 0 {
+		return 0
 	}
+	// Program in order: fwPolicyState → endpoints → policyMaps → enforcement
+	s.programFwPolicyStateBatch(ctx, handler, active)
+	s.programServiceEndpointsBatch(ctx, handler, active)
+	s.programPolicyMapBatch(ctx, handler, active)
+	s.programEnforcementBatch(ctx, handler, active)
 	return len(active)
+}
+
+// repinRedirects updates only the fwPolicyState and DPU endpoint for a VRF
+// when DPU pinning changes. Policy map and enforcement are not touched since
+// they reference the service by name (unchanged during repin).
+func (s *vrfStore) repinRedirects(ctx context.Context, vrf types.VRF) {
+	s.mu.RLock()
+	handler := s.gnmiHandler
+	inService := s.inService
+	s.mu.RUnlock()
+
+	if handler == nil || !inService {
+		return
+	}
+
+	s.programFwPolicyState(ctx, handler, vrf)
+	if err := s.setDpuEndpoint(ctx, handler, vrf); err != nil {
+		logger.GetLogger().Error("Failed to set DPU endpoint during repin", "vrf", vrf.Name, logfields.Error, err)
+	}
+}
+
+// setDpuEndpoint creates/updates only the DPU endpoint entry for a VRF service.
+// Unlike programServiceEndpoints(), this does NOT set the Type or Vrf fields —
+// relying on gNMI MERGE semantics to preserve existing fields.
+func (s *vrfStore) setDpuEndpoint(ctx context.Context, handler gnmi.GnmiHandler, vrf types.VRF) error {
+	svcName := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
+	gid := vrf.GID
+	dpuNum := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
+	if vrf.DPUPinned > 0 && s.isPinningActive() {
+		dpuNum = dpuToModulePinning(vrf.DPUPinned)
+	}
+
+	serviceItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems{
+		ServiceList: map[string]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList{
+			svcName: {
+				Name: &svcName,
+				DpuepItems: &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems{
+					SvcEndPointDpuList: map[model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{
+						dpuNum: {Vlan: &gid, DpuNum: dpuNum},
+					},
+				},
+			},
+		},
+	}
+
+	jstr, err := ygot.EmitJSON(&serviceItems, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal DPU endpoint: %w", err)
+	}
+	return handler.Set(ctx, paths.ServiceRedirServiceItems, jstr)
 }
 
 // CleanupAllRedirects removes redirects for all active VRFs.

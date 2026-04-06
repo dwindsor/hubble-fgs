@@ -98,7 +98,7 @@ func (s *vrfStore) SetGlobal(ctx context.Context, name string, isGlobal bool) er
 		s.cleanupRedirects(ctx, vrf.Name)
 	case oldActive && vrf.Active && oldDPUPinned != vrf.DPUPinned:
 		s.deleteDpuEndpointForRepin(ctx, vrf.Name, oldDPUPinned)
-		s.programRedirects(ctx, vrf)
+		s.repinRedirects(ctx, vrf)
 	}
 	return nil
 }
@@ -156,7 +156,7 @@ func (s *vrfStore) SetService(ctx context.Context, name string, isService bool) 
 		s.cleanupRedirects(ctx, vrf.Name)
 	case oldActive && vrf.Active && oldDPUPinned != vrf.DPUPinned:
 		s.deleteDpuEndpointForRepin(ctx, vrf.Name, oldDPUPinned)
-		s.programRedirects(ctx, vrf)
+		s.repinRedirects(ctx, vrf)
 	}
 	return nil
 }
@@ -194,7 +194,7 @@ func (s *vrfStore) SetAffinity(ctx context.Context, name string, affinity uint16
 		s.cleanupRedirects(ctx, vrf.Name)
 	case oldActive && vrf.Active && oldDPUPinned != vrf.DPUPinned:
 		s.deleteDpuEndpointForRepin(ctx, vrf.Name, oldDPUPinned)
-		s.programRedirects(ctx, vrf)
+		s.repinRedirects(ctx, vrf)
 	}
 	return nil
 }

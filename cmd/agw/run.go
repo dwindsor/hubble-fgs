@@ -263,12 +263,6 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 			return err
 		}
 
-		if Config.EnableNXOS {
-			logger.GetLogger().Debug("Waiting for NXOS to be InService before watching SmartSwitchNetworkPolicy CRD")
-			agwAgent.WaitForInService(ctx)
-			logger.GetLogger().Debug("Done NXOS InService is configured")
-		}
-
 		crds := make(map[string]struct{})
 		crds["smartswitchnetworkpolicies"+"."+isovalentcom.GroupName] = struct{}{} // HACK: CRD name should be used from IPA repo
 		if len(crds) > 0 {

@@ -14,11 +14,14 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/openconfig/ygot/ygot"
+	"github.com/openconfig/ygot/ytypes"
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
@@ -313,6 +316,21 @@ func (s *vlanStore) cleanupRedirects(ctx context.Context, name string) {
 		return
 	}
 
+	s.deleteRedirectsWithHandler(ctx, handler, name)
+}
+
+// cleanupRedirectsLocked performs targeted gNMI DELETE for all redirect components
+// of a specific VLAN. Must be called with at least a read lock held (or write lock).
+func (s *vlanStore) cleanupRedirectsLocked(ctx context.Context, name string) {
+	handler := s.gnmiHandler
+	if handler == nil {
+		return
+	}
+	s.deleteRedirectsWithHandler(ctx, handler, name)
+}
+
+// deleteRedirectsWithHandler issues gNMI DELETEs for all redirect components of a VLAN.
+func (s *vlanStore) deleteRedirectsWithHandler(ctx context.Context, handler gnmi.GnmiHandler, name string) {
 	// Delete BD enforcement binding
 	path := fmt.Sprintf("%s/BD-list[id=%s]", paths.ServiceRedirBdItems, name)
 	if err := handler.Delete(ctx, path); err != nil {
@@ -326,6 +344,85 @@ func (s *vlanStore) cleanupRedirects(ctx context.Context, name string) {
 	}
 
 	logger.GetLogger().Debug("VLAN redirect cleanup completed", "vlan", name)
+}
+
+// policyNameToDPU extracts the DPU number from a policy name.
+// "__dpu1_dpu_vlan_redir" → 1, "__dpu_all_dpu_vlan_redir" → allDpu
+func policyNameToDPU(name string) uint16 {
+	if strings.Contains(name, "_all_") {
+		return allDpu
+	}
+	// Extract number after "__dpu"
+	trimmed := strings.TrimPrefix(name, "__dpu")
+	idx := strings.Index(trimmed, "_")
+	if idx > 0 {
+		if n, err := strconv.ParseUint(trimmed[:idx], 10, 16); err == nil {
+			return uint16(n)
+		}
+	}
+	return 0
+}
+
+// RestorePinningFromGnmi reads existing BD enforcement from the switch and
+// performs selective cleanup of stale or repinned VLANs. Called during Setup()
+// before ReconcileRedirects so we avoid unnecessary bulk DELETE of unchanged state.
+func (s *vlanStore) RestorePinningFromGnmi(ctx context.Context) error {
+	s.mu.RLock()
+	handler := s.gnmiHandler
+	s.mu.RUnlock()
+	if handler == nil {
+		return nil
+	}
+
+	jstrs, err := handler.Get(ctx, paths.ServiceRedirBdItems)
+	if err != nil {
+		return fmt.Errorf("failed to get bd-items: %w", err)
+	}
+	if len(jstrs) == 0 || len(jstrs[0]) == 0 {
+		logger.GetLogger().Debug("No existing BD enforcement configuration found")
+		return nil
+	}
+
+	items := &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_BdItems{}
+	opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
+	if err := model.Unmarshal([]byte(jstrs[0]), items, opts...); err != nil {
+		return fmt.Errorf("failed to unmarshal bd-items: %w", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Build map of what's on the switch: vlanName → dpuPinned
+	switchBDs := make(map[string]uint16)
+	for id, bd := range items.BDList {
+		if bd == nil || bd.Policy == nil {
+			continue
+		}
+		switchBDs[id] = policyNameToDPU(*bd.Policy)
+	}
+
+	staleCount, repinCount := 0, 0
+	for bdName, oldDPU := range switchBDs {
+		vlan, exists := s.vlans[bdName]
+		if !exists || !vlan.Active {
+			// VLAN deleted — clean up BD enforcement
+			logger.GetLogger().Warn("Cleaning up stale BD redirect", "vlan", bdName)
+			s.cleanupRedirectsLocked(ctx, bdName)
+			staleCount++
+		} else if vlan.DPUPinned != oldDPU {
+			// DPU pinning changed — delete enforcement (will be reprogrammed by ReconcileRedirects)
+			logger.GetLogger().Info("BD DPU pinning changed, cleaning enforcement",
+				"vlan", bdName, "oldDPU", oldDPU, "newDPU", vlan.DPUPinned)
+			s.cleanupRedirectsLocked(ctx, bdName)
+			repinCount++
+		}
+	}
+
+	if staleCount > 0 || repinCount > 0 {
+		logger.GetLogger().Info("Restored VLAN pinning from gNMI",
+			"stale", staleCount, "repinned", repinCount)
+	}
+	return nil
 }
 
 // isPinningActive returns true when per-DPU pinning is active.
@@ -651,27 +748,13 @@ func (s *vlanStore) CleanupAllRedirects(ctx context.Context) {
 	}
 }
 
-// ReconcileRedirects clears stale redirect state from a previous run (crash recovery)
-// and reprograms redirects for all active VLANs.
+// ReconcileRedirects reprograms redirects for all active VLANs.
 // Called during startup after shared infrastructure is in place.
+// Stale cleanup is handled by RestorePinningFromGnmi before this is called.
 // Unconditional — bypasses the inService gate.
 func (s *vlanStore) ReconcileRedirects(ctx context.Context) {
-	s.mu.RLock()
-	handler := s.gnmiHandler
-	s.mu.RUnlock()
-
-	// Clear stale entries from previous run that may not match current active set.
-	if handler != nil {
-		if err := handler.Delete(ctx, paths.ServiceRedirBdItems); err != nil {
-			logger.GetLogger().Warn("Failed to clear stale BD items during reconciliation", "error", err)
-		}
-		if err := handler.Delete(ctx, paths.FwPolicyStateVlan); err != nil {
-			logger.GetLogger().Warn("Failed to clear stale BD fwPolicyState during reconciliation", "error", err)
-		}
-	}
-
-	// Program redirects for all active VLANs unconditionally.
 	s.ProgramAllRedirects(ctx)
+	logger.GetLogger().Info("VLAN redirects reconciled")
 }
 
 // CleanupAllFwPolicyState deletes fwPolicyState for all active VLANs (BDs).

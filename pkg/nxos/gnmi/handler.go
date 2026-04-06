@@ -25,6 +25,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
 )
 
+// Ensure NxosGnmiHandler implements GnmiHandler.
+var _ GnmiHandler = (*NxosGnmiHandler)(nil)
+
 const (
 	// maxRetries is the maximum number of retry attempts for gNMI operations.
 	maxRetries = 4
@@ -49,6 +52,18 @@ type NxosGnmiHandler struct {
 	subCtx     context.Context
 	subCancel  context.CancelFunc
 	subStarted bool
+
+	// Liveness tracking: time of the last received gNMI notification.
+	lastNotifTime atomic.Value // stores time.Time
+}
+
+// LastNotificationTime returns the time of the last received gNMI notification.
+// Returns zero time if no notification has been received yet.
+func (h *NxosGnmiHandler) LastNotificationTime() time.Time {
+	if v := h.lastNotifTime.Load(); v != nil {
+		return v.(time.Time)
+	}
+	return time.Time{}
 }
 
 // NewNxosGnmiHandler creates a new NxosGnmiHandler with the given configuration.
@@ -441,6 +456,7 @@ func (h *NxosGnmiHandler) subscriptionLoop(ctx context.Context, req *gnmiproto.S
 			switch r := resp.Response.Response.(type) {
 			case *gnmiproto.SubscribeResponse_Update:
 				notification := r.Update
+				h.lastNotifTime.Store(time.Now())
 
 				// Handle updates
 				for _, update := range notification.GetUpdate() {

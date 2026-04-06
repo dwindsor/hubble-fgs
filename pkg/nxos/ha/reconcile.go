@@ -57,6 +57,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, peer string, peerMbrInfo *ha
 		peerGids[vrfInfo.Name] = uint16(vrfInfo.Id)
 	}
 
+	// Store peer GIDs for HA-aware allocation of new VRFs on non-leader.
+	r.vrfStore.SetPeerGIDs(peerGids)
+
 	reconCount := 0
 	reconcileOk := true
 

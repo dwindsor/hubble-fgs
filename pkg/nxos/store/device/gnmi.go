@@ -36,10 +36,8 @@ func (s *deviceStore) HandleGnmiNotification(ctx context.Context, path string, u
 			s.SetProxyPort(ctx, 0)
 			logger.GetLogger().Debug("Proxy port cleared via gNMI delete notification")
 		case paths.PathMatches(path, paths.DeviceStoreInService):
-			// SF removed: trigger graceful restart so cleanup runs while InServiceState
-			// is still set, then the process restarts with fresh empty inService state.
-			logger.GetLogger().Info("InService path deleted via gNMI, triggering graceful restart")
-			shutdown.TriggerShutdown(shutdown.RestartExitCode)
+			s.SetInService(ctx, InServiceStateOutOfService)
+			logger.GetLogger().Info("InService path deleted via gNMI, treated as out-of-service")
 		default:
 			logger.GetLogger().Warn("Failed to handle device gNMI delete notification", "path", path)
 		}

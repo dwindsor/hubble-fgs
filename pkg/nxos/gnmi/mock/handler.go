@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	gnmiproto "github.com/openconfig/gnmi/proto/gnmi"
@@ -208,6 +209,11 @@ func (h *Handler) StartSubscriptions(_ context.Context) {
 
 // StopSubscriptions is a no-op for the mock handler.
 func (h *Handler) StopSubscriptions() {
+}
+
+// LastNotificationTime always returns zero time for the mock handler.
+func (h *Handler) LastNotificationTime() time.Time {
+	return time.Time{}
 }
 
 // Route dispatches a gNMI notification to all handlers subscribed to the given path.

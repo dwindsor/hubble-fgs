@@ -546,26 +546,6 @@ func (agw *AgentGateway) InitializeMTLS() bool {
 	return true
 }
 
-func (agw *AgentGateway) WaitForInService(ctx context.Context) {
-	logger.GetLogger().Debug("WaitForInService")
-
-	for {
-
-		if agw.nxosManager.DeviceStore().IsInService() {
-			logger.GetLogger().Debug("Now is InService")
-			return
-		}
-
-		select {
-		case <-ctx.Done():
-			logger.GetLogger().Debug("Context done in WaitForInService")
-			return
-
-		case <-time.After(CHECK_INTERVAL * time.Second):
-		}
-	}
-}
-
 func (agw *AgentGateway) GetStartupTime() time.Time {
 	return agw.StartupTime
 }

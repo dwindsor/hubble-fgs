@@ -312,6 +312,34 @@ launch-ha-agw: create-ha-network
 		-e NX_AGENT_IGNORE_MODULES="1" \
 		$(AGW_IMAGE)
 	@echo "HA AGW containers started (leader=$(AGW_LEADER_NAME) @ $(AGW_LEADER_IP), follower=$(AGW_FOLLOWER_NAME) @ $(AGW_FOLLOWER_IP))"
+	@$(MAKE) seed-ha-gnmi
+
+seed-ha-gnmi:
+	@echo "Seeding mock gNMI with HA configuration..."
+	@echo "Waiting for AGW CLI servers to be ready..."
+	@for C in $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME); do \
+		for i in $$(seq 1 15); do \
+			docker exec $$C ./agwctl health >/dev/null 2>&1 && break; \
+			sleep 1; \
+		done; \
+	done
+	@echo "  Seeding leader with HA config (peer=$(AGW_FOLLOWER_IP))..."
+	@docker cp testdata/gnmi/default_gnmi_ha_leader.json $(AGW_LEADER_NAME):/tmp/mock_gnmi_seed.json
+	@docker exec $(AGW_LEADER_NAME) ./agwctl mock gnmi set --file /tmp/mock_gnmi_seed.json >/dev/null 2>&1
+	@echo "  Seeding follower with HA config (peer=$(AGW_LEADER_IP))..."
+	@docker cp testdata/gnmi/default_gnmi_ha_follower.json $(AGW_FOLLOWER_NAME):/tmp/mock_gnmi_seed.json
+	@docker exec $(AGW_FOLLOWER_NAME) ./agwctl mock gnmi set --file /tmp/mock_gnmi_seed.json >/dev/null 2>&1
+	@echo "Waiting for HA config to propagate..."
+	@sleep 3
+	@for C in $(AGW_LEADER_NAME) $(AGW_FOLLOWER_NAME); do \
+		PHASE=$$(docker exec $$C ./agwctl show_status 2>&1 | grep "Phase:" | awk '{print $$2}'); \
+		HAS_HA=$$(docker exec $$C ./agwctl config show 2>&1 | grep -c "CONFIG_TYPE_HA" || true); \
+		if [ "$$HAS_HA" -gt 0 ]; then \
+			echo "  ✅ $$C: phase=$${PHASE:-unknown}, HA config present"; \
+		else \
+			echo "  ⏳ $$C: phase=$${PHASE:-unknown}, HA config not yet available"; \
+		fi; \
+	done
 
 launch-fwa-agw: create-fwa-network
 	@echo "Starting AGW for FWA on $(FWA_NETWORK)..."

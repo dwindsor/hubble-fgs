@@ -12,9 +12,13 @@ package nxos
 
 import (
 	"context"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/mock"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 )
 
 func TestHandleServiceLifecycleNotification_IgnoresUpdates(t *testing.T) {
@@ -86,5 +90,153 @@ func TestHandleSvcFwPolicyPathDoesNotMatchOperState(t *testing.T) {
 	operStatePath := "System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/fwpolicy-items/operState"
 	if paths.PathMatches(operStatePath, paths.SvcFwPolicyPath) {
 		t.Error("operState child path should NOT match SvcFwPolicyPath via PathMatches")
+	}
+}
+
+// TestSetupInServiceHooks_OutOfService_LocalSvcStateBeforeRedirects verifies
+// that SetLocalSvcStateToFailure is written to gNMI before the bulk service
+// redirect delete when transitioning to out-of-service.
+func TestSetupInServiceHooks_OutOfService_LocalSvcStateBeforeRedirects(t *testing.T) {
+	t.Setenv("NX_AGENT_IGNORE_MODULES", "1")
+	ctx := context.Background()
+
+	dir := t.TempDir()
+	handler := mock.NewHandlerBuilder().
+		WithPersistPath(filepath.Join(dir, "state.json")).
+		Build()
+
+	m := NewManager(ctx, WithMockGnmiHandler(handler)).(*manager)
+	m.haStore.SetGnmiHandler(handler)
+	m.deviceStore.SetGnmiHandler(handler)
+	m.vrfStore.SetGnmiHandler(handler)
+	m.vlanStore.SetGnmiHandler(handler)
+
+	m.setupInServiceHooks()
+
+	// Transition: in-service -> out-of-service
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+	m.deviceStore.SetInService(ctx, "out-of-service")
+
+	txLog := handler.TxLog()
+
+	// Read all set entries — localSvcState must appear before the bulk delete.
+	allEntries, err := txLog.ReadEntries("", "", "")
+	if err != nil {
+		t.Fatalf("ReadEntries: %v", err)
+	}
+
+	svcStateIdx := -1
+	bulkDeleteIdx := -1
+	for i, e := range allEntries {
+		if strings.Contains(e.Path, "localSvcState") && e.Action == "set" {
+			if svcStateIdx < 0 {
+				svcStateIdx = i
+			}
+		}
+		if strings.Contains(e.Path, "serviceredir-items") && e.Action == "delete" {
+			if bulkDeleteIdx < 0 {
+				bulkDeleteIdx = i
+			}
+		}
+	}
+
+	if svcStateIdx < 0 {
+		t.Error("expected SET for localSvcState, none found in TxLog")
+	}
+	if bulkDeleteIdx < 0 {
+		t.Error("expected DELETE for serviceredir-items, none found in TxLog")
+	}
+	if svcStateIdx >= 0 && bulkDeleteIdx >= 0 && svcStateIdx >= bulkDeleteIdx {
+		t.Errorf("localSvcState SET (idx %d) must come before serviceredir-items DELETE (idx %d)",
+			svcStateIdx, bulkDeleteIdx)
+	}
+}
+
+// TestSetupInServiceHooks_OutOfService_BulkDeleteAndSystemState verifies that
+// the post-hook uses a single bulk DELETE for serviceredir-items and also
+// deletes system state.
+func TestSetupInServiceHooks_OutOfService_BulkDeleteAndSystemState(t *testing.T) {
+	t.Setenv("NX_AGENT_IGNORE_MODULES", "1")
+	ctx := context.Background()
+
+	dir := t.TempDir()
+	handler := mock.NewHandlerBuilder().
+		WithPersistPath(filepath.Join(dir, "state.json")).
+		Build()
+
+	m := NewManager(ctx, WithMockGnmiHandler(handler)).(*manager)
+	m.haStore.SetGnmiHandler(handler)
+	m.deviceStore.SetGnmiHandler(handler)
+	m.vrfStore.SetGnmiHandler(handler)
+	m.vlanStore.SetGnmiHandler(handler)
+
+	m.setupInServiceHooks()
+
+	// Transition: in-service -> out-of-service
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+	m.deviceStore.SetInService(ctx, "out-of-service")
+
+	txLog := handler.TxLog()
+
+	// Verify bulk delete of serviceredir-items was issued.
+	bulkDeletes, err := txLog.ReadEntries("", "/System/serviceredir-items", "delete")
+	if err != nil {
+		t.Fatalf("ReadEntries: %v", err)
+	}
+	if len(bulkDeletes) == 0 {
+		t.Error("expected DELETE for /System/serviceredir-items, none found")
+	}
+
+	// Verify system state was deleted.
+	sysStateDeletes, err := txLog.ReadEntries("", paths.DeviceStoreSystemState, "delete")
+	if err != nil {
+		t.Fatalf("ReadEntries: %v", err)
+	}
+	if len(sysStateDeletes) == 0 {
+		t.Error("expected DELETE for DeviceStoreSystemState, none found")
+	}
+}
+
+// TestSetupInServiceHooks_OutOfService_TriggersGracefulRestart verifies that
+// the post-hook delegates cleanup to Close() via GracefulRestart, which
+// performs the full cleanup sequence (localSvcState, fwPolicyState,
+// serviceredir-items, system state) in one code path.
+func TestSetupInServiceHooks_OutOfService_TriggersGracefulRestart(t *testing.T) {
+	t.Setenv("NX_AGENT_IGNORE_MODULES", "1")
+	ctx := context.Background()
+
+	dir := t.TempDir()
+	handler := mock.NewHandlerBuilder().
+		WithPersistPath(filepath.Join(dir, "state.json")).
+		Build()
+
+	m := NewManager(ctx, WithMockGnmiHandler(handler)).(*manager)
+	m.haStore.SetGnmiHandler(handler)
+	m.deviceStore.SetGnmiHandler(handler)
+	m.vrfStore.SetGnmiHandler(handler)
+	m.vlanStore.SetGnmiHandler(handler)
+
+	m.setupInServiceHooks()
+
+	// Transition: in-service -> out-of-service
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+	m.deviceStore.SetInService(ctx, "out-of-service")
+
+	// After GracefulRestart, the manager should be closed.
+	if !m.closed.Load() {
+		t.Error("expected manager to be closed after out-of-service transition")
+	}
+
+	txLog := handler.TxLog()
+
+	// Verify the VLAN fwPolicyState was cleaned up (global redirect state).
+	// The VLAN store does an unconditional bulk delete of FwPolicyStateVlan,
+	// so this always appears even without active VLANs.
+	vlanFwDeletes, err := txLog.ReadEntries("", paths.FwPolicyStateVlan, "delete")
+	if err != nil {
+		t.Fatalf("ReadEntries: %v", err)
+	}
+	if len(vlanFwDeletes) == 0 {
+		t.Error("expected DELETE for VLAN fwPolicyState, none found")
 	}
 }

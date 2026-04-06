@@ -850,4 +850,117 @@ func TestManager_Run_ServerStartsOnAdminEnabledOnly(t *testing.T) {
 	}
 }
 
+// TestManager_Run_NotifiesServiceFailureOnOutOfService verifies that when the
+// device transitions to out-of-service, the HA manager immediately sends an
+// Adjacency RPC with SVC_FAILURE to connected peers, and does NOT send such
+// a notification when transitioning to in-service.
+func TestManager_Run_NotifiesServiceFailureOnOutOfService(t *testing.T) {
+	ctx := context.Background()
+
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	// adjReceived captures adjacency requests received by the mock peer.
+	adjReceived := make(chan *hav1.AdjRequest, 10)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client {
+			c := NewMockClient()
+			c.SetAdjacencyHandler(func(ctx context.Context, req *hav1.AdjRequest) (*hav1.AdjResponse, error) {
+				select {
+				case adjReceived <- req:
+				default:
+				}
+				return &hav1.AdjResponse{Status: hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS}, nil
+			})
+			return c
+		}),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	bgCtx := context.Background()
+
+	// Activate HA — must have enabled, haIP, peer, and in-service.
+	deviceStore.SetInService(bgCtx, "in-service")
+	haStore.SetEnabled(bgCtx, "enabled")
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
+
+	// Give Run() time to activate.
+	time.Sleep(50 * time.Millisecond)
+
+	// Directly connect the peer so NotifyServiceFailure can reach it.
+	// The peer was added via haStore before activation, so EventPeerAdded was
+	// consumed by waitForConfig — the active loop never saw it and peerClients
+	// is empty at this point.
+	if err := mgr.ConnectPeer(bgCtx, "10.0.0.2"); err != nil {
+		t.Fatalf("ConnectPeer failed: %v", err)
+	}
+
+	// Drain any adjacency messages sent by the keepalive ticker.
+	time.Sleep(20 * time.Millisecond)
+	for len(adjReceived) > 0 {
+		<-adjReceived
+	}
+
+	// Transition to out-of-service — NotifyServiceFailure should fire.
+	deviceStore.SetInService(bgCtx, "out-of-service")
+
+	// Wait for the notification (should arrive quickly, not waiting for a tick).
+	select {
+	case req := <-adjReceived:
+		if req.MbrInfo == nil || req.MbrInfo.HaInfo == nil {
+			t.Fatal("expected MbrInfo.HaInfo in adjacency request")
+		}
+		if req.MbrInfo.HaInfo.LocalSvcState != hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE {
+			t.Errorf("expected LocalSvcState=LOCAL_SVC_FAILURE, got %v", req.MbrInfo.HaInfo.LocalSvcState)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Error("did not receive adjacency notification after out-of-service transition")
+	}
+
+	// Transition back to in-service — no SVC_FAILURE notification should be sent.
+	// Drain first to clear any queued messages.
+	for len(adjReceived) > 0 {
+		<-adjReceived
+	}
+	deviceStore.SetInService(bgCtx, "in-service")
+	// Wait briefly — any message arriving here would be from NotifyServiceFailure
+	// (called only on !isInService). A regular adjacency tick could also arrive,
+	// so we check specifically that no SVC_FAILURE-scoped notification was triggered
+	// by the in-service transition by verifying nothing arrives in a short window.
+	time.Sleep(50 * time.Millisecond)
+	hasSvcFailure := false
+	for len(adjReceived) > 0 {
+		req := <-adjReceived
+		if req.MbrInfo != nil && req.MbrInfo.HaInfo != nil &&
+			req.MbrInfo.HaInfo.LocalSvcState == hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE {
+			hasSvcFailure = true
+		}
+	}
+	if hasSvcFailure {
+		t.Error("should not receive SVC_FAILURE notification on in-service transition")
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
 var _ Manager = (*mockManager)(nil)

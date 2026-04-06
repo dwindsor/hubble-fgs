@@ -85,4 +85,9 @@ type Store interface {
 	// CleanupAllFwPolicyState deletes fwPolicyState for all active VLANs.
 	// Called during Close() to clean up stale state on the switch.
 	CleanupAllFwPolicyState(ctx context.Context)
+
+	// RestorePinningFromGnmi reads existing BD enforcement from the switch and
+	// performs selective cleanup of stale or repinned VLANs.
+	// Called during Setup() before ReconcileRedirects.
+	RestorePinningFromGnmi(ctx context.Context) error
 }

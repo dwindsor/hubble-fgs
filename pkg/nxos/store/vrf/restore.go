@@ -115,7 +115,7 @@ func (s *vrfStore) RestoreGIDsFromGnmi(ctx context.Context) error {
 		if !activeVRFs[vrfName] {
 			staleCount++
 			logger.GetLogger().Warn("Cleaning up stale VRF redirect from previous run", "vrf", vrfName)
-			go s.cleanupRedirects(ctx, vrfName)
+			s.cleanupRedirectsLocked(ctx, vrfName)
 		}
 	}
 	if staleCount > 0 {

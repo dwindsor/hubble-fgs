@@ -20,7 +20,6 @@ from helper.ha_helpers import LEADER_IP, FOLLOWER_IP, wait_for_ha_ready
 from helper.gnmi_paths import (
     HA_ADMIN_STATE_PATH,
     HA_IP_PATH,
-    HA_PEERS_PATH,
     HA_SWITCH_STATE_PATH,
     ha_peer_ip_path,
     ha_peer_ip_config_state_path,
@@ -67,8 +66,13 @@ def skip_ha_if_unavailable(config):
             pytest.skip(f"HA container '{name}' not available — run 'make launch-ha-agw' first")
 
 
-def _seed_gnmi_and_enable_ha(cmd, gnmi_file, ha_ip, peer_ip):
-    """Seed mock gNMI from file, then enable HA with the given source IP and peer."""
+def _seed_gnmi_ha(cmd, gnmi_file):
+    """Seed mock gNMI from an HA-preconfigured JSON file.
+
+    The JSON file already contains adminState=enabled, nxHaOperState=ha-ready,
+    the correct agentHaSrcIntfAddr, and the peer entry with ipConfigState=success,
+    so no additional gNMI SET calls are needed.
+    """
     if not gnmi_file.exists():
         logger.warning(f"gNMI seed file not found: {gnmi_file}")
         return
@@ -78,34 +82,21 @@ def _seed_gnmi_and_enable_ha(cmd, gnmi_file, ha_ip, peer_ip):
     except Exception as e:
         logger.warning(f"Failed to seed mock gNMI: {e}")
         return
-    # Enable HA and set source IP via gNMI SET.
-    # Order: source IP first, then admin/oper state, then peer ipAddr + ipConfigState.
-    # ipConfigState must be set as a per-peer leaf (not embedded in list JSON)
-    # because the HA store expects individual leaf updates for each peer field.
-    try:
-        cmd.agw_mock_gnmi_set(HA_IP_PATH, f'"{ha_ip}"')
-        cmd.agw_mock_gnmi_set(HA_ADMIN_STATE_PATH, '"enabled"')
-        cmd.agw_mock_gnmi_set(HA_SWITCH_STATE_PATH, '"ha-ready"')
-        cmd.agw_mock_gnmi_set(ha_peer_ip_path(peer_ip), f'"{peer_ip}"')
-        cmd.agw_mock_gnmi_set(ha_peer_ip_config_state_path(peer_ip), '"success"')
-        logger.info(f"Enabled HA with source IP {ha_ip} and peer {peer_ip}")
-    except Exception as e:
-        logger.warning(f"Failed to enable HA: {e}")
     time.sleep(3)
 
 
 @pytest.fixture(scope="session")
 def seed_gnmi_leader(ha_cmd_leader):
     """Seed the mock gNMI handler on the leader and enable HA."""
-    gnmi_file = TESTDATA_DIR / "default_gnmi_skip_dpu.json"
-    _seed_gnmi_and_enable_ha(ha_cmd_leader, gnmi_file, LEADER_IP, FOLLOWER_IP)
+    gnmi_file = TESTDATA_DIR / "default_gnmi_ha_leader.json"
+    _seed_gnmi_ha(ha_cmd_leader, gnmi_file)
 
 
 @pytest.fixture(scope="session")
 def seed_gnmi_follower(ha_cmd_follower):
     """Seed the mock gNMI handler on the follower and enable HA."""
-    gnmi_file = TESTDATA_DIR / "default_gnmi_skip_dpu.json"
-    _seed_gnmi_and_enable_ha(ha_cmd_follower, gnmi_file, FOLLOWER_IP, LEADER_IP)
+    gnmi_file = TESTDATA_DIR / "default_gnmi_ha_follower.json"
+    _seed_gnmi_ha(ha_cmd_follower, gnmi_file)
 
 
 @pytest.fixture(scope="session")
@@ -151,7 +142,10 @@ def _restore_ha_baseline(ha_cmd_leader, ha_cmd_follower):
                 else:
                     logger.warning("Container did not become healthy within 30s during baseline restore")
                 # Re-seed gNMI after restart (mock state lost)
-                gnmi_file = TESTDATA_DIR / "default_gnmi_skip_dpu.json"
+                if ha_ip == LEADER_IP:
+                    gnmi_file = TESTDATA_DIR / "default_gnmi_ha_leader.json"
+                else:
+                    gnmi_file = TESTDATA_DIR / "default_gnmi_ha_follower.json"
                 if gnmi_file.exists():
                     try:
                         cmd.agw_mock_gnmi_set_file(str(gnmi_file))

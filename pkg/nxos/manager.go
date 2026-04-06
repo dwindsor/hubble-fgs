@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -104,6 +105,8 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 	// Create the device store first so VRF/VLAN stores can reference its LbMode.
 	devStore := device.NewStore(ctx, device.WithStorage(storageBackend), device.WithAgentTokenProvider(token.GetAgentToken()))
 	dpuSt := dpu.NewStore(ctx, dpu.WithStorage(storageBackend))
+	// Pre-create haStore so the isLeader closure can reference it.
+	haSt := hastore.NewStore(ctx, hastore.WithStorage(storageBackend))
 
 	// lbModePinning is a callback shared by VRF and VLAN stores to check
 	// whether per-DPU pinning is active at redirect-programming time.
@@ -119,13 +122,14 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 			vrf.WithStorage(storageBackend),
 			vrf.WithPreSeededGIDs(options.vrfGIDs),
 			vrf.WithLbModePinning(lbModePinning),
+			vrf.WithIsLeader(func() bool { return haSt.IsLeader() }),
 		),
 		vlanStore: vlan.NewStore(ctx,
 			vlan.WithStorage(storageBackend),
 			vlan.WithLbModePinning(lbModePinning),
 		),
 		dpuStore:    dpuSt,
-		haStore:     hastore.NewStore(ctx, hastore.WithStorage(storageBackend)),
+		haStore:     haSt,
 		deviceStore: devStore,
 		storage:     storageBackend,
 		opts:        options,
@@ -179,6 +183,9 @@ func (m *manager) Setup(ctx context.Context) error {
 		return err
 	}
 
+	// Start notification liveness check
+	go m.checkNotificationLiveness(ctx)
+
 	// Update all domain stores with gNMI handler for state synchronization.
 	if m.gnmiHandler != nil {
 		m.deviceStore.SetGnmiHandler(m.gnmiHandler)
@@ -191,6 +198,12 @@ func (m *manager) Setup(ctx context.Context) error {
 		// This ensures GID allocation matches what's actually configured after restart.
 		if err := m.vrfStore.RestoreGIDsFromGnmi(ctx); err != nil {
 			logger.GetLogger().Warn("Failed to restore GIDs from gNMI", "error", err)
+		}
+
+		// Restore VLAN pinning from existing BD enforcement on the switch.
+		// Selectively cleans up stale/repinned VLANs before reconciliation.
+		if err := m.vlanStore.RestorePinningFromGnmi(ctx); err != nil {
+			logger.GetLogger().Warn("Failed to restore VLAN pinning from gNMI", "error", err)
 		}
 	}
 
@@ -275,12 +288,21 @@ func (m *manager) Close(ctx context.Context) error {
 	}
 	checkContext()
 
-	// 2. Clean up per-VRF/VLAN fwPolicyState and service redirect items
+	// 2. Signal to switch that the agent is departing before removing state.
+	if m.gnmiHandler != nil && !forcedClose {
+		logger.GetLogger().Info("Setting local service state to not-ready")
+		if err := m.haStore.SetLocalSvcStateToFailure(ctx, types.NewReasonString("agent shutdown")); err != nil {
+			logger.GetLogger().Warn("Failed to set local svc state to failure", "error", err)
+		}
+		m.deviceStore.SetConnectionStatus(ctx, device.CommonStateUnknown, "")
+	}
+
+	// 3. Clean up per-VRF/VLAN fwPolicyState and service redirect items
 	if m.gnmiHandler != nil && !forcedClose {
 		logger.GetLogger().Info("Cleaning up service redirect state")
 		m.vrfStore.CleanupAllFwPolicyState(ctx)
 		m.vlanStore.CleanupAllFwPolicyState(ctx)
-		if err := m.gnmiHandler.Delete(ctx, "/System/serviceredir-items/inst-items"); err != nil {
+		if err := m.gnmiHandler.Delete(ctx, "/System/serviceredir-items"); err != nil {
 			logger.GetLogger().Warn("Failed to delete service redirect items", "error", err)
 		}
 	}
@@ -407,6 +429,33 @@ func (m *manager) setupGnmiSubscriptions(ctx context.Context) error {
 	return nil
 }
 
+// checkNotificationLiveness periodically checks that gNMI notifications are
+// still being received. Logs an error if the last notification was too long ago.
+func (m *manager) checkNotificationLiveness(ctx context.Context) {
+	const notifTimeout = 120 * time.Second
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if m.gnmiHandler == nil {
+				continue
+			}
+			lastNotif := m.gnmiHandler.LastNotificationTime()
+			if lastNotif.IsZero() {
+				continue // No notifications received yet
+			}
+			if elapsed := time.Since(lastNotif); elapsed > notifTimeout {
+				logger.GetLogger().Debug("gNMI notification liveness check failed",
+					"lastNotification", lastNotif,
+					"elapsed", elapsed)
+			}
+		}
+	}
+}
+
 // programSharedRedirects programs the shared redirect infrastructure that must
 // be in place before any per-VRF or per-VLAN redirects can be programmed:
 // 1. IPv4 and IPv6 ACLs referenced by all policy maps
@@ -445,11 +494,21 @@ func (m *manager) programSharedRedirects(ctx context.Context) error {
 // setupInServiceHooks registers pre/post hooks on the device store that
 // manage redirect programming around in-service state transitions.
 //
-// Going in-service: program all redirects, then enable the reactive gate.
-// Going out-of-service: disable the reactive gate, then remove all redirects.
+// Going in-service: reprogram shared infrastructure, program all redirects,
+// then enable the reactive gate.
+// Going out-of-service: signal failure to switch, disable the reactive gate,
+// clean up fwPolicyState, bulk-delete service redirects, delete system state.
 func (m *manager) setupInServiceHooks() {
 	m.deviceStore.SetPreInServiceHook(func(ctx context.Context, newState string) {
 		if newState == device.InServiceStateInService {
+			// Reprogram shared BD infrastructure (ACLs, BD service endpoints,
+			// BD policy maps) which may have been removed by a prior bulk
+			// serviceredir delete during out-of-service. Idempotent: gNMI SET
+			// merges are no-ops if the infrastructure already exists.
+			if err := m.programSharedRedirects(ctx); err != nil {
+				logger.GetLogger().Error("Failed to reprogram shared redirects on in-service", "error", err)
+			}
+
 			m.vrfStore.ProgramAllRedirects(ctx)
 			m.vlanStore.ProgramAllRedirects(ctx)
 			m.vrfStore.SetInService(true)
@@ -462,13 +521,8 @@ func (m *manager) setupInServiceHooks() {
 
 	m.deviceStore.SetPostInServiceHook(func(ctx context.Context, oldState string) {
 		if oldState == device.InServiceStateInService {
-			m.vrfStore.SetInService(false)
-			m.vlanStore.SetInService(false)
-			m.vrfStore.CleanupAllRedirects(ctx)
-			m.vlanStore.CleanupAllRedirects(ctx)
-			if err := m.advancePhase(ctx, PhaseDpuReady); err != nil {
-				logger.GetLogger().Warn("Failed to regress to DpuReady on out-of-service", logfields.Error, err)
-			}
+			logger.GetLogger().Info("Out-of-service transition, removing redirects")
+			m.removeAllRedirects(ctx)
 		}
 	})
 }
@@ -534,6 +588,38 @@ func (m *manager) updateVRFPolicyMap() {
 	})
 	if err != nil {
 		logger.GetLogger().Error("Failed to update network config", logfields.Error, err)
+	}
+}
+
+// removeAllRedirects cleans up redirect state without tearing down the manager.
+// Called on out-of-service transitions so the process keeps running.
+//
+func (m *manager) removeAllRedirects(ctx context.Context) {
+	// Signal local svc state to not-ready BEFORE removing any redirects.
+	if m.gnmiHandler != nil {
+		if err := m.haStore.SetLocalSvcStateToFailure(ctx, types.NewReasonString("out-of-service")); err != nil {
+			logger.GetLogger().Warn("Failed to set local svc state to failure", logfields.Error, err)
+		}
+	}
+
+	// Disable reactive gate (stops new redirects from being programmed).
+	m.vrfStore.SetInService(false)
+	m.vlanStore.SetInService(false)
+
+	// Clean up per-VRF/VLAN fwPolicyState.
+	m.vrfStore.CleanupAllFwPolicyState(ctx)
+	m.vlanStore.CleanupAllFwPolicyState(ctx)
+
+	// Bulk-delete all service redirect items.
+	if m.gnmiHandler != nil {
+		if err := m.gnmiHandler.Delete(ctx, "/System/serviceredir-items"); err != nil {
+			logger.GetLogger().Warn("Failed to delete service redirect items", logfields.Error, err)
+		}
+	}
+
+	// Regress phase to DpuReady (redirects removed, DPUs still present).
+	if err := m.advancePhase(ctx, PhaseDpuReady); err != nil {
+		logger.GetLogger().Warn("Failed to regress to DpuReady after out-of-service", logfields.Error, err)
 	}
 }
 

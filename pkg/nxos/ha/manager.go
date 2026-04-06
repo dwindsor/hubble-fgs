@@ -746,12 +746,20 @@ func (m *manager) runActive(ctx context.Context, storeCh <-chan hastore.Event, d
 		case devEvent := <-deviceCh:
 			if devEvent.Type == device.EventInServiceChanged {
 				// Update HACritInService based on in-service state.
-				// "" (delete) won't arrive here — gNMI delete triggers process restart.
+				// Both value updates ("out-of-service") and path deletions
+				// ("") flow through SetInService and arrive here.
 				isInService := devEvent.Status == "in-service"
 				m.haStore.UpdateLocalCriterion(ctx, types.HACritInService, isInService)
 				logger.GetLogger().Info("HACritInService updated", "in-service", isInService)
 				// Recompute HA config since inService affects the enabled computation.
 				m.computeAndPushHaConfig()
+
+				// Immediately notify peers of service failure so they can
+				// transition to HA_TAKEOVER without waiting for adjacency
+				// timeout. Mirrors old code: hubble-fgs/pkg/nxos/handler.go:616
+				if !isInService {
+					m.NotifyServiceFailure(ctx)
+				}
 			}
 
 		case <-m.holdDownChan():
