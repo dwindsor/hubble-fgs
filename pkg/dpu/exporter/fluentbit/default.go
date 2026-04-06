@@ -128,6 +128,7 @@ func DefaultDpSyslogInput() InputSection {
 			.. " vrf=" .. (record["vrf"] or "")
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " decision=" .. (record["policy_decision"] or "")
+			.. " policy=" .. (record["policy_name"] or "")
 			.. " severity=" .. (record["severity"] or "")
 			.. " count=" .. (record["count"] or "")
 	elseif record["msg_code"] == 2 then  -- SYSLOG_FLOW_DELETE
@@ -171,7 +172,7 @@ func DefaultDpSyslogInput() InputSection {
 			formatted_message = formatted_message .. " decision=" .. record["policy_decision"]
 		end
 		if record["policy_name"] then
-			formatted_message = formatted_message .. " policy_name=" .. record["policy_name"]
+			formatted_message = formatted_message .. " policy=" .. record["policy_name"]
 		end
 		if record["del_reason"] then
 			formatted_message = formatted_message .. " del_reason=" .. record["del_reason"]
