@@ -12,6 +12,8 @@ package fscgroupid
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/cilium/tetragon/pkg/cgroups/fsscan"
@@ -26,8 +28,10 @@ type FSPodScanner interface {
 
 // Resolver abstracts cgroup ID resolution to make it mockable for testing.
 type Resolver interface {
-	// GetCgroupIDFromPodUID resolves a cgroup ID from a pod UID.
-	GetCgroupIDFromPodUID(uid types.UID) (uint64, error)
+	// GetPodCgroupID resolves a pod-level cgroup ID from a pod UID.
+	GetPodCgroupID(uid types.UID) (uint64, error)
+	// GetContainersCgroupIDs returns the cgroup IDs of containers cgroups within the pod.
+	GetContainersCgroupIDs(uid types.UID) ([]uint64, error)
 }
 
 // resolver is the production implementation that uses the filesystem.
@@ -46,7 +50,7 @@ func NewWithScanner(scanner FSPodScanner) Resolver {
 	return &resolver{fsScanner: scanner}
 }
 
-func (r *resolver) GetCgroupIDFromPodUID(uid types.UID) (uint64, error) {
+func (r *resolver) GetPodCgroupID(uid types.UID) (uint64, error) {
 	podDir, err := r.fsScanner.FindPodPath(uid)
 	if err != nil {
 		return 0, fmt.Errorf("failed to find the Pod %s cgroup path: %w", uid, err)
@@ -61,4 +65,34 @@ func (r *resolver) GetCgroupIDFromPodUID(uid types.UID) (uint64, error) {
 		return 0, fmt.Errorf("failed getting the cgroup ID from the cgroup directory %s: %w", podDir, err)
 	}
 	return cgroupID, nil
+}
+
+// GetContainersCgroupIDs returns the cgroup IDs of all container cgroups
+// within the pod cgroup directory.
+func (r *resolver) GetContainersCgroupIDs(uid types.UID) ([]uint64, error) {
+	podDir, err := r.fsScanner.FindPodPath(uid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find the Pod %s cgroup path: %w", uid, err)
+	}
+	if podDir == "" {
+		return nil, nil
+	}
+
+	var containerIDs []uint64
+	entries, err := os.ReadDir(podDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read pod cgroup directory %s: %w", podDir, err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		childPath := filepath.Join(podDir, entry.Name())
+		cgroupID, err := cgroups.GetCgroupIdFromPath(childPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting the cgroup ID from the cgroup directory %s: %w", childPath, err)
+		}
+		containerIDs = append(containerIDs, cgroupID)
+	}
+	return containerIDs, nil
 }

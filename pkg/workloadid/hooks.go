@@ -41,20 +41,33 @@ func (s *State) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, e
 	}
 
 	// New Pod, let's find the cgroup ID to see if we have an associated alloc ID
-	cgroupID, err := s.cgroupIDResolver.GetCgroupIDFromPodUID(pod.GetUID())
+	podCgroupID, err := s.cgroupIDResolver.GetPodCgroupID(pod.GetUID())
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get cgroup ID from Pod UID: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get cgroup ID from Pod: %w", err)
 	}
 
 	workloadMeta, workloadType := podhelpers.GetWorkloadMetaFromPod(&pod)
 
-	err = s.Update(WorkloadMeta{
+	wl := WorkloadMeta{
 		Workload:  workloadMeta.Name,
 		Namespace: pod.Namespace,
 		Kind:      workloadType.Kind,
-	}, CgroupID(cgroupID))
+	}
+
+	// BPF programs resolve cgroup IDs at the container level (not pod
+	// level), collect all containers within this Pod cgroups IDs.
+	cgroupIDs := []uint64{podCgroupID}
+	containersCgroupIDs, err := s.cgroupIDResolver.GetContainersCgroupIDs(pod.GetUID())
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to add to state ID mapping: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get cgroup ID from containers: %w", err)
+	}
+	cgroupIDs = append(cgroupIDs, containersCgroupIDs...)
+
+	for _, cgid := range cgroupIDs {
+		err = s.Update(wl, CgroupID(cgid))
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to add to workload ID mapping: %w", err)
+		}
 	}
 
 	return ctrl.Result{}, nil

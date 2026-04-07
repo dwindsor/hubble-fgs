@@ -193,7 +193,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// New Pod, let's find the cgroup ID to see if we have an associated alloc ID
-	cgroupID, err := r.cgroupIDResolver.GetCgroupIDFromPodUID(pod.GetUID())
+	cgroupID, err := r.cgroupIDResolver.GetPodCgroupID(pod.GetUID())
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get cgroup ID from Pod UID: %w", err)
 	}

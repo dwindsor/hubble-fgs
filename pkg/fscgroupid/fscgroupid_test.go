@@ -46,7 +46,7 @@ func TestGetCgroupIDFromPodUIDScannerError(t *testing.T) {
 
 	resolver := NewWithScanner(scanner)
 
-	_, err := resolver.GetCgroupIDFromPodUID(types.UID("test-uid"))
+	_, err := resolver.GetPodCgroupID(types.UID("test-uid"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pod not found")
 
@@ -59,7 +59,7 @@ func TestGetCgroupIDFromPodUIDEmptyPath(t *testing.T) {
 
 	resolver := NewWithScanner(scanner)
 
-	cgroupID, err := resolver.GetCgroupIDFromPodUID(types.UID("static-pod-uid"))
+	cgroupID, err := resolver.GetPodCgroupID(types.UID("static-pod-uid"))
 	require.NoError(t, err)
 	assert.Equal(t, uint64(0), cgroupID, "empty path should return 0 for static pods")
 
