@@ -1354,7 +1354,7 @@ func TestGnmiShowDevice(t *testing.T) {
 			msgData: ipc.MessageData{
 				Flags: map[string]string{"json": "true"},
 			},
-			expectContains: `"system_state":"disabled"`,
+			expectContains: `"system_state":"conn-pending"`,
 		},
 		{
 			name: "Text output contains Proxy Address",

@@ -21,8 +21,6 @@ import (
 
 // HandleGnmiNotification processes a gNMI notification for VRF state.
 func (s *vrfStore) HandleGnmiNotification(ctx context.Context, path string, update *gnmiproto.Update, isDelete bool) {
-	logger.GetLogger().Debug("====VRF GNMI====", "isDelete", isDelete, "path", path, "update", update)
-
 	switch {
 	case paths.PathMatches(path, paths.VrfStoreGlobalVrfName), paths.PathMatches(path, paths.VrfStoreGlobalVrf):
 		if isDelete {

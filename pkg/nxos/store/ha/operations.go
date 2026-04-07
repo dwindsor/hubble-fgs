@@ -140,6 +140,10 @@ func (s *haStore) SetLocalDerivedStates(ctx context.Context, haState, svcState s
 	if svcChanged {
 		s.localState.SvcStateEpoch = now
 	}
+	// Only push HA state to NX-OS when HA is enabled. When HA is disabled
+	// the switch does not have an HA container and rejects SET operations
+	// on HA paths with "Only end-users can create high-availability config".
+	pushHaToNx := s.enabled == "enabled"
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -163,12 +167,12 @@ func (s *haStore) SetLocalDerivedStates(ctx context.Context, haState, svcState s
 			logger.GetLogger().Warn("Failed to set local svc state reason via gNMI", "error", err)
 		}
 	}
-	if haChanged {
+	if pushHaToNx && haChanged {
 		if err := handler.Set(ctx, paths.HAStoreLocalHaState, haState); err != nil {
 			logger.GetLogger().Warn("Failed to set local ha state via gNMI", "error", err)
 		}
 	}
-	if haChanged || haReasonChanged {
+	if pushHaToNx && (haChanged || haReasonChanged) {
 		if err := handler.Set(ctx, paths.HAStoreLocalHaStateReason, haReason.String()); err != nil {
 			logger.GetLogger().Warn("Failed to set local ha state reason via gNMI", "error", err)
 		}
@@ -455,11 +459,12 @@ func (s *haStore) UpdatePeerHaState(ctx context.Context, ip string, haState stri
 		peer.HaStateEpoch = now
 	}
 	s.peers[ip] = peer
+	pushHaToNx := s.enabled == "enabled"
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	// Not persisted — peer HA state is runtime state computed by the HA state machine.
 
-	if handler != nil && (changed || reasonChanged) {
+	if handler != nil && pushHaToNx && (changed || reasonChanged) {
 		if err := handler.Set(ctx, fmt.Sprintf(paths.HAStorePeerHaState, ip), haState); err != nil {
 			logger.GetLogger().Warn("Failed to set peer ha state via gNMI", "peer", ip, "error", err)
 		}
@@ -485,11 +490,12 @@ func (s *haStore) UpdatePeerSvcState(ctx context.Context, ip string, svcState st
 		peer.SvcStateEpoch = now
 	}
 	s.peers[ip] = peer
+	pushHaToNx := s.enabled == "enabled"
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	// Not persisted — peer service state is runtime state rebuilt via HA protocol.
 
-	if handler != nil && (changed || reasonChanged) {
+	if handler != nil && pushHaToNx && (changed || reasonChanged) {
 		if err := handler.Set(ctx, fmt.Sprintf(paths.HAStorePeerSvcState, ip), svcState); err != nil {
 			logger.GetLogger().Warn("Failed to set peer svc state via gNMI", "peer", ip, "error", err)
 		}
@@ -579,10 +585,11 @@ func (s *haStore) SetLocalHaStateToNotReady(ctx context.Context, reason types.Re
 	reasonChanged := s.localState.HaStateReason != reason
 	s.localState.HaState = types.HAStateNotReady
 	s.localState.HaStateReason = reason
+	pushHaToNx := s.enabled == "enabled"
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
-	if handler == nil || (!stateChanged && !reasonChanged) {
+	if handler == nil || !pushHaToNx || (!stateChanged && !reasonChanged) {
 		return nil
 	}
 	if err := handler.Set(ctx, paths.HAStoreLocalHaState, types.HAStateNotReady); err != nil {
@@ -628,10 +635,11 @@ func (s *haStore) SetRemoteStatesAdjDown(ctx context.Context, peerIP string) err
 		peer.SvcStateReason = reason
 		s.peers[peerIP] = peer
 	}
+	pushHaToNx := s.enabled == "enabled"
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
-	if handler == nil || (!haChanged && !svcChanged) {
+	if handler == nil || !pushHaToNx || (!haChanged && !svcChanged) {
 		return nil
 	}
 	if haChanged {
@@ -651,4 +659,17 @@ func (s *haStore) SetRemoteStatesAdjDown(ctx context.Context, peerIP string) err
 		}
 	}
 	return nil
+}
+
+// UpdatePeerIsLeader updates the peer's self-reported leader status.
+func (s *haStore) UpdatePeerIsLeader(ctx context.Context, ip string, isLeader bool) {
+	s.mu.Lock()
+	peer, ok := s.peers[ip]
+	if !ok {
+		s.mu.Unlock()
+		return
+	}
+	peer.IsLeader = isLeader
+	s.peers[ip] = peer
+	s.mu.Unlock()
 }

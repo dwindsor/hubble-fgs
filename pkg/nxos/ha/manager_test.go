@@ -1217,4 +1217,463 @@ func TestManager_ActivationPreservesPreHACriteria(t *testing.T) {
 	}
 }
 
+// newElectLeaderManager creates a minimal manager for electLeader tests.
+func newElectLeaderManager(localIP string) (*manager, hastore.Store) {
+	store := hastore.NewStore(context.Background())
+	mgr := NewManager(
+		WithHAStoreForManager(store),
+		WithLocalIP(localIP),
+	).(*manager)
+	return mgr, store
+}
+
+// addConnectedPeer adds a peer to the store in a connected state with the given svc state.
+func addConnectedPeer(t *testing.T, ctx context.Context, store hastore.Store, ip, svcState string) {
+	t.Helper()
+	store.SetPeer(ctx, ip, types.HAPeerState{
+		IP:        ip,
+		Connected: true,
+		SvcState:  svcState,
+	})
+}
+
+func TestElectLeader_NoPeers_PreservesState(t *testing.T) {
+	ctx := context.Background()
+	mgr, store := newElectLeaderManager("10.0.0.1")
+
+	// Fresh node: default is not leader.
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected not leader with no peers (fresh node)")
+	}
+
+	// Node that was already leader stays leader.
+	store.SetLeader(ctx, true)
+	mgr.electLeader(ctx)
+	if !store.IsLeader() {
+		t.Error("expected to retain leadership with no peers")
+	}
+}
+
+func TestElectLeader_DisconnectedPeer_PreservesState(t *testing.T) {
+	ctx := context.Background()
+	mgr, store := newElectLeaderManager("10.0.0.1")
+
+	// Add a disconnected peer.
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:        "10.0.0.2",
+		Connected: false,
+		SvcState:  types.SvcStateSuccess,
+	})
+
+	// Follower stays follower when peer disconnects.
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected to remain non-leader when only peer is disconnected")
+	}
+
+	// Leader stays leader when peer disconnects.
+	store.SetLeader(ctx, true)
+	mgr.electLeader(ctx)
+	if !store.IsLeader() {
+		t.Error("expected to retain leadership when only peer is disconnected")
+	}
+}
+
+func TestElectLeader_DeferToExistingLeader(t *testing.T) {
+	ctx := context.Background()
+	mgr, store := newElectLeaderManager("10.0.0.2")
+
+	// Peer with lower IP is already leader and functioning.
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: true,
+		SvcState:  types.SvcStateSuccess,
+		IsLeader:  true,
+	})
+
+	// We should defer to the functioning peer leader.
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected to defer to existing peer leader")
+	}
+}
+
+func TestElectLeader_DeferToExistingLeader_SplitBrain(t *testing.T) {
+	ctx := context.Background()
+
+	// Both nodes think they are leader, both SUCCESS. Higher-IP node (10.0.0.2) should defer.
+	mgr, store := newElectLeaderManager("10.0.0.2")
+	store.SetLeader(ctx, true)
+	setLocalReady(t, store)
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: true,
+		SvcState:  types.SvcStateSuccess,
+		IsLeader:  true,
+	})
+
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected higher-IP node to defer in split-brain scenario")
+	}
+
+	// Lower-IP node (10.0.0.1) should NOT defer when both are SUCCESS.
+	mgr2, store2 := newElectLeaderManager("10.0.0.1")
+	store2.SetLeader(ctx, true)
+	setLocalReady(t, store2)
+	store2.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:        "10.0.0.2",
+		Connected: true,
+		SvcState:  types.SvcStateSuccess,
+		IsLeader:  true,
+	})
+
+	mgr2.electLeader(ctx)
+	if !store2.IsLeader() {
+		t.Error("expected lower-IP node to retain leadership in split-brain scenario")
+	}
+}
+
+func TestElectLeader_NoDeferToDegradedLeader(t *testing.T) {
+	ctx := context.Background()
+	mgr, store := newElectLeaderManager("10.0.0.2")
+
+	// Peer claims leadership but is NOT functioning.
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: true,
+		SvcState:  types.SvcStateFailure,
+		IsLeader:  true,
+	})
+
+	// Step 2 fires because peer.IsLeader=true, and local is not leader → return immediately.
+	// Local remains non-leader (no self-promotion when a leader exists, even a degraded one).
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected not to self-promote when peer is leader (even degraded)")
+	}
+}
+
+func TestElectLeader_SvcStatePreference_InitialElection(t *testing.T) {
+	ctx := context.Background()
+
+	// Local is SUCCESS (CriteriaMet=true), peer is not — local should win regardless of IP.
+	mgr, store := newElectLeaderManager("10.0.0.2") // higher IP, would normally lose
+	setLocalReady(t, store)
+
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: true,
+		SvcState:  types.SvcStateFailure, // peer is not functioning
+	})
+
+	mgr.electLeader(ctx)
+	if !store.IsLeader() {
+		t.Error("expected SUCCESS local node to win election over non-SUCCESS peer, regardless of IP")
+	}
+}
+
+func TestElectLeader_IPTiebreaker(t *testing.T) {
+	ctx := context.Background()
+
+	// Both nodes are SUCCESS, lower IP wins.
+	mgr, store := newElectLeaderManager("10.0.0.2") // higher IP
+	setLocalReady(t, store)
+	addConnectedPeer(t, ctx, store, "10.0.0.1", types.SvcStateSuccess)
+
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected higher-IP node to lose IP tiebreaker")
+	}
+
+	// Lower IP node wins.
+	mgr2, store2 := newElectLeaderManager("10.0.0.1")
+	setLocalReady(t, store2)
+	addConnectedPeer(t, ctx, store2, "10.0.0.2", types.SvcStateSuccess)
+
+	mgr2.electLeader(ctx)
+	if !store2.IsLeader() {
+		t.Error("expected lower-IP node to win IP tiebreaker")
+	}
+}
+
+func TestElectLeader_LeaderRetainsOnSvcDegradation(t *testing.T) {
+	ctx := context.Background()
+	mgr, store := newElectLeaderManager("10.0.0.2")
+
+	// Node is leader.
+	store.SetLeader(ctx, true)
+
+	// Peer is connected and SUCCESS (would win by IP, but we're already leader).
+	addConnectedPeer(t, ctx, store, "10.0.0.1", types.SvcStateSuccess)
+
+	// No peer IsLeader set — step 2 won't trigger. Step 3 should retain.
+	mgr.electLeader(ctx)
+	if !store.IsLeader() {
+		t.Error("expected already-leader to retain leadership (step 3)")
+	}
+}
+
+// TestElectLeader_DeferToPeerLeaderAfterJoiningLate is a regression test for the
+// dual-leader bug: when a peer wins the initial election (e.g. due to SvcSuccess
+// priority), and the local node later becomes SUCCESS, the local node must defer to
+// the already-elected peer leader rather than electing itself.
+//
+// The bug was that the adjacency response never included the peer's IsLeader status,
+// so after each exchange UpdatePeerIsLeader was called with false, causing step 2
+// (defer-to-existing-leader) to be skipped and step 4 to incorrectly elect the
+// local node.
+func TestElectLeader_DeferToPeerLeaderAfterJoiningLate(t *testing.T) {
+	ctx := context.Background()
+
+	// Peer (10.0.0.2, higher IP) won the initial election because local was not
+	// SUCCESS at the time. Simulate that state: peer is connected, SUCCESS, and
+	// already a leader.
+	mgr, store := newElectLeaderManager("10.0.0.1") // lower IP — would win IP tiebreaker
+	setLocalReady(t, store)                         // local is now SUCCESS too
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:        "10.0.0.2",
+		Connected: true,
+		SvcState:  types.SvcStateSuccess,
+		IsLeader:  true, // peer won the earlier election
+	})
+
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("local node must defer to already-elected peer leader even when local has lower IP")
+	}
+}
+
+// TestProcessHaInfo_UpdatesSvcStateForElection is a regression test for the dual-leader
+// bug: when the adjacency initiator received a response, it only extracted IsLeader from
+// HaInfo and ignored SvcState. This left SvcState stale (UNKNOWN), so the Step 2
+// deference check (peer.IsLeader && peer.SvcState==SUCCESS) always failed, causing the
+// initiator to fall through to Step 4 and elect itself even when the peer was the
+// legitimate functioning leader.
+func TestProcessHaInfo_UpdatesSvcStateForElection(t *testing.T) {
+	ctx := context.Background()
+
+	// Local node is 10.0.0.2 (higher IP, would win Step 4 if peer appears non-SUCCESS).
+	mgr, store := newElectLeaderManager("10.0.0.2")
+	setLocalReady(t, store)
+
+	// Peer 10.0.0.1 is connected but SvcState=UNKNOWN — simulating stale state before
+	// any HaInfo has been processed from the adjacency response.
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: true,
+		SvcState:  types.SvcStateUnknown,
+		IsLeader:  false,
+	})
+
+	// Without the fix: electLeader sees peer SvcState=UNKNOWN, falls through to Step 4,
+	// and elects local (10.0.0.2) as leader — incorrectly.
+	mgr.electLeader(ctx)
+	if !store.IsLeader() {
+		t.Skip("pre-condition: local node did not elect itself with stale peer SvcState — test setup may have changed")
+	}
+	store.SetLeader(ctx, false) // reset for the actual test
+
+	// ProcessHaInfo simulates receiving the peer's HaInfo from an adjacency response.
+	// It must update SvcState so that electLeader sees the peer as functioning.
+	mgr.ProcessHaInfo(ctx, "10.0.0.1", &hav1.HaInfo{
+		LocalSvcState: hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS,
+		IsLeader:      true,
+	})
+
+	// After ProcessHaInfo, Step 2 deference must fire (peer.IsLeader && peer.SvcState==SUCCESS)
+	// and local must not become leader.
+	if store.IsLeader() {
+		t.Error("local node must defer to peer after ProcessHaInfo updates peer SvcState from adjacency response")
+	}
+}
+
+func TestElectLeader_PeerReconnect_ReEvaluates(t *testing.T) {
+	ctx := context.Background()
+	mgr, store := newElectLeaderManager("10.0.0.2")
+
+	// Peer disconnected: state preserved (not leader).
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: false,
+		SvcState:  types.SvcStateSuccess,
+	})
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("should not become leader while peer disconnected")
+	}
+
+	// Peer reconnects: election re-evaluates.
+	store.UpdatePeerConnected(ctx, "10.0.0.1", true, time.Now().Unix())
+	mgr.electLeader(ctx)
+	// Peer has lower IP and SUCCESS → local (higher IP) should lose.
+	if store.IsLeader() {
+		t.Error("expected to lose election to lower-IP peer on reconnect")
+	}
+}
+
+// TestElectLeader_SplitBrain_NotReadyDefersRegardlessOfIP verifies that in a
+// split-brain, the not-ready node defers to the functioning node unconditionally,
+// even when the not-ready node has a lower IP (which would normally win).
+func TestElectLeader_SplitBrain_NotReadyDefersRegardlessOfIP(t *testing.T) {
+	ctx := context.Background()
+
+	// Local (10.0.0.1, lower IP) is leader but NOT ready. Peer (10.0.0.2) is leader and SUCCESS.
+	// Local must defer to the functioning peer despite having the lower IP.
+	mgr, store := newElectLeaderManager("10.0.0.1")
+	store.SetLeader(ctx, true)
+	// local CriteriaMet=false (not-ready) — do not call setLocalReady
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:        "10.0.0.2",
+		Connected: true,
+		SvcState:  types.SvcStateSuccess,
+		IsLeader:  true,
+	})
+
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected not-ready node to defer to functioning peer, regardless of IP")
+	}
+}
+
+// TestElectLeader_SplitBrain_BothFailure_HigherIPDefers verifies that in a
+// split-brain where both nodes have FAILURE svc state, the higher-IP node defers.
+func TestElectLeader_SplitBrain_BothFailure_HigherIPDefers(t *testing.T) {
+	ctx := context.Background()
+
+	// Higher-IP node (10.0.0.2) is leader, peer (10.0.0.1) is also leader. Both FAILURE.
+	// Higher IP must defer.
+	mgr, store := newElectLeaderManager("10.0.0.2")
+	store.SetLeader(ctx, true)
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: true,
+		SvcState:  types.SvcStateFailure,
+		IsLeader:  true,
+	})
+
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("expected higher-IP node to defer when both are FAILURE in split-brain")
+	}
+
+	// Lower-IP node (10.0.0.1) must keep leadership.
+	mgr2, store2 := newElectLeaderManager("10.0.0.1")
+	store2.SetLeader(ctx, true)
+	store2.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:        "10.0.0.2",
+		Connected: true,
+		SvcState:  types.SvcStateFailure,
+		IsLeader:  true,
+	})
+
+	mgr2.electLeader(ctx)
+	if !store2.IsLeader() {
+		t.Error("expected lower-IP node to keep leadership when both are FAILURE in split-brain")
+	}
+}
+
+// TestElectLeader_FollowerNoPreemptDegradedLeader verifies that a SUCCESS follower
+// does NOT preempt a degraded (FAILURE) leader. Once a leader is established,
+// svc state changes do not trigger re-election.
+func TestElectLeader_FollowerNoPreemptDegradedLeader(t *testing.T) {
+	ctx := context.Background()
+
+	// Local (10.0.0.2) is SUCCESS follower. Peer (10.0.0.1) is leader with FAILURE.
+	// Local must not self-promote.
+	mgr, store := newElectLeaderManager("10.0.0.2")
+	setLocalReady(t, store) // local is SUCCESS
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{
+		IP:        "10.0.0.1",
+		Connected: true,
+		SvcState:  types.SvcStateFailure,
+		IsLeader:  true,
+	})
+
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("SUCCESS follower must not preempt a degraded leader")
+	}
+}
+
+// TestElectLeader_FollowerNoSelfPromoteWhenLeaderFails verifies that a follower
+// does NOT self-promote via Step 4 when a connected peer is leader with FAILURE
+// (failure mode B from the plan).
+func TestElectLeader_FollowerNoSelfPromoteWhenLeaderFails(t *testing.T) {
+	ctx := context.Background()
+
+	// Local (10.0.0.1, lower IP) is SUCCESS follower. Peer (10.0.0.2) is leader with FAILURE.
+	// Without the fix, Step 2 would be skipped (needs SUCCESS), and Step 4 would
+	// self-promote local because it has SUCCESS and lower IP.
+	mgr, store := newElectLeaderManager("10.0.0.1")
+	setLocalReady(t, store)
+	store.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:        "10.0.0.2",
+		Connected: true,
+		SvcState:  types.SvcStateFailure,
+		IsLeader:  true,
+	})
+
+	mgr.electLeader(ctx)
+	if store.IsLeader() {
+		t.Error("follower must not self-promote via Step 4 when a connected peer is leader")
+	}
+}
+
+// TestSendAdjacency_AdjFailure_ProcessesHaInfo verifies that when a peer responds
+// with ADJ_FAILURE and includes HaInfo, the peer's IsLeader and SvcState are updated.
+func TestSendAdjacency_AdjFailure_ProcessesHaInfo(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client {
+			c := NewMockClient()
+			c.SetAdjacencyHandler(func(_ context.Context, _ *hav1.AdjRequest) (*hav1.AdjResponse, error) {
+				return &hav1.AdjResponse{
+					Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
+					Details: "incompatible",
+					MbrInfo: &hav1.MbrInfo{
+						HaInfo: &hav1.HaInfo{
+							LocalSvcState: hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS,
+							IsLeader:      true,
+						},
+					},
+				}, nil
+			})
+			return c
+		}),
+	).(*manager)
+
+	// Add a connected peer in the haStore so sendAdjacency can update it.
+	haStore.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:        "10.0.0.2",
+		Connected: false,
+	})
+
+	// Connect the peer so the client is registered.
+	deviceStore := device.NewStore(ctx)
+	mgr.deviceStore = deviceStore
+	if err := mgr.ConnectPeer(ctx, "10.0.0.2"); err != nil {
+		t.Fatalf("ConnectPeer failed: %v", err)
+	}
+
+	_ = mgr.sendAdjacency(ctx, "10.0.0.2", types.HAPeerMember{}) // error expected (ADJ_FAILURE), that's OK
+
+	// Peer's IsLeader and SvcState must have been updated from the failure response.
+	peer, ok := haStore.Peer("10.0.0.2")
+	if !ok {
+		t.Fatal("peer not found in store")
+	}
+	if !peer.IsLeader {
+		t.Error("expected peer IsLeader=true after ADJ_FAILURE with HaInfo")
+	}
+	if peer.SvcState != types.SvcStateSuccess {
+		t.Errorf("expected peer SvcState=success, got %q", peer.SvcState)
+	}
+}
+
 var _ Manager = (*mockManager)(nil)

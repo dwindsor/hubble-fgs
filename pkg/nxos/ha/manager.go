@@ -789,6 +789,10 @@ func (m *manager) runActive(ctx context.Context, storeCh <-chan hastore.Event, d
 				m.computeAndPushHaConfig()
 			case hastore.EventCriterionChanged, hastore.EventCriterionSet, hastore.EventPeerCriteriaUpdated:
 				m.recomputeAndApplyState(ctx)
+			case hastore.EventLeaderChanged:
+				// Immediately push the updated leader status to peers so they can
+				// re-evaluate election without waiting for the next adjacency cycle.
+				go m.haNotifyPeers(ctx)
 			case hastore.EventPeerAdded:
 				peerWg.Add(1)
 				go func(ip string) {
@@ -1053,9 +1057,10 @@ func (m *manager) HandleAdjFailureNotify(ctx context.Context, peer string, reaso
 	m.recomputeAndApplyState(ctx)
 }
 
-// ProcessHaInfo processes an incoming HaInfo from a peer's Notify RPC.
-// It updates the peer's service criterion and HA state, then triggers a
-// full state recomputation (which includes standby evaluation via EvaluateStandbyCrit).
+// ProcessHaInfo processes an incoming HaInfo from a peer's Notify RPC or adjacency exchange.
+// It updates the peer's service criterion, HA state, and leader status, then triggers a
+// full state recomputation (which includes standby evaluation via EvaluateStandbyCrit)
+// and leader election.
 func (m *manager) ProcessHaInfo(ctx context.Context, peer string, haInfo *hav1.HaInfo) {
 	if haInfo == nil || m.haStore == nil {
 		return
@@ -1080,11 +1085,18 @@ func (m *manager) ProcessHaInfo(ctx context.Context, peer string, haInfo *hav1.H
 		m.haStore.UpdatePeerMemberHaState(ctx, peer, peerHaState)
 	}
 
+	// Update the peer's self-reported leader status for election deference.
+	m.haStore.UpdatePeerIsLeader(ctx, peer, haInfo.IsLeader)
+
 	// Standby injection/removal is handled exclusively by EvaluateStandbyCrit
 	// (called from recomputeAndApplyState) to avoid conflicting dual paths.
 	// The peer's MemberInfo.HaState was already updated above, so
 	// EvaluateStandbyCrit will see the latest TAKEOVER state.
 	m.recomputeAndApplyState(ctx)
+
+	// Re-evaluate leader election immediately so deference takes effect
+	// without waiting for the next checkAdjacencies cycle.
+	m.electLeader(ctx)
 }
 
 // buildLocalHaInfo builds the local HaInfo proto for Notify RPCs.
@@ -1388,6 +1400,11 @@ func (m *manager) sendAdjacency(ctx context.Context, peer string, localInfo type
 		if resp.MbrInfo != nil {
 			peerInfo := convertMbrInfoToPeerMember(resp.MbrInfo)
 			m.ProcessMemberInfo(ctx, peer, peerInfo)
+			// Also process HaInfo from failure responses so peer leader/svc state
+			// is updated without waiting for the next adjacency cycle.
+			if resp.MbrInfo.HaInfo != nil {
+				m.ProcessHaInfo(ctx, peer, resp.MbrInfo.HaInfo)
+			}
 		}
 		return fmt.Errorf("adjacency failed: %s", resp.Details)
 	}
@@ -1410,6 +1427,17 @@ func (m *manager) sendAdjacency(ctx context.Context, peer string, localInfo type
 			}
 			m.haStore.UpdatePeerMemberCriterion(ctx, peer, types.HACritPeerVrfGid, ok)
 		}
+
+		// Process full HaInfo from the adjacency response, mirroring what the server
+		// side does for the incoming request (server.go:194-196). This updates SvcState,
+		// service criterion, HA state, and IsLeader — ensuring electLeader (called below
+		// by checkAdjacencies) sees current peer state. Without this, only IsLeader was
+		// extracted and SvcState stayed stale (UNKNOWN), causing the deference check
+		// (peer.IsLeader && peer.SvcState==SUCCESS) to fail and both peers to elect
+		// themselves leader.
+		if resp.MbrInfo.HaInfo != nil {
+			m.ProcessHaInfo(ctx, peer, resp.MbrInfo.HaInfo)
+		}
 	}
 
 	return nil
@@ -1428,7 +1456,13 @@ func (m *manager) handlePeerFailure(ctx context.Context, peer string) {
 	}
 }
 
-// electLeader performs leader election using the lowest IP address wins rule.
+// electLeader performs leader election with the following priority:
+//  1. No connected peers → preserve current IsLeader state (frozen until reconnect).
+//  2. If any peer is leader: if local is not leader, return immediately (no preemption).
+//     If both are leader (split-brain), resolve: peer SUCCESS beats local FAILURE;
+//     local SUCCESS beats peer FAILURE; same tier → higher IP defers.
+//  3. Already leader → stay leader (svc state changes don't trigger re-election).
+//  4. Initial election (nobody is leader): prefer SUCCESS svc state, then lowest IP wins.
 func (m *manager) electLeader(ctx context.Context) {
 	if m.haStore == nil {
 		return
@@ -1448,19 +1482,84 @@ func (m *manager) electLeader(ctx context.Context) {
 		return
 	}
 
-	isLeader := true
-	peers := m.haStore.AllPeers()
+	// Only consider connected peers. Disconnected peers don't participate in
+	// election — leader/follower state is frozen until reconnect or new peer.
+	allPeers := m.haStore.AllPeers()
+	peers := make(map[string]types.HAPeerState, len(allPeers))
+	for ip, peer := range allPeers {
+		if peer.Connected {
+			peers[ip] = peer
+		}
+	}
+
+	// No connected peers: preserve current IsLeader state (initialized as false).
+	if len(peers) == 0 {
+		return
+	}
+
+	// Step 2: If any peer is leader, handle it.
 	for ip, peer := range peers {
-		if peer.SvcState != types.SvcStateSuccess {
+		if !peer.IsLeader {
 			continue
 		}
-
+		// If we're not leader, defer to existing leader (no preemption).
+		if !m.haStore.IsLeader() {
+			return
+		}
+		// Split-brain: both are leader. Multi-peer split-brain is unsupported.
+		if len(peers) > 1 {
+			logger.GetLogger().Warn("Multi-peer split-brain detected; cannot resolve automatically", "peerCount", len(peers))
+			return
+		}
+		local := m.haStore.Local()
+		localSvcSuccess := local.CriteriaMet && !local.CriteriaRecoveryPending
+		peerSvcSuccess := peer.SvcState == types.SvcStateSuccess
 		peerIP := net.ParseIP(ip)
 		if peerIP == nil {
 			continue
 		}
+		if peerSvcSuccess && !localSvcSuccess {
+			// Peer is functioning, we're not → defer unconditionally.
+			logger.GetLogger().Info("Deferring to functioning peer leader in split-brain", "peer", ip)
+			m.haStore.SetLeader(ctx, false)
+		} else if !peerSvcSuccess && localSvcSuccess {
+			// We're functioning, peer isn't → keep leadership.
+		} else {
+			// Same svc state tier → higher IP defers.
+			if compareIPs(peerIP, localIP) < 0 {
+				logger.GetLogger().Info("Deferring to lower-IP peer leader in split-brain", "peer", ip)
+				m.haStore.SetLeader(ctx, false)
+			}
+		}
+		return
+	}
 
-		if compareIPs(peerIP, localIP) < 0 {
+	// Step 3: already leader → stay leader. Svc state changes don't trigger re-election.
+	if m.haStore.IsLeader() {
+		return
+	}
+
+	// Step 4: initial election — nobody is leader yet.
+	// Priority: SUCCESS svc state > non-SUCCESS, then lowest IP tiebreaker.
+	local := m.haStore.Local()
+	localSvcSuccess := local.CriteriaMet && !local.CriteriaRecoveryPending
+
+	isLeader := true
+	for ip, peer := range peers {
+		peerSvcSuccess := peer.SvcState == types.SvcStateSuccess
+
+		if peerSvcSuccess && !localSvcSuccess {
+			// Peer is functioning, we are not: peer wins.
+			isLeader = false
+			break
+		}
+		if !peerSvcSuccess && localSvcSuccess {
+			// We are functioning, peer is not: we win. Check remaining peers.
+			continue
+		}
+		// Same svc state tier: lowest IP wins.
+		peerIP := net.ParseIP(ip)
+		if peerIP != nil && compareIPs(peerIP, localIP) < 0 {
 			isLeader = false
 			break
 		}
@@ -1468,7 +1567,7 @@ func (m *manager) electLeader(ctx context.Context) {
 
 	currentLeader := m.haStore.IsLeader()
 	if isLeader != currentLeader {
-		logger.GetLogger().Info("Leader status changed", "isLeader", isLeader, "localIP", localIPStr)
+		logger.GetLogger().Info("Leader status changed (initial election)", "isLeader", isLeader, "localIP", localIPStr)
 		m.haStore.SetLeader(ctx, isLeader)
 	}
 }

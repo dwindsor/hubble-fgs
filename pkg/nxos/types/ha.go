@@ -209,6 +209,9 @@ type HAPeerState struct {
 	SvcState       string
 	SvcStateReason ReasonString // reason for current SvcState
 	SvcStateEpoch  int64        // when SvcState last changed
+
+	// IsLeader is the peer's self-reported leader status from adjacency exchange.
+	IsLeader bool
 }
 
 // Copy returns a deep copy that is safe to use without holding locks.

@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -73,6 +74,7 @@ type manager struct {
 	fwStatus        fwState // disabled / dpuPending / fwReady
 	redirDone       bool    // true = SysStRedirDone set
 	lastSystemState int     // last written composite state; -1 = never written
+	redirPending    bool    // true = in-service but redirects deferred (awaiting FwReady)
 
 	// Domain stores
 	vrfStore    vrf.Store
@@ -178,6 +180,22 @@ func (m *manager) Setup(ctx context.Context) error {
 			return err
 		}
 		m.gnmiHandler = handler
+	}
+
+	// Seed DPU count from gNMI GET before starting subscriptions.
+	// This ensures programSharedRedirects has the correct count if the
+	// in-service notification arrives before WaitForInventory completes.
+	if !m.dpuStore.IsSkipDPU() {
+		if strs, err := m.gnmiHandler.Get(ctx, paths.DPUStoreNumDPUs); err != nil {
+			logger.GetLogger().Warn("Failed to GET DPU count, will rely on subscription", logfields.Error, err)
+		} else if len(strs) > 0 {
+			if count, err := strconv.Atoi(strs[0]); err == nil && count > 0 {
+				m.dpuStore.SetExpectedCount(ctx, count)
+				m.vrfStore.SetDPUCount(uint16(count))
+				m.vlanStore.SetDPUCount(uint16(count))
+				logger.GetLogger().Info("Seeded DPU count from gNMI GET", "count", count)
+			}
+		}
 	}
 
 	// Register VRF change watcher to keep policyHandler and config library in sync.
@@ -435,8 +453,7 @@ func (m *manager) programSharedRedirects(ctx context.Context) error {
 
 	dpuCount := uint16(m.dpuStore.DpuCount())
 	if dpuCount == 0 && !m.dpuStore.IsSkipDPU() {
-		logger.GetLogger().Warn("No DPUs discovered, skipping shared redirect programming")
-		return nil
+		return fmt.Errorf("no DPUs discovered: shared redirect programming requires DPU count")
 	}
 
 	// 1. Program ACLs (required by all policy maps)
@@ -478,34 +495,32 @@ func (m *manager) setupInServiceHooks() {
 				logger.GetLogger().Warn("Failed to restore VLAN pinning from gNMI", "error", err)
 			}
 
-			// Reprogram shared BD infrastructure (ACLs, BD service endpoints,
-			// BD policy maps) which may have been removed by a prior bulk
-			// serviceredir delete during out-of-service. Idempotent: gNMI SET
-			// merges are no-ops if the infrastructure already exists.
-			if err := m.programSharedRedirects(ctx); err != nil {
-				logger.GetLogger().Error("Failed to reprogram shared redirects on in-service", "error", err)
-			}
-
-			m.vrfStore.ProgramAllRedirects(ctx)
-			m.vlanStore.ProgramAllRedirects(ctx)
-
 			// Sync policy handler and network config with current VRF state.
 			// Needed for VRFs loaded from storage whose gNMI notifications
 			// matched stored values (no change events fired).
 			m.updateVRFPolicyMap()
 
-			m.vrfStore.SetInService(true)
-			m.vlanStore.SetInService(true)
-			// On in-service: start at dpuPending, promote to fwReady if DPUs are healthy.
 			healthy := m.dpuStore.IsHealthy()
 			count := m.dpuStore.HealthyCount()
 			dpuCount := m.dpuStore.DpuCount()
 			if healthy && count == dpuCount && count > 0 {
+				// DPUs are healthy: program redirects now and signal readiness.
+				if err := m.programSharedRedirects(ctx); err != nil {
+					logger.GetLogger().Error("Failed to reprogram shared redirects on in-service", "error", err)
+				}
+				m.vrfStore.ProgramAllRedirects(ctx)
+				m.vlanStore.ProgramAllRedirects(ctx)
+				m.vrfStore.SetInService(true)
+				m.vlanStore.SetInService(true)
 				m.setFwReady(ctx)
+				m.setRedirDone(ctx, true)
 			} else {
+				// DPUs are unhealthy: defer redirect programming until FwReady.
 				m.setDpuPending(ctx)
+				m.stateMu.Lock()
+				m.redirPending = true
+				m.stateMu.Unlock()
 			}
-			m.setRedirDone(ctx, true)
 		}
 	})
 
@@ -599,6 +614,11 @@ func (m *manager) removeAllRedirects(ctx context.Context) {
 		}
 	}
 
+	// Disarm any deferred redirect programming.
+	m.stateMu.Lock()
+	m.redirPending = false
+	m.stateMu.Unlock()
+
 	// Disable reactive gate (stops new redirects from being programmed).
 	m.vrfStore.SetInService(false)
 	m.vlanStore.SetInService(false)
@@ -667,9 +687,14 @@ func (m *manager) setFwDisabled(ctx context.Context) {
 }
 
 // setDpuPending sets fwStatus to dpuPending and writes systemState.
+// No-op if fwStatus is already fwReady — the disabled→dpuPending→fwReady
+// transition is one-way within an in-service window.
 func (m *manager) setDpuPending(ctx context.Context) {
 	m.stateMu.Lock()
 	defer m.stateMu.Unlock()
+	if m.fwStatus == fwStateFwReady {
+		return
+	}
 	m.fwStatus = fwStateDpuPending
 	m.writeSystemStateLocked(ctx)
 }
@@ -680,6 +705,31 @@ func (m *manager) setFwReady(ctx context.Context) {
 	defer m.stateMu.Unlock()
 	m.fwStatus = fwStateFwReady
 	m.writeSystemStateLocked(ctx)
+}
+
+// programDeferredRedirects programs redirects that were deferred because DPUs
+// were unhealthy at in-service time. Called after setFwReady to complete the
+// work that was skipped in the pre-in-service hook.
+func (m *manager) programDeferredRedirects(ctx context.Context) {
+	m.stateMu.Lock()
+	if !m.redirPending || m.fwStatus != fwStateFwReady {
+		m.stateMu.Unlock()
+		return
+	}
+	m.redirPending = false
+	m.stateMu.Unlock()
+
+	if err := m.programSharedRedirects(ctx); err != nil {
+		logger.GetLogger().Error("Failed to reprogram shared redirects on deferred", "error", err)
+	}
+
+	m.vrfStore.ProgramAllRedirects(ctx)
+	m.vlanStore.ProgramAllRedirects(ctx)
+
+	m.vrfStore.SetInService(true)
+	m.vlanStore.SetInService(true)
+
+	m.setRedirDone(ctx, true)
 }
 
 // setRedirDone sets the redirDone bit and writes systemState.
@@ -1061,6 +1111,7 @@ func (m *manager) DpuHealth(ctx context.Context, healthy bool, count int) {
 	}
 	if healthy && count == m.dpuStore.DpuCount() && count > 0 {
 		m.setFwReady(ctx)
+		m.programDeferredRedirects(ctx)
 	} else {
 		m.setDpuPending(ctx)
 	}

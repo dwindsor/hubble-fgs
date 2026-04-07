@@ -17,6 +17,9 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/vlan"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/vrf"
 )
 
 func TestPhaseSystemStateValues(t *testing.T) {
@@ -144,5 +147,221 @@ func TestDpuHealthGatesOnInService(t *testing.T) {
 	}
 	if state&SysStDpuPending != 0 {
 		t.Errorf("DpuPending bit set in systemState 0x%X when out-of-service (should be disabled)", state)
+	}
+}
+
+// newTestManagerFull creates a manager with real vrf/vlan/dpu stores (no gNMI
+// handler), suitable for testing the in-service hook and DpuHealth logic.
+func newTestManagerFull(ctx context.Context) *manager {
+	mem := storage.NewMemoryStorage()
+	_ = mem.EnsureReady(ctx)
+	devStore := device.NewStore(ctx, device.WithStorage(mem), device.WithHeadlessMode(true))
+	dpuSt := dpu.NewStore(ctx)
+	vrfSt := vrf.NewStore(ctx)
+	vlanSt := vlan.NewStore(ctx)
+	return &manager{
+		deviceStore:     devStore,
+		dpuStore:        dpuSt,
+		vrfStore:        vrfSt,
+		vlanStore:       vlanSt,
+		lastSystemState: -1,
+	}
+}
+
+// TestSetDpuPendingNoopWhenFwReady verifies the one-way transition:
+// once FwReady, setDpuPending must not regress the state.
+func TestSetDpuPendingNoopWhenFwReady(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManager(ctx)
+
+	m.setFwReady(ctx)
+	m.setDpuPending(ctx) // must be a no-op
+
+	state := m.deviceStore.SystemState()
+	if state&SysStFwReady == 0 {
+		t.Errorf("FwReady bit cleared after setDpuPending: 0x%X", state)
+	}
+	if state&SysStDpuPending != 0 {
+		t.Errorf("DpuPending bit set after setDpuPending from FwReady: 0x%X", state)
+	}
+}
+
+// TestProgramDeferredRedirectsNoopWhenNotFwReady verifies that
+// programDeferredRedirects is a no-op unless fwStatus is FwReady.
+func TestProgramDeferredRedirectsNoopWhenNotFwReady(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	// Set redirPending but leave fwStatus as disabled.
+	m.stateMu.Lock()
+	m.redirPending = true
+	m.stateMu.Unlock()
+
+	m.programDeferredRedirects(ctx)
+
+	m.stateMu.Lock()
+	stillPending := m.redirPending
+	m.stateMu.Unlock()
+
+	if !stillPending {
+		t.Error("redirPending was cleared even though fwStatus != FwReady")
+	}
+	if m.deviceStore.SystemState()&SysStRedirDone != 0 {
+		t.Error("RedirDone was set even though fwStatus != FwReady")
+	}
+}
+
+// TestInServiceHealthyDPUs verifies that with healthy DPUs, in-service
+// programs redirects immediately and sets FwReady + RedirDone.
+func TestInServiceHealthyDPUs(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	// Configure 2 healthy DPUs.
+	m.dpuStore.SetExpectedCount(ctx, 2)
+	m.dpuStore.SetHealth(true, 2)
+
+	m.setupInServiceHooks()
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+
+	state := m.deviceStore.SystemState()
+	if state&SysStFwReady == 0 {
+		t.Errorf("FwReady not set with healthy DPUs: 0x%X", state)
+	}
+	if state&SysStRedirDone == 0 {
+		t.Errorf("RedirDone not set with healthy DPUs: 0x%X", state)
+	}
+
+	m.stateMu.Lock()
+	pending := m.redirPending
+	m.stateMu.Unlock()
+	if pending {
+		t.Error("redirPending should be false after healthy in-service")
+	}
+}
+
+// TestInServiceUnhealthyDPUs verifies that with unhealthy DPUs, in-service
+// sets DpuPending, leaves RedirDone unset, and marks redirPending.
+func TestInServiceUnhealthyDPUs(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	// Configure 2 expected DPUs, none healthy.
+	m.dpuStore.SetExpectedCount(ctx, 2)
+	m.dpuStore.SetHealth(false, 0)
+
+	m.setupInServiceHooks()
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+
+	state := m.deviceStore.SystemState()
+	if state&SysStDpuPending == 0 {
+		t.Errorf("DpuPending not set with unhealthy DPUs: 0x%X", state)
+	}
+	if state&SysStFwReady != 0 {
+		t.Errorf("FwReady set unexpectedly with unhealthy DPUs: 0x%X", state)
+	}
+	if state&SysStRedirDone != 0 {
+		t.Errorf("RedirDone set unexpectedly with unhealthy DPUs: 0x%X", state)
+	}
+
+	m.stateMu.Lock()
+	pending := m.redirPending
+	m.stateMu.Unlock()
+	if !pending {
+		t.Error("redirPending should be true after unhealthy in-service")
+	}
+}
+
+// TestDeferredRedirectsOnDpuHealthRecovery verifies that when DPUs recover
+// after an unhealthy in-service, redirects are programmed and RedirDone is set.
+func TestDeferredRedirectsOnDpuHealthRecovery(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	// Start with unhealthy DPUs.
+	m.dpuStore.SetExpectedCount(ctx, 2)
+	m.dpuStore.SetHealth(false, 0)
+
+	m.setupInServiceHooks()
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+
+	// Verify deferred state.
+	m.stateMu.Lock()
+	pending := m.redirPending
+	m.stateMu.Unlock()
+	if !pending {
+		t.Fatal("expected redirPending=true after unhealthy in-service")
+	}
+
+	// DPUs recover — simulate DpuHealth promotion.
+	m.dpuStore.SetHealth(true, 2)
+	m.setFwReady(ctx)
+	m.programDeferredRedirects(ctx)
+
+	state := m.deviceStore.SystemState()
+	if state&SysStFwReady == 0 {
+		t.Errorf("FwReady not set after DPU recovery: 0x%X", state)
+	}
+	if state&SysStRedirDone == 0 {
+		t.Errorf("RedirDone not set after deferred redirect programming: 0x%X", state)
+	}
+
+	m.stateMu.Lock()
+	stillPending := m.redirPending
+	m.stateMu.Unlock()
+	if stillPending {
+		t.Error("redirPending should be false after deferred redirects ran")
+	}
+}
+
+// TestDeferredRedirectsNoopWhenNotPending verifies that programDeferredRedirects
+// is a no-op when redirPending is false (redirects already done).
+func TestDeferredRedirectsNoopWhenNotPending(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	m.setFwReady(ctx)
+	m.setRedirDone(ctx, true)
+
+	// redirPending is false — should be a no-op.
+	m.programDeferredRedirects(ctx)
+
+	state := m.deviceStore.SystemState()
+	if state&SysStFwReady == 0 {
+		t.Errorf("FwReady unexpectedly cleared: 0x%X", state)
+	}
+	if state&SysStRedirDone == 0 {
+		t.Errorf("RedirDone unexpectedly cleared: 0x%X", state)
+	}
+}
+
+// TestOutOfServiceClearsRedirPending verifies that going out-of-service
+// disarms a pending deferred redirect.
+func TestOutOfServiceClearsRedirPending(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	// Put manager in deferred state.
+	m.dpuStore.SetExpectedCount(ctx, 2)
+	m.dpuStore.SetHealth(false, 0)
+	m.setupInServiceHooks()
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+
+	m.stateMu.Lock()
+	pending := m.redirPending
+	m.stateMu.Unlock()
+	if !pending {
+		t.Fatal("expected redirPending=true after unhealthy in-service")
+	}
+
+	// Go out-of-service.
+	m.removeAllRedirects(ctx)
+	m.setFwDisabled(ctx)
+
+	m.stateMu.Lock()
+	stillPending := m.redirPending
+	m.stateMu.Unlock()
+	if stillPending {
+		t.Error("redirPending should be cleared on out-of-service")
 	}
 }

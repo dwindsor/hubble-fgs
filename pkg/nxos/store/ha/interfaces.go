@@ -83,6 +83,7 @@ type Store interface {
 	UpdatePeerDPUStatuses(ctx context.Context, ip string, statuses map[string]types.DPUHAStatus)
 	UpdatePeerVrfGIDs(ctx context.Context, ip string, gids map[string]uint16)
 	UpdatePeerVlanIDs(ctx context.Context, ip string, ids map[string]uint16)
+	UpdatePeerIsLeader(ctx context.Context, ip string, isLeader bool)
 
 	// gNMI integration
 	SetGnmiHandler(handler gnmi.GnmiHandler)

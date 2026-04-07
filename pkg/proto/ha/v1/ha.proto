@@ -55,6 +55,7 @@ message VlanIdRange {
 message HaInfo {
     LOCAL_SVC_STATE local_svc_state = 1;
     HA_STATE ha = 2;
+    bool is_leader = 3;
 }
 
 message DpuVer {

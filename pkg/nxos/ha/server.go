@@ -189,6 +189,12 @@ func (s *server) Adjacency(ctx context.Context, req *hav1.AdjRequest) (*hav1.Adj
 		isDel, reason = s.manager.ProcessMemberInfo(ctx, req.HaIp, memberInfo)
 	}
 
+	// Process HaInfo from the adjacency request to update peer svc/ha state
+	// and leader status, and trigger leader election immediately.
+	if req.MbrInfo != nil && req.MbrInfo.HaInfo != nil && s.manager != nil {
+		s.manager.ProcessHaInfo(ctx, req.HaIp, req.MbrInfo.HaInfo)
+	}
+
 	// Reconcile VRF GIDs from the incoming request.
 	if req.MbrInfo != nil && s.reconciler != nil {
 		var lbMode string
@@ -277,6 +283,15 @@ func (s *server) buildLocalMbrInfo(peerIP string) *hav1.MbrInfo {
 		mbrInfo = &hav1.MbrInfo{}
 	}
 
+	// Override HaInfo from the haStore to ensure IsLeader is accurately reflected.
+	// convertPeerMemberToMbrInfo builds HaInfo from HAPeerMember which has no IsLeader
+	// field, so without this the adjacency response always carries IsLeader=false —
+	// causing the initiator to incorrectly clear the peer's leader status and
+	// potentially elect itself even when the peer is the legitimate leader.
+	if s.haStore != nil {
+		mbrInfo.HaInfo = buildLocalHaInfoFromStore(s.haStore)
+	}
+
 	// Include VRF and VLAN info so the peer can reconcile
 	if s.vrfStore != nil {
 		mbrInfo.VrfInfo = BuildLocalVRFInfo(s.vrfStore)
@@ -350,6 +365,7 @@ func buildLocalHaInfoFromStore(store hastore.Reader) *hav1.HaInfo {
 	return &hav1.HaInfo{
 		LocalSvcState: svc,
 		Ha:            haStateToProto(local.HaState),
+		IsLeader:      store.IsLeader(),
 	}
 }
 

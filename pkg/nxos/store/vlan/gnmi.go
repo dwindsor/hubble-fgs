@@ -22,8 +22,6 @@ import (
 
 // HandleGnmiNotification processes a gNMI notification for VLAN state.
 func (s *vlanStore) HandleGnmiNotification(ctx context.Context, path string, update *gnmiproto.Update, isDelete bool) {
-	logger.GetLogger().Debug("====VLAN GNMI====", "isDelete", isDelete, "path", path, "update", update)
-
 	switch {
 	case paths.PathMatches(path, paths.VlanStoreGlobalVlanName), paths.PathMatches(path, paths.VlanStoreGlobalVlan):
 		if isDelete {
