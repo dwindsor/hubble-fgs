@@ -591,7 +591,9 @@ func (m *manager) updateVRFPolicyMap() {
 // Called on out-of-service transitions so the process keeps running.
 func (m *manager) removeAllRedirects(ctx context.Context) {
 	// Signal local svc state to not-ready BEFORE removing any redirects.
-	if m.gnmiHandler != nil {
+	// Skip when InServiceState is "" — the service firewall has been deleted and
+	// the gNMI path no longer exists, so the SET would be rejected by NX-OS.
+	if m.gnmiHandler != nil && m.deviceStore.InServiceState() != "" {
 		if err := m.haStore.SetLocalSvcStateToFailure(ctx, types.NewReasonString("out-of-service")); err != nil {
 			logger.GetLogger().Warn("Failed to set local svc state to failure", logfields.Error, err)
 		}

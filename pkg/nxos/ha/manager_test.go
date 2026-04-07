@@ -1050,6 +1050,14 @@ func TestManager_Run_DeactivatesOnServiceFunctionRemoved(t *testing.T) {
 		// Good — still running in waitForConfig
 	}
 
+	// Server must be stopped after deactivation.
+	impl := mgr.(*manager)
+	impl.mu.RLock()
+	if impl.server != nil {
+		t.Error("expected server to be stopped after SF removal deactivation")
+	}
+	impl.mu.RUnlock()
+
 	// Re-create the service function — InService set back to "in-service".
 	// This should trigger re-activation.
 	deviceStore.SetInService(bgCtx, "in-service")
@@ -1063,6 +1071,13 @@ func TestManager_Run_DeactivatesOnServiceFunctionRemoved(t *testing.T) {
 	default:
 		// Good — re-activated and running
 	}
+
+	// Server must be running after re-activation.
+	impl.mu.RLock()
+	if impl.server == nil {
+		t.Error("expected server to be running after re-activation")
+	}
+	impl.mu.RUnlock()
 
 	// Cancel to end the test cleanly.
 	cancel()

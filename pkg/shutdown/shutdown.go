@@ -28,6 +28,11 @@ const (
 	ErrorExitCode     = 1   // Indicates an error condition
 )
 
+// forceKillTimeout is the absolute maximum time allowed for the entire
+// Shutdown() sequence. If graceful shutdown has not completed by this
+// deadline the process is forcibly exited.
+const forceKillTimeout = 60 * time.Second
+
 // ShutdownManager handles centralized process shutdown with proper cleanup
 type ShutdownManager struct {
 	shutdown         chan int
@@ -119,6 +124,14 @@ func (sm *ShutdownManager) Wait() {
 // Shutdown initiates graceful shutdown and exits with specified code
 func (sm *ShutdownManager) Shutdown(exitCode int) {
 	logger.GetLogger().Info("Initiating graceful shutdown", "exitCode", exitCode)
+
+	// Safety net: force-kill the process if graceful shutdown exceeds the deadline.
+	go func() {
+		time.Sleep(forceKillTimeout)
+		logger.GetLogger().Error("Graceful shutdown timed out, forcing process exit",
+			"timeout", forceKillTimeout, "exitCode", exitCode)
+		os.Exit(exitCode)
+	}()
 
 	// Step 1: Run pre-shutdown functions while context is still active.
 	// This allows functions that depend on live goroutines and gRPC

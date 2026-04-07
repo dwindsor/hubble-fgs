@@ -604,6 +604,9 @@ func (m *manager) Run(ctx context.Context) error {
 
 		logger.GetLogger().Info("HA manager activating", "localIP", m.localIP)
 
+		// Restart server if it was stopped during a prior deactivation.
+		m.syncServerToAdminState(ctx)
+
 		// Set initial HACritInService criterion based on current in-service state.
 		if m.deviceStore != nil {
 			m.haStore.UpdateLocalCriterion(ctx, types.HACritInService, m.deviceStore.IsInService())
@@ -628,12 +631,12 @@ func (m *manager) Run(ctx context.Context) error {
 		// Run the active event loop (blocks until deactivation or ctx cancellation).
 		done := m.runActive(ctx, storeCh, deviceCh)
 
-		// Cleanup: clear HaConfig, disconnect all peers.
-		// Server lifecycle is managed independently.
+		// Cleanup: clear HaConfig, disconnect all peers, stop server.
 		if err := library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_HA); err != nil {
 			logger.GetLogger().Debug("Failed to delete HaConfig on deactivation", logfields.Error, err)
 		}
 		m.disconnectAllPeers()
+		m.stopServer()
 
 		if done {
 			logger.GetLogger().Info("HA manager Run exiting")
