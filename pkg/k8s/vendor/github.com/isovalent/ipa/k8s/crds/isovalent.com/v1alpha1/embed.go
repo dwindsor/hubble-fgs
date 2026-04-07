@@ -8,9 +8,11 @@
 // information or reproduction of this material is strictly forbidden unless
 // prior written permission is obtained from Isovalent Inc.
 
-package ciliumio
+package v1alpha1
 
-const (
-	// GroupName is the Kubernetes API group name for cilium.io resources.
-	GroupName = "cilium.io"
-)
+import "embed"
+
+// EmbedFS contains embedded CRD YAML files for isovalent.com v1alpha1.
+//
+//go:embed *.yaml
+var EmbedFS embed.FS

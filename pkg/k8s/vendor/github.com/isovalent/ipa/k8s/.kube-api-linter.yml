@@ -1,0 +1,8 @@
+# Config for golangci-lint-kube-api-linter standalone binary only
+# The kubeapilinter is built into the binary and runs automatically
+version: "2"
+linters:
+  disable-all: true
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

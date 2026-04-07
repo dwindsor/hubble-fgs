@@ -21,6 +21,9 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: |-
+          TetragonNetworkPolicyNamespaced is a namespace-scoped network policy
+          resource.
         properties:
           apiVersion:
             description: |-
@@ -53,6 +56,65 @@ spec:
               namespaceSelector:
                 description: NamespaceSelector applies the policy to a Kubernetes
                   namespace
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
+                          enum:
+                          - In
+                          - NotIn
+                          - Exists
+                          - DoesNotExist
+                          type: string
+                        values:
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  matchLabels:
+                    additionalProperties:
+                      description: MatchLabelsValue represents the value from the
+                        MatchLabels {key,value} pair.
+                      maxLength: 63
+                      pattern: ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$
+                      type: string
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+              nodeSelector:
+                description: |-
+                  NodeSelector selects which nodes this policy is enforced on.
+                  Empty/nil means the policy applies to all nodes in the cluster.
+                  This determines where policy enforcement occurs, not what traffic is matched.
+                  Combined with other spec-level selectors using AND logic.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -190,6 +252,9 @@ spec:
                   Rules is a list of network policy rules to apply to the traffic that
                   matches the source selectors.
                 items:
+                  description: |-
+                    NetworkPolicyRule defines a single network policy rule with action and
+                    destinations.
                   properties:
                     action:
                       description: |-
@@ -207,6 +272,8 @@ spec:
                         Destination is a list of destinations on which to apply the rule
                         action. The action is applied to each entry in the list.
                       items:
+                        description: NetworkDestination defines a destination endpoint
+                          for network policy rules.
                         properties:
                           FQDN:
                             description: |-
@@ -216,7 +283,7 @@ spec:
                               type: string
                             type: array
                           ipBlock:
-                            description: IPBlock contains a CIDR, describing a range
+                            description: IPBlock contains a CIDR describing a range
                               of IPv4/IPv6 addresses.
                             properties:
                               cidr:
@@ -224,6 +291,65 @@ spec:
                             required:
                             - cidr
                             type: object
+                          nodeSelector:
+                            description: |-
+                              NodeSelector selects destination nodes for this rule.
+                              Matches connections to nodes (such as VM acting as a TetragonNode or Kubernetes Node), and does not match connections to Pods.
+                              Cannot be combined with FQDN, ipBlock, serviceSelector, workload, or podSelector.
+                              For pod-based policies, use spec.nodeSelector or pod labels instead.
+                            properties:
+                              matchExpressions:
+                                description: matchExpressions is a list of label selector
+                                  requirements. The requirements are ANDed.
+                                items:
+                                  description: |-
+                                    A label selector requirement is a selector that contains values, a key, and an operator that
+                                    relates the key and values.
+                                  properties:
+                                    key:
+                                      description: key is the label key that the selector
+                                        applies to.
+                                      type: string
+                                    operator:
+                                      description: |-
+                                        operator represents a key's relationship to a set of values.
+                                        Valid operators are In, NotIn, Exists and DoesNotExist.
+                                      enum:
+                                      - In
+                                      - NotIn
+                                      - Exists
+                                      - DoesNotExist
+                                      type: string
+                                    values:
+                                      description: |-
+                                        values is an array of string values. If the operator is In or NotIn,
+                                        the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                        the values array must be empty. This array is replaced during a strategic
+                                        merge patch.
+                                      items:
+                                        type: string
+                                      type: array
+                                      x-kubernetes-list-type: atomic
+                                  required:
+                                  - key
+                                  - operator
+                                  type: object
+                                type: array
+                                x-kubernetes-list-type: atomic
+                              matchLabels:
+                                additionalProperties:
+                                  description: MatchLabelsValue represents the value
+                                    from the MatchLabels {key,value} pair.
+                                  maxLength: 63
+                                  pattern: ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$
+                                  type: string
+                                description: |-
+                                  matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                  map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                  operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                type: object
+                            type: object
+                            x-kubernetes-map-type: atomic
                           podSelector:
                             description: PodSelector selects pods that this policy
                               applies to.
@@ -328,6 +454,13 @@ spec:
                         required:
                         - ports
                         type: object
+                        x-kubernetes-validations:
+                        - message: nodeSelector must be used standalone and cannot
+                            be combined with FQDN, ipBlock, serviceSelector, workload,
+                            or podSelector
+                          rule: '!has(self.nodeSelector) || (!has(self.FQDN) && !has(self.ipBlock)
+                            && !has(self.serviceSelector) && !has(self.workload) &&
+                            !has(self.podSelector))'
                       type: array
                     hook:
                       default: connect

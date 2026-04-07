@@ -1172,13 +1172,15 @@ github.com/isovalent/ipa/graph/v1alpha
 github.com/isovalent/ipa/l3l4networkpolicy/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
 github.com/isovalent/ipa/system_status/v1alpha
-# github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260212220503-f8352aa1affd
+# github.com/isovalent/ipa/k8s v1.19.0-pre.12
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s
 github.com/isovalent/ipa/k8s/apis/cilium.io
 github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1
 github.com/isovalent/ipa/k8s/apis/isovalent.com
 github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1
+github.com/isovalent/ipa/k8s/crds/cilium.io/v1alpha1
+github.com/isovalent/ipa/k8s/crds/isovalent.com/v1alpha1
 github.com/isovalent/ipa/k8s/slim/k8s/apis/labels
 github.com/isovalent/ipa/k8s/slim/k8s/apis/meta/v1
 github.com/isovalent/ipa/k8s/slim/k8s/apis/selection

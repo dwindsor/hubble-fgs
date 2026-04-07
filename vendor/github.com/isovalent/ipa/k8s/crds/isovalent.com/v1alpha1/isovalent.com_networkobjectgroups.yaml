@@ -1,0 +1,188 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: networkobjectgroups.isovalent.com
+spec:
+  group: isovalent.com
+  names:
+    kind: NetworkObjectGroup
+    listKind: NetworkObjectGroupList
+    plural: networkobjectgroups
+    singular: networkobjectgroup
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          NetworkObjectGroup is a range of network locations which may be used for
+          network policy enforcement by a specific device such as a Smart Switch or
+          Tetragon Node.
+
+          It is loosely based on the Cisco Security Cloud Control Network Object, as
+          described at https://securitydocs.cisco.com/docs/scc-fw/manage/52934.dita .
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              NetworkObjectGroupSpec describes the Network Object Group.
+
+              A Network Object Group consists of a set of IP locations within a logical network.
+              For traffic to be considered part of the Network Object Group, the traffic must
+              match all fields in this structure that are specified in the user-configured
+              resource.
+            properties:
+              cidr:
+                description: |-
+                  CIDR describes a range of IP locations.
+
+                  Deprecated: Use 'cidrs' instead.
+                format: cidr
+                type: string
+              cidrs:
+                description: |-
+                  CIDRs is a list of IP prefixes in CIDR format. Network locations
+                  are considered part of the Network Object Group if they have an IPv4 or
+                  IPv6 address that falls within a CIDR listed in this field.
+
+                  If omitted, the Network Object Group contains all IP addresses within the
+                  Virtual Network.
+                items:
+                  format: cidr
+                  type: string
+                minItems: 1
+                type: array
+              description:
+                type: string
+              virtualNetwork:
+                description: |-
+                  Virtual is the logical network for the Network Object Group.
+
+                  If omitted, the Network Object Group contains traffic in the default
+                  virtual network.
+                properties:
+                  vlans:
+                    description: |-
+                      VLANs is a list of Virtual LANs in the Network Object Group.
+
+                      If specified, traffic tagged with any of the specified VLANs is
+                      considered part of the Virtual Network.
+
+                      If not specified, only untagged traffic is considered part of the
+                      Virtual Network.
+
+                      When combining with other fields ,if the traffic matches any VLAN
+                      specified here and matches the other field's constraint, then the
+                      traffic is considered "part of" this Virtual Network.
+                    items:
+                      format: int32
+                      maximum: 4094
+                      minimum: 1
+                      type: integer
+                    maxItems: 100
+                    minItems: 1
+                    type: array
+                  vrfs:
+                    description: |-
+                      VRFs is a list of Virtual Routing and Forwarding names for the
+                      Virtual Network.
+
+                      When combining with other fields ,if the traffic matches any VRF
+                      specified here and matches the other field's constraint, then the
+                      traffic is considered "part of" this Virtual Network.
+
+                      Only one VRF can be specified currently.
+                    items:
+                      type: string
+                    maxItems: 1
+                    type: array
+                type: object
+                x-kubernetes-validations:
+                - message: specify at least one of [vrfs vlans]
+                  rule: has(self.vrfs) || has(self.vlans)
+              vlan:
+                description: |-
+                  VLAN is a Virtual LAN tag.
+
+                  Deprecated: Use 'virtual.vlans[]' instead.
+                format: int32
+                maximum: 4094
+                minimum: 1
+                type: integer
+              vrf:
+                description: |-
+                  VRF is a Virtual Routing and Forwarding name.
+
+                  Deprecated: Use 'virtual.vrf' instead.
+                type: string
+            type: object
+            x-kubernetes-validations:
+            - message: at most one of the fields in [cidr cidrs] may be set
+              rule: '!(has(self.cidr) && has(self.cidrs))'
+            - message: at most one of the fields in [virtual vlan] may be set
+              rule: '!(has(self.virtualNetwork) && has(self.vlan))'
+            - message: at most one of the fields in [virtual vrf] may be set
+              rule: '!(has(self.virtualNetwork) && has(self.vrf))'
+            - message: at most one of the fields in [vlan vrf] may be set
+              rule: '!(has(self.vlan) && has(self.vrf))'
+          status:
+            description: NetworkObjectGroupStatus is the status of the Network Object
+              Group.
+            properties:
+              conditions:
+                items:
+                  description: NetworkObjectGroupCondition is a condition for the
+                    NetworkObjectGroupStatus.
+                  properties:
+                    lastTransitionTime:
+                      description: The last time the condition transitioned from one
+                        status to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: The status of the condition, one of True, False,
+                        or Unknown
+                      type: string
+                    type:
+                      description: The type of the policy condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true

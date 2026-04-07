@@ -4,9 +4,9 @@
 // Isovalent Inc and its suppliers, if any. The intellectual and technical
 // concepts contained herein are proprietary to Isovalent Inc and its suppliers
 // and may be covered by U.S. and Foreign Patents, patents in process, and are
-// protected by trade secret or copyright law.  Dissemination of this information
-// or reproduction of this material is strictly forbidden unless prior written
-// permission is obtained from Isovalent Inc.
+// protected by trade secret or copyright law.  Dissemination of this
+// information or reproduction of this material is strictly forbidden unless
+// prior written permission is obtained from Isovalent Inc.
 
 package v1alpha1
 
@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
+	slimv1 "github.com/isovalent/ipa/k8s/slim/k8s/apis/meta/v1"
 )
 
 const (
@@ -29,7 +30,7 @@ const (
 	SNPName = SNPPluralName + "." + isovalentcom.GroupName
 )
 
-// Annotations
+// Annotations.
 const (
 	// AnnotationStaging marks the network policy as a staging policy that
 	// is validated, but not deployed. If the value is non-empty then the
@@ -84,27 +85,6 @@ func (snp *SmartSwitchNetworkPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
 	return &snp.ObjectMeta
 }
 
-// SmartSwitchNetwork consists of a CIDR and the logical Network
-// the CIDR is associated with. If the logical network is omitted
-// (no VRF or VLAN) then the policy applied against traffic that
-// does not belong to any logical network which may or may not
-// match any actual traffic depending on the switch configuration.
-//
-// +kubebuilder:validation:XValidation:rule="!(has(self.vrf) && has(self.vlan))",message="at most one of the fields in [vrf vlan] may be set"
-//
-//nolint:godoclint
-type SmartSwitchNetwork struct {
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Format=cidr
-	CIDR string `json:"cidr"`
-	// +kubebuilder:validation:Optional
-	VRF string `json:"vrf,omitempty"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=4094
-	VLAN int32 `json:"vlan,omitempty"`
-}
-
 // SmartSwitchProtocolPort provides the protocol to apply the policy
 // against with an optional port or a port range. When no ports are specified
 // the port is a wildcard and policy applies against any port.
@@ -132,23 +112,73 @@ type SmartSwitchProtocolPort struct {
 	Protocol string `json:"protocol"`
 }
 
+// NetworkObjectGroupRef is a reference to one or more NetworkObjectGroups.
+//
+// A Name or Labels selector must be specified. These will match the
+// corresponding resources in the specified Namespace.
+//
+// +kubebuilder:validation:XValidation:rule="(has(self.name) && !has(self.groupSelector)) || (!has(self.name) && has(self.groupSelector))"
+//
+//nolint:godoclint
+type NetworkObjectGroupRef struct {
+	// Namespace of the NetworkObjectGroup.
+	//
+	// If not specified, this defaults to the same namespace as the parent
+	// SmartSwitchNetworkPolicy resource.
+	//
+	// +kubebuilder:validation:Optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// Name of the NetworkObjectGroup.
+	//
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// GroupSelector for the NetworkObjectGroup. This may select multiple
+	// NetworkObjectGroup resources based on their metadata.labels.
+	GroupSelector *slimv1.LabelSelector `json:"groupSelector,omitempty"`
+}
+
 // SmartSwitchNetworkSource only supports IPBlocks. At the moment there
 // is no support to match source port so the policy applies against
 // all source ports.
+//
+// All specified fields must match a set of traffic for the traffic to be
+// subject to the parent rule.
+//
+// +kubebuilder:validation:XValidation:rule="(has(self.ipBlock) && !has(self.networkRef)) || (!has(self.ipBlock) && has(self.networkRef))",message="exactly one of the fields in [ipBlock networkRef] must be set"
+//
+//nolint:godoclint
 type SmartSwitchNetworkSource struct {
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:MinItems=1
-	IPBlock []SmartSwitchNetwork `json:"ipBlock"`
+	IPBlock []NetworkObjectGroupSpec `json:"ipBlock,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
+	NetworkRef []NetworkObjectGroupRef `json:"networkRef,omitempty"`
 }
 
 // SmartSwitchNetworkDestination matches a specific network with an
 // optional SmartSwitchNetworkProtocolPort object. If ProtoPort is
 // not specified, the policy applies against all supported protocols
 // and all ports.
+//
+// All specified fields must match a set of traffic for the traffic to be
+// subject to the parent rule.
+//
+// +kubebuilder:validation:XValidation:rule="(has(self.ipBlock) && !has(self.networkRef)) || (!has(self.ipBlock) && has(self.networkRef))",message="exactly one of the fields in [ipBlock networkRef] must be set"
+//
+//nolint:godoclint
 type SmartSwitchNetworkDestination struct {
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:MinItems=1
-	IPBlock []SmartSwitchNetwork `json:"ipBlock"`
+	IPBlock []NetworkObjectGroupSpec `json:"ipBlock,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
+	NetworkRef []NetworkObjectGroupRef `json:"networkRef,omitempty"`
+
 	// ProtoPorts is an optional field to specify protocols and ports for a
 	// policy rule. The policy rule applies to the cross product of IPBlock
 	// and ProtoPorts.
@@ -165,7 +195,7 @@ type SmartSwitchNetworkDestination struct {
 // the datapath.
 type SmartSwitchNetworkPolicyRule struct {
 	// +kubebuilder:validation:Optional
-	Description string `json:"description"`
+	Description string `json:"description,omitempty"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=allow;deny
 	Action string `json:"action"`

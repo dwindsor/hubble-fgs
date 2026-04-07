@@ -1,54 +1,59 @@
-//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+// Copyright (C) Isovalent, Inc. - All Rights Reserved.
 //
-//  NOTICE: All information contained herein is, and remains the property of
-//  Isovalent Inc and its suppliers, if any. The intellectual and technical
-//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
-//  and may be covered by U.S. and Foreign Patents, patents in process, and are
-//  protected by trade secret or copyright law.  Dissemination of this information
-//  or reproduction of this material is strictly forbidden unless prior written
-//  permission is obtained from Isovalent Inc.
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this
+// information or reproduction of this material is strictly forbidden unless
+// prior written permission is obtained from Isovalent Inc.
 
 package v1alpha1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	ciliumio "github.com/isovalent/ipa/k8s/apis/cilium.io"
 	slimv1 "github.com/isovalent/ipa/k8s/slim/k8s/apis/meta/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	// Tetragon Network Policy (TNP)
+	// Tetragon Network Policy (TNP).
 
-	// TNPPluralName is the plural name of Cilium Tracing Policy
+	// TNPPluralName is the plural name of Tetragon Network Policy.
 	TNPPluralName = "tetragonnetworkpolicies"
 
-	// TPKindDefinition is the kind name of Cilium Tracing Policy
+	// TNPKindDefinition is the kind name of Tetragon Network Policy.
 	TNPKindDefinition = "TetragonNetworkPolicy"
 
-	// TPName is the full name of Cilium Egress NAT Policy
+	// TNPName is the full name of Tetragon Network Policy.
 	TNPName = TNPPluralName + "." + ciliumio.GroupName
 
-	// TPNamespacedPluralName is the plural name of Cilium Tracing Policy
+	// TNPNamespacedPluralName is the plural name of namespaced TNP.
 	TNPNamespacedPluralName = "tetragonnetworkpoliciesnamespaced"
 
-	// TPNamespacedName
+	// TNPNamespacedName is the full name of namespaced TNP.
 	TNPNamespacedName = TNPNamespacedPluralName + "." + ciliumio.GroupName
 
-	// TPKindDefinition is the kind name of Cilium Tracing Policy
+	// TNPNamespacedKindDefinition is the kind name of namespaced TNP.
 	TNPNamespacedKindDefinition = "TetragonNetworkPolicyNamespaced"
 )
 
-// Annotations
+// Annotations.
 const (
-	// AnnotationStaging marks the network policy as a staging policy that is validated, but
-	// not deployed. If the value is non-empty then the changes are validated as a difference
-	// against the named policy with unchanged rules ignored.
+	// AnnotationStaging marks the network policy as a staging policy
+	// that is validated, but not deployed. If the value is non-empty
+	// then the changes are validated as a difference against the named
+	// policy with unchanged rules ignored.
 	AnnotationStaging = TNPName + "/" + "staging"
 
-	// AnnotationValidation holds the validation results for a staging policy.
+	// AnnotationValidation holds the validation results for a staging
+	// policy.
 	AnnotationValidation = TNPName + "/" + "validation"
 )
 
+// TetragonNetworkPolicyList is a list of TetragonNetworkPolicy resources.
+//
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TetragonNetworkPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -56,6 +61,8 @@ type TetragonNetworkPolicyList struct {
 	Items           []TetragonNetworkPolicy `json:"items,omitempty"`
 }
 
+// TetragonNetworkPolicy is a cluster-scoped network policy resource.
+//
 // +genclient
 // +genclient:noStatus
 // +genclient:nonNamespaced
@@ -68,12 +75,15 @@ type TetragonNetworkPolicy struct {
 	Spec NetworkPolicySpec `json:"spec"`
 }
 
-// Implement crdutils.CRDObject interface, required for working with CRDs
-// outside of Kubernetes context.
+// GetObjectMetaStruct implements crdutils.CRDObject interface, required
+// for working with CRDs outside of Kubernetes context.
 func (tgnp *TetragonNetworkPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
 	return &tgnp.ObjectMeta
 }
 
+// TetragonNetworkPolicyNamespacedList is a list of
+// TetragonNetworkPolicyNamespaced resources.
+//
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TetragonNetworkPolicyNamespacedList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -81,6 +91,9 @@ type TetragonNetworkPolicyNamespacedList struct {
 	Items           []TetragonNetworkPolicyNamespaced `json:"items,omitempty"`
 }
 
+// TetragonNetworkPolicyNamespaced is a namespace-scoped network policy
+// resource.
+//
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -92,17 +105,19 @@ type TetragonNetworkPolicyNamespaced struct {
 	Spec NetworkPolicySpec `json:"spec"`
 }
 
-// Implement crdutils.CRDObject interface, required for working with CRDs
-// outside of Kubernetes context.
+// GetObjectMetaStruct implements crdutils.CRDObject interface, required
+// for working with CRDs outside of Kubernetes context.
 func (tgnpn *TetragonNetworkPolicyNamespaced) GetObjectMetaStruct() *metav1.ObjectMeta {
 	return &tgnpn.ObjectMeta
 }
 
+// NetworkDestinationCIDR defines a CIDR block for network destinations.
 type NetworkDestinationCIDR struct {
 	// +kubebuilder:validation:Required
 	CIDR string `json:"cidr"`
 }
 
+// NetworkDestinationWorkload defines a workload-based destination selector.
 type NetworkDestinationWorkload struct {
 	// +kubebuilder:validation:Optional
 	Namespace string `json:"namespace,omitempty"`
@@ -112,6 +127,7 @@ type NetworkDestinationWorkload struct {
 	Kind string `json:"workloadKind,omitempty"`
 }
 
+// NetworkDestinationPorts defines port and protocol specifications.
 type NetworkDestinationPorts struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=TCP
@@ -126,6 +142,7 @@ type NetworkDestinationPorts struct {
 	Ports []uint32 `json:"ports,omitempty"`
 }
 
+// ServiceSelector selects Kubernetes Services by name and namespace.
 type ServiceSelector struct {
 	// +kubebuilder:validation:Required
 	// Name is the name of the Kubernetes Service.
@@ -136,6 +153,9 @@ type ServiceSelector struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// NetworkDestination defines a destination endpoint for network policy rules.
+//
+// +kubebuilder:validation:XValidation:rule="!has(self.nodeSelector) || (!has(self.FQDN) && !has(self.ipBlock) && !has(self.serviceSelector) && !has(self.workload) && !has(self.podSelector))",message="nodeSelector must be used standalone and cannot be combined with FQDN, ipBlock, serviceSelector, workload, or podSelector"
 type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
 	// FQDN (Fully Qualified Domain Name) is a list of domain names to
@@ -144,6 +164,12 @@ type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
 	// IPBlock contains a CIDR describing a range of IPv4/IPv6 addresses.
 	IPBlock *NetworkDestinationCIDR `json:"ipBlock,omitempty"`
+	// +kubebuilder:validation:Optional
+	// NodeSelector selects destination nodes for this rule.
+	// Matches connections to nodes (such as VM acting as a TetragonNode or Kubernetes Node), and does not match connections to Pods.
+	// Cannot be combined with FQDN, ipBlock, serviceSelector, workload, or podSelector.
+	// For pod-based policies, use spec.nodeSelector or pod labels instead.
+	NodeSelector *slimv1.LabelSelector `json:"nodeSelector,omitempty"`
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to.
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
@@ -158,6 +184,8 @@ type NetworkDestination struct {
 	Ports NetworkDestinationPorts `json:"ports"`
 }
 
+// NetworkPolicyRule defines a single network policy rule with action and
+// destinations.
 type NetworkPolicyRule struct {
 	// +kubebuilder:validation:Required
 	// Description to explain the rule's purpose.
@@ -176,7 +204,31 @@ type NetworkPolicyRule struct {
 	Destination []NetworkDestination `json:"destination,omitempty"`
 }
 
+// NetworkPolicySpec defines the specification for a Tetragon Network Policy.
+//
+// Selector Semantics:
+// All selector fields at the spec level are combined using AND logic to
+// determine where and what the policy monitors:
+//   - NodeSelector AND NamespaceSelector AND PodSelector AND ProcessSelector
+//   - An empty/nil selector field means "no constraint" (matches all)
+//   - If ALL selector fields are empty, the policy applies to all traffic
+//     on all nodes
+//
+// Source Selection (spec level):
+//   - spec.nodeSelector: Selects which nodes the policy is applied
+//   - spec.namespaceSelector: Selects which namespaces to apply
+//   - spec.podSelector: Selects which pods within those namespaces to apply
+//   - spec.processSelector: Selects which processes within those pods to apply
+//
+// Destination Selection (rule level):
+//   - See NetworkDestination documentation for destination matching semantics
 type NetworkPolicySpec struct {
+	// +kubebuilder:validation:Optional
+	// NodeSelector selects which nodes this policy is enforced on.
+	// Empty/nil means the policy applies to all nodes in the cluster.
+	// This determines where policy enforcement occurs, not what traffic is matched.
+	// Combined with other spec-level selectors using AND logic.
+	NodeSelector *slimv1.LabelSelector `json:"nodeSelector,omitempty"`
 	// +kubebuilder:validation:Optional
 	// NamespaceSelector applies the policy to a Kubernetes namespace
 	NamespaceSelector *slimv1.LabelSelector `json:"namespaceSelector,omitempty"`
@@ -196,6 +248,8 @@ type NetworkPolicySpec struct {
 	Rules []NetworkPolicyRule `json:"rules,omitempty"`
 }
 
+// BinarySelector selects processes by binary path with optional child
+// process matching.
 type BinarySelector struct {
 	// +kubebuilder:validation:Enum=In
 	// Filter operation.

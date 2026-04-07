@@ -19,8 +19,9 @@ k8s:
 
 .PHONY: lint
 lint:
+	golangci-lint run --config=$(ROOT_DIR).golangci.yml --fix
 	$(GO) install sigs.k8s.io/kube-api-linter/cmd/golangci-lint-kube-api-linter@$(KUBE_API_LINTER_VERSION)
-	golangci-lint-kube-api-linter run ./apis/isovalent.com/v1alpha1 --fix
+	golangci-lint-kube-api-linter run --config=.kube-api-linter.yml ./apis/isovalent.com/v1alpha1 --fix
 
 .PHONY: test-crd-validation
 test-crd-validation:
