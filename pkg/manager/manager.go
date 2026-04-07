@@ -114,7 +114,7 @@ func New(ctx context.Context) (KubernetesManager, error) {
 	if enterpriseOption.Config.EnableApplicationModel {
 		serviceReconciler := controllers.NewServiceReconciler(ossManager.Manager.GetClient(), endpoint.MustGet())
 		if err = serviceReconciler.SetupWithManager(ossManager.Manager); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to setup Service reconciler: %w", err)
 		}
 		if err := addPodInfoInformer(ctx, ossManager); err != nil {
 			return nil, err
