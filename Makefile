@@ -259,12 +259,6 @@ image-operator: ## Build the Tetragon operator container image.
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
-.PHONY: image-test
-image-test:
-	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/tetragon-test:${DOCKER_IMAGE_TAG}" .
-	@echo "Push like this when ready:"
-	@echo "${CONTAINER_ENGINE} push isovalent/tetragon-test:$(DOCKER_IMAGE_TAG)"
-
 .PHONY: image-clang
 image-clang:
 	$(CONTAINER_ENGINE) build -f Dockerfile.clang -t "cilium/clang:${DOCKER_IMAGE_TAG}" .
