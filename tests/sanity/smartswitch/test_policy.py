@@ -451,7 +451,7 @@ def test_reject_policy_with_vrf_and_vlan(cmd):
 
     with allure.step("Verify AGW rejected the policy with appropriate error"):
         verify_policy_add_error(
-            result, "at most one of the fields in [vrf vlan] may be set"
+            result, "at most one of the fields in [vlan vrf] may be set"
         )
 
     with allure.step("Verify no policies were added to AGW"):

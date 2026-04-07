@@ -29,7 +29,7 @@ var (
 		slog.Default(),
 		"SmartSwitch/v1alpha1",
 		"smartswitches.isovalent.com",
-		k8s.CRDsv1Alpha1SmartSwitches,
+		k8s.CRDsv1Alpha1SmartSwitches, //nolint:staticcheck
 	)
 )
 

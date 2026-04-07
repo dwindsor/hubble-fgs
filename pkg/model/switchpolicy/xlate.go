@@ -94,23 +94,23 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, ruleIndex 
 	}
 
 	for _, s := range r.Source.IPBlock {
-		sFamily, err := cidrIPFamily(s.CIDR)
+		sFamily, err := cidrIPFamily(s.CIDR) //nolint:staticcheck
 		if err != nil {
-			return nil, fmt.Errorf("invalid source CIDR %q: %w", s.CIDR, err)
+			return nil, fmt.Errorf("invalid source CIDR %q: %w", s.CIDR, err) //nolint:staticcheck
 		}
 
 		source := SmartSwitchNetworkSource{
 			Endpoint: SmartSwitchNetworkEndpoint{
-				CIDR: s.CIDR,
-				VRF:  s.VRF,
-				VLAN: s.VLAN,
+				CIDR: s.CIDR, //nolint:staticcheck
+				VRF:  s.VRF,  //nolint:staticcheck
+				VLAN: s.VLAN, //nolint:staticcheck
 			},
 		}
 
 		for _, d := range r.Destination.IPBlock {
-			dFamily, err := cidrIPFamily(d.CIDR)
+			dFamily, err := cidrIPFamily(d.CIDR) //nolint:staticcheck
 			if err != nil {
-				return nil, fmt.Errorf("invalid destination CIDR %q: %w", d.CIDR, err)
+				return nil, fmt.Errorf("invalid destination CIDR %q: %w", d.CIDR, err) //nolint:staticcheck
 			}
 			if sFamily != dFamily {
 				continue
@@ -118,9 +118,9 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, ruleIndex 
 
 			dest := SmartSwitchNetworkDestination{
 				Endpoint: SmartSwitchNetworkEndpoint{
-					CIDR: d.CIDR,
-					VRF:  d.VRF,
-					VLAN: d.VLAN,
+					CIDR: d.CIDR, //nolint:staticcheck
+					VRF:  d.VRF,  //nolint:staticcheck
+					VLAN: d.VLAN, //nolint:staticcheck
 				},
 				ProtoPorts: &dprotoports,
 			}

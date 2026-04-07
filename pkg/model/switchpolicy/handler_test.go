@@ -58,14 +58,14 @@ func makeTestK8sPolicy(name, namespace string) *isovalentv1.SmartSwitchNetworkPo
 					Description: "Test rule",
 					Action:      "allow",
 					Source: isovalentv1.SmartSwitchNetworkSource{
-						IPBlock: []isovalentv1.SmartSwitchNetwork{
+						IPBlock: []isovalentv1.NetworkObjectGroupSpec{
 							{
 								CIDR: "10.0.0.0/8",
 							},
 						},
 					},
 					Destination: isovalentv1.SmartSwitchNetworkDestination{
-						IPBlock: []isovalentv1.SmartSwitchNetwork{
+						IPBlock: []isovalentv1.NetworkObjectGroupSpec{
 							{
 								CIDR: "192.168.0.0/16",
 							},

@@ -29,7 +29,7 @@ var (
 		slog.Default(),
 		"SmartSwitchNetworkPolicy/v1alpha1",
 		"smartswitchnetworkpolicies.isovalent.com",
-		k8s.CRDsv1Alpha1SmartSwitchNetworkPolicy,
+		k8s.CRDsv1Alpha1SmartSwitchNetworkPolicy, //nolint:staticcheck
 	)
 )
 

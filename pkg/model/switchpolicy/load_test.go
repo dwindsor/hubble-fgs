@@ -433,15 +433,15 @@ func TestFromYAMLMultiplePolicies(t *testing.T) {
 				require.Equal(t, "test-ns", policies[0].Namespace)
 				require.Len(t, policies[0].Spec.Rules, 1)
 				require.Equal(t, "deny", policies[0].Spec.Rules[0].Action)
-				require.Equal(t, int32(100), policies[0].Spec.Rules[0].Source.IPBlock[0].VLAN)
-				require.Equal(t, int32(200), policies[0].Spec.Rules[0].Destination.IPBlock[0].VLAN)
+				require.Equal(t, int32(100), policies[0].Spec.Rules[0].Source.IPBlock[0].VLAN)      //nolint:staticcheck
+				require.Equal(t, int32(200), policies[0].Spec.Rules[0].Destination.IPBlock[0].VLAN) //nolint:staticcheck
 
 				// Check second policy (VRF policy)
 				require.Equal(t, "network-policy-l3", policies[1].Name)
 				require.Equal(t, "default", policies[1].Namespace)
 				require.Len(t, policies[1].Spec.Rules, 1)
 				require.Equal(t, "allow", policies[1].Spec.Rules[0].Action)
-				require.Equal(t, "default", policies[1].Spec.Rules[0].Source.IPBlock[0].VRF)
+				require.Equal(t, "default", policies[1].Spec.Rules[0].Source.IPBlock[0].VRF) //nolint:staticcheck
 			},
 		},
 		{
@@ -1504,12 +1504,12 @@ func TestAdd(t *testing.T) {
 						{
 							Action: "allow",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "10.0.0.0/8"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
@@ -1533,12 +1533,12 @@ func TestAdd(t *testing.T) {
 						{
 							Action: "allow",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "10.0.0.0/8"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
@@ -1576,12 +1576,12 @@ func TestAdd(t *testing.T) {
 						{
 							Action: "allow",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "10.0.0.0/8", VRF: "internal"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.1.0/24", VRF: "external"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
@@ -1592,12 +1592,12 @@ func TestAdd(t *testing.T) {
 						{
 							Action: "deny",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "172.16.0.0/12"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.2.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
@@ -1660,12 +1660,12 @@ func TestDelete(t *testing.T) {
 						{
 							Action: "allow",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "10.0.0.0/8"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
@@ -1697,12 +1697,12 @@ func TestDelete(t *testing.T) {
 						{
 							Action: "allow",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "10.0.0.0/8"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
@@ -1728,12 +1728,12 @@ func TestDelete(t *testing.T) {
 						{
 							Action: "allow",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "10.0.0.0/8"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
@@ -1744,12 +1744,12 @@ func TestDelete(t *testing.T) {
 						{
 							Action: "deny",
 							Source: v1alpha1.SmartSwitchNetworkSource{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "172.16.0.0/12"},
 								},
 							},
 							Destination: v1alpha1.SmartSwitchNetworkDestination{
-								IPBlock: []v1alpha1.SmartSwitchNetwork{
+								IPBlock: []v1alpha1.NetworkObjectGroupSpec{
 									{CIDR: "192.168.2.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{

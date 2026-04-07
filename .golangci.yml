@@ -54,6 +54,9 @@ linters:
         linters:
           - staticcheck
         text: "QF1012"
+      - path: "install/kubernetes/tetragon/crds-yaml/embed.go"
+        linters:
+          - goheader
     # for now excempt for follow up patches when I have some extra energy
     paths:
       - "pkg/nxos"
