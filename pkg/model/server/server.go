@@ -719,7 +719,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		dest            []*types.Destination
 		inInitTree      bool
 		syscalls        set.Set[uint32]
-		containerId     string
+		container       *types.ContainerInfo
 		cgroupid        uint64
 		ktimeFirstExec  uint64
 		ktimeLastExec   uint64
@@ -815,16 +815,26 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		}
 
 		// Look up container information from cgroup id
-		var containerId string
+		var containerInfo *types.ContainerInfo
 
 		if cgroupid != 0 {
 			logger.GetLogger().Debug("Looking up container info", "binary", selfBin, "args", selfArgs, "cgroupid", cgroupid)
 			cid, found := getContainerID(cgroupid)
 			if found && cid != "" {
-				logger.GetLogger().Debug("Found container info", "cgroupid", cgroupid, "containerID", cid)
-				containerId = cid
+				containerInfo = &types.ContainerInfo{}
+
+				logger.GetLogger().Debug("Found container id for cgroupid", "cgroupid", cgroupid, "cid", cid)
+				containerInfo.Id = cid
+
+				podInfo := process.GetPodInfo(containerInfo.Id, "", "", 0)
+				if podInfo == nil {
+					logger.GetLogger().Error("No pod info found", "containerInfo.Id", containerInfo.Id)
+					appmodelmetrics.RecordLookupError(appmodelmetrics.LookupPod)
+				} else {
+					containerInfo.Name = podInfo.Container.Name
+					containerInfo.Image = podInfo.Container.Image.Name
+				}
 			} else {
-				// If the cgroup id is 0, it means the process is not in a container.
 				logger.GetLogger().Debug("No container info found for process", "cgroupid", cgroupid)
 				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupContainer)
 			}
@@ -835,7 +845,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			ns:  ns, wl: wl, kind: kind,
 			selfBin: selfBin, selfArgs: selfArgs,
 			dest: dest, inInitTree: inInitTree,
-			syscalls: syscalls, containerId: containerId,
+			syscalls:        syscalls,
+			container:       containerInfo,
 			cgroupid:        cgroupid,
 			ktimeFirstExec:  val.KtimeFirstExec,
 			ktimeLastExec:   val.KtimeLastExec,
@@ -876,7 +887,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				Name: e.wl,
 				Kind: e.kind,
 			},
-			ContainerId:     e.containerId,
+			Container:       e.container,
 			Dest:            e.dest,
 			InInitTree:      e.inInitTree,
 			FirstStartTime:  ktimeToTime(e.ktimeFirstExec),

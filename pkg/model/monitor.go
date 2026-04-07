@@ -54,7 +54,7 @@ type NetworkKey struct {
 	SourceWorkloadKind         v1alpha.WorkloadKind
 	SourceWorkloadResourceKind v1alpha.ResourceKind
 	SourceWorkloadName         string
-	SourceContainerId          string
+	SourceContainer            types.ContainerInfo
 	SourceProcessName          string
 	SourceProcessArgs          string
 	DestinationPort            uint64
@@ -97,7 +97,7 @@ func (nk NetworkKey) String() string {
 	if nk.SourceNamespace == HostNamespace {
 		source = "host"
 	} else {
-		source = fmt.Sprintf("%s/%s:%s %s", nk.SourceNamespace, prettyWorkloadKind(nk.SourceWorkloadKind), nk.SourceWorkloadName, nk.SourceContainerId)
+		source = fmt.Sprintf("%s/%s:%s %s", nk.SourceNamespace, prettyWorkloadKind(nk.SourceWorkloadKind), nk.SourceWorkloadName, nk.SourceContainer)
 	}
 	destination = DestinationName(&nk)
 	return fmt.Sprintf("%s > %s", source, destination)
@@ -254,7 +254,7 @@ type ProcessKey struct {
 	Namespace    string
 	WorkloadKind v1alpha.WorkloadKind
 	WorkloadName string
-	ContainerId  string
+	Container    types.ContainerInfo
 	Name         string
 	Args         string
 }
@@ -273,7 +273,7 @@ func (pk ProcessKey) String() string {
 	if pk.Namespace == HostNamespace {
 		return fmt.Sprintf("host %s %s", pk.Name, pk.Args)
 	}
-	return fmt.Sprintf("%s/%s:%s %s %s %s", pk.Namespace, prettyWorkloadKind(pk.WorkloadKind), pk.WorkloadName, pk.ContainerId, pk.Name, pk.Args)
+	return fmt.Sprintf("%s/%s:%s %s %s %s", pk.Namespace, prettyWorkloadKind(pk.WorkloadKind), pk.WorkloadName, pk.Container, pk.Name, pk.Args)
 }
 
 func (nmd NetworkMonitorData) Print() {
@@ -300,7 +300,12 @@ func getNetworkMonitorKey(process *types.ProcessModel, dst *types.Destination, i
 		if nwKey.SourceWorkloadKind != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
 			nwKey.SourceWorkloadResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
 		}
-		nwKey.SourceContainerId = process.ContainerId
+
+		if process.Container != nil {
+			nwKey.SourceContainer.Id = process.Container.Id
+			nwKey.SourceContainer.Name = process.Container.Name
+			nwKey.SourceContainer.Image = process.Container.Image
+		}
 	}
 	if includeProcess {
 		nwKey.SourceProcessName = process.Binary
@@ -395,14 +400,21 @@ func getProcessMonitorKey(process *types.ProcessModel) ProcessKey {
 		workloadKind = translateWorkloadKind(process.Workload.Kind)
 	}
 
-	return ProcessKey{
+	pmKey := ProcessKey{
 		Namespace:    process.Namespace,
 		WorkloadName: workloadName,
 		WorkloadKind: workloadKind,
-		ContainerId:  process.ContainerId,
 		Name:         process.Binary,
 		Args:         process.BinaryArgs,
 	}
+
+	if process.Container != nil {
+		pmKey.Container.Id = process.Container.Id
+		pmKey.Container.Name = process.Container.Name
+		pmKey.Container.Image = process.Container.Image
+	}
+
+	return pmKey
 }
 
 func getNetworkQuotaValue(dst *types.Destination) NetworkQuotaValue {

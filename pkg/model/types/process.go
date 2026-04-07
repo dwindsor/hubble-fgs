@@ -94,15 +94,15 @@ type Workload struct {
 }
 
 type ProcessModel struct {
-	Binary      string
-	BinaryArgs  string
-	Parent      string
-	ParentArgs  string
-	Parents     []string // All unique immediate parent names for this binary/args tuple
-	Namespace   string
-	Workload    *Workload
-	ContainerId string // Intentionally only saving the container ID to save space
-	Dest        []*Destination
+	Binary     string
+	BinaryArgs string
+	Parent     string
+	ParentArgs string
+	Parents    []string // All unique immediate parent names for this binary/args tuple
+	Namespace  string
+	Workload   *Workload
+	Container  *ContainerInfo
+	Dest       []*Destination
 	// If set to true, this process is containerized and is a member of the
 	// process tree rooted at pid=1 in its PID namespace. This is useful if,
 	// for example, you wish to discern whether a process was spawned using a

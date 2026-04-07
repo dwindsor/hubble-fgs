@@ -51,6 +51,7 @@ const (
 	LookupNSID      LookupErrorType = "nsid"
 	LookupSyscall   LookupErrorType = "syscall"
 	LookupContainer LookupErrorType = "container"
+	LookupPod       LookupErrorType = "pod"
 )
 
 var lookupErrorTypes = []LookupErrorType{

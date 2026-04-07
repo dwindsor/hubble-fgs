@@ -123,6 +123,18 @@ type ProcessSyscallValue struct {
 	Syscalls [SyscallBitmaskSize]uint64
 }
 
+type ContainerInfo struct {
+	Id    string
+	Name  string
+	Image string
+}
+
+func (c ContainerInfo) String() string {
+	// Not truncating container id here, this version is only used
+	// for hashing
+	return fmt.Sprintf("%s %s(%s)", c.Image, c.Name, c.Id)
+}
+
 type TetragonWorkloadNetworkSubject struct {
 	Namespace string
 	Name      string

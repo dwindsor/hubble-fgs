@@ -26,9 +26,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -52,7 +50,7 @@ type workloadKey struct {
 }
 
 type containerKey struct {
-	id string
+	cont types.ContainerInfo
 }
 
 type processKey struct {
@@ -89,7 +87,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	}
 	nsKey := namespaceKey{name: nk.SourceNamespace}
 	wlkey := workloadKey{name: nk.SourceWorkloadName, kind: nk.SourceWorkloadKind}
-	contKey := containerKey{id: nk.SourceContainerId}
+	contKey := containerKey{cont: nk.SourceContainer}
 	pskey := processKey{name: nk.SourceProcessName, arguments: nk.SourceProcessArgs}
 	connKey := connectionKey{destination: nwKeyToDestination(&nk)}
 	if _, ok := nsMap[nsKey]; !ok {
@@ -147,7 +145,7 @@ func processGroupHash(name, arguments string) string {
 func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 	nsKey := namespaceKey{name: pk.Namespace}
 	wlkey := workloadKey{name: pk.WorkloadName, kind: pk.WorkloadKind}
-	contKey := containerKey{id: pk.ContainerId}
+	contKey := containerKey{cont: pk.Container}
 	pskey := processKey{name: pk.Name, arguments: pk.Args}
 	if _, ok := nsMap[nsKey]; !ok {
 		nsMap[nsKey] = make(workloadMap)
@@ -244,14 +242,9 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 				}
 				for contkey, contval := range wlval {
 					cont := &appModelV1.ApplicationContainer{
-						Id: contkey.id,
-					}
-					podInfo := process.GetPodInfo(contkey.id, "", "", 0)
-					if podInfo == nil {
-						logger.GetLogger().Error("No pod info found", "containerID", contkey.id)
-					} else {
-						cont.Name = podInfo.Container.Name
-						cont.Image = podInfo.Container.Image.Name
+						Id:    contkey.cont.Id,
+						Name:  contkey.cont.Name,
+						Image: contkey.cont.Image,
 					}
 					for pskey, psval := range contval {
 						ps := &appModelV1.ApplicationProcessGroup{
@@ -509,9 +502,13 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 						Namespace:    ns.GetName(),
 						WorkloadKind: wl.GetKind(),
 						WorkloadName: wl.GetName(),
-						ContainerId:  cont.GetId(),
-						Name:         ps.GetName(),
-						Args:         ps.GetArguments(),
+						Container: types.ContainerInfo{
+							Id:    cont.GetId(),
+							Name:  cont.GetName(),
+							Image: cont.GetImage(),
+						},
+						Name: ps.GetName(),
+						Args: ps.GetArguments(),
 					}
 					pmd[pmk] = ProcessValue{}
 					for _, conn := range ps.GetConnections() {
@@ -524,9 +521,13 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 							SourceWorkloadKind:         wl.GetKind(),
 							SourceWorkloadResourceKind: resourceType,
 							SourceWorkloadName:         wl.GetName(),
-							SourceContainerId:          cont.GetId(),
-							SourceProcessName:          ps.GetName(),
-							SourceProcessArgs:          ps.GetArguments(),
+							SourceContainer: types.ContainerInfo{
+								Id:    cont.GetId(),
+								Name:  cont.GetName(),
+								Image: cont.GetImage(),
+							},
+							SourceProcessName: ps.GetName(),
+							SourceProcessArgs: ps.GetArguments(),
 						}
 						addDestinationInfoAppModel(conn.Destination, &nmk)
 						nmd[nmk] = NetworkMonitorValue{

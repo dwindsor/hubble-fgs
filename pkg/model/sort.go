@@ -237,7 +237,13 @@ func CompareNetworkKeys(a, b NetworkKey) int {
 	if result := strings.Compare(a.SourceWorkloadName, b.SourceWorkloadName); result != 0 {
 		return result
 	}
-	if result := strings.Compare(a.SourceContainerId, b.SourceContainerId); result != 0 {
+	if result := strings.Compare(a.SourceContainer.Id, b.SourceContainer.Id); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceContainer.Name, b.SourceContainer.Name); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceContainer.Image, b.SourceContainer.Image); result != 0 {
 		return result
 	}
 	if result := strings.Compare(a.SourceProcessName, b.SourceProcessName); result != 0 {
@@ -292,7 +298,13 @@ func CompareProcessKeys(a, b ProcessKey) int {
 	if result := strings.Compare(a.WorkloadName, b.WorkloadName); result != 0 {
 		return result
 	}
-	if result := strings.Compare(a.ContainerId, b.ContainerId); result != 0 {
+	if result := strings.Compare(a.Container.Id, b.Container.Id); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.Container.Name, b.Container.Name); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.Container.Image, b.Container.Image); result != 0 {
 		return result
 	}
 	if result := strings.Compare(a.Name, b.Name); result != 0 {

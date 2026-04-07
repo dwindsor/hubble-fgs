@@ -34,8 +34,10 @@ func TestNetworkMonitorKey_String(t *testing.T) {
 	key.SourceNamespace = "kube-system"
 	key.SourceWorkloadKind = common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
 	key.SourceWorkloadName = "nginx"
-	key.SourceContainerId = "8d110f8828dfb"
-	assert.Equal(t, "kube-system/Deployment:nginx 8d110f8828dfb > cisco.com:443", key.String())
+	key.SourceContainer.Id = "8d110f8828dfb"
+	key.SourceContainer.Name = "nginx"
+	key.SourceContainer.Image = "library/nginx:latest"
+	assert.Equal(t, "kube-system/Deployment:nginx library/nginx:latest nginx(8d110f8828dfb) > cisco.com:443", key.String())
 }
 
 func TestNetworkMonitorValue_String(t *testing.T) {
@@ -371,8 +373,10 @@ func TestProcessKey_String(t *testing.T) {
 	key.Namespace = "default"
 	key.WorkloadKind = common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
 	key.WorkloadName = "my-app"
-	key.ContainerId = "e673699fa9961"
-	assert.Equal(t, "default/Deployment:my-app e673699fa9961 bash -c ls", key.String())
+	key.Container.Id = "e673699fa9961"
+	key.Container.Name = "some-app"
+	key.Container.Image = "some-company/application:dev"
+	assert.Equal(t, "default/Deployment:my-app some-company/application:dev some-app(e673699fa9961) bash -c ls", key.String())
 }
 
 func Test_sortProcessKeys(t *testing.T) {
