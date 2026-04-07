@@ -23,7 +23,6 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/watcher/conf"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -116,10 +115,12 @@ func New(ctx context.Context) (KubernetesManager, error) {
 		if err = serviceReconciler.SetupWithManager(ossManager.Manager); err != nil {
 			return nil, fmt.Errorf("failed to setup Service reconciler: %w", err)
 		}
-		if err := addPodInfoInformer(ctx, ossManager); err != nil {
-			return nil, err
-		}
+
 		state := netpolstate.Get()
+		podInfoReconciler := controllers.NewPodInfoReconciler(ossManager.Manager.GetClient(), endpoint.MustGet(), state)
+		if err = podInfoReconciler.SetupWithManager(ossManager.Manager); err != nil {
+			return nil, fmt.Errorf("failed to setup PodInfo reconciler: %w", err)
+		}
 		sm := servicemap.NewServiceMap(state)
 		if err := servicemap.AddServiceInformer(ctx, ossManager, sm); err != nil {
 			return nil, err
@@ -186,47 +187,6 @@ func (em *EnterpriseManager) GetSvcInfoOfIp(ip net.IP) *tetragon.Service {
 		Type:           tetragon.ServiceKind_SERVICE_KIND_CLUSTER_IP,
 		SelectorLabels: serviceList.Items[0].Spec.Selector,
 	}
-}
-
-func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager) error {
-	informer, err := manager.Manager.GetCache().GetInformer(ctx, &v1alpha1.PodInfo{})
-	if err != nil {
-		return err
-	}
-
-	// The endpoint cache will be initialized here if it wasn't before. This
-	// has to happen before the event handler is started and sensors are
-	// loaded, to ensure we have maps and caches configured, and avoid racing
-	// with sensor coming online.
-	c := endpoint.MustGet()
-	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			switch t := obj.(type) {
-			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug(fmt.Sprintf("Add Pod: %v", t))
-				c.AddIpPodMap(t)
-				if polErr := netpolstate.Get().PodAdd(t); polErr != nil {
-					logger.GetLogger().Error(fmt.Sprintf("Pod add error: %v", polErr))
-				}
-			}
-		},
-		UpdateFunc: func(old interface{}, _ interface{}) {
-			switch t := old.(type) {
-			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug(fmt.Sprintf("Update Pod: %v", t))
-			}
-		},
-		DeleteFunc: func(old interface{}) {
-			switch t := old.(type) {
-			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug(fmt.Sprintf("Delete Pod: %v", t))
-				if err := netpolstate.Get().PodRemove(t); err != nil {
-					logger.GetLogger().Error(fmt.Sprintf("Pod remove error: %v", err))
-				}
-			}
-		},
-	})
-	return err
 }
 
 func (em *EnterpriseManager) FindPodInfoByIP(ip string) ([]v1alpha1.PodInfo, error) {
