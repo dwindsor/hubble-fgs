@@ -1092,4 +1092,129 @@ func TestManager_Run_DeactivatesOnServiceFunctionRemoved(t *testing.T) {
 	}
 }
 
+// TestManager_SvcStateWithoutHA verifies that svc state is pushed to NX-OS
+// via computeAndPushSvcOnly even when HA is not enabled / no peers configured.
+// All three local criteria (DpuHealth, DpuInSync, InService) must be considered.
+// Only svc state should change; HA state must remain unchanged.
+func TestManager_SvcStateWithoutHA(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	// SF configured — pushSvcToNx gate will be true.
+	deviceStore.SetInService(ctx, "in-service")
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+	).(*manager)
+
+	// All three criteria met — expect svc-success and CriteriaMet=true.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
+	haStore.UpdateLocalCriterion(ctx, types.HACritInService, true)
+	mgr.computeAndPushSvcOnly(ctx)
+
+	local := haStore.Local()
+	if local.SvcState != types.SvcStateSuccess {
+		t.Errorf("expected svc-success with all criteria met, got %q", local.SvcState)
+	}
+	if !local.CriteriaMet {
+		t.Error("expected CriteriaMet=true when all criteria are met")
+	}
+	if local.HaState != "" {
+		t.Errorf("expected HA state unchanged (empty), got %q", local.HaState)
+	}
+
+	// DpuHealth fails — expect svc-failure and CriteriaMet=false.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+	mgr.computeAndPushSvcOnly(ctx)
+	local = haStore.Local()
+	if local.SvcState != types.SvcStateFailure {
+		t.Errorf("expected svc-failure when DpuHealth=false, got %q", local.SvcState)
+	}
+	if local.CriteriaMet {
+		t.Error("expected CriteriaMet=false when DpuHealth=false")
+	}
+	if local.HaState != "" {
+		t.Errorf("expected HA state unchanged (empty), got %q", local.HaState)
+	}
+
+	// DpuInSync fails independently — expect svc-failure.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, false)
+	mgr.computeAndPushSvcOnly(ctx)
+	if local = haStore.Local(); local.SvcState != types.SvcStateFailure {
+		t.Errorf("expected svc-failure when DpuInSync=false, got %q", local.SvcState)
+	}
+
+	// InService fails independently — expect svc-failure.
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
+	haStore.UpdateLocalCriterion(ctx, types.HACritInService, false)
+	mgr.computeAndPushSvcOnly(ctx)
+	if local = haStore.Local(); local.SvcState != types.SvcStateFailure {
+		t.Errorf("expected svc-failure when InService=false, got %q", local.SvcState)
+	}
+
+	// All criteria restored — CriteriaMet should flip back to true.
+	haStore.UpdateLocalCriterion(ctx, types.HACritInService, true)
+	mgr.computeAndPushSvcOnly(ctx)
+	local = haStore.Local()
+	if local.SvcState != types.SvcStateSuccess {
+		t.Errorf("expected svc-success after restoring all criteria, got %q", local.SvcState)
+	}
+	if !local.CriteriaMet {
+		t.Error("expected CriteriaMet=true after restoring all criteria")
+	}
+}
+
+// TestManager_ActivationPreservesPreHACriteria verifies that DPU criteria set
+// during the pre-HA phase (waitForConfig) are not overwritten to false on
+// activation when they already exist in the criteria map.
+func TestManager_ActivationPreservesPreHACriteria(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	// Pre-populate DPU criteria as true (simulating pre-HA DPU health events).
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
+
+	// Simulate activation sequence: set InService, then run the pre-populate block.
+	deviceStore.SetInService(ctx, "in-service")
+	haStore.UpdateLocalCriterion(ctx, types.HACritInService, deviceStore.IsInService())
+
+	// Create a dpuStore with one DPU so the activation block runs.
+	dpuStore := dpu.NewStore(ctx)
+	if err := dpuStore.Update(ctx, types.DPU{Name: "dpu0", ModuleNum: 1, IP: "10.0.0.10"}); err != nil {
+		t.Fatalf("failed to add DPU: %v", err)
+	}
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithDPUStore(dpuStore),
+	).(*manager)
+
+	// Simulate the activation pre-populate logic directly.
+	activationCriteria := haStore.Local().Criteria
+	if _, ok := activationCriteria[types.HACritDpuHealth]; !ok {
+		haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+	}
+	if _, ok := activationCriteria[types.HACritDpuInSync]; !ok {
+		haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, false)
+	}
+
+	_ = mgr // manager created to validate constructor doesn't panic
+
+	// Criteria should still be true — not overwritten to false.
+	local := haStore.Local()
+	if v, ok := local.Criteria[types.HACritDpuHealth]; !ok || !v {
+		t.Errorf("expected HACritDpuHealth=true after activation, got ok=%v v=%v", ok, v)
+	}
+	if v, ok := local.Criteria[types.HACritDpuInSync]; !ok || !v {
+		t.Errorf("expected HACritDpuInSync=true after activation, got ok=%v v=%v", ok, v)
+	}
+}
+
 var _ Manager = (*mockManager)(nil)

@@ -181,6 +181,45 @@ func (m *manager) isConfigReady() bool {
 	return true
 }
 
+// computeAndPushSvcOnly computes svc state from raw local criteria and pushes it to
+// NX-OS without touching HA state. Used in waitForConfig where HA is not yet active
+// (no peers or HA not enabled) but SF is configured and DPUs are reporting.
+// No anti-flap hold-down is applied — svc state directly reflects Criteria.AllOk().
+func (m *manager) computeAndPushSvcOnly(ctx context.Context) {
+	if m.haStore == nil {
+		return
+	}
+	local := m.haStore.Local()
+	criteriaMet := local.Criteria.AllOk()
+
+	// Keep CriteriaMet in sync with raw criteria (no anti-flap hold-down in pre-HA).
+	// This ensures a smooth transition when HA activates — recomputeAndApplyState
+	// sees CriteriaMet already true and skips the 30s hold-down.
+	if criteriaMet != local.CriteriaMet {
+		local.CriteriaMet = criteriaMet
+		local.CriteriaMetEpoch = time.Now().Unix()
+		local.CriteriaRecoveryPending = false
+		local.CriteriaRecoveryEpoch = 0
+		m.haStore.SetLocalCriteriaMet(ctx, local)
+	}
+
+	svcState := types.SvcStateSuccess
+	var svcReason types.ReasonString
+	if criteriaMet {
+		svcReason = types.NewReasonString("all criteria met")
+	} else {
+		svcState = types.SvcStateFailure
+		svcReason = types.NewReasonString(
+			fmt.Sprintf("criteria not met: %s", failedLocalCriteria(local)))
+	}
+	// Pass current HA state/reason unchanged so haChanged=false and no HA gNMI write occurs.
+	pushSvcToNx := m.deviceStore == nil || m.deviceStore.InServiceState() != ""
+	m.haStore.SetLocalDerivedStates(ctx,
+		local.HaState, svcState,
+		local.HaStateReason, svcReason,
+		pushSvcToNx)
+}
+
 // computeAndPushHaConfig computes the HaConfig from store state and pushes it to
 // the config library, which triggers fan-out to DPUs via the registered callback.
 // This implements the old updateHaConfig() logic:
@@ -573,6 +612,18 @@ func (m *manager) Run(ctx context.Context) error {
 		// Wait until all prerequisites are met: HA enabled, peers configured, SF configured.
 		if !m.isConfigReady() {
 			logger.GetLogger().Info("HA manager waiting for configuration")
+			// Seed all local criteria from current state so AllOk() has a complete
+			// picture on the first svc push, not just whatever events have fired so far.
+			// HACritInService is only set in the activation block otherwise; DPU criteria
+			// may not yet be present if the relevant nxos.Manager events haven't arrived.
+			if m.deviceStore != nil {
+				m.haStore.UpdateLocalCriterion(ctx, types.HACritInService, m.deviceStore.IsInService())
+			}
+			if m.dpuStore != nil && !m.dpuStore.IsSkipDPU() {
+				m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, m.dpuStore.IsHealthy())
+				m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, m.dpuStore.IsInSync())
+			}
+			m.computeAndPushSvcOnly(ctx)
 			if done := m.waitForConfig(ctx, storeCh, deviceCh); done {
 				logger.GetLogger().Info("HA manager Run exiting")
 				return nil
@@ -612,11 +663,18 @@ func (m *manager) Run(ctx context.Context) error {
 			m.haStore.UpdateLocalCriterion(ctx, types.HACritInService, m.deviceStore.IsInService())
 		}
 
-		// Pre-populate local DPU criteria as false when DPUs are expected.
-		// This prevents a brief "ready" state before DPU health events arrive.
+		// Pre-populate local DPU criteria as false when DPUs are expected and criteria
+		// have not already been set. Criteria may already be set if DPU health events
+		// arrived during waitForConfig (pre-HA phase). Only seed false on cold start
+		// (criteria absent) to prevent a brief "ready" state before DPU events arrive.
 		if m.dpuStore != nil && !m.dpuStore.IsSkipDPU() && len(m.dpuStore.List()) > 0 {
-			m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
-			m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, false)
+			activationCriteria := m.haStore.Local().Criteria
+			if _, ok := activationCriteria[types.HACritDpuHealth]; !ok {
+				m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, false)
+			}
+			if _, ok := activationCriteria[types.HACritDpuInSync]; !ok {
+				m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, false)
+			}
 		}
 
 		// Initialize DPU criteria for peers. DPUs may have been loaded into
@@ -626,6 +684,7 @@ func (m *manager) Run(ctx context.Context) error {
 		m.initDPUCriteriaFromStore(ctx)
 
 		// Push initial HaConfig to DPUs now that HA is activated.
+		// CriteriaMet is already maintained by computeAndPushSvcOnly during pre-HA.
 		m.computeAndPushHaConfig()
 
 		// Run the active event loop (blocks until deactivation or ctx cancellation).
@@ -666,9 +725,20 @@ func (m *manager) waitForConfig(ctx context.Context, storeCh <-chan hastore.Even
 				if m.isConfigReady() {
 					return false
 				}
+			case hastore.EventCriterionChanged, hastore.EventCriterionSet:
+				// Push svc state to NX-OS even while waiting for full HA config,
+				// so the switch reflects DPU/service readiness independently of HA.
+				m.computeAndPushSvcOnly(ctx)
+				if m.isConfigReady() {
+					return false
+				}
 			}
 		case event := <-deviceCh:
 			if event.Type == device.EventInServiceChanged {
+				if m.deviceStore != nil {
+					m.haStore.UpdateLocalCriterion(ctx, types.HACritInService, m.deviceStore.IsInService())
+				}
+				m.computeAndPushSvcOnly(ctx)
 				if m.isConfigReady() {
 					return false
 				}
