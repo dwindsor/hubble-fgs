@@ -155,12 +155,12 @@ func AddFromDir(dir string) error {
 }
 
 func Add(np *v1alpha1.TetragonNetworkPolicy) error {
+	if np == nil {
+		return nil
+	}
 	policies, err := ToTetragonNetworkPolicies(np)
 	if err != nil {
 		return fmt.Errorf("failed to convert TetragonNetworkPolicy %s to internal representation: %w", np.Name, err)
-	}
-	if np == nil {
-		return nil
 	}
 
 	err = loadPolicy(&library.PolicyStory{
