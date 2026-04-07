@@ -145,12 +145,12 @@ If BTF link is omitted hubble-fgs will attempt to search for it in the list of
 known kernels using the running kernels `uname -r`. If it is still not found an
 error will be reported.
 ```
-docker run --rm --name hubble-fgs --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -ti isovalent/hubble-fgs
+docker run --rm --name tetragon --env TETRAGON_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -ti isovalent/tetragon
 ```
 
 To run Docker image with custom BTF link in `/var/lib/hubble-fgs/btf` use:
 ```
-docker run --rm --name hubble-fgs --env FGS_BTF=/var/lib/hubble-fgs/btf --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti isovalent/hubble-fgs
+docker run --rm --name tetragon --env TETRAGON_BTF=/var/lib/hubble-fgs/btf --env TETRAGON_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti isovalent/tetragon
 ```
 
 ### Running on GKE
