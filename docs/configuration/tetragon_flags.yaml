@@ -129,6 +129,9 @@ options:
     - name: enable-cri
       default_value: "false"
       usage: enable CRI client for tetragon
+    - name: enable-deprecated-tracingpolicy-grpc
+      default_value: "false"
+      usage: Enable deprecated gRPC TracingPolicy APIs
     - name: enable-dns
       default_value: "false"
       usage: Enable DNS observability

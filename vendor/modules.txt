@@ -450,7 +450,7 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20260331164029-b1214944cc4d => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20260407070224-cc9e00ee1b47 => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -557,6 +557,7 @@ github.com/cilium/tetragon/pkg/metrics/watchermetrics
 github.com/cilium/tetragon/pkg/metricsconfig
 github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/multiplexer
+github.com/cilium/tetragon/pkg/nok8s
 github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/observer/observertesthelper
 github.com/cilium/tetragon/pkg/observer/observertesthelper/docker
