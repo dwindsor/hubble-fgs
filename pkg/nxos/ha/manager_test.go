@@ -963,4 +963,118 @@ func TestManager_Run_NotifiesServiceFailureOnOutOfService(t *testing.T) {
 	}
 }
 
+// TestManager_Run_DeactivatesOnServiceFunctionRemoved verifies that when the
+// service function is removed (InServiceState becomes ""), the HA manager
+// notifies peers of service failure and deactivates back to waitForConfig,
+// then re-activates when the service function is re-created.
+func TestManager_Run_DeactivatesOnServiceFunctionRemoved(t *testing.T) {
+	ctx := context.Background()
+
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	// adjReceived captures adjacency requests received by the mock peer.
+	adjReceived := make(chan *hav1.AdjRequest, 10)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client {
+			c := NewMockClient()
+			c.SetAdjacencyHandler(func(ctx context.Context, req *hav1.AdjRequest) (*hav1.AdjResponse, error) {
+				select {
+				case adjReceived <- req:
+				default:
+				}
+				return &hav1.AdjResponse{Status: hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS}, nil
+			})
+			return c
+		}),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	bgCtx := context.Background()
+
+	// Activate HA — must have enabled, haIP, peer, and in-service.
+	deviceStore.SetInService(bgCtx, "in-service")
+	haStore.SetEnabled(bgCtx, "enabled")
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
+
+	// Give Run() time to activate.
+	time.Sleep(50 * time.Millisecond)
+
+	// Connect the peer so NotifyServiceFailure can reach it.
+	if err := mgr.ConnectPeer(bgCtx, "10.0.0.2"); err != nil {
+		t.Fatalf("ConnectPeer failed: %v", err)
+	}
+
+	// Drain any adjacency messages from the keepalive ticker.
+	time.Sleep(20 * time.Millisecond)
+	for len(adjReceived) > 0 {
+		<-adjReceived
+	}
+
+	// Remove the service function (fwpolicy-items deleted) — InService becomes "".
+	deviceStore.SetInService(bgCtx, "")
+
+	// Verify peers are notified of service failure before deactivation.
+	select {
+	case req := <-adjReceived:
+		if req.MbrInfo == nil || req.MbrInfo.HaInfo == nil {
+			t.Fatal("expected MbrInfo.HaInfo in adjacency request")
+		}
+		if req.MbrInfo.HaInfo.LocalSvcState != hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE {
+			t.Errorf("expected LocalSvcState=LOCAL_SVC_FAILURE, got %v", req.MbrInfo.HaInfo.LocalSvcState)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Error("did not receive service failure notification after service function removal")
+	}
+
+	// Give Run() time to deactivate.
+	time.Sleep(50 * time.Millisecond)
+
+	// Run() should still be running (waiting for reconfiguration), not returned.
+	select {
+	case err := <-errCh:
+		t.Errorf("Run() returned prematurely with: %v", err)
+	default:
+		// Good — still running in waitForConfig
+	}
+
+	// Re-create the service function — InService set back to "in-service".
+	// This should trigger re-activation.
+	deviceStore.SetInService(bgCtx, "in-service")
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Run() should still be running (activated again), not returned.
+	select {
+	case err := <-errCh:
+		t.Errorf("Run() returned prematurely after re-activation with: %v", err)
+	default:
+		// Good — re-activated and running
+	}
+
+	// Cancel to end the test cleanly.
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
 var _ Manager = (*mockManager)(nil)

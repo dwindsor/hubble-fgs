@@ -760,6 +760,19 @@ func (m *manager) runActive(ctx context.Context, storeCh <-chan hastore.Event, d
 				if !isInService {
 					m.NotifyServiceFailure(ctx)
 				}
+
+				// Service function removed entirely (fwpolicy-items deleted) —
+				// deactivate HA. Returns to the outer Run() loop which re-enters
+				// waitForConfig() because isConfigReady() returns false when
+				// InServiceState == "".
+				if devEvent.Status == "" {
+					if m.holdDownTimer != nil {
+						m.holdDownTimer.Stop()
+						m.holdDownTimer = nil
+					}
+					logger.GetLogger().Info("Service Firewall removed, deactivating HA")
+					return false
+				}
 			}
 
 		case <-m.holdDownChan():

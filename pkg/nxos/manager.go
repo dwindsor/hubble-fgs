@@ -1035,12 +1035,12 @@ func (m *manager) handleSvcInstanceDelete(ctx context.Context, path string) {
 }
 
 // handleSvcFwPolicyDelete handles deletion of the firewall policy.
-// Mirrors the old delSvcFw: graceful restart with cleanup.
+// Clears the in-service state so HA deactivates gracefully without restarting.
+// Individual service VRF/VLAN child deletes arrive before this parent delete,
+// so redirect cleanup is already handled reactively by those stores.
 func (m *manager) handleSvcFwPolicyDelete(ctx context.Context) {
-	logger.GetLogger().Info("SvcFwPolicy delete detected, triggering graceful restart with cleanup")
-
-	// Graceful restart WITH cleanup (Close() runs first to clean service redirects, etc.).
-	m.GracefulRestart(ctx, true)
+	logger.GetLogger().Info("SvcFwPolicy delete detected, clearing in-service state")
+	m.deviceStore.SetInService(ctx, "")
 }
 
 // DpuHealth updates the DPU health status and reports system state to NXOS.
