@@ -1,7 +1,19 @@
+# The /procHost and /tetragonExport paths must be mounted from the host into the KinD node.
+# We then mount them further into the tetragon pod.
 tetragon:
   image:
     override: isovalent/tetragon:latest
-  hostProcPath: /procHost # configured in kind-config.yaml (OSS)
+  hostProcPath: /procHost
+  extraArgs: 
+    fim-fifo-path: /tetragonExport
+  extraVolumeMounts:
+    - name: real-export-dir
+      mountPath: /tetragonExport
 tetragonOperator:
   image:
     override: isovalent/tetragon-operator:latest
+extraVolumes:
+  - name: real-export-dir
+    hostPath:
+      path: /tetragonExport
+      type: Directory

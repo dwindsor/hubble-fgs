@@ -256,19 +256,17 @@ for more information.
 
 ### Running FGS Locally in KinD
 
-The scripts in `contrib/kind` can be used to run and test FGS locally in a KinD
-cluster.
-
 First, ensure that you have an up-to-date version of [Docker][docker] and [KinD][kind].
+Also update the `inotify` sysctl variables in accordance with the 
+[KinD documentation](https://kind.sigs.k8s.io/docs/user/known-issues#pod-errors-due-to-too-many-open-files).
 
 Once you have installed the necessary tooling, you can bootstrap a cluster for testing
-with `contrib/kind/bootstrap-cluster.sh`.
+with `make kind`.
 
 After bootstrapping the cluster, you can install the latest FGS from source by running
-`contrib/kind/install-fgs.sh`.
+`make kind-install-tetragon`.
 
-Finally, run the respective test case script located in `contrib/kind/tests` (for
-example, `contrib/kind/tests/demo-app.sh`).
+Finally, run the [e2e tests in the cluster](#testing-fgs-locally-using-the-e2e-framework)
 
 In case you need to test under a different kernel, you can use the `contrib/kvm` scripts
 to bootstrap a minimal environment for running FGS in a KinD cluster (see the [previous
@@ -287,6 +285,13 @@ Cilium.
 Should you wish to use an alternative cluster instead of bootstrapping a local KinD
 cluster, you can pass a kubeconfig like so: `make e2e-test
 EXTRA_TESTFLAGS="-kubeconfig=~/.kube/config"`.
+
+Run all e2e test locally:
+```
+make e2e-test HOST_PROC=/procRoot E2E_EXTRA_TEST_FLAGS="-tetragon.helm.set tetragon.extraArgs.fim-fifo-path=/tetragonExport"
+```
+Also have a look at the [CI workflow](./.github/workflows/kvm-e2e-tests.yaml) for further details.
+
 
 More complex test commands can be run manually by targeting the appropriate test(s) in
 `tests/e2e/tests`. You can generate a skeleton command for running tests by running `make

@@ -469,7 +469,7 @@ E2E_TESTS ?= ./tests/e2e/tests/helm/...
 
 ## e2e-test: ## run e2e tests
 ## e2e-test E2E_BUILD_IMAGES=0: ## run e2e tests without (re-)building images
-## e2e-test E2E_TESTS=./tests/e2e/tests/skeleton: ## run a specific e2e test
+## e2e-test E2E_TESTS=./tests/e2e/tests/helm/skeleton: ## run a specific e2e test
 .PHONY: e2e-test
 ifneq ($(E2E_BUILD_IMAGES), 0)
 e2e-test: image image-operator
@@ -498,9 +498,11 @@ cscope: ## Generate cscope for bpf files.
 	find bpf -name "*.[chxsS]" -print > cscope.files
 	cscope -b -q -k
 
+
 .PHONY: kind
 kind: ## Create a kind cluster for Tetragon development.
-	$(MAKE) -C $(OSS_DIR) kind
+	# Use the enterprise kind-config to support FIM
+	$(MAKE) -C $(OSS_DIR) kind KIND_CONFIG=$(shell realpath ./contrib/kind/kind-config.yaml)
 
 KIND_BUILD_IMAGES ?= 1
 export TETRAGON_KIND_BASE_VALUES = ./contrib/kind/values.yaml
