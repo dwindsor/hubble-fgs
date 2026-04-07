@@ -25,7 +25,8 @@ func TestSetLocalDerivedStates_SetsHaStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	reason := types.NewReasonString("local criteria not met")
 	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
@@ -82,7 +83,8 @@ func TestSetLocalDerivedStates_SuccessHasEmptyReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	store.SetLocalDerivedStates(ctx, types.HAStateReady, types.SvcStateSuccess, "", "", true)
 
@@ -102,7 +104,8 @@ func TestSetLocalHaStateToNotReady_SetsReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	reason := types.NewReasonString("local criteria not met")
 	err := store.SetLocalHaStateToNotReady(ctx, reason)
@@ -149,7 +152,8 @@ func TestUpdatePeerSvcState_SetsStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	peerIP := "10.0.0.2"
 	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
@@ -172,7 +176,8 @@ func TestUpdatePeerHaState_SetsStateAndReasonViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	peerIP := "10.0.0.3"
 	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
@@ -195,7 +200,8 @@ func TestSetRemoteStatesAdjDown_SetsReasonsViaGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	peerIP := "10.0.0.4"
 	store.SetPeer(ctx, peerIP, types.HAPeerState{IP: peerIP})
@@ -221,11 +227,11 @@ func TestSetRemoteStatesAdjDown_SetsReasonsViaGnmi(t *testing.T) {
 	}
 }
 
-func TestSetLocalDerivedStates_HaDisabled_SkipsHaGnmi_PushesSvc(t *testing.T) {
+func TestSetLocalDerivedStates_SwitchNotReady_SkipsHaGnmi_PushesSvc(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	// enabled is "" (not "enabled") — HA is disabled.
+	// switchState is "" (not "ha-ready") — switch HA container is not up.
 
 	reason := types.NewReasonString("criteria not met")
 	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
@@ -240,14 +246,14 @@ func TestSetLocalDerivedStates_HaDisabled_SkipsHaGnmi_PushesSvc(t *testing.T) {
 	}
 
 	data := handler.GetAllData()
-	// HA state should NOT be written to gNMI when HA is disabled.
+	// HA state should NOT be written to gNMI when switch is not in ha-ready.
 	haStateKey := normalizeMockPath(paths.HAStoreLocalHaState)
 	if _, ok := data[haStateKey]; ok {
-		t.Error("expected NO gNMI SET for HAStoreLocalHaState when HA is disabled")
+		t.Error("expected NO gNMI SET for HAStoreLocalHaState when switch not ha-ready")
 	}
 	haReasonKey := normalizeMockPath(paths.HAStoreLocalHaStateReason)
 	if _, ok := data[haReasonKey]; ok {
-		t.Error("expected NO gNMI SET for HAStoreLocalHaStateReason when HA is disabled")
+		t.Error("expected NO gNMI SET for HAStoreLocalHaStateReason when switch not ha-ready")
 	}
 
 	// SVC state SHOULD still be written to gNMI.
@@ -336,7 +342,8 @@ func TestSetLocalDerivedStates_PushSvcToNxFalse_SkipsSvcGnmi(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	reason := types.NewReasonString("local criteria not met")
 	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, false)
@@ -381,7 +388,8 @@ func TestSetLocalDerivedStates_SvcStateWrittenBeforeHaState(t *testing.T) {
 	persistPath := t.TempDir() + "/mock_gnmi.json"
 	handler := mock.NewHandlerBuilder().WithPersistPath(persistPath).Build()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	store.enabled = "enabled"
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
 
 	reason := types.NewReasonString("test reason")
 	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
@@ -836,6 +844,126 @@ func TestSetSwitchState_EmitsEventOnChange(t *testing.T) {
 	}
 	if events[1].Type != EventSwitchStateChanged {
 		t.Errorf("expected EventSwitchStateChanged on second change, got %v", events[1].Type)
+	}
+}
+
+func TestResetAllPeerStates_WritesGnmiAndResetsCriteria(t *testing.T) {
+	ctx := context.Background()
+	handler := mock.NewHandler()
+	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
+	store.enabled = AdminStateEnabled
+	store.switchState = SwitchStateHaReady
+
+	peer1 := "10.0.0.1"
+	peer2 := "10.0.0.2"
+	store.SetPeer(ctx, peer1, types.HAPeerState{
+		IP:             peer1,
+		MemberCriteria: types.HACriteria{types.HACritPeerCompatible: true},
+		IsLeader:       true,
+	})
+	store.SetPeer(ctx, peer2, types.HAPeerState{
+		IP:                peer2,
+		AdjacencyCriteria: types.HACriteria{types.HACritPeerPolicy: true},
+	})
+
+	reason := types.NewReasonString("ha deactivated")
+	store.ResetAllPeerStates(ctx, reason)
+
+	// Verify gNMI SETs were written for both peers.
+	data := handler.GetAllData()
+	for _, ip := range []string{peer1, peer2} {
+		haStatePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaState, ip))
+		if v, ok := data[haStatePath]; !ok || v != types.PeerHAStateNoHa {
+			t.Errorf("peer %s: expected gNMI SET haState=%q, got %v (ok=%v)", ip, types.PeerHAStateNoHa, v, ok)
+		}
+		svcStatePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerSvcState, ip))
+		if v, ok := data[svcStatePath]; !ok || v != types.SvcStateUnknown {
+			t.Errorf("peer %s: expected gNMI SET svcState=%q, got %v (ok=%v)", ip, types.SvcStateUnknown, v, ok)
+		}
+	}
+
+	// Verify all peer runtime state was reset but peers remain in the map.
+	p1, ok := store.Peer(peer1)
+	if !ok {
+		t.Fatal("expected peer1 to remain in map after ResetAllPeerStates")
+	}
+	if p1.IP != peer1 {
+		t.Errorf("expected peer1.IP=%q preserved, got %q", peer1, p1.IP)
+	}
+	if p1.IsLeader {
+		t.Error("expected IsLeader=false after reset")
+	}
+	if p1.MemberCriteria[types.HACritPeerCompatible] {
+		t.Error("expected MemberCriteria[peer_compatible]=false after reset")
+	}
+	if p1.MemberCriteriaMet {
+		t.Error("expected MemberCriteriaMet=false after reset")
+	}
+	if p1.HaState != types.PeerHAStateNoHa {
+		t.Errorf("expected HaState=%q, got %q", types.PeerHAStateNoHa, p1.HaState)
+	}
+	if p1.SvcState != types.SvcStateUnknown {
+		t.Errorf("expected SvcState=%q, got %q", types.SvcStateUnknown, p1.SvcState)
+	}
+}
+
+func TestResetAllPeerStates_SkipsGnmiWhenDisabled(t *testing.T) {
+	ctx := context.Background()
+	handler := mock.NewHandler()
+	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
+	// enabled is "" — HA disabled.
+
+	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{IP: "10.0.0.1"})
+	store.ResetAllPeerStates(ctx, types.NewReasonString("ha deactivated"))
+
+	// No gNMI SETs should have been written for peer states.
+	data := handler.GetAllData()
+	haStatePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaState, "10.0.0.1"))
+	if _, ok := data[haStatePath]; ok {
+		t.Error("expected NO gNMI SET for peer haState when HA disabled")
+	}
+}
+
+func TestResetLocalHaState_ClearsHaFieldsPreservesSvc(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+
+	// Set up svc and HA state.
+	store.SetLocalDerivedStates(ctx,
+		types.HAStateReady, types.SvcStateSuccess,
+		types.NewReasonString("ha ok"), types.NewReasonString("svc ok"),
+		false)
+	store.SetLeader(ctx, true)
+	store.UpdateLocalCriterion(ctx, types.HACritDpuHealth, true)
+	store.UpdateLocalCriterion(ctx, types.HACritHaStandby, true)
+
+	store.ResetLocalHaState(ctx)
+
+	local := store.Local()
+	// HA fields cleared.
+	if local.HaState != "" {
+		t.Errorf("expected HaState cleared, got %q", local.HaState)
+	}
+	if local.Leader {
+		t.Error("expected Leader=false after reset")
+	}
+	if local.CriteriaRecoveryPending {
+		t.Error("expected CriteriaRecoveryPending=false after reset")
+	}
+	// Svc fields preserved.
+	if local.SvcState != types.SvcStateSuccess {
+		t.Errorf("expected SvcState=%q preserved, got %q", types.SvcStateSuccess, local.SvcState)
+	}
+	if local.SvcStateReason != types.NewReasonString("svc ok") {
+		t.Errorf("expected SvcStateReason preserved, got %q", local.SvcStateReason)
+	}
+	// Svc criteria preserved.
+	if _, ok := local.Criteria[types.HACritDpuHealth]; !ok {
+		t.Error("expected dpu_healthy criterion preserved after reset")
+	}
+	// HA-only criteria removed.
+	if _, ok := local.Criteria[types.HACritHaStandby]; ok {
+		t.Error("expected ha_standby criterion removed after reset")
 	}
 }
 

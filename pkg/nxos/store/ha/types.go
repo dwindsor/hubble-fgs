@@ -20,6 +20,18 @@ var (
 	PeerIpCfgStateFailed     = nxosmodel.Cisco_NX_OSDevice_Sas_PeerIpCfgStateE_failed.String()
 )
 
+// AdminState string values - derived from E_Cisco_NX_OSDevice_Sas_SvcHaAdminStateE YANG enum.
+var (
+	AdminStateEnabled  = nxosmodel.Cisco_NX_OSDevice_Sas_SvcHaAdminStateE_enabled.String()
+	AdminStateDisabled = nxosmodel.Cisco_NX_OSDevice_Sas_SvcHaAdminStateE_disabled.String()
+)
+
+// SwitchState string values - derived from E_Cisco_NX_OSDevice_SasNxHaOperStateE YANG enum.
+var (
+	SwitchStateHaReady          = nxosmodel.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_ready.String()
+	SwitchStateHaNotInitialized = nxosmodel.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_not_initialized.String()
+)
+
 // EventType represents the type of HA event.
 type EventType string
 

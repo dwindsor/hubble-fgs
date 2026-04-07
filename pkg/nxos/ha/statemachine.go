@@ -153,23 +153,26 @@ func (sm *StateMachine) computePeerHaState(peer types.HAPeerState, localReady bo
 	}
 
 	if localReady {
-		// Peer service failure: check membership first (takes precedence).
+		// Peer service failure: service failure takes precedence over membership.
 		if !peerSvcReady {
-			if membershipFail {
-				result.HaState = types.PeerHAStateFail
-				result.HaReason = types.NewReasonString(fmt.Sprintf("membership failure: %s", failedMemberCriteria(peer)))
-				return result
-			}
-			// Peer service is not-ready but membership is OK. Check whether the
-			// peer is deliberately in standby hold-down (ha-switchover) due to our
-			// takeover. In that case the peer is still participating in HA and
-			// should be treated as ha-fail (active/standby appropriate) rather
-			// than ha-unavailable (standalone).
+			// Peer service is not-ready but check if it's deliberately in standby
+			// hold-down (ha-switchover) due to our takeover. In that case the peer
+			// is still participating in HA and should be treated as ha-fail
+			// (active/standby appropriate) rather than ha-unavailable (standalone).
+			// Membership failures are still relevant during hold-down.
 			if peer.MemberInfo != nil && peer.MemberInfo.HaState == types.HAStateSwitchover {
+				if membershipFail {
+					result.HaState = types.PeerHAStateFail
+					result.HaReason = types.NewReasonString(fmt.Sprintf("membership failure: %s", failedMemberCriteria(peer)))
+					return result
+				}
 				result.HaState = types.PeerHAStateFail
 				result.HaReason = types.NewReasonString("peer standby hold-down")
 				return result
 			}
+			// Genuine peer service failure takes precedence over membership.
+			// Membership failures (e.g., keepalive timeout) are typically symptoms
+			// of the service being down, not independent issues.
 			result.HaState = types.PeerHAStateUnavailable
 			result.HaReason = types.NewReasonString("peer service failure")
 			return result

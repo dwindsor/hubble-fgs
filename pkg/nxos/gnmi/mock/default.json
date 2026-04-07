@@ -54,7 +54,24 @@
       },
       "dpu-items": {
         "ext-items": {
-          "numDpus": 0
+          "numDpus": 2,
+          "initState": "inventory-done"
+        },
+        "inst-items": {
+          "Inst-list[moduleNum=1]": {
+            "ext-items": {
+              "ip": "192.168.1.1",
+              "state": "online",
+              "mainFwVer": "1.0.0"
+            }
+          },
+          "Inst-list[moduleNum=2]": {
+            "ext-items": {
+              "ip": "192.168.1.2",
+              "state": "online",
+              "mainFwVer": "1.0.0"
+            }
+          }
         }
       }
     }

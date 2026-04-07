@@ -133,11 +133,22 @@ func (r *Reconciler) Reconcile(ctx context.Context, peer string, peerMbrInfo *ha
 	} else {
 		// Non-leader adopts peer's GIDs. The peer's GIDs now reflect any
 		// leader-side adoptions from the previous exchange.
-		if err := r.vrfStore.SetGIDs(ctx, peerGids); err != nil {
-			logger.GetLogger().Error("Failed to apply peer GIDs", "peer", peer, "error", err)
-			reconcileOk = false
-		} else {
-			reconCount += len(peerGids)
+		// Filter to only GIDs that actually differ from local to avoid
+		// no-op reconciliations inflating the change count.
+		localGids := r.vrfStore.GIDs()
+		diffs := make(map[string]uint16)
+		for name, peerGID := range peerGids {
+			if localGID, exists := localGids[name]; !exists || localGID != peerGID {
+				diffs[name] = peerGID
+			}
+		}
+		if len(diffs) > 0 {
+			if err := r.vrfStore.SetGIDs(ctx, diffs); err != nil {
+				logger.GetLogger().Error("Failed to apply peer GIDs", "peer", peer, "error", err)
+				reconcileOk = false
+			} else {
+				reconCount += len(diffs)
+			}
 		}
 	}
 

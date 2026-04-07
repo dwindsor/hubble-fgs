@@ -93,4 +93,8 @@ type Store interface {
 	SetLocalHaStateToNotReady(ctx context.Context, reason types.ReasonString) error
 	SetLocalSvcStateToFailure(ctx context.Context, reason types.ReasonString) error
 	SetRemoteStatesAdjDown(ctx context.Context, peerIP string) error
+
+	// Cleanup on deactivation
+	ResetAllPeerStates(ctx context.Context, reason types.ReasonString)
+	ResetLocalHaState(ctx context.Context)
 }

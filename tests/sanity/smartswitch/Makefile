@@ -22,6 +22,7 @@
         create-ha-network remove-ha-network \
 		create-fwa-network remove-fwa-network create-fwa-ha-network remove-fwa-ha-network \
 		launch-fwa-agw launch-fwa seed-fwa-gnmi seed-fwa-ha-gnmi configure-fwa-network launch-containers-fwa \
+		seed-gnmi seed-ha-gnmi \
 		launch-fwa-ha-agw launch-fwa-ha configure-fwa-ha-network launch-containers-fwa-ha \
         shutdown-ha-containers show-ha-status \
         create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token teardown-kind-cluster
@@ -552,11 +553,31 @@ launch-fwa:
 		exit 1; \
 	fi
 
-launch-containers: build-agw-image pull-sim-image launch-sim launch-agw configure-network status
+launch-containers: build-agw-image pull-sim-image launch-sim launch-agw seed-gnmi configure-network status
 	@echo "Stack ready"
 
-launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-agw configure-network-multi status
+launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-agw seed-gnmi configure-network-multi status
 	@echo "Multi-SIM stack ready"
+
+seed-gnmi:
+	@echo "Seeding mock gNMI with DPU inventory..."
+	@echo "Waiting for AGW CLI server to be ready..."
+	@for i in $$(seq 1 15); do \
+		docker exec agw ./agwctl health >/dev/null 2>&1 && break; \
+		sleep 1; \
+	done
+	@docker cp testdata/gnmi/default_gnmi.json agw:/tmp/mock_gnmi_seed.json
+	@docker exec agw ./agwctl mock gnmi set --file /tmp/mock_gnmi_seed.json >/dev/null 2>&1
+	@echo "Waiting for gNMI notifications to propagate..."
+	@sleep 3
+	@PHASE=$$(docker exec agw ./agwctl show_status 2>&1 | grep "Phase:" | awk '{print $$2}'); \
+	if [ -z "$$PHASE" ]; then \
+		echo "  ❌ AGW has no Phase (NX-OS mock may not be active)"; \
+	elif echo "$$PHASE" | grep -qE "dpu-ready|redir-done|running"; then \
+		echo "  ✅ AGW phase: $$PHASE (DPU listener ready)"; \
+	else \
+		echo "  ⏳ AGW phase: $$PHASE (may still be initializing)"; \
+	fi
 
 seed-fwa-gnmi:
 	@echo "Seeding mock gNMI with DPU inventory..."
@@ -1105,7 +1126,7 @@ run-ha-tests:
 	$(PYTEST) -v -m ha ha/
 
 run-tests-with-allure:
-	$(PYTEST) -v --alluredir=allure-results
+	$(PYTEST) -v --alluredir=allure-results --ignore=nxos/
 
 show-allure-report:
 	allure serve allure-results

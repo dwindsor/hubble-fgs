@@ -964,7 +964,7 @@ func TestComputeState_RecoveryToReady(t *testing.T) {
 // --- Priority Tests: worst failure takes precedence ---
 
 // TestComputeState_LocalReady_PeerSvcFailure_MembershipFail: when both peer svc failure
-// (tier 1) and membership failure (tier 2) exist, ha-unavailable (worst) must win.
+// and membership failure exist, ha-unavailable (peer service failure) takes precedence.
 func TestComputeState_LocalReady_PeerSvcFailure_MembershipFail(t *testing.T) {
 	store := setupStore(t)
 	setLocalReady(t, store)
@@ -974,10 +974,10 @@ func TestComputeState_LocalReady_PeerSvcFailure_MembershipFail(t *testing.T) {
 		IP:        "10.0.0.2",
 		Connected: true,
 		MemberCriteria: types.HACriteria{
-			types.HACritPeerCompatible: false, // membership failure (tier 2)
+			types.HACritPeerCompatible: false, // membership failure (symptom)
 		},
 		ServiceCriteria: types.HACriteria{
-			types.HACritPeerService: false, // peer svc failure (tier 1)
+			types.HACritPeerService: false, // peer svc failure (root cause)
 		},
 		AdjacencyCriteria: types.HACriteria{},
 	})
@@ -985,9 +985,9 @@ func TestComputeState_LocalReady_PeerSvcFailure_MembershipFail(t *testing.T) {
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	// Membership failure takes precedence when peer is not ready (aligns with old code).
-	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
-	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "membership failure")
+	// Peer service failure takes precedence - membership failure is typically a symptom.
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateUnavailable)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer service failure")
 }
 
 // --- Validation soft/hard failure Tests ---
@@ -1179,7 +1179,7 @@ func TestComputeState_LocalReady_PeerSvcFailureMembershipOk(t *testing.T) {
 }
 
 // TestComputeState_LocalReady_PeerSvcFailureMembershipFail: local ready,
-// peer svc not ready AND membership fail → membership failure takes precedence.
+// peer svc not ready AND membership fail → peer service failure takes precedence.
 func TestComputeState_LocalReady_PeerSvcFailureMembershipFail(t *testing.T) {
 	store := setupStore(t)
 	setLocalReady(t, store)
@@ -1188,10 +1188,10 @@ func TestComputeState_LocalReady_PeerSvcFailureMembershipFail(t *testing.T) {
 		IP:        "10.0.0.2",
 		Connected: true,
 		MemberCriteria: types.HACriteria{
-			types.HACritPeerCompatible: false, // membership failure
+			types.HACritPeerCompatible: false, // membership failure (symptom)
 		},
 		ServiceCriteria: types.HACriteria{
-			types.HACritPeerService: false, // svc not ready
+			types.HACritPeerService: false, // svc not ready (root cause)
 		},
 		AdjacencyCriteria: types.HACriteria{},
 	})
@@ -1199,9 +1199,9 @@ func TestComputeState_LocalReady_PeerSvcFailureMembershipFail(t *testing.T) {
 	sm := NewStateMachine(store)
 	result := sm.ComputeState()
 
-	// Membership failure takes precedence over service failure.
-	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateFail)
-	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "membership failure")
+	// Peer service failure takes precedence over membership failure.
+	assertPeerHaState(t, result, "10.0.0.2", types.PeerHAStateUnavailable)
+	assertReasonContains(t, result.PeerStates["10.0.0.2"].HaReason, "peer service failure")
 }
 
 // TestComputeState_BothNotReady_PeerSvcFailure: local not ready (service failure),

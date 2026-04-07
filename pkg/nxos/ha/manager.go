@@ -42,7 +42,7 @@ func (m *manager) haPort() (uint16, error) {
 
 // syncServerToAdminState starts or stops the HA server based on the current admin state.
 func (m *manager) syncServerToAdminState(ctx context.Context) {
-	if m.haStore.Enabled() == "enabled" {
+	if m.haStore.Enabled() == hastore.AdminStateEnabled {
 		m.startServer(ctx)
 	} else {
 		m.stopServer()
@@ -169,7 +169,7 @@ func (m *manager) holdDownChan() <-chan time.Time {
 //   - at least one peer is configured
 //   - service function is configured (InServiceState != ""), or deviceStore is nil (no gating)
 func (m *manager) isConfigReady() bool {
-	if m.haStore.Enabled() != "enabled" || len(m.haStore.PeerIPs()) == 0 {
+	if m.haStore.Enabled() != hastore.AdminStateEnabled || len(m.haStore.PeerIPs()) == 0 {
 		return false
 	}
 	if m.haStore.HaIP() == "" {
@@ -223,8 +223,8 @@ func (m *manager) computeAndPushSvcOnly(ctx context.Context) {
 // computeAndPushHaConfig computes the HaConfig from store state and pushes it to
 // the config library, which triggers fan-out to DPUs via the registered callback.
 // This implements the old updateHaConfig() logic:
-//   - Enabled:  configured && operUp && peers > 0
-//   - FlowSync: Enabled && haEnabled (admin enabled)
+//   - Enabled:  adminEnabled && operUp && peers > 0
+//   - FlowSync: Enabled && haEnabled (admin enabled && oper up)
 func (m *manager) computeAndPushHaConfig() {
 	if m.haStore == nil {
 		return
@@ -237,9 +237,8 @@ func (m *manager) computeAndPushHaConfig() {
 	haIP := m.haStore.HaIP()
 
 	// Compute conditions (matching old doUpdateHaConfig logic)
-	configured := enabled != ""                 // ha-items was received via gNMI
-	operUp := switchState == "ha-ready"         // NxHaOperState operational
-	haEnabled := enabled == "enabled" && operUp // admin enabled AND oper up
+	operUp := switchState == hastore.SwitchStateHaReady         // NxHaOperState operational
+	haEnabled := enabled == hastore.AdminStateEnabled && operUp // admin enabled AND oper up
 
 	// Check inService criterion: default to true if not set (matches old behavior)
 	inService := true
@@ -250,7 +249,7 @@ func (m *manager) computeAndPushHaConfig() {
 	// haIp must be non-empty and not 0.0.0.0 (matches old haIp validation)
 	haIpValid := haIP != "" && haIP != "0.0.0.0"
 
-	shouldEnable := configured && operUp && len(peerIPs) > 0 && haIpValid && inService
+	shouldEnable := enabled == hastore.AdminStateEnabled && operUp && len(peerIPs) > 0 && haIpValid && inService
 
 	// If conditions not met, push config with enabled=false (matches old doUpdateHaConfig
 	// behavior — DPUs expect UPDATE with enabled=false, not DELETE).
@@ -694,8 +693,13 @@ func (m *manager) Run(ctx context.Context) error {
 		if err := library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_HA); err != nil {
 			logger.GetLogger().Debug("Failed to delete HaConfig on deactivation", logfields.Error, err)
 		}
-		m.disconnectAllPeers()
 		m.stopServer()
+		m.disconnectAllPeers(ctx)
+		// Reset HA-domain local state on deactivation. Clears ha_standby and other
+		// HA-domain criteria so they don't persist into the next waitForConfig phase
+		// (where they would cause stale "syncing: ha_standby" svc state).
+		// Preserves svc criteria (dpu_healthy, dpu_insync, in_service).
+		m.haStore.ResetLocalHaState(ctx)
 
 		if done {
 			logger.GetLogger().Info("HA manager Run exiting")
@@ -717,6 +721,10 @@ func (m *manager) waitForConfig(ctx context.Context, storeCh <-chan hastore.Even
 			switch event.Type {
 			case hastore.EventAdminStateChanged:
 				m.syncServerToAdminState(ctx)
+				// Recompute svc state: ha-items deletion fires ResetLocalHaState
+				// (clearing ha_standby) then EventAdminStateChanged — without this
+				// the stale "syncing: ha_standby" reason would persist in waitForConfig.
+				m.computeAndPushSvcOnly(ctx)
 				if m.isConfigReady() {
 					return false
 				}
@@ -776,10 +784,40 @@ func (m *manager) runActive(ctx context.Context, storeCh <-chan hastore.Event, d
 				// Recompute config — if HA became disabled, computeAndPushHaConfig
 				// pushes enabled=false. If still enabled, it recomputes normally.
 				m.computeAndPushHaConfig()
-				if m.haStore.Enabled() != "enabled" {
+				if m.haStore.Enabled() != hastore.AdminStateEnabled {
 					if m.holdDownTimer != nil {
 						m.holdDownTimer.Stop()
 						m.holdDownTimer = nil
+					}
+					// Clear HA-domain criteria first so svc state computation
+					// only reflects service health, not stale HA criteria
+					// (e.g. ha_standby). Without this, svc state flaps to
+					// failure then back to success when computeAndPushSvcOnly
+					// runs in waitForConfig.
+					m.haStore.ResetLocalHaState(ctx)
+
+					// Push final states to NX-OS while the switch HA container
+					// is still up (ha-ready window after admin disable).
+					// Compute svc state from svc-domain criteria rather than
+					// hardcoding failure — the service may still be healthy.
+					pushSvcToNx := m.deviceStore == nil || m.deviceStore.InServiceState() != ""
+					local := m.haStore.Local()
+					svcState := types.SvcStateSuccess
+					var svcReason types.ReasonString
+					if local.Criteria.AllOk() {
+						svcReason = types.NewReasonString("all criteria met")
+					} else {
+						svcState = types.SvcStateFailure
+						svcReason = types.NewReasonString(
+							fmt.Sprintf("criteria not met: %s", failedLocalCriteria(local)))
+					}
+					haReason := types.NewReasonString("HA disabled")
+					m.haStore.SetLocalDerivedStates(ctx,
+						types.HAStateNotReady, svcState,
+						haReason, svcReason, pushSvcToNx)
+					for _, ip := range m.haStore.PeerIPs() {
+						m.haStore.UpdatePeerHaState(ctx, ip, types.PeerHAStateNoHa, haReason)
+						m.haStore.UpdatePeerSvcState(ctx, ip, types.SvcStateUnknown, haReason)
 					}
 					logger.GetLogger().Info("HA disabled, deactivating")
 					return false
@@ -864,8 +902,11 @@ func (m *manager) runActive(ctx context.Context, storeCh <-chan hastore.Event, d
 	}
 }
 
-// disconnectAllPeers closes all peer connections.
-func (m *manager) disconnectAllPeers() {
+// disconnectAllPeers writes cleanup gNMI SETs for all peers then closes connections.
+func (m *manager) disconnectAllPeers(ctx context.Context) {
+	if m.haStore != nil {
+		m.haStore.ResetAllPeerStates(ctx, types.NewReasonString("ha deactivated"))
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for peer, client := range m.peerClients {

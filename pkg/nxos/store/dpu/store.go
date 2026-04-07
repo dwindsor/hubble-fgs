@@ -363,6 +363,7 @@ func (s *dpuStore) HealthyCount() int {
 }
 
 // IsHealthy returns whether the DPU fleet is considered healthy.
+// Requires all expected DPUs to be connected and reporting healthy.
 // Returns true immediately when skipDPU is set.
 func (s *dpuStore) IsHealthy() bool {
 	s.mu.RLock()
@@ -370,7 +371,7 @@ func (s *dpuStore) IsHealthy() bool {
 	if s.skipDPU {
 		return true
 	}
-	return s.healthy
+	return s.healthy && s.healthyCount == s.dpuCount && s.dpuCount > 0
 }
 
 // IsInSync returns whether the DPU fleet is in sync.

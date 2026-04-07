@@ -164,6 +164,7 @@ func newTestManagerFull(ctx context.Context) *manager {
 		dpuStore:        dpuSt,
 		vrfStore:        vrfSt,
 		vlanStore:       vlanSt,
+		opts:            defaultOptions(),
 		lastSystemState: -1,
 	}
 }

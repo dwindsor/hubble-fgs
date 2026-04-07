@@ -285,14 +285,18 @@ func (s *AGWServer) StreamEvents(stream grpc.ClientStreamingServer[v1alpha.Strea
 				s.dpuListener.mtx.Lock()
 				defer s.dpuListener.mtx.Unlock()
 				peer := s.dpuListener.addPeerLocked(agentUid)
-
-				if haEventHandler != nil {
-					haEventHandler.RegisterDpu(stream.Context(), agentUid)
-				}
-
 				logger.GetLogger().Info("Event stream peer connected", "clientID", peer.uid)
 				return peer
 			}()
+
+			// RegisterDpu must be called outside the dpuListener lock.
+			// It triggers aggregateDPUStatus → computeAndPushHaConfig →
+			// library callback → SubscribeHaConfig which acquires
+			// dpuListener.mtx.RLock(). Calling it while holding the
+			// write lock causes a self-deadlock.
+			if initializedPeer != nil && haEventHandler != nil {
+				haEventHandler.RegisterDpu(stream.Context(), agentUid)
+			}
 
 			if initializedPeer == nil {
 				return nil

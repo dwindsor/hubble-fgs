@@ -268,17 +268,33 @@ func TestHandleGnmiNotification_HaItemsContainerDelete(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(ctx).(*haStore)
 
-	// Set up state
+	// Set up HA state
 	store.HandleGnmiNotification(ctx,
 		"device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/adminState",
 		stringUpdate("enabled"), false)
 	store.HandleGnmiNotification(ctx,
 		"device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/nxHaOperState",
 		stringUpdate("ha-ready"), false)
+	store.HandleGnmiNotification(ctx,
+		"device:/System/sas-items/state-items/agent-items/SasAgent-list[svcName=hypershield]/agentHaSrcIntfAddr",
+		stringUpdate("10.1.1.1"), false)
 	peerBase := "device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/peer-items/HaPeer-list[ipAddr=10.0.0.1]"
 	store.HandleGnmiNotification(ctx, peerBase+"/ipAddr", stringUpdate("10.0.0.1"), false)
+	// Set HA local state and leader directly (normally set by HA state machine)
+	store.SetLeader(ctx, true)
+	store.mu.Lock()
+	store.localState.HaState = "ha-ready"
+	store.localState.CriteriaRecoveryPending = true
+	store.mu.Unlock()
+	// Set svc-domain criterion that should be preserved
+	store.UpdateLocalCriterion(ctx, "dpu_healthy", true)
+	// Set svc state that should be preserved
+	store.mu.Lock()
+	store.localState.SvcState = "success"
+	store.localState.CriteriaMet = true
+	store.mu.Unlock()
 
-	// Delete of the ha-items container should clear all HA state
+	// Delete of the ha-items container should clear HA state but preserve svc state
 	store.HandleGnmiNotification(ctx,
 		"System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items",
 		nil, true)
@@ -289,8 +305,51 @@ func TestHandleGnmiNotification_HaItemsContainerDelete(t *testing.T) {
 	if store.SwitchState() != "" {
 		t.Errorf("expected SwitchState to be cleared, got %q", store.SwitchState())
 	}
+	if store.HaIP() != "" {
+		t.Errorf("expected HaIP to be cleared, got %q", store.HaIP())
+	}
 	if peers := store.AllPeers(); len(peers) != 0 {
 		t.Errorf("expected all peers to be cleared, got %d", len(peers))
+	}
+	local := store.Local()
+	if local.HaState != "" {
+		t.Errorf("expected HaState to be cleared, got %q", local.HaState)
+	}
+	if local.Leader {
+		t.Error("expected Leader=false after ha-items delete")
+	}
+	// CriteriaMet (svc-domain) must NOT be cleared.
+	if !local.CriteriaMet {
+		t.Error("expected CriteriaMet to be preserved (svc-domain) after ha-items delete")
+	}
+}
+
+func TestHandleGnmiNotification_HaItemsContainerDelete_PreservesSvcState(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(ctx).(*haStore)
+
+	store.HandleGnmiNotification(ctx,
+		"device:/System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items/adminState",
+		stringUpdate("enabled"), false)
+
+	// Simulate svc state set by the HA state machine.
+	store.mu.Lock()
+	store.localState.SvcState = "success"
+	store.localState.SvcStateReason = "all criteria met"
+	store.localState.CriteriaMet = true
+	store.mu.Unlock()
+
+	// ha-items container deleted
+	store.HandleGnmiNotification(ctx,
+		"System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]/ha-items",
+		nil, true)
+
+	local := store.Local()
+	if local.SvcState != "success" {
+		t.Errorf("expected SvcState preserved, got %q", local.SvcState)
+	}
+	if !local.CriteriaMet {
+		t.Error("expected CriteriaMet preserved after ha-items delete")
 	}
 }
 

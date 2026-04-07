@@ -17,6 +17,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 )
@@ -140,10 +141,13 @@ func (s *haStore) SetLocalDerivedStates(ctx context.Context, haState, svcState s
 	if svcChanged {
 		s.localState.SvcStateEpoch = now
 	}
-	// Only push HA state to NX-OS when HA is enabled. When HA is disabled
-	// the switch does not have an HA container and rejects SET operations
-	// on HA paths with "Only end-users can create high-availability config".
-	pushHaToNx := s.enabled == "enabled"
+	// Only push HA state to NX-OS when the switch HA container is operational.
+	// The container exists only when the switch is in ha-ready state; when not
+	// ha-ready it rejects SET operations with "Only end-users can create
+	// high-availability config". Gating on switchState (not adminState) ensures
+	// cleanup writes land during the brief window after admin-disable while the
+	// switch is still in ha-ready.
+	pushHaToNx := s.switchState == SwitchStateHaReady
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -459,7 +463,7 @@ func (s *haStore) UpdatePeerHaState(ctx context.Context, ip string, haState stri
 		peer.HaStateEpoch = now
 	}
 	s.peers[ip] = peer
-	pushHaToNx := s.enabled == "enabled"
+	pushHaToNx := s.switchState == SwitchStateHaReady
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	// Not persisted — peer HA state is runtime state computed by the HA state machine.
@@ -490,7 +494,7 @@ func (s *haStore) UpdatePeerSvcState(ctx context.Context, ip string, svcState st
 		peer.SvcStateEpoch = now
 	}
 	s.peers[ip] = peer
-	pushHaToNx := s.enabled == "enabled"
+	pushHaToNx := s.switchState == SwitchStateHaReady
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	// Not persisted — peer service state is runtime state rebuilt via HA protocol.
@@ -585,7 +589,7 @@ func (s *haStore) SetLocalHaStateToNotReady(ctx context.Context, reason types.Re
 	reasonChanged := s.localState.HaStateReason != reason
 	s.localState.HaState = types.HAStateNotReady
 	s.localState.HaStateReason = reason
-	pushHaToNx := s.enabled == "enabled"
+	pushHaToNx := s.switchState == SwitchStateHaReady
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -635,7 +639,7 @@ func (s *haStore) SetRemoteStatesAdjDown(ctx context.Context, peerIP string) err
 		peer.SvcStateReason = reason
 		s.peers[peerIP] = peer
 	}
-	pushHaToNx := s.enabled == "enabled"
+	pushHaToNx := s.switchState == SwitchStateHaReady
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -659,6 +663,97 @@ func (s *haStore) SetRemoteStatesAdjDown(ctx context.Context, peerIP string) err
 		}
 	}
 	return nil
+}
+
+// writePeerCleanupToNx writes peer HA and svc state cleanup to NX-OS via gNMI.
+// Called by both SetRemoteStatesAdjDown (per-peer adjacency loss) and
+// ResetAllPeerStates (bulk deactivation teardown).
+func writePeerCleanupToNx(ctx context.Context, handler gnmi.GnmiHandler, peerIP string, reason types.ReasonString) {
+	if err := handler.Set(ctx, fmt.Sprintf(paths.HAStorePeerHaState, peerIP), types.PeerHAStateNoHa); err != nil {
+		logger.GetLogger().Warn("Failed to set peer ha state via gNMI cleanup", "peer", peerIP, "error", err)
+	}
+	if err := handler.Set(ctx, fmt.Sprintf(paths.HAStorePeerHaStateReason, peerIP), reason.String()); err != nil {
+		logger.GetLogger().Warn("Failed to set peer ha state reason via gNMI cleanup", "peer", peerIP, "error", err)
+	}
+	if err := handler.Set(ctx, fmt.Sprintf(paths.HAStorePeerSvcState, peerIP), types.SvcStateUnknown); err != nil {
+		logger.GetLogger().Warn("Failed to set peer svc state via gNMI cleanup", "peer", peerIP, "error", err)
+	}
+	if err := handler.Set(ctx, fmt.Sprintf(paths.HAStorePeerSvcStateReason, peerIP), reason.String()); err != nil {
+		logger.GetLogger().Warn("Failed to set peer svc state reason via gNMI cleanup", "peer", peerIP, "error", err)
+	}
+}
+
+// ResetAllPeerStates resets all peer runtime state and writes cleanup gNMI SETs.
+// Called during deactivation teardown. Does not remove peers from the map.
+func (s *haStore) ResetAllPeerStates(ctx context.Context, reason types.ReasonString) {
+	s.mu.Lock()
+	pushHaToNx := s.switchState == SwitchStateHaReady
+	handler := s.gnmiHandler
+	peers := make([]string, 0, len(s.peers))
+	for ip := range s.peers {
+		peers = append(peers, ip)
+	}
+	for ip, peer := range s.peers {
+		for k := range peer.MemberCriteria {
+			peer.MemberCriteria[k] = false
+		}
+		peer.MemberCriteriaMet = false
+		for k := range peer.ServiceCriteria {
+			peer.ServiceCriteria[k] = false
+		}
+		peer.ServiceCriteriaMet = false
+		for k := range peer.AdjacencyCriteria {
+			peer.AdjacencyCriteria[k] = false
+		}
+		peer.AdjacencyCriteriaMet = false
+		peer.MemberInfo = nil
+		peer.Connected = false
+		peer.DPUStatuses = nil
+		peer.VrfGIDs = nil
+		peer.VlanIDs = nil
+		peer.IsLeader = false
+		peer.HaState = types.PeerHAStateNoHa
+		peer.HaStateReason = reason
+		peer.SvcState = types.SvcStateUnknown
+		peer.SvcStateReason = reason
+		s.peers[ip] = peer
+	}
+	s.mu.Unlock()
+
+	if handler == nil || !pushHaToNx {
+		return
+	}
+	for _, ip := range peers {
+		writePeerCleanupToNx(ctx, handler, ip, reason)
+	}
+}
+
+// ResetLocalHaState clears HA-specific local state while preserving svc state.
+// Called during ha-items deletion to reset HA runtime state.
+func (s *haStore) ResetLocalHaState(ctx context.Context) {
+	// Svc criteria to preserve (service domain, not HA domain)
+	svcCriteria := map[types.HACriterion]bool{
+		types.HACritDpuHealth: true,
+		types.HACritDpuInSync: true,
+		types.HACritInService: true,
+	}
+
+	s.mu.Lock()
+	s.localState.HaState = ""
+	s.localState.HaStateReason = ""
+	s.localState.HaStateEpoch = 0
+	s.localState.Leader = false
+	s.localState.CriteriaRecoveryPending = false
+	s.localState.CriteriaRecoveryEpoch = 0
+	s.localState.CriteriaFlapCount = 0
+	// Remove HA-only criteria; preserve svc criteria.
+	for k := range s.localState.Criteria {
+		if !svcCriteria[k] {
+			delete(s.localState.Criteria, k)
+		}
+	}
+	s.mu.Unlock()
+	// Not persisted — HA state is rebuilt at startup from gNMI and HA protocol.
 }
 
 // UpdatePeerIsLeader updates the peer's self-reported leader status.

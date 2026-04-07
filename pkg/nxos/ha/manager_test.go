@@ -1676,4 +1676,278 @@ func TestSendAdjacency_AdjFailure_ProcessesHaInfo(t *testing.T) {
 	}
 }
 
+// TestManager_Run_AdminDisable_SetsStandaloneState verifies that when admin state
+// is disabled during the active loop, the agent HA state transitions to
+// "ha-not-ready" (standalone) and peer states are reset to no-ha/unknown.
+func TestManager_Run_AdminDisable_SetsStandaloneState(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithClientFactory(func() Client { return NewMockClient() }),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- mgr.Run(runCtx) }()
+
+	// Activate HA.
+	deviceStore.SetInService(ctx, "in-service")
+	haStore.SetEnabled(ctx, "enabled")
+	haStore.SetHaIP(ctx, "10.0.0.1")
+	haStore.SetPeer(ctx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
+	time.Sleep(50 * time.Millisecond)
+
+	// Disable admin state — this should push final states before deactivating.
+	haStore.SetEnabled(ctx, hastore.AdminStateDisabled)
+	time.Sleep(50 * time.Millisecond)
+
+	// Agent HA state should be cleared after deactivation cleanup (ResetLocalHaState
+	// runs after the admin-disable final state push, resetting HaState to "").
+	local := haStore.Local()
+	if local.HaState != "" {
+		t.Errorf("expected local HaState=%q after deactivation cleanup, got %q", "", local.HaState)
+	}
+
+	// Peer states should be reset to no-ha / unknown.
+	peer, ok := haStore.Peer("10.0.0.2")
+	if !ok {
+		t.Fatal("peer not found in store after disable")
+	}
+	if peer.HaState != types.PeerHAStateNoHa {
+		t.Errorf("expected peer HaState=%q, got %q", types.PeerHAStateNoHa, peer.HaState)
+	}
+	if peer.SvcState != types.SvcStateUnknown {
+		t.Errorf("expected peer SvcState=%q, got %q", types.SvcStateUnknown, peer.SvcState)
+	}
+
+	// Run() should still be running (waiting for reconfiguration), not returned.
+	select {
+	case err := <-errCh:
+		t.Errorf("Run() returned prematurely: %v", err)
+	default:
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
+// TestManager_Run_ClearsHaStandbyOnDeactivation verifies that the ha_standby
+// criterion is removed from local criteria after HA deactivation (admin-disable).
+// Previously, ha_standby would linger causing stale "syncing: ha_standby" svc state.
+func TestManager_Run_ClearsHaStandbyOnDeactivation(t *testing.T) {
+	ctx := context.Background()
+
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client { return NewMockClient() }),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	bgCtx := context.Background()
+
+	// Configure and activate HA with all svc criteria OK.
+	deviceStore.SetInService(bgCtx, "in-service")
+	haStore.UpdateLocalCriterion(bgCtx, types.HACritDpuHealth, true)
+	haStore.UpdateLocalCriterion(bgCtx, types.HACritDpuInSync, true)
+	haStore.SetEnabled(bgCtx, "enabled")
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Inject ha_standby=false directly (simulating the standby state).
+	local := haStore.Local()
+	local.Criteria[types.HACritHaStandby] = false
+	haStore.SetLocal(bgCtx, local)
+
+	// Verify ha_standby is set before deactivation.
+	localBefore := haStore.Local()
+	if _, ok := localBefore.Criteria[types.HACritHaStandby]; !ok {
+		t.Fatal("expected ha_standby to be present before deactivation")
+	}
+
+	// Deactivate HA by disabling admin state.
+	haStore.SetEnabled(bgCtx, "")
+
+	// Give Run() time to deactivate and run cleanup.
+	time.Sleep(100 * time.Millisecond)
+
+	// ha_standby must be cleared after deactivation.
+	localAfter := haStore.Local()
+	if _, ok := localAfter.Criteria[types.HACritHaStandby]; ok {
+		t.Error("ha_standby criterion should be cleared after HA deactivation, but it is still present")
+	}
+
+	// Svc criteria must still be present (preserved by ResetLocalHaState).
+	if _, ok := localAfter.Criteria[types.HACritDpuHealth]; !ok {
+		t.Error("dpu_healthy criterion should be preserved after HA deactivation")
+	}
+	if _, ok := localAfter.Criteria[types.HACritDpuInSync]; !ok {
+		t.Error("dpu_insync criterion should be preserved after HA deactivation")
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
+// TestManager_Run_ClearsHaStandbyOnSFRemoval verifies that the ha_standby
+// criterion is removed from local criteria when the service function is removed
+// (InServiceState becomes ""), triggering deactivation via the SF removal path.
+func TestManager_Run_ClearsHaStandbyOnSFRemoval(t *testing.T) {
+	ctx := context.Background()
+
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client { return NewMockClient() }),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	bgCtx := context.Background()
+
+	// Configure and activate HA.
+	deviceStore.SetInService(bgCtx, "in-service")
+	haStore.UpdateLocalCriterion(bgCtx, types.HACritDpuHealth, true)
+	haStore.UpdateLocalCriterion(bgCtx, types.HACritDpuInSync, true)
+	haStore.SetEnabled(bgCtx, "enabled")
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Inject ha_standby=false directly.
+	local := haStore.Local()
+	local.Criteria[types.HACritHaStandby] = false
+	haStore.SetLocal(bgCtx, local)
+
+	if _, ok := haStore.Local().Criteria[types.HACritHaStandby]; !ok {
+		t.Fatal("expected ha_standby to be present before SF removal")
+	}
+
+	// Remove the service function — triggers SF removal exit path from runActive.
+	deviceStore.SetInService(bgCtx, "")
+
+	time.Sleep(100 * time.Millisecond)
+
+	// ha_standby must be cleared after deactivation via SF removal.
+	localAfter := haStore.Local()
+	if _, ok := localAfter.Criteria[types.HACritHaStandby]; ok {
+		t.Error("ha_standby criterion should be cleared after SF removal deactivation, but it is still present")
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
+// TestManager_Run_AdminDisable_NoSvcFlap verifies that when HA is admin-disabled
+// and all svc-domain criteria are OK, the local svc state does NOT flap to failure.
+// The fix ensures ResetLocalHaState is called before computing svc state in the
+// disable path, so only svc criteria (not stale HA criteria) influence svc state.
+func TestManager_Run_AdminDisable_NoSvcFlap(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client { return NewMockClient() }),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- mgr.Run(runCtx) }()
+
+	bgCtx := context.Background()
+
+	// Configure and activate HA with all svc criteria OK.
+	deviceStore.SetInService(bgCtx, "in-service")
+	haStore.UpdateLocalCriterion(bgCtx, types.HACritDpuHealth, true)
+	haStore.UpdateLocalCriterion(bgCtx, types.HACritDpuInSync, true)
+	haStore.SetEnabled(bgCtx, "enabled")
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{IP: "10.0.0.2", IpConfigState: hastore.PeerIpCfgStateSuccess})
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Inject ha_standby=false to simulate standby state (the common pre-disable scenario).
+	local := haStore.Local()
+	local.Criteria[types.HACritHaStandby] = false
+	haStore.SetLocal(bgCtx, local)
+
+	// Disable HA — svc state should remain success since svc criteria are all OK.
+	haStore.SetEnabled(bgCtx, hastore.AdminStateDisabled)
+
+	time.Sleep(100 * time.Millisecond)
+
+	// SvcState must NOT flap to failure; with all svc criteria met it should be success.
+	localAfter := haStore.Local()
+	if localAfter.SvcState != types.SvcStateSuccess {
+		t.Errorf("svc state flapped: expected %q after admin disable with all svc criteria OK, got %q",
+			types.SvcStateSuccess, localAfter.SvcState)
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
 var _ Manager = (*mockManager)(nil)

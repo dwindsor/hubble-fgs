@@ -157,13 +157,11 @@ func (m *manager) Setup(ctx context.Context) error {
 	logger.GetLogger().Info("NXOS Manager Setup starting")
 
 	// Initialize gNMI handler
-	if m.opts.gnmiHandler != nil {
+	isMock := m.opts.gnmiHandler != nil
+	if isMock {
 		// Use provided handler (mock or custom)
 		m.gnmiHandler = m.opts.gnmiHandler
 		logger.GetLogger().Info("Using provided gNMI handler")
-		// In mock mode, simulate a successful connection/admission status
-		m.deviceStore.SetConnectionStatus(ctx, device.CommonStateSuccess, "mock")
-		m.deviceStore.SetAdmissionStatus(ctx, device.CommonStateSuccess, "mock")
 	} else {
 		// No handler provided - connect to NXOS hardware
 		handler, err := gnmi.NewNxosGnmiHandler(ctx, &gnmi.HandlerConfig{
@@ -180,6 +178,23 @@ func (m *manager) Setup(ctx context.Context) error {
 			return err
 		}
 		m.gnmiHandler = handler
+	}
+
+	// Wire gNMI handler into all domain stores before any store operations
+	// that write state to the switch. This must happen before setDpuPending,
+	// SetConnectionStatus, and any subscription callbacks that may trigger writes.
+	if m.gnmiHandler != nil {
+		m.deviceStore.SetGnmiHandler(m.gnmiHandler)
+		m.vrfStore.SetGnmiHandler(m.gnmiHandler)
+		m.vlanStore.SetGnmiHandler(m.gnmiHandler)
+		m.dpuStore.SetGnmiHandler(m.gnmiHandler)
+		m.haStore.SetGnmiHandler(m.gnmiHandler)
+	}
+
+	// In mock mode, simulate a successful connection/admission status.
+	if isMock {
+		m.deviceStore.SetConnectionStatus(ctx, device.CommonStateSuccess, "mock")
+		m.deviceStore.SetAdmissionStatus(ctx, device.CommonStateSuccess, "mock")
 	}
 
 	// Seed DPU count from gNMI GET before starting subscriptions.
@@ -216,15 +231,6 @@ func (m *manager) Setup(ctx context.Context) error {
 
 	// Start notification liveness check
 	go m.checkNotificationLiveness(ctx)
-
-	// Update all domain stores with gNMI handler for state synchronization.
-	if m.gnmiHandler != nil {
-		m.deviceStore.SetGnmiHandler(m.gnmiHandler)
-		m.vrfStore.SetGnmiHandler(m.gnmiHandler)
-		m.vlanStore.SetGnmiHandler(m.gnmiHandler)
-		m.dpuStore.SetGnmiHandler(m.gnmiHandler)
-		m.haStore.SetGnmiHandler(m.gnmiHandler)
-	}
 
 	// Wait for DPU inventory to complete and all expected DPUs to be discovered.
 	if err := m.dpuStore.WaitForInventory(ctx); err != nil {
@@ -500,10 +506,7 @@ func (m *manager) setupInServiceHooks() {
 			// matched stored values (no change events fired).
 			m.updateVRFPolicyMap()
 
-			healthy := m.dpuStore.IsHealthy()
-			count := m.dpuStore.HealthyCount()
-			dpuCount := m.dpuStore.DpuCount()
-			if healthy && count == dpuCount && count > 0 {
+			if m.dpuStore.IsHealthy() {
 				// DPUs are healthy: program redirects now and signal readiness.
 				if err := m.programSharedRedirects(ctx); err != nil {
 					logger.GetLogger().Error("Failed to reprogram shared redirects on in-service", "error", err)
@@ -1102,14 +1105,14 @@ func (m *manager) DpuHealth(ctx context.Context, healthy bool, count int) {
 		return
 	}
 	m.dpuStore.SetHealth(healthy, count)
-	m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, healthy)
+	m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuHealth, m.dpuStore.IsHealthy())
 
 	// Update fw status: gate on in-service so DpuHealth during out-of-service
 	// doesn't change the disabled state.
 	if !m.deviceStore.IsInService() {
 		return
 	}
-	if healthy && count == m.dpuStore.DpuCount() && count > 0 {
+	if m.dpuStore.IsHealthy() {
 		m.setFwReady(ctx)
 		m.programDeferredRedirects(ctx)
 	} else {
