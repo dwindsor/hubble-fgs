@@ -158,7 +158,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.hostProcPath | string | `"/proc"` | Location of the host proc filesystem in the runtime environment. If the runtime runs in the host, the path is /proc. Exceptions to this are environments like kind, where the runtime itself does not run on the host. |
 | tetragon.image.override | string | `nil` |  |
 | tetragon.image.repository | string | `"quay.io/isovalent/tetragon"` |  |
-| tetragon.image.tag | string | `"v1.19.0-pre.6"` |  |
+| tetragon.image.tag | string | `"v1.19.0-pre.7"` |  |
 | tetragon.k8sWatcher.policy.enabled | bool | `true` | Enable watching Kubernetes API server for policy resources. If true, Tetragon watches all supported policy resources: TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and TetragonNetworkPolicy(Namespaced), unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely. |
 | tetragon.layer3.icmp.enabled | bool | `false` |  |
 | tetragon.layer3.latency.enabled | bool | `false` |  |
@@ -202,7 +202,7 @@ Helm chart for Tetragon Enterprise
 | tetragonAggregator.extraPodLabels | object | `{}` | Extra labels to be added on the Tetragon Aggregator Deployment Pods. |
 | tetragonAggregator.extraVolumeMounts | list | `[]` |  |
 | tetragonAggregator.extraVolumes | list | `[]` | Extra volumes for the Tetragon Aggregator Deployment. |
-| tetragonAggregator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-aggregator","tag":"v1.19.0-pre.6"}` | tetragon-aggregator image. |
+| tetragonAggregator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-aggregator","tag":"v1.19.0-pre.7"}` | tetragon-aggregator image. |
 | tetragonAggregator.nodeSelector | object | `{}` | Steer the Tetragon Aggregator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonAggregator.podAnnotations | object | `{}` | Annotations for the Tetragon Aggregator Deployment Pods. |
 | tetragonAggregator.podSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | securityContext for the Tetragon Aggregator Deployment Pod container. |
@@ -228,7 +228,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.failoverLease.leaseRetryPeriod | string | `"2s"` | The timeout between retries if renewal fails |
 | tetragonOperator.failoverLease.namespace | string | `""` | Kubernetes Namespace in which the Lease resource is created. Defaults to the namespace where Tetragon is deployed in, if it's empty. |
 | tetragonOperator.forceUpdateCRDs | bool | `false` |  |
-| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.19.0-pre.6"}` | tetragon-operator image. |
+| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.19.0-pre.7"}` | tetragon-operator image. |
 | tetragonOperator.nameOverride | string | `""` | The name of the Tetragon Operator deployment. |
 | tetragonOperator.nodeSelector | object | `{}` | Steer the Tetragon Operator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonOperator.podAnnotations | object | `{}` | Annotations for the Tetragon Operator Deployment Pods. |
