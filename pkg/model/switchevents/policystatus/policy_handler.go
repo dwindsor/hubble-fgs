@@ -21,7 +21,6 @@ package policystatus
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -30,7 +29,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 
 	l3l4networkpolicyv1alpha "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-	"github.com/isovalent/ipa/system_status/v1alpha"
 )
 
 const (
@@ -144,8 +142,6 @@ func (h *policyStatusHandler) UpdateExpectedAgentCountFromProvider() {
 		if numDpu > 0 {
 			h.setExpectedAgentCount(numDpu)
 			logger.GetLogger().Info("dynamically updated expected agent count from data provider", "numDpu", numDpu)
-		} else {
-			logger.GetLogger().Warn("GetNumDpu returned non-positive count, ignoring", "numDpu", numDpu)
 		}
 	}
 }
@@ -203,12 +199,11 @@ func (h *policyStatusHandler) Start(ctx context.Context) error {
 
 	// Initialize bulk policy reporter if not already created
 	if h.bulkPolicyReporter == nil {
-		if timescapeQueue := h.client.GetQueue(); timescapeQueue != nil {
-			h.bulkPolicyReporter = NewBulkPolicyReporter(h.policyStatusStore, timescapeQueue, h.dataProvider, h.policyAggregator, h.bulkReportingInterval)
-			logger.GetLogger().Info("initialized bulk policy reporter", "interval", h.bulkReportingInterval)
+		if h.client != nil {
+			h.bulkPolicyReporter = NewBulkPolicyReporter(h.policyStatusStore, h.client, h.dataProvider, h.policyAggregator, h.bulkReportingInterval)
 		} else {
-			logger.GetLogger().Error("timescape queue not available for bulk reporting")
-			return fmt.Errorf("timescape queue not available")
+			logger.GetLogger().Error("timescape client not available for bulk reporting")
+			return fmt.Errorf("timescape client not available")
 		}
 	}
 
@@ -262,46 +257,6 @@ func (h *policyStatusHandler) ReportPolicyStatus(ctx context.Context) error {
 	return nil
 }
 
-// writePolicyStatusUpdate sends a policy status update to timescape
-func (h *policyStatusHandler) writePolicyStatusUpdate(ctx context.Context, event *v1alpha.SystemStatusEvent) error {
-	if h.client == nil {
-		logger.GetLogger().Error("timescape client not set, cannot send policy status update")
-		return fmt.Errorf("timescape client not set")
-	}
-
-	if !h.running {
-		logger.GetLogger().Error("timescape: policy handler not running, cannot send policy status update")
-		return fmt.Errorf("timescape: policy handler not running")
-	}
-
-	logger.GetLogger().Info("timescape: sending policy status update to timescape",
-		"hasEvent", event != nil,
-		"clientSet", h.client != nil)
-
-	errCode := h.client.Send(ctx, event, types.PriorityLow)
-	if errCode == types.ErrCodeQueueBusy {
-		logger.GetLogger().Info("timescape: queue full, waiting before retry for policy event")
-
-		// Wait and retry once
-		select {
-		case <-ctx.Done():
-			logger.GetLogger().Info("timescape: context cancelled while waiting to retry policy event")
-			return ctx.Err()
-		case <-h.stopCh:
-			logger.GetLogger().Debug("timescape: policy handler stopped while waiting to retry policy event")
-			return fmt.Errorf("timescape: policy handler stopped")
-		case <-time.After(3 * time.Second):
-			errCode = h.client.Send(ctx, event, types.PriorityLow)
-		}
-	}
-	if errCode != types.ErrCodeSuccess {
-		logger.GetLogger().Error("timescape: failed to send policy status update", "error", errCode)
-		return fmt.Errorf("timescape: failed to send policy status update")
-	}
-	logger.GetLogger().Debug("timescape: policy status update sent to timescape")
-	return nil
-}
-
 // ProcessPolicyRuleEvent processes a policy rule event from StreamEvents and converts it to PolicyStatusUpdate
 func (h *policyStatusHandler) ProcessPolicyRuleEvent(_ context.Context, agentUID string, ruleEvent *l3l4networkpolicyv1alpha.PolicyRuleEvent) error {
 	if !h.running {
@@ -332,62 +287,9 @@ func (h *policyStatusHandler) StoreValidationError(policyName, errorMsg string) 
 		"error", errorMsg)
 }
 
-// convertErrorToSeverity maps PolicyRuleError to Severity
-func (h *policyStatusHandler) convertErrorToSeverity(err l3l4networkpolicyv1alpha.PolicyRuleError) v1alpha.Severity {
-	switch err {
-	case l3l4networkpolicyv1alpha.PolicyRuleError_POLICY_RULE_ERROR_UNSPECIFIED:
-		return v1alpha.Severity_SEVERITY_MINOR
-	case l3l4networkpolicyv1alpha.PolicyRuleError_POLICY_RULE_ERROR_TIMEOUT:
-		return v1alpha.Severity_SEVERITY_MAJOR
-	case l3l4networkpolicyv1alpha.PolicyRuleError_POLICY_RULE_ERROR_OOM:
-		return v1alpha.Severity_SEVERITY_CRITICAL
-	case l3l4networkpolicyv1alpha.PolicyRuleError_POLICY_RULE_ERROR_UNSUPPORTED:
-		return v1alpha.Severity_SEVERITY_MINOR
-	case l3l4networkpolicyv1alpha.PolicyRuleError_POLICY_RULE_ERROR_FORMAT:
-		return v1alpha.Severity_SEVERITY_MAJOR
-	}
-	return v1alpha.Severity_SEVERITY_MINOR
-}
-
-// getErrorMessage gets the error message from an agent result
-func (h *policyStatusHandler) getErrorMessage(agentResult *AgentRuleResult) string {
-	if agentResult.ErrorMessage != "" {
-		return agentResult.ErrorMessage
-	}
-	return agentResult.Error.String()
-}
-
-// extractNamespaceFromPolicyName extracts the namespace from a policy name in format "kind/namespace/name"
-// Returns the namespace or empty string if the format is invalid
-func (h *policyStatusHandler) extractNamespaceFromPolicyName(policyName string) string {
-	if policyName == "" {
-		return ""
-	}
-
-	// Split by "/" to get parts: [kind, namespace, name]
-	parts := strings.Split(policyName, "/")
-
-	// Expected format is "kind/namespace/name", so we need at least 3 parts
-	if len(parts) < 3 {
-		logger.GetLogger().Debug("policy name format invalid, expected 'kind/namespace/name'",
-			"policyName", policyName,
-			"parts", len(parts))
-		return ""
-	}
-
-	// Return the namespace (second part, index 1)
-	namespace := parts[1]
-
-	logger.GetLogger().Debug("extracted namespace from policy name",
-		"policyName", policyName,
-		"namespace", namespace)
-
-	return namespace
-}
-
 // ReportPolicyValidationStatus reports a policy validation failure or success to timescape
 // This function is invoked to report AGW policy validation failure, when the policy is not sent to DPUs
-func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, policyName string, namespace string, ruleName string, resourceVersion string, policyGroupId string, validationError error) error {
+func (h *policyStatusHandler) ReportPolicyValidationStatus(_ context.Context, policyName string, namespace string, ruleName string, resourceVersion string, policyGroupId string, validationError error) error {
 	isSuccess := validationError == nil
 	logger.GetLogger().Debug("reporting policy validation to timescape",
 		"policyName", policyName,
@@ -401,7 +303,7 @@ func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, 
 	// Store validation error in policy store for periodic bulk reporting
 	if validationError != nil {
 		h.policyAggregator.StoreValidationError(policyName, validationError.Error())
-		logger.GetLogger().Info("stored policy validation error for periodic reporting",
+		logger.GetLogger().Debug("stored policy validation error for periodic reporting",
 			"policyName", policyName,
 			"error", validationError.Error())
 	} else {

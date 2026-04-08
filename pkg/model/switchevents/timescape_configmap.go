@@ -272,7 +272,7 @@ func setMTLSConfig(ctx context.Context, config *TimescapeConfig, agw *agw.AgentG
 	// Get service IP from AGW
 	serviceIp := agw.GetServiceIp()
 	// For test containers where nxos is not present, uncomment the below line
-	serviceIp = "171.70.188.33" // use localhost
+	// serviceIp = "127.0.0.1" // use localhost
 	if serviceIp == "" {
 		// Fail if service IP is not available, since it's critical for certificate generation
 		return fmt.Errorf("timescape: service IP not available for mTLS configuration")

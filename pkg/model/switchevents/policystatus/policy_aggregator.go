@@ -17,9 +17,8 @@
 // Key features:
 // - Policy-level aggregation: Waits for ALL rules in a policy to receive responses from ALL expected agents
 // - Store-based completion: Completed policies are stored for periodic bulk reporting instead of immediate callbacks
-// - Cleanup-based timeout: Stale incomplete policies are completed with timeout status during periodic cleanup
+// - Cleanup-based timeout: Incomplete policies are completed with timeout status during periodic cleanup
 // - Cleanup: Automatically removes stale entries older than `CleanupCutoffAge` time
-// - Metrics: Tracks partial policy sends due to timeouts
 //
 // Flow: Rule events → Policy aggregation → Store completed policies → Periodic bulk reporting
 
@@ -54,10 +53,9 @@ var (
 
 // PolicyAggregationResult represents the aggregated result for an entire policy
 type PolicyAggregationResult struct {
-	PolicyName    string // PolicyName is already in format "kind/namespace/name"
-	Version       string
-	PolicyGroupId string // PolicyGroupId extracted from metadata annotations
-	Policy        string // Policy name
+	PolicyName string // PolicyName is already in format "kind/namespace/name"
+	Version    string
+	Policy     string // Policy name
 	// normalizedRuleName -> rule result
 	RuleResults   map[string]*RuleAggregationResult
 	FirstSeen     time.Time
@@ -87,15 +85,15 @@ type AgentRuleResult struct {
 // Aggregates at policy level (multiple rules per policy) and stores completed policies
 // in PolicyStatusStore for periodic bulk reporting instead of immediate callbacks
 type PolicyAggregator struct {
-	mu                     sync.RWMutex
-	pendingPolicies        map[string]*PolicyAggregationResult // PolicyName -> policy result
-	expectedAgentCount     int                                 // Expected number of FWA agents (2 or 4)
-	cleanupCutoffAge       time.Duration                       // Age at which policies are completed with timeout status
-	policyStatusStore      PolicyStatusStore                   // Store for completed policies
-	partialPolicySendCount int64                               // Count of partial policy sends due to timeouts
-	expectedRuleCounts     map[string]int                      // PolicyName -> expected rule count
-	policiesToDelete       map[string]bool                     // PolicyName -> true (policies marked for deletion)
-	running                bool
+	mu                 sync.RWMutex
+	pendingPolicies    map[string]*PolicyAggregationResult // PolicyName -> policy result
+	expectedAgentCount int                                 // Expected number of FWA agents (2 or 4)
+	cleanupCutoffAge   time.Duration                       // Age at which policies are completed with timeout status
+	policyStatusStore  PolicyStatusStore                   // Store for completed policies
+	expectedRuleCounts map[string]int                      // PolicyName -> expected rule count
+	policiesToDelete   map[string]bool                     // PolicyName -> true (policies marked for deletion)
+	policyGroupIds     map[string]string                   // PolicyName -> PolicyGroupId (set before policy creation)
+	running            bool
 }
 
 // NewPolicyAggregator creates a new policy aggregator with policy status store
@@ -121,12 +119,13 @@ func NewPolicyAggregator(expectedAgentCount int, reportingInterval time.Duration
 		policyStatusStore:  policyStatusStore,
 		expectedRuleCounts: make(map[string]int),
 		policiesToDelete:   make(map[string]bool),
+		policyGroupIds:     make(map[string]string),
 		running:            false,
 	}
 }
 
 // Start begins the policy aggregation process
-func (pa *PolicyAggregator) Start(ctx context.Context) {
+func (pa *PolicyAggregator) Start(_ context.Context) {
 	pa.mu.Lock()
 	if pa.running {
 		pa.mu.Unlock()
@@ -137,8 +136,7 @@ func (pa *PolicyAggregator) Start(ctx context.Context) {
 
 	logger.GetLogger().Info("policy aggregator started",
 		"expectedAgentCount", pa.expectedAgentCount,
-		"cleanupCutoffAge", pa.cleanupCutoffAge,
-		"storeType", "PolicyStatusStore")
+		"cleanupCutoffAge", pa.cleanupCutoffAge)
 }
 
 // Stop stops the policy aggregation process
@@ -181,7 +179,7 @@ func (pa *PolicyAggregator) SetExpectedRuleCount(policyName string, expectedRule
 
 	pa.expectedRuleCounts[policyName] = expectedRuleCount
 
-	logger.GetLogger().Info("set expected rule count for policy",
+	logger.GetLogger().Debug("set expected rule count for policy",
 		"policyName", policyName,
 		"expectedRuleCount", expectedRuleCount)
 }
@@ -201,7 +199,6 @@ func (pa *PolicyAggregator) ProcessRuleEvent(agentUID string, ruleEvent *l3l4net
 		policyResult = &PolicyAggregationResult{
 			PolicyName:    policyName,
 			Version:       ruleEvent.K8SResourceVersion,
-			PolicyGroupId: "", // Will be set by watcher
 			Policy:        extractPolicyNameFromPath(policyName),
 			RuleResults:   make(map[string]*RuleAggregationResult),
 			FirstSeen:     now,
@@ -242,6 +239,10 @@ func (pa *PolicyAggregator) ProcessRuleEvent(agentUID string, ruleEvent *l3l4net
 		pa.completePolicyAggregation(policyName, policyResult)
 	}
 
+	// TODO: For UPDATE operation, there can be delete status for old rules and add status for new rules.
+	// Need to handle rule deletion status in the aggregator to avoid stale rules causing incomplete policies.
+	// This can be done by detecting delete status and removing those rules from the policy aggregation result.
+
 	logger.GetLogger().Debug("processed rule event for policy",
 		"policyName", policyName,
 		"ruleName", normalizedRuleName,
@@ -262,10 +263,6 @@ func (pa *PolicyAggregator) isPolicyComplete(policy *PolicyAggregationResult) bo
 	if expectedRuleCount, exists := pa.expectedRuleCounts[policy.PolicyName]; exists {
 		// We know the expected number of rules - check if we have them all
 		if len(policy.RuleResults) < expectedRuleCount {
-			logger.GetLogger().Info("policy incomplete - missing rules",
-				"policyName", policy.PolicyName,
-				"actualRules", len(policy.RuleResults),
-				"expectedRules", expectedRuleCount)
 			return false
 		}
 	}
@@ -273,7 +270,7 @@ func (pa *PolicyAggregator) isPolicyComplete(policy *PolicyAggregationResult) bo
 	// Check that each rule has responses from all expected agents
 	for _, ruleResult := range policy.RuleResults {
 		if len(ruleResult.AgentResults) < pa.expectedAgentCount {
-			logger.GetLogger().Warn("policy incomplete - missing agent responses",
+			logger.GetLogger().Debug("policy incomplete - missing agent responses",
 				"policyName", policy.PolicyName,
 				"ruleName", ruleResult.RuleName,
 				"actualAgents", len(ruleResult.AgentResults),
@@ -295,8 +292,6 @@ func (pa *PolicyAggregator) completePolicyAggregation(policyName string, policy 
 	pa.completePolicy(policyName, policy, false) // false = with mutex locking
 
 	// Remove from pending policies (only for the main completion path)
-	logger.GetLogger().Info("removing completed policy from pending",
-		"policyName", policyName)
 	delete(pa.pendingPolicies, policyName)
 }
 
@@ -347,7 +342,10 @@ func (pa *PolicyAggregator) completePolicy(policyName string, policy *PolicyAggr
 			"policyName", policyName)
 		// Clean up deletion tracking since deletion is considered successful
 		delete(pa.policiesToDelete, policyName)
-		// Don't store - successful deletions don't need status reporting
+		// Clean up expected rule count tracking since policy is deleted
+		delete(pa.expectedRuleCounts, policyName)
+		// Delete existing entry from store
+		pa.policyStatusStore.Delete(policyName)
 	} else {
 		// Store completed policy for bulk reporting (includes deletion failures)
 		pa.policyStatusStore.Store(policy)
@@ -363,6 +361,7 @@ func (pa *PolicyAggregator) completePolicy(policyName string, policy *PolicyAggr
 				"deleted", shouldDelete)
 		}
 	}
+	// Note: We don't delete from policyGroupIds here because GetPolicyGroupId() needs to access it for stored policies
 }
 
 // addTimeoutResponses adds timeout agent responses for missing agents in incomplete rules
@@ -371,7 +370,7 @@ func (pa *PolicyAggregator) addTimeoutResponses(policy *PolicyAggregationResult)
 		// Add timeout responses for missing agents
 		missingAgentCount := pa.expectedAgentCount - len(ruleResult.AgentResults)
 		if missingAgentCount > 0 {
-			logger.GetLogger().Info("adding timeout responses for missing agents",
+			logger.GetLogger().Debug("adding timeout responses for missing agents",
 				"policyName", policy.PolicyName,
 				"ruleName", ruleResult.RuleName,
 				"missingAgents", missingAgentCount,
@@ -417,6 +416,7 @@ func (pa *PolicyAggregator) GetStoreStats() (int, int) {
 
 // cleanup removes old completed or stale entries, reporting incomplete ones as timeout
 func (pa *PolicyAggregator) cleanup() {
+	logger.GetLogger().Debug("starting policy aggregator cleanup")
 	pa.mu.Lock()
 	defer pa.mu.Unlock()
 
@@ -429,7 +429,7 @@ func (pa *PolicyAggregator) cleanup() {
 		if policy.LastUpdated.Before(cutoff) {
 			// Mark incomplete policies as timeout before cleanup
 			if !policy.IsComplete {
-				logger.GetLogger().Warn("policy aggregation timeout - completing with partial results",
+				logger.GetLogger().Info("policy aggregation timeout - completing with partial results",
 					"policyName", policyName,
 					"timeSinceLastUpdate", now.Sub(policy.LastUpdated),
 					"totalRules", len(policy.RuleResults),
@@ -447,15 +447,17 @@ func (pa *PolicyAggregator) cleanup() {
 	}
 
 	for _, policyName := range policiesToDelete {
-		logger.GetLogger().Info("cleaning up old policy aggregation entry",
+		logger.GetLogger().Debug("cleaning up old policy aggregation entry",
 			"policyName", policyName,
 			"lastUpdated", pa.pendingPolicies[policyName].LastUpdated,
 			"cutoffAge", pa.cleanupCutoffAge)
 		delete(pa.pendingPolicies, policyName)
+		// Also cleanup any stored PolicyGroupId for this policy
+		delete(pa.policyGroupIds, policyName)
 	}
 
 	if len(policiesToDelete) > 0 {
-		logger.GetLogger().Info("cleaned up old policy aggregation entries",
+		logger.GetLogger().Debug("cleaned up old policy aggregation entries",
 			"policiesCount", len(policiesToDelete),
 			"cutoffAge", pa.cleanupCutoffAge)
 	}
@@ -466,12 +468,19 @@ func (pa *PolicyAggregator) SetPolicyGroupId(policyName string, policyGroupId st
 	pa.mu.Lock()
 	defer pa.mu.Unlock()
 
-	if policyResult, exists := pa.pendingPolicies[policyName]; exists {
-		policyResult.PolicyGroupId = policyGroupId
-		logger.GetLogger().Info("timescape: set PolicyGroupId for policy",
-			"policyName", policyName,
-			"policyGroupId", policyGroupId)
+	// Store PolicyGroupId for use during reporting
+	pa.policyGroupIds[policyName] = policyGroupId
+}
+
+// GetPolicyGroupId returns the PolicyGroupId for a policy, or "NotFound" if not set
+func (pa *PolicyAggregator) GetPolicyGroupId(policyName string) string {
+	pa.mu.RLock()
+	defer pa.mu.RUnlock()
+
+	if policyGroupId, exists := pa.policyGroupIds[policyName]; exists {
+		return policyGroupId
 	}
+	return "NotFound" // Default value when PolicyGroupId is not available
 }
 
 // MarkPolicyForDeletion marks a policy to be deleted from the store after completion
@@ -480,7 +489,7 @@ func (pa *PolicyAggregator) MarkPolicyForDeletion(policyName string) {
 	defer pa.mu.Unlock()
 
 	pa.policiesToDelete[policyName] = true
-	logger.GetLogger().Info("marked policy for deletion after completion",
+	logger.GetLogger().Debug("marked policy for deletion after completion",
 		"policyName", policyName)
 }
 

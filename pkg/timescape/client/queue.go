@@ -12,7 +12,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
@@ -57,7 +56,7 @@ func NewQueue(ctx context.Context, cfg types.Config) (*Queue, error) {
 		ctx:       queueCtx,
 		cancel:    cancel,
 		highCh:    make(chan types.Msg, 10), // Buffered high priority channel (10 messages)
-		lowCh:     make(chan types.Msg, 50), // Buffered low priority channel (50 messages)
+		lowCh:     make(chan types.Msg, 20), // Buffered low priority channel (20 messages)
 	}
 
 	q.start()
@@ -80,67 +79,6 @@ func (q *Queue) Send(_ context.Context, event *systemstatus.SystemStatusEvent, p
 		Event:    event,
 	}
 	return q.Enqueue(msg)
-}
-
-// GetQueue returns this queue as a TimescapeQueue interface
-func (q *Queue) GetQueue() types.TimescapeQueue {
-	return q
-}
-
-// EnqueueHighPriority queues a message for high priority (immediate) processing
-func (q *Queue) EnqueueHighPriority(ctx context.Context, msg interface{}) error {
-	// Convert the generic message to a SystemStatusEvent
-	var event *systemstatus.SystemStatusEvent
-	if systemEvent, ok := msg.(*systemstatus.SystemStatusEvent); ok {
-		event = systemEvent
-	} else {
-		// For other message types, wrap them in a SystemStatusEvent
-		// This is a simplified approach - you might want more sophisticated handling
-		logger.GetLogger().Debug("converting non-SystemStatusEvent to timescape message", "msgType", msg)
-		// For now, we'll create a generic event - this may need to be more sophisticated
-		// depending on what types of messages the bulk reporter sends
-		event = &systemstatus.SystemStatusEvent{
-			// You would populate this based on the actual message type
-		}
-	}
-
-	queueMsg := types.Msg{
-		ID:       uuid.New().String(),
-		Priority: types.PriorityHigh,
-		Event:    event,
-	}
-
-	errorCode := q.Enqueue(queueMsg)
-	if errorCode != types.ErrCodeSuccess {
-		return errors.New("failed to enqueue high priority message") // Convert error code to Go error
-	}
-	return nil
-}
-
-// EnqueueLowPriority queues a message for low priority (batched) processing
-func (q *Queue) EnqueueLowPriority(ctx context.Context, msg interface{}) error {
-	// Similar logic as EnqueueHighPriority but with low priority
-	var event *systemstatus.SystemStatusEvent
-	if systemEvent, ok := msg.(*systemstatus.SystemStatusEvent); ok {
-		event = systemEvent
-	} else {
-		logger.GetLogger().Debug("converting non-SystemStatusEvent to timescape message", "msgType", msg)
-		event = &systemstatus.SystemStatusEvent{
-			// You would populate this based on the actual message type
-		}
-	}
-
-	queueMsg := types.Msg{
-		ID:       uuid.New().String(),
-		Priority: types.PriorityLow,
-		Event:    event,
-	}
-
-	errorCode := q.Enqueue(queueMsg)
-	if errorCode != types.ErrCodeSuccess {
-		return errors.New("failed to enqueue low priority message") // Convert error code to Go error
-	}
-	return nil
 }
 
 // Enqueue adds a message to the appropriate priority queue
@@ -212,14 +150,13 @@ func (q *Queue) highPriorityWorker() {
 	}
 }
 
-// lowPriorityWorker processes low priority messages immediately (no batching)
+// lowPriorityWorker processes low priority messages immediately
 func (q *Queue) lowPriorityWorker() {
 	logger.GetLogger().Debug("timescape low priority worker started with immediate sending (no batching)")
 	for {
 		select {
 		case <-q.ctx.Done():
 			return
-
 		case msg := <-q.lowCh:
 			// Send immediately as single message batch
 			batch := []types.Msg{msg}

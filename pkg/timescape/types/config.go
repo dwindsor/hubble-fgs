@@ -36,22 +36,12 @@ type Transport interface {
 	Name() string
 }
 
-// TimescapeQueue defines the interface for directly enqueueing messages
-type TimescapeQueue interface {
-	// EnqueueHighPriority queues a message for high priority (immediate) processing
-	EnqueueHighPriority(ctx context.Context, msg interface{}) error
-	// EnqueueLowPriority queues a message for low priority (batched) processing
-	EnqueueLowPriority(ctx context.Context, msg interface{}) error
-}
-
 // Client provides the main interface for sending events to timescape
 type Client interface {
 	// Send queues an event for delivery with specified priority
 	Send(ctx context.Context, event *systemstatus.SystemStatusEvent, priority Priority) ErrorCode
 	// Close gracefully shuts down the client
 	Close() error
-	// GetQueue returns the TimescapeQueue for direct message enqueuing
-	GetQueue() TimescapeQueue
 }
 
 // Config holds configuration for the timescape client

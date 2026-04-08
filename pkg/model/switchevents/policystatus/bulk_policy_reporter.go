@@ -24,10 +24,11 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	ss "github.com/isovalent/hubble-fgs/pkg/model/switchevents/systemstatus"
-	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 	l3l4networkpolicyv1alpha "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 	v1alpha "github.com/isovalent/ipa/system_status/v1alpha"
+
+	ss "github.com/isovalent/hubble-fgs/pkg/model/switchevents/systemstatus"
+	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 )
 
 const (
@@ -37,22 +38,21 @@ const (
 
 // BulkPolicyReporter handles periodic bulk policy status reporting
 type BulkPolicyReporter struct {
-	mu                 sync.RWMutex
-	store              PolicyStatusStore
-	reportingInterval  time.Duration
-	timescapeQueue     types.TimescapeQueue
-	dataProvider       PolicyStatusDataProvider // Add data provider for serial number
-	policyAggregator   *PolicyAggregator
-	running            bool
-	stopCh             chan struct{}
-	wg                 sync.WaitGroup
-	lastReportTime     time.Time
-	totalReportedCount int64
-	totalPolicyCount   int64
+	mu                sync.RWMutex
+	store             PolicyStatusStore
+	reportingInterval time.Duration
+	timescapeClient   types.Client
+	dataProvider      PolicyStatusDataProvider // Add data provider for serial number
+	policyAggregator  *PolicyAggregator
+	running           bool
+	stopCh            chan struct{}
+	wg                sync.WaitGroup
+	lastReportTime    time.Time
+	totalPolicyCount  int64
 }
 
 // NewBulkPolicyReporter creates a new bulk policy status reporter
-func NewBulkPolicyReporter(store PolicyStatusStore, timescapeQueue types.TimescapeQueue, dataProvider PolicyStatusDataProvider, policyAggregator *PolicyAggregator, reportingInterval time.Duration) *BulkPolicyReporter {
+func NewBulkPolicyReporter(store PolicyStatusStore, timescapeClient types.Client, dataProvider PolicyStatusDataProvider, policyAggregator *PolicyAggregator, reportingInterval time.Duration) *BulkPolicyReporter {
 	if reportingInterval <= 0 {
 		reportingInterval = types.DefaultPolicyStatusReportingInterval
 	}
@@ -60,7 +60,7 @@ func NewBulkPolicyReporter(store PolicyStatusStore, timescapeQueue types.Timesca
 	return &BulkPolicyReporter{
 		store:             store,
 		reportingInterval: reportingInterval,
-		timescapeQueue:    timescapeQueue,
+		timescapeClient:   timescapeClient,
 		dataProvider:      dataProvider,
 		policyAggregator:  policyAggregator,
 		stopCh:            make(chan struct{}),
@@ -85,9 +85,6 @@ func (r *BulkPolicyReporter) Start(ctx context.Context) error {
 		defer r.wg.Done()
 		r.reportingLoop(ctx)
 	}()
-
-	logger.GetLogger().Info("bulk policy reporter started",
-		"reportingInterval", r.reportingInterval)
 
 	return nil
 }
@@ -144,7 +141,7 @@ func (r *BulkPolicyReporter) sendBulkReport(ctx context.Context) {
 	storedPolicies := r.store.GetAll(false)
 
 	if len(storedPolicies) == 0 {
-		logger.GetLogger().Info("no policies to report in bulk")
+		logger.GetLogger().Debug("no policies to report in bulk")
 		return
 	}
 
@@ -168,12 +165,10 @@ func (r *BulkPolicyReporter) sendBulkReport(ctx context.Context) {
 	r.mu.Lock()
 	r.lastReportTime = time.Now()
 	r.totalPolicyCount += int64(len(policyResults))
-	r.totalReportedCount += 1
 	r.mu.Unlock()
 
-	logger.GetLogger().Info("sent bulk policy status report (state-based)",
-		"policyCount", len(storedPolicies),
-		"reportNumber", r.totalReportedCount)
+	logger.GetLogger().Debug("sent bulk policy status report",
+		"policyCount", len(storedPolicies))
 }
 
 // sendPolicyBatch sends a batch of policies to timescape
@@ -185,17 +180,32 @@ func (r *BulkPolicyReporter) sendPolicyBatch(ctx context.Context, policies []*Po
 	// Create a single SystemStatusEvent with all policies in the batch
 	statusEvent := r.createBatchSystemStatusEvent(policies)
 	if statusEvent != nil {
-		if r.timescapeQueue != nil {
-			err := r.timescapeQueue.EnqueueHighPriority(ctx, statusEvent)
-			if err != nil {
-				logger.GetLogger().Error("failed to enqueue batch policy status event",
-					"policyCount", len(policies), "error", err)
+		if r.timescapeClient != nil {
+			errorCode := r.timescapeClient.Send(ctx, statusEvent, types.PriorityLow)
+			if errorCode == types.ErrCodeQueueBusy {
+				logger.GetLogger().Info("timescape: queue full, waiting before retry for policy event")
+
+				// Wait and retry once
+				select {
+				case <-ctx.Done():
+					logger.GetLogger().Info("timescape: context cancelled while waiting to retry policy event")
+					return
+				case <-r.stopCh:
+					logger.GetLogger().Debug("timescape: policy reporter handler stopped while waiting to retry policy event")
+					return
+				case <-time.After(3 * time.Second):
+					errorCode = r.timescapeClient.Send(ctx, statusEvent, types.PriorityLow)
+				}
+			}
+			if errorCode != types.ErrCodeSuccess {
+				logger.GetLogger().Error("failed to send bulk policy status event",
+					"policyCount", len(policies), "errorCode", errorCode)
 			} else {
-				logger.GetLogger().Debug("successfully enqueued batch policy status event",
+				logger.GetLogger().Debug("successfully sent bulk policy status event",
 					"policyCount", len(policies))
 			}
 		} else {
-			logger.GetLogger().Error("timescape queue not available for policy reporting")
+			logger.GetLogger().Error("timescape: queue not available to send policy reporting")
 		}
 	}
 }
@@ -223,11 +233,8 @@ func (r *BulkPolicyReporter) createBatchSystemStatusEvent(policies []*PolicyAggr
 		// Extract namespace from PolicyName (kind/namespace/name) - same as previous design
 		namespace := r.extractNamespaceFromPolicyName(policy.PolicyName)
 
-		// Use PolicyGroupId from annotations if available, otherwise use default value - same as previous design
-		policyNameForTimescape := "NotFound" // DefaultPolicyGroupId
-		if policy.PolicyGroupId != "" {
-			policyNameForTimescape = policy.PolicyGroupId
-		}
+		// Use PolicyGroupId from policyAggregator if available, otherwise use default value
+		policyNameForTimescape := r.policyAggregator.GetPolicyGroupId(policy.PolicyName)
 
 		// Aggregate all failures across all rules in this policy - same logic as previous design
 		var failingConditions []*v1alpha.FailingCondition
@@ -259,11 +266,9 @@ func (r *BulkPolicyReporter) createBatchSystemStatusEvent(policies []*PolicyAggr
 			ruleIndex++
 		}
 
-		// Overall policy success state: complete AND no rule failures
-		policyIsSuccess := policyIsComplete && !hasAnyRuleFailure
-
 		// If some agents didn't respond for any rule, add timeout conditions - same as previous design
 		hasTimeoutFailures := false
+		var policyIsSuccess bool
 		if len(policy.RuleResults) > 1 {
 			// Check if all rules have the same timeout pattern
 			failingRuleCount := 0
@@ -295,11 +300,7 @@ func (r *BulkPolicyReporter) createBatchSystemStatusEvent(policies []*PolicyAggr
 			Version:           policy.Version,
 			FailingConditions: failingConditions,
 			ExtraData: map[string]string{
-				"PolicyGroupId":      policyNameForTimescape,
-				"IsComplete":         fmt.Sprintf("%t", policyIsComplete),
-				"IsSuccess":          fmt.Sprintf("%t", policyIsSuccess),
-				"HasRuleFailures":    fmt.Sprintf("%t", hasAnyRuleFailure),
-				"HasTimeoutFailures": fmt.Sprintf("%t", hasTimeoutFailures),
+				"PolicyGroupId": policyNameForTimescape,
 			},
 		}
 
@@ -339,149 +340,6 @@ func (r *BulkPolicyReporter) createBatchSystemStatusEvent(policies []*PolicyAggr
 	return statusEvent
 }
 
-/*
-// createSystemStatusEvent converts PolicyAggregationResult to SystemStatusEvent
-func (r *BulkPolicyReporter) createSystemStatusEvent(policy *PolicyAggregationResult) *v1alpha.SystemStatusEvent {
-	if policy == nil {
-		return nil
-	}
-
-	// Get node name from data provider (lowercased like in previous design)
-	serialNumber := "unknown"
-	if r.dataProvider.GetSerialNumber != nil {
-		serialNumber = strings.ToLower(r.dataProvider.GetSerialNumber())
-	}
-
-	// Extract namespace from PolicyName (kind/namespace/name) - same as previous design
-	namespace := r.extractNamespaceFromPolicyName(policy.PolicyName)
-
-	// Use PolicyGroupId from annotations if available, otherwise use default value - same as previous design
-	policyNameForTimescape := "NotFound" // DefaultPolicyGroupId
-	if policy.PolicyGroupId != "" {
-		policyNameForTimescape = policy.PolicyGroupId
-	}
-
-	// Aggregate all failures across all rules in this policy - same logic as previous design
-	var failingConditions []*v1alpha.FailingCondition
-
-	// Check overall policy state before processing rule errors
-	policyIsComplete := policy.IsComplete
-	hasAnyRuleFailure := false
-
-	// Same failure condition logic as previous design with rule indexing
-	ruleIndex := 1
-	for ruleName, ruleResult := range policy.RuleResults {
-		for agentUID, agentResult := range ruleResult.AgentResults {
-			if !agentResult.IsSuccess {
-				hasAnyRuleFailure = true
-
-				// Override conditionId for validation errors
-				conditionId := agentResult.Error.String()
-				if ruleName == "validation-error" {
-					conditionId = "POLICY_VALIDATION_ERROR"
-				}
-
-				failingConditions = append(failingConditions, &v1alpha.FailingCondition{
-					ConditionId: conditionId,
-					Severity:    r.convertErrorToSeverity(agentResult.Error),
-					Message:     fmt.Sprintf("Rule %d, Agent %s: %s", ruleIndex, agentUID, r.getErrorMessage(agentResult)),
-				})
-			}
-		}
-		ruleIndex++
-	}
-
-	// Overall policy success state: complete AND no rule failures
-	policyIsSuccess := policyIsComplete && !hasAnyRuleFailure
-
-	// If some agents didn't respond for any rule, add timeout conditions - same as previous design
-	hasTimeoutFailures := false
-	if len(policy.RuleResults) > 1 {
-		// Check if all rules have the same timeout pattern
-		failingRuleCount := 0
-		for _, ruleResult := range policy.RuleResults {
-			if len(ruleResult.AgentResults) < policy.ExpectedCount {
-				failingRuleCount++
-			}
-		}
-		if failingRuleCount > 0 {
-			hasTimeoutFailures = true
-			failingConditions = append(failingConditions, &v1alpha.FailingCondition{
-				ConditionId: "TIMEOUT_AGENT_RESPONSES",
-				Severity:    v1alpha.Severity_SEVERITY_MAJOR,
-				Message: fmt.Sprintf("%d rules: Expected %d agents. Did not receive responses from some agents",
-					failingRuleCount, policy.ExpectedCount),
-			})
-		}
-	}
-
-	// Update overall policy success state considering timeout failures
-	policyIsSuccess = policyIsComplete && !hasAnyRuleFailure && !hasTimeoutFailures
-
-	logger.GetLogger().Debug("policy status evaluation for timescape",
-		"policyName", policy.PolicyName,
-		"isComplete", policyIsComplete,
-		"hasRuleFailures", hasAnyRuleFailure,
-		"hasTimeoutFailures", hasTimeoutFailures,
-		"overallSuccess", policyIsSuccess,
-		"failingConditionsCount", len(failingConditions))
-
-	// Create policy status exactly like previous design
-	policyStatus := &v1alpha.PolicyStatus{
-		Type:              v1alpha.PolicyType_POLICY_TYPE_SMARTSWITCH_NETWORK_POLICY,
-		Id:                policy.PolicyName, // PolicyName (kind/namespace/name)
-		Name:              policy.Policy,     // Policy name
-		Namespace:         namespace,
-		Version:           policy.Version,
-		FailingConditions: failingConditions,
-		ExtraData: map[string]string{
-			"PolicyGroupId":      policyNameForTimescape,
-			"IsComplete":         fmt.Sprintf("%t", policyIsComplete),
-			"IsSuccess":          fmt.Sprintf("%t", policyIsSuccess),
-			"HasRuleFailures":    fmt.Sprintf("%t", hasAnyRuleFailure),
-			"HasTimeoutFailures": fmt.Sprintf("%t", hasTimeoutFailures),
-		},
-	}
-
-	// Create the PolicyStatusUpdate with single policy (same structure as previous design)
-	policyUpdate := &v1alpha.PolicyStatusUpdate{
-		ClusterName: ss.ClusterName, // "smartswitch" - same as systemstatus.ClusterName
-		NodeName:    serialNumber,   // same as previous design
-		Statuses:    []*v1alpha.PolicyStatus{policyStatus},
-	}
-
-	// Create the SystemStatusEvent
-	statusEvent := &v1alpha.SystemStatusEvent{
-		Time: timestamppb.New(time.Now()),
-		Event: &v1alpha.SystemStatusEvent_Policy{
-			Policy: policyUpdate,
-		},
-	}
-
-	// Debug log the complete SystemStatusEvent being created
-	logger.GetLogger().Info("SystemStatusEvent created for timescape",
-		"policyName", policy.PolicyName,
-		"clusterName", policyUpdate.ClusterName,
-		"nodeName", policyUpdate.NodeName,
-		"statusesCount", len(policyUpdate.Statuses),
-		"hasFailingConditions", len(failingConditions) > 0,
-		"timestamp", statusEvent.Time.String())
-
-	return statusEvent
-}
-*/
-
-// generateReportId generates a unique report identifier
-func (r *BulkPolicyReporter) generateReportId() string {
-	r.mu.RLock()
-	count := r.totalReportedCount
-	r.mu.RUnlock()
-
-	return time.Now().Format("20060102-150405") + "-" +
-		time.Now().Format("000000") + "-" +
-		"bulk-" + string(rune(count))
-}
-
 // extractNamespaceFromPolicyName extracts the namespace from a policy name in format "kind/namespace/name"
 func (r *BulkPolicyReporter) extractNamespaceFromPolicyName(policyName string) string {
 	parts := strings.Split(policyName, "/")
@@ -517,15 +375,14 @@ func (r *BulkPolicyReporter) getErrorMessage(agentResult *AgentRuleResult) strin
 }
 
 // GetStats returns reporting statistics
-func (r *BulkPolicyReporter) GetStats() (lastReportTime time.Time, totalReports int64, totalPolicies int64) {
+func (r *BulkPolicyReporter) GetStats() (lastReportTime time.Time, totalPolicies int64) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return r.lastReportTime, r.totalReportedCount, r.totalPolicyCount
+	return r.lastReportTime, r.totalPolicyCount
 }
 
 // TriggerReport manually triggers an immediate bulk report
 func (r *BulkPolicyReporter) TriggerReport(ctx context.Context) {
-	logger.GetLogger().Info("manually triggering bulk policy status report")
 	r.sendBulkReport(ctx)
 }

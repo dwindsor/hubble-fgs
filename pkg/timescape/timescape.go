@@ -45,7 +45,7 @@ func NewTimescapeClient(ctx context.Context, config types.HTTPTransportConfig, b
 			WithRequestTimeout(config.Timeout).
 			WithConnectionTimeout(config.ConnectionTimeout).
 			WithRetryConfig(config.MaxRetries, types.DefaultBaseBackoff).
-			WithBatchTimeout(time.Duration(batchTimeoutMs)*time.Millisecond).
+			WithBatchTimeout(time.Duration(batchTimeoutMs) * time.Millisecond).
 			WithCompression(config.Compression)
 
 		// Set authentication method based on configuration

@@ -181,7 +181,6 @@ func TestNewQueue(t *testing.T) {
 			name: "valid_config",
 			config: types.Config{
 				Transport:    &MockTransport{},
-				MaxBatchSize: 10,
 				BatchTimeout: 100 * time.Millisecond,
 				SendTimeout:  5 * time.Second,
 				MaxRetries:   3,
@@ -235,7 +234,6 @@ func TestQueueSend(t *testing.T) {
 
 			config := types.Config{
 				Transport:    mockTransport,
-				MaxBatchSize: 10,
 				BatchTimeout: 100 * time.Millisecond,
 				SendTimeout:  5 * time.Second,
 				MaxRetries:   3,
@@ -260,8 +258,8 @@ func TestQueueEnqueue(t *testing.T) {
 	mockTransport := &MockTransport{}
 
 	config := types.Config{
-		Transport:    mockTransport,
-		MaxBatchSize: 2,
+		Transport: mockTransport,
+
 		BatchTimeout: 100 * time.Millisecond,
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   3,
@@ -313,8 +311,8 @@ func TestQueueChannelFor(t *testing.T) {
 	mockTransport := &MockTransport{}
 
 	config := types.Config{
-		Transport:    mockTransport,
-		MaxBatchSize: 10,
+		Transport: mockTransport,
+
 		BatchTimeout: 100 * time.Millisecond,
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   3,
@@ -360,7 +358,6 @@ func TestQueueQueueBusy(t *testing.T) {
 
 	config := types.Config{
 		Transport:    blockingTransport,
-		MaxBatchSize: 1,                    // Process one message at a time
 		BatchTimeout: 1 * time.Millisecond, // Very short timeout
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   3,
@@ -428,7 +425,6 @@ func TestQueueContextCancellation(t *testing.T) {
 
 	config := types.Config{
 		Transport:    mockTransport,
-		MaxBatchSize: 1,
 		BatchTimeout: 1 * time.Millisecond,
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   0, // No retries to avoid retry loop complexity
@@ -472,13 +468,12 @@ func TestQueueContextCancellation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestQueueBatching(t *testing.T) {
+func TestQueueImmediateMessageProcessing(t *testing.T) {
 	ctx := context.Background()
 	mockTransport := &MockTransport{}
 
 	config := types.Config{
 		Transport:    mockTransport,
-		MaxBatchSize: 3,
 		BatchTimeout: 200 * time.Millisecond,
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   3,
@@ -489,7 +484,7 @@ func TestQueueBatching(t *testing.T) {
 	require.NoError(t, err)
 	defer queue.Close()
 
-	// Send 2 low priority messages (should batch)
+	// Send 2 low priority messages (should be processed immediately)
 	for i := 0; i < 2; i++ {
 		msg := types.Msg{
 			ID:       uuid.New().String(),
@@ -500,22 +495,23 @@ func TestQueueBatching(t *testing.T) {
 		assert.Equal(t, types.ErrCodeSuccess, result)
 	}
 
-	// Wait for batch timeout
-	time.Sleep(300 * time.Millisecond)
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
 
 	batches := mockTransport.GetBatches()
-	assert.Len(t, batches, 1, "Should have 1 batch")
-	assert.Len(t, batches[0], 2, "Batch should contain 2 messages")
+	assert.Len(t, batches, 2, "Should have 2 batches (one per message)")
+	for _, batch := range batches {
+		assert.Len(t, batch, 1, "Each batch should contain 1 message")
+	}
 }
 
-func TestQueueMaxBatchSize(t *testing.T) {
+func TestQueueImmediateProcessing(t *testing.T) {
 	ctx := context.Background()
 	mockTransport := &MockTransport{}
 
 	config := types.Config{
 		Transport:    mockTransport,
-		MaxBatchSize: 2,
-		BatchTimeout: 1 * time.Second, // Long timeout to test batch size trigger
+		BatchTimeout: 1 * time.Second, // Long timeout, but messages processed immediately
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   3,
 		BaseBackoff:  100 * time.Millisecond,
@@ -540,8 +536,10 @@ func TestQueueMaxBatchSize(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	batches := mockTransport.GetBatches()
-	assert.Len(t, batches, 1, "Should have 1 batch (triggered by max batch size)")
-	assert.Len(t, batches[0], 2, "First batch should contain 2 messages")
+	assert.Len(t, batches, 3, "Should have 3 batches (each message processed immediately)")
+	for _, batch := range batches {
+		assert.Len(t, batch, 1, "Each batch should contain 1 message")
+	}
 }
 
 func TestQueueRetryLogic(t *testing.T) {
@@ -553,7 +551,6 @@ func TestQueueRetryLogic(t *testing.T) {
 
 	config := types.Config{
 		Transport:    mockTransport,
-		MaxBatchSize: 10,
 		BatchTimeout: 100 * time.Millisecond,
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   3,
@@ -594,7 +591,6 @@ func TestQueueMaxRetriesExceeded(t *testing.T) {
 
 	config := types.Config{
 		Transport:    mockTransport,
-		MaxBatchSize: 10,
 		BatchTimeout: 100 * time.Millisecond,
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   2,
@@ -632,7 +628,6 @@ func TestQueueHighPriorityImmediate(t *testing.T) {
 
 	config := types.Config{
 		Transport:    mockTransport,
-		MaxBatchSize: 10,
 		BatchTimeout: 1 * time.Second, // Long timeout to ensure immediate processing
 		SendTimeout:  5 * time.Second,
 		MaxRetries:   3,

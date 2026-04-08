@@ -704,7 +704,8 @@ func TestPolicyAggregator_SetPolicyGroupId(t *testing.T) {
 
 	assert.True(t, exists, "Policy should exist")
 	if policy != nil {
-		assert.Equal(t, policyGroupId, policy.PolicyGroupId, "PolicyGroupId should be set")
+		actualGroupId := pa.GetPolicyGroupId(policyName)
+		assert.Equal(t, policyGroupId, actualGroupId, "PolicyGroupId should be set")
 	}
 
 	// Complete the policy and verify PolicyGroupId is preserved
@@ -712,10 +713,11 @@ func TestPolicyAggregator_SetPolicyGroupId(t *testing.T) {
 
 	// Check in stored policy
 	allPolicies := pa.GetPolicyStatusStore().GetAll(false)
-	storedPolicy, found := allPolicies[policyName]
+	_, found := allPolicies[policyName]
 	assert.True(t, found, "Policy should be stored")
 	if found {
-		assert.Equal(t, policyGroupId, storedPolicy.PolicyGroupId, "PolicyGroupId should be preserved in stored policy")
+		actualGroupId := pa.GetPolicyGroupId(policyName)
+		assert.Equal(t, policyGroupId, actualGroupId, "PolicyGroupId should be preserved in stored policy")
 	}
 
 	// Test setting policy group ID for non-existent policy
@@ -886,4 +888,638 @@ func getAgentIndex(agents []string, agent string) int {
 		}
 	}
 	return -1
+}
+
+// The test now comprehensively validates the timing behavior of the policy aggregator
+// with multiple policies across reporting intervals, showing how policies complete at
+// different times and get properly stored while being removed from the pending collection.
+func TestPolicyAggregator_MultiPolicyAddTimingWithInterval(t *testing.T) {
+	/*
+		1. Policy A with 2 rules - Added at 1ms with both rules completed immediately
+		2. Policy B with 2 rules - Added at 8ms but incomplete (missing agent-2 responses)
+		3. Policy A completed within the interval - Verified store has 1 object, aggregator has 0
+
+		4. Check after Policy B added - Store has 1 object, aggregator has 1 pending policy
+
+		5. Wait for interval to elapse for next iteration - Explicit sleep and comment added
+		6. Policy B completed - Agent-2 responses added to complete Policy B
+		7. Check the store should contain 2 objects - Both Policy A and Policy B stored
+		8. Check the aggregator should contain 0 objects - Both policies removed from pending
+	*/
+	reportingInterval := 10 * time.Millisecond
+	pa := NewPolicyAggregator(2, reportingInterval, NewInMemoryPolicyStatusStore())
+
+	policyA := "NetworkPolicy/default/policy-a"
+	policyB := "NetworkPolicy/default/policy-b"
+
+	// Set expected rule counts for both policies (2 rules each)
+	pa.SetExpectedRuleCount(policyA, 2)
+	pa.SetExpectedRuleCount(policyB, 2)
+
+	// Create rule events for Policy A
+	policyARule1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	policyARule2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+
+	// Create rule events for Policy B
+	policyBRule1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyB,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	policyBRule2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyB,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+
+	// Wait 1 millisecond, then add Policy A with 2 rules
+	time.Sleep(1 * time.Millisecond)
+
+	// Add Policy A rule 1 from both agents
+	pa.ProcessRuleEvent("agent-1", policyARule1)
+	pa.ProcessRuleEvent("agent-2", policyARule1)
+
+	// Add Policy A rule 2 from both agents - this should complete Policy A
+	pa.ProcessRuleEvent("agent-1", policyARule2)
+	pa.ProcessRuleEvent("agent-2", policyARule2)
+
+	// Policy A should be completed and stored, removed from pending
+	storeCount := pa.GetPolicyStatusStore().GetCount()
+	assert.Equal(t, 1, storeCount, "Store should contain 1 completed policy (Policy A)")
+
+	pa.mu.RLock()
+	pendingCount := len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should have 0 pending policies after Policy A completed")
+
+	// Wait until 8 milliseconds from start, then add Policy B
+	time.Sleep(7 * time.Millisecond)
+
+	// Add Policy B rule 1 and rule 2 from first agent only (incomplete - missing agent-2)
+	pa.ProcessRuleEvent("agent-1", policyBRule1)
+	pa.ProcessRuleEvent("agent-1", policyBRule2)
+
+	// Policy B should be pending (incomplete - waiting for agent-2)
+	storeCount = pa.GetPolicyStatusStore().GetCount()
+	assert.Equal(t, 1, storeCount, "Store should still contain 1 object (only Policy A)")
+
+	pa.mu.RLock()
+	pendingCount = len(pa.pendingPolicies)
+	_, policyBExists := pa.pendingPolicies[policyB]
+	pa.mu.RUnlock()
+	assert.Equal(t, 1, pendingCount, "Aggregator should contain 1 pending policy (Policy B incomplete)")
+	assert.True(t, policyBExists, "Policy B should be pending")
+
+	// Wait for the reporting interval to elapse (total >10ms from start) - next iteration
+	time.Sleep(3 * time.Millisecond)
+
+	// Now complete Policy B by adding rule responses from agent-2
+	pa.ProcessRuleEvent("agent-2", policyBRule1)
+	pa.ProcessRuleEvent("agent-2", policyBRule2)
+
+	// Policy B should now be completed and stored
+	storeCount = pa.GetPolicyStatusStore().GetCount()
+	assert.Equal(t, 2, storeCount, "Store should contain 2 completed policies (Policy A and Policy B)")
+
+	pa.mu.RLock()
+	pendingCount = len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should have 0 pending policies (both completed)")
+
+	// Verify both policies are in the store with correct details
+	allPolicies := pa.GetPolicyStatusStore().GetAll(false)
+
+	storedPolicyA, foundA := allPolicies[policyA]
+	assert.True(t, foundA, "Policy A should be in store")
+	if foundA {
+		assert.True(t, storedPolicyA.IsComplete, "Policy A should be complete")
+		assert.Len(t, storedPolicyA.RuleResults, 2, "Policy A should have 2 rules")
+	}
+
+	storedPolicyB, foundB := allPolicies[policyB]
+	assert.True(t, foundB, "Policy B should be in store")
+	if foundB {
+		assert.True(t, storedPolicyB.IsComplete, "Policy B should be complete")
+		assert.Len(t, storedPolicyB.RuleResults, 2, "Policy B should have 2 rules")
+	}
+}
+
+// The test demonstrates that the PolicyAggregator correctly handles policy updates by:
+// - Detecting when a policy update occurs (based on version change)
+// - Updating the existing policy in the store rather than creating a duplicate
+// - Properly managing the transition from pending to stored state
+// - Maintaining the correct final state with the updated policy
+func TestPolicyAggregator_MultiPolicyAddUpdateTimingWithInterval(t *testing.T) {
+	/*
+		Step 1: Policy A starts with 2 rules (rule-1, rule-2)
+		Step 2: Wait for next iteration
+		Step 3: Policy A updated with 1 more rule (total 3 rules expected)
+		Step 4: Policy A receives rule-3, rule-4, rule-5 with new version v2.0.0 (simulating rule-1 and rule-2 being replaced)
+		Step 5: Store contains only 1 Policy A (updated version)
+		Step 6: Aggregator has 0 pending policies
+	*/
+
+	store := NewInMemoryPolicyStatusStore()
+	pa := NewPolicyAggregator(2, 10*time.Millisecond, store) // 2 agents, 10ms interval
+
+	policyA := "NetworkPolicy/default/policy-a"
+
+	// Step 1: Policy A has 2 rules (rule-1 and rule-2)
+	pa.SetExpectedRuleCount(policyA, 2)
+
+	// Complete Policy A with initial 2 rules
+	policyARule1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	pa.ProcessRuleEvent("agent-1", policyARule1)
+	pa.ProcessRuleEvent("agent-2", policyARule1)
+
+	policyARule2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	pa.ProcessRuleEvent("agent-1", policyARule2)
+	pa.ProcessRuleEvent("agent-2", policyARule2)
+
+	// Policy A should be completed and stored with 2 rules
+	assert.Equal(t, 1, pa.GetPolicyStatusStore().GetCount(), "Store should contain Policy A")
+
+	pa.mu.RLock()
+	pendingCount := len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "No pending policies after initial completion")
+
+	// Step 2: Wait for next iteration
+	time.Sleep(15 * time.Millisecond) // Wait longer than reporting interval
+
+	// Step 3: Policy A is updated with 1 more rule (total 3 rules)
+	pa.SetExpectedRuleCount(policyA, 3)
+
+	// Step 4: Policy A status updated with rule-3, rule-4, rule-5 applied
+	// and rule-1, rule-2 deleted (simulated by new policy version)
+	policyARule3 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-3",
+		K8SResourceVersion: "v2.0.0", // New version
+		IsSuccess:          true,
+	}
+	pa.ProcessRuleEvent("agent-1", policyARule3)
+	pa.ProcessRuleEvent("agent-2", policyARule3)
+
+	policyARule4 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-4",
+		K8SResourceVersion: "v2.0.0",
+		IsSuccess:          true,
+	}
+	pa.ProcessRuleEvent("agent-1", policyARule4)
+	pa.ProcessRuleEvent("agent-2", policyARule4)
+
+	policyARule5 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-5",
+		K8SResourceVersion: "v2.0.0",
+		IsSuccess:          true,
+	}
+	pa.ProcessRuleEvent("agent-1", policyARule5)
+	pa.ProcessRuleEvent("agent-2", policyARule5)
+
+	// Step 5: Check the store - there should be only 1 Policy A (updated version)
+	assert.Equal(t, 1, pa.GetPolicyStatusStore().GetCount(), "Store should contain only 1 Policy A")
+
+	// Step 6: Check the aggregator should have 0 pending
+	pa.mu.RLock()
+	pendingCount = len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should have 0 pending policies")
+	assert.False(t, pa.policiesToDelete[policyA])
+
+	// Verify the stored policy has the updated rules (rule-3, rule-4, rule-5)
+	allPolicies := pa.GetPolicyStatusStore().GetAll(false)
+	storedPolicyA, found := allPolicies[policyA]
+	assert.True(t, found, "Policy A should be in store")
+	if found {
+		assert.True(t, storedPolicyA.IsComplete, "Policy A should be complete")
+		assert.Equal(t, "v2.0.0", storedPolicyA.Version, "Policy A should have updated version")
+
+		// Should contain the new rules (rule-3, rule-4, rule-5)
+		assert.Contains(t, storedPolicyA.RuleResults, "rule-3", "Policy A should contain rule-3")
+		assert.Contains(t, storedPolicyA.RuleResults, "rule-4", "Policy A should contain rule-4")
+		assert.Contains(t, storedPolicyA.RuleResults, "rule-5", "Policy A should contain rule-5")
+
+		// Should NOT contain the old rules (rule-1, rule-2) since they were deleted
+		assert.NotContains(t, storedPolicyA.RuleResults, "rule-1", "Policy A should NOT contain deleted rule-1")
+		assert.NotContains(t, storedPolicyA.RuleResults, "rule-2", "Policy A should NOT contain deleted rule-2")
+
+		assert.Len(t, storedPolicyA.RuleResults, 3, "Policy A should have exactly 3 rules")
+	}
+}
+
+func TestPolicyAggregator_MultiPolicyAddDeleteTiming(t *testing.T) {
+	// Test policy lifecycle with deletion scenario:
+	// 1. Add and complete Policy A and Policy B (both with 2 rules each)
+	// 2. Mark Policy A for deletion and re-process its events (should not be stored)
+	// 3. Verify only Policy B remains in store
+	// 4. Mark Policy B for deletion and re-process its events (should not be stored)
+	// 5. Verify store is empty after both deletions
+	store := NewInMemoryPolicyStatusStore()
+	pa := NewPolicyAggregator(2, 10*time.Millisecond, store) // 2 agents, 10ms reporting interval
+
+	policyA := "NetworkPolicy/default/policy-a"
+	policyB := "NetworkPolicy/default/policy-b"
+
+	// Set expected rule counts for both policies (2 rules each)
+	pa.SetExpectedRuleCount(policyA, 2)
+	pa.SetExpectedRuleCount(policyB, 2)
+
+	// Wait 1 millisecond before adding policies
+	time.Sleep(1 * time.Millisecond)
+
+	// Add Policy A with 2 rules at 1 millisec
+	policyARule1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	policyARule2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+
+	// Complete Policy A with both rules from both agents
+	pa.ProcessRuleEvent("agent-1", policyARule1)
+	pa.ProcessRuleEvent("agent-2", policyARule1)
+	pa.ProcessRuleEvent("agent-1", policyARule2)
+	pa.ProcessRuleEvent("agent-2", policyARule2)
+
+	// Add Policy B with 2 rules at 1 millisec
+	policyBRule1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyB,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	policyBRule2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyB,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+
+	// Complete Policy B with both rules from both agents
+	pa.ProcessRuleEvent("agent-1", policyBRule1)
+	pa.ProcessRuleEvent("agent-2", policyBRule1)
+	pa.ProcessRuleEvent("agent-1", policyBRule2)
+	pa.ProcessRuleEvent("agent-2", policyBRule2)
+
+	// Both policies should be completed within the interval
+	assert.Equal(t, 2, pa.GetPolicyStatusStore().GetCount(), "Store should contain 2 completed policies")
+
+	pa.mu.RLock()
+	pendingCount := len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should have 0 pending policies")
+
+	// Policy A received Delete event
+	pa.MarkPolicyForDeletion(policyA)
+
+	// Re-process rule events for Policy A (simulating new rule events after deletion marking)
+	pa.ProcessRuleEvent("agent-1", policyARule1)
+	pa.ProcessRuleEvent("agent-2", policyARule1)
+	pa.ProcessRuleEvent("agent-1", policyARule2)
+	pa.ProcessRuleEvent("agent-2", policyARule2)
+
+	// Check the store - it should contain only 1 object (Policy B) because MarkPolicyForDeletion
+	// should have immediately removed Policy A from the store
+	storeCount := pa.GetPolicyStatusStore().GetCount()
+	assert.Equal(t, 1, storeCount, "Store should contain only 1 object (Policy B) after marking Policy A for deletion")
+
+	// Check the aggregator - it should contain 0 pending objects (Policy A completion was not stored)
+	pa.mu.RLock()
+	pendingCount = len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should contain 0 pending policies")
+
+	// Verify that only Policy B is in the store
+	allPolicies := pa.GetPolicyStatusStore().GetAll(false)
+
+	// Policy A should no longer be in the store since it was deleted
+	_, policyAFound := allPolicies[policyA]
+	assert.False(t, policyAFound, "Policy A should not be in store after deletion")
+
+	// Policy B should still be in the store
+	policyBStored, policyBFound := allPolicies[policyB]
+	assert.True(t, policyBFound, "Policy B should still be in store")
+	if policyBFound {
+		assert.True(t, policyBStored.IsComplete, "Policy B should be complete")
+		assert.Len(t, policyBStored.RuleResults, 2, "Policy B should have 2 rules")
+		assert.Equal(t, "v1.0.0", policyBStored.Version, "Policy B should have original version")
+	}
+
+	// Verify store count matches our expectations
+	assert.Len(t, allPolicies, 1, "Store should contain exactly 1 policy (only Policy B)")
+
+	time.Sleep(5000 * time.Millisecond)
+	// Policy B received Delete event
+	pa.MarkPolicyForDeletion(policyB)
+
+	// Re-process rule events for Policy B (simulating new rule events after deletion marking)
+	pa.ProcessRuleEvent("agent-1", policyBRule1)
+	pa.ProcessRuleEvent("agent-2", policyBRule1)
+	pa.ProcessRuleEvent("agent-1", policyBRule2)
+	pa.ProcessRuleEvent("agent-2", policyBRule2)
+
+	// Check the store - it should contain only 0 object
+	// should have immediately removed Policy B from the store
+	storeCount = pa.GetPolicyStatusStore().GetCount()
+	assert.Equal(t, 0, storeCount, "Store should contain 0 object after marking Policy B for deletion")
+
+	// Check the aggregator - it should contain 0 pending objects (Policy B completion was not stored)
+	pa.mu.RLock()
+	pendingCount = len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should contain 0 pending policies")
+	assert.False(t, pa.policiesToDelete[policyB])
+
+}
+
+func TestPolicyAggregator_MultiPolicyAddDeleteAddWithInterval(t *testing.T) {
+	// Test policy lifecycle with deletion and re-addition scenario:
+	// 1. Add and complete Policy A with 2 rules (v1.0.0)
+	// 2. Mark Policy A for deletion
+	// 3. Re-add Policy A with 3 rules with a different version (v2.0.0)
+	// 4. Verify Policy A with new version is stored
+	store := NewInMemoryPolicyStatusStore()
+	pa := NewPolicyAggregator(2, 10*time.Millisecond, store) // 2 agents, 10ms reporting interval
+
+	policyA := "NetworkPolicy/default/policy-a"
+
+	// Set expected rule count for policy (2 rules)
+	pa.SetExpectedRuleCount(policyA, 2)
+
+	// Add Policy A with 2 rules at 1 millisec (version v1.0.0)
+	policyARule1V1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	policyARule2V1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+
+	// Complete Policy A v1.0.0 with both agents for both rules
+	pa.ProcessRuleEvent("agent-1", policyARule1V1)
+	pa.ProcessRuleEvent("agent-2", policyARule1V1)
+	pa.ProcessRuleEvent("agent-1", policyARule2V1)
+	pa.ProcessRuleEvent("agent-2", policyARule2V1)
+
+	// Verify Policy A v1.0.0 is stored
+	assert.Equal(t, 1, pa.GetPolicyStatusStore().GetCount(), "Store should contain 1 completed policy (v1.0.0)")
+
+	allPolicies := pa.GetPolicyStatusStore().GetAll(false)
+	policyAStored, policyAFound := allPolicies[policyA]
+	assert.True(t, policyAFound, "Policy A v1.0.0 should be in store")
+	if policyAFound {
+		assert.True(t, policyAStored.IsComplete, "Policy A v1.0.0 should be complete")
+		assert.Equal(t, "v1.0.0", policyAStored.Version, "Policy A should have v1.0.0")
+		assert.Len(t, policyAStored.RuleResults, 2, "Policy A v1.0.0 should have 2 rules")
+	}
+
+	// Check the aggregator - it should contain 0 pending objects
+	pa.mu.RLock()
+	pendingCount := len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should contain 0 pending policies")
+
+	time.Sleep(15 * time.Millisecond)
+
+	// Policy A received Delete event
+	pa.MarkPolicyForDeletion(policyA)
+	pa.ProcessRuleEvent("agent-1", policyARule1V1)
+	pa.ProcessRuleEvent("agent-2", policyARule1V1)
+	pa.ProcessRuleEvent("agent-1", policyARule2V1)
+	pa.ProcessRuleEvent("agent-2", policyARule2V1)
+
+	assert.Equal(t, 0, pa.GetPolicyStatusStore().GetCount(), "Store should contain 0 policy")
+
+	// Wait some time interval before re-adding
+	time.Sleep(30 * time.Millisecond)
+
+	// Re-add Policy A with different version (v2.0.0) and 3 rules - set expected rule count
+	pa.SetExpectedRuleCount(policyA, 3)
+
+	// Re-add Policy A with different version (v2.0.0)
+	policyARule1V2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v2.0.0", // New version
+		IsSuccess:          true,
+	}
+	policyARule2V2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v2.0.0", // New version
+		IsSuccess:          true,
+	}
+	policyARule3V2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-3",
+		K8SResourceVersion: "v2.0.0", // New version
+		IsSuccess:          true,
+	}
+
+	// Complete Policy A v2.0.0 with both agents for all 3 rules
+	pa.ProcessRuleEvent("agent-1", policyARule1V2)
+	pa.ProcessRuleEvent("agent-2", policyARule1V2)
+	pa.ProcessRuleEvent("agent-1", policyARule2V2)
+	pa.ProcessRuleEvent("agent-2", policyARule2V2)
+	pa.ProcessRuleEvent("agent-1", policyARule3V2)
+	pa.ProcessRuleEvent("agent-2", policyARule3V2)
+
+	// Verify Policy A v2.0.0 is stored
+	assert.Equal(t, 1, pa.GetPolicyStatusStore().GetCount(), "Store should contain 1 completed policies (v2.0.0)")
+
+	allPoliciesV2 := pa.GetPolicyStatusStore().GetAll(false)
+	policyAStoredV2, policyAFoundV2 := allPoliciesV2[policyA]
+	assert.True(t, policyAFoundV2, "Policy A should be in store")
+	if policyAFoundV2 {
+		assert.True(t, policyAStoredV2.IsComplete, "Policy A should be complete")
+		// The newer version should overwrite the older one in the store
+		assert.Equal(t, "v2.0.0", policyAStoredV2.Version, "Policy A should have v2.0.0 (newer version)")
+		assert.Len(t, policyAStoredV2.RuleResults, 3, "Policy A v2.0.0 should have 3 rules")
+	}
+
+	// Verify aggregator has no pending policies
+	pa.mu.RLock()
+	pendingCount = len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, pendingCount, "Aggregator should contain 0 pending policies")
+	assert.False(t, pa.policiesToDelete[policyA])
+}
+
+func TestPolicyAggregator_MultiPolicyAddDeleteWithTimeout(t *testing.T) {
+	// Test policy lifecycle with timeout scenario:
+	// 1. Add and complete Policy A successfully
+	// 2. Add Policy B but let it timeout (incomplete)
+	// 3. Verify Policy A is stored successfully and Policy B times out
+	store := NewInMemoryPolicyStatusStore()
+	// Use very short intervals to make timeout happen quickly
+	pa := NewPolicyAggregator(2, 10*time.Millisecond, store) // 2 agents, 10ms reporting interval
+
+	// Override cleanup cutoff to be much shorter for testing
+	pa.mu.Lock()
+	pa.cleanupCutoffAge = 30 * time.Millisecond // Short cutoff for testing
+	pa.mu.Unlock()
+
+	policyA := "NetworkPolicy/default/policy-a"
+	policyB := "NetworkPolicy/default/policy-b"
+
+	// Set expected rule counts for both policies (2 rules each)
+	pa.SetExpectedRuleCount(policyA, 2)
+
+	// Add Policy A with 2 rules (this will succeed)
+	policyARule1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+	policyARule2 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyA,
+		RuleName:           "rule-2",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+
+	// Complete Policy A with both agents for both rules (successful)
+	pa.ProcessRuleEvent("agent-1", policyARule1)
+	pa.ProcessRuleEvent("agent-2", policyARule1)
+	pa.ProcessRuleEvent("agent-1", policyARule2)
+	pa.ProcessRuleEvent("agent-2", policyARule2)
+
+	// Verify Policy A is completed and stored
+	assert.Equal(t, 1, pa.GetPolicyStatusStore().GetCount(), "Store should contain 1 completed policy (Policy A)")
+
+	allPolicies := pa.GetPolicyStatusStore().GetAll(false)
+	policyAStored, policyAFound := allPolicies[policyA]
+	assert.True(t, policyAFound, "Policy A should be in store")
+	if policyAFound {
+		assert.True(t, policyAStored.IsComplete, "Policy A should be complete")
+		assert.Equal(t, "v1.0.0", policyAStored.Version, "Policy A should have v1.0.0")
+		assert.Len(t, policyAStored.RuleResults, 2, "Policy A should have 2 rules")
+
+		// Verify all rule results are successful
+		for _, ruleResult := range policyAStored.RuleResults {
+			for _, agentResult := range ruleResult.AgentResults {
+				assert.True(t, agentResult.IsSuccess, "Policy A agent results should be successful")
+			}
+		}
+	}
+
+	pa.SetExpectedRuleCount(policyB, 1)
+	// Add Policy B with partial rules (this will timeout)
+	policyBRule1 := &l3l4networkpolicyv1alpha.PolicyRuleEvent{
+		PolicyName:         policyB,
+		RuleName:           "rule-1",
+		K8SResourceVersion: "v1.0.0",
+		IsSuccess:          true,
+	}
+
+	// Add Policy B with only partial completion (only agent-1 for rule-1)
+	// This will cause Policy B to be incomplete and eventually timeout
+	pa.ProcessRuleEvent("agent-1", policyBRule1)
+	// Intentionally NOT adding:
+	// - agent-2 response for rule-1
+	// This creates a timeout scenario
+
+	// Wait a short time to ensure Policy B is processed but still pending
+	time.Sleep(15 * time.Millisecond)
+
+	// Verify Policy B is pending (not yet complete)
+	pa.mu.RLock()
+	pendingCount := len(pa.pendingPolicies)
+	_, policyBPending := pa.pendingPolicies[policyB]
+	pa.mu.RUnlock()
+	assert.Equal(t, 1, pendingCount, "Aggregator should have 1 pending policy (Policy B)")
+	assert.True(t, policyBPending, "Policy B should be in pending policies")
+
+	// Store should still only have Policy A
+	assert.Equal(t, 1, pa.GetPolicyStatusStore().GetCount(), "Store should still contain only 1 policy (Policy A)")
+
+	// Verify that Policy B is still pending (waiting for cleanup)
+	pa.mu.RLock()
+	pendingCountBeforeCleanup := len(pa.pendingPolicies)
+	policyBStillPending := pa.pendingPolicies[policyB]
+	pa.mu.RUnlock()
+	assert.Equal(t, 1, pendingCountBeforeCleanup, "Policy B should still be pending before cleanup")
+	assert.NotNil(t, policyBStillPending, "Policy B should still be in pending state")
+
+	// Wait for the cleanup cutoff age to pass (30ms + buffer)
+	// This simulates the natural timeout that would occur in production
+	time.Sleep(40 * time.Millisecond)
+
+	// After the cutoff time has passed, policies are considered stale and eligible for timeout completion
+	// In production, cleanup would be called periodically by BulkPolicyReporter
+	// For this test, we demonstrate that the policy remains pending until cleanup is triggered
+	pa.cleanup()
+
+	// Verify Policy B is now completed with timeout and stored
+	assert.Equal(t, 2, pa.GetPolicyStatusStore().GetCount(), "Store should contain 2 policies (Policy A + timed out Policy B)")
+
+	// Verify Policy B has timeout responses
+	allPoliciesAfterTimeout := pa.GetPolicyStatusStore().GetAll(false)
+	policyBStored, policyBFound := allPoliciesAfterTimeout[policyB]
+	assert.True(t, policyBFound, "Policy B should be in store after timeout")
+	if policyBFound {
+		assert.True(t, policyBStored.IsComplete, "Policy B should be complete after timeout")
+		assert.Equal(t, "v1.0.0", policyBStored.Version, "Policy B should have v1.0.0")
+		assert.Len(t, policyBStored.RuleResults, 1, "Policy B should have 1 rule after timeout processing")
+
+		// Verify that Policy B has timeout responses for missing agents
+		hasTimeoutResponse := false
+		for _, ruleResult := range policyBStored.RuleResults {
+			for _, agentResult := range ruleResult.AgentResults {
+				if !agentResult.IsSuccess && agentResult.Error == l3l4networkpolicyv1alpha.PolicyRuleError_POLICY_RULE_ERROR_TIMEOUT {
+					hasTimeoutResponse = true
+					assert.Contains(t, agentResult.ErrorMessage, "TIMEOUT", "Error message should mention timeout")
+				} else {
+					assert.Equal(t, 2, len(ruleResult.AgentResults), "Each rule should have responses from all expected agents (including timeout)")
+				}
+			}
+		}
+		assert.True(t, hasTimeoutResponse, "Policy B should have at least one timeout response")
+	}
+
+	// Verify aggregator has no pending policies after cleanup
+	pa.mu.RLock()
+	finalPendingCount := len(pa.pendingPolicies)
+	pa.mu.RUnlock()
+	assert.Equal(t, 0, finalPendingCount, "Aggregator should contain 0 pending policies after cleanup")
+	// Check Policy B information is not present
+	assert.False(t, pa.policiesToDelete[policyB])
+	assert.False(t, pa.policiesToDelete[policyA])
 }

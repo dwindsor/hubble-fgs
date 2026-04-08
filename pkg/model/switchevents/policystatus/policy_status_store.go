@@ -15,34 +15,12 @@
 package policystatus
 
 import (
-	"regexp"
 	"sync"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	l3l4networkpolicyv1alpha "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
-
-// policyGroupIdRegex matches UUID patterns in policy names to extract PolicyGroupId
-var policyGroupIdRegex = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-
-// extractPolicyGroupIdFromName extracts PolicyGroupId (UUID) from policy name
-// For names like "42255b26-a247-4651-b4f1-ef4e7fccaee0" it returns the UUID part
-// Returns "NotFound" if no UUID pattern is found
-func extractPolicyGroupIdFromName(policyName string) string {
-	if policyName == "" {
-		return "NotFound"
-	}
-
-	// Look for UUID pattern in the policy name
-	match := policyGroupIdRegex.FindString(policyName)
-	if match != "" {
-		return match
-	}
-
-	// If no UUID found, return default
-	return "NotFound"
-}
 
 // PolicyStatusStore interface defines the contract for policy status storage
 type PolicyStatusStore interface {
@@ -101,24 +79,16 @@ func (s *InMemoryPolicyStatusStore) Store(policyResult *PolicyAggregationResult)
 		// This is a policy update - preserve the original FirstSeen timestamp
 		firstSeenTime = existingResult.FirstSeen
 		isUpdate = true
-		logger.GetLogger().Info("updating existing policy in store",
-			"policyName", policyResult.PolicyName,
-			"oldVersion", existingResult.Version,
-			"newVersion", policyResult.Version)
 	} else {
 		// This is a new policy
 		firstSeenTime = policyResult.FirstSeen
 		isUpdate = false
-		logger.GetLogger().Info("storing new policy in store",
-			"policyName", policyResult.PolicyName,
-			"version", policyResult.Version)
 	}
 
 	// Create a copy to avoid concurrent modification issues
 	storedResult := &PolicyAggregationResult{
 		PolicyName:    policyResult.PolicyName,
 		Version:       policyResult.Version,
-		PolicyGroupId: policyResult.PolicyGroupId,
 		Policy:        policyResult.Policy,
 		RuleResults:   make(map[string]*RuleAggregationResult),
 		FirstSeen:     firstSeenTime, // Preserve original FirstSeen for updates
@@ -154,14 +124,14 @@ func (s *InMemoryPolicyStatusStore) Store(policyResult *PolicyAggregationResult)
 	s.lastUpdated = time.Now()
 
 	if isUpdate {
-		logger.GetLogger().Info("updated existing policy result in policy status store",
+		logger.GetLogger().Debug("updated existing policy result in policy status store",
 			"policyName", policyResult.PolicyName,
 			"version", policyResult.Version,
 			"isComplete", policyResult.IsComplete,
 			"ruleCount", len(policyResult.RuleResults),
 			"totalStored", len(s.policyStatus))
 	} else {
-		logger.GetLogger().Info("stored new policy result in policy status store",
+		logger.GetLogger().Debug("stored new policy result in policy status store",
 			"policyName", policyResult.PolicyName,
 			"version", policyResult.Version,
 			"isComplete", policyResult.IsComplete,
@@ -185,15 +155,14 @@ func (s *InMemoryPolicyStatusStore) GetAll(clearAfterRead bool) map[string]*Poli
 		results[policyName] = policyResult
 	}
 
-	logger.GetLogger().Info("retrieved all policy results from store",
+	logger.GetLogger().Debug("retrieved all policy results from store",
 		"count", len(results),
 		"clearAfterRead", clearAfterRead)
 
 	if clearAfterRead {
 		s.policyStatus = make(map[string]*PolicyAggregationResult)
-		logger.GetLogger().Info("cleared policy status store after read")
 	} else {
-		logger.GetLogger().Info("preserved policy status store for state-based reporting")
+		logger.GetLogger().Debug("preserved policy status store for state-based reporting")
 	}
 
 	return results
@@ -211,10 +180,7 @@ func (s *InMemoryPolicyStatusStore) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	count := len(s.policyStatus)
 	s.policyStatus = make(map[string]*PolicyAggregationResult)
-
-	logger.GetLogger().Info("cleared all policy results from store", "clearedCount", count)
 }
 
 // UpdateValidationError updates policy with validation error
@@ -225,25 +191,22 @@ func (s *InMemoryPolicyStatusStore) UpdateValidationError(policyName, errorMsg s
 	// Extract policy name from full path (kind/namespace/name -> name)
 	policyNameOnly := extractPolicyNameFromPath(policyName)
 
-	// Extract PolicyGroupId from policy name (fallback for validation errors without aggregator)
-	policyGroupId := extractPolicyGroupIdFromName(policyNameOnly)
-
 	// Create or update policy result with validation error
 	policyResult, exists := s.policyStatus[policyName]
 	if !exists {
 		policyResult = &PolicyAggregationResult{
-			PolicyName:    policyName,     // Full path: kind/namespace/name
-			Version:       "",             // No version for validation errors
-			PolicyGroupId: policyGroupId,  // From cache or extracted from policy name
-			Policy:        policyNameOnly, // Just the policy name part
-			RuleResults:   make(map[string]*RuleAggregationResult),
-			FirstSeen:     time.Now(),
-			IsComplete:    true, // Validation errors are immediately complete
+			PolicyName:  policyName,     // Full path: kind/namespace/name
+			Version:     "",             // No version for validation errors
+			Policy:      policyNameOnly, // Just the policy name part
+			RuleResults: make(map[string]*RuleAggregationResult),
+			FirstSeen:   time.Now(),
+			IsComplete:  true, // Validation errors are immediately complete
 		}
 		s.policyStatus[policyName] = policyResult
 	}
 
 	policyResult.LastUpdated = time.Now()
+	policyResult.IsComplete = true // Mark as complete since validation errors are final
 
 	// Add validation error as a special rule result
 	validationRuleResult := &RuleAggregationResult{
@@ -263,7 +226,7 @@ func (s *InMemoryPolicyStatusStore) UpdateValidationError(policyName, errorMsg s
 	policyResult.RuleResults["validation-error"] = validationRuleResult
 	s.lastUpdated = time.Now()
 
-	logger.GetLogger().Info("updated policy with validation error",
+	logger.GetLogger().Debug("updated policy with validation error",
 		"policyName", policyName,
 		"errorMsg", errorMsg)
 }
@@ -333,7 +296,11 @@ func (s *InMemoryPolicyStatusStore) Delete(policyName string) bool {
 	defer s.mu.Unlock()
 	if _, exists := s.policyStatus[policyName]; exists {
 		delete(s.policyStatus, policyName)
+		logger.GetLogger().Info("deleted policy from store",
+			"policyName", policyName)
 		return true
 	}
+	logger.GetLogger().Info("attempted to delete policy from store but it was not found",
+		"policyName", policyName)
 	return false
 }
