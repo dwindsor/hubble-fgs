@@ -32,7 +32,9 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
     else apt-get install -y libelf-dev zlib1g-dev; fi
 RUN ldconfig /usr/local/
 COPY . ./
-RUN if [ $BUILDARCH != $TARGETARCH ]; \
+RUN --mount=type=cache,target=/go/pkg/mod \ 
+    --mount=type=cache,target=/root/.cache/go-build \
+    if [ $BUILDARCH != $TARGETARCH ]; \
     then make tetragon tetra tetragon-fs-scanner TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
     else make tetragon tetra tetragon-fs-scanner TARGET_ARCH=$TARGETARCH; fi
 
