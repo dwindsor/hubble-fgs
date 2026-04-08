@@ -14,7 +14,8 @@
         clean-test-artifacts \
         launch-containers build-agw-image pull-sim-image launch-agw configure-network shutdown-containers \
         launch-sim attach-sim attach-agw show-containers-status \
-        launch-containers-multi launch-sim-multi configure-network-multi shutdown-containers-multi show-containers-status-multi
+        launch-containers-multi launch-sim-multi configure-network-multi shutdown-containers-multi show-containers-status-multi \
+        create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token teardown-kind-cluster
 
 # Configuration
 REPO_ROOT := $(shell cd ../../.. && pwd)
@@ -38,6 +39,23 @@ VENV := venv
 VENV_BIN := $(VENV)/bin
 PYTEST := $(VENV_BIN)/pytest
 
+# K8s infrastructure configuration (used by launch-agw)
+KIND_CLUSTER_NAME ?= agw-test
+KIND_KUBECONFIG := /tmp/$(KIND_CLUSTER_NAME)-kubeconfig
+K8S_NAMESPACE ?= default
+K8S_SA_NAME ?= smartswitch
+CRD_PATH := $(REPO_ROOT)/install/kubernetes/tetragon/crds-yaml/isovalent.com_smartswitchnetworkpolicies.yaml
+K8S_MANIFESTS_DIR := $(CURDIR)/k8s
+TIMESCAPE_PASSWORD ?= $(error TIMESCAPE_PASSWORD is not set. Export it or pass via env)
+PROMETHEUS_USERNAME ?= admin
+PROMETHEUS_PASSWORD ?= $(error PROMETHEUS_PASSWORD is not set. Export it or pass via env)
+TIMESCAPE_CHART_OCI := oci://quay.io/isovalent-charts-dev/hubble-timescape
+TIMESCAPE_CHART_VERSION ?= 1.19.0-dev.177-7ba479660-20260331135043-main
+TIMESCAPE_VALUES := $(K8S_MANIFESTS_DIR)/hubble-timescape-values.yaml
+
+# AGW VRF mapping (shared across all launch targets)
+AGW_VRF_MAP := default:1,tims:2,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003,epbr-1004:1004,epbr-1005:1005,epbr-1006:1006,epbr-1007:1007,epbr-1008:1008,epbr-1009:1009,epbr-1010:1010,epbr-1011:1011,epbr-1012:1012,epbr-1013:1013,epbr-1014:1014,epbr-1015:1015,epbr-1016:1016,epbr-1017:1017,epbr-1018:1018,epbr-1019:1019,epbr-1020:1020,epbr-1021:1021,epbr-1022:1022,epbr-1023:1023,epbr-1024:1024,epbr-1025:1025,trmvrf-3001:3001,trmvrf-3002:3002,trmvrf-3003:3003,trmvrf-3004:3004,trmvrf-3005:3005,trmvrf-3006:3006,trmvrf-3007:3007,trmvrf-3008:3008,trmvrf-3009:3009,trmvrf-3010:3010,trmvrf-3011:3011,trmvrf-3012:3012,trmvrf-3013:3013,trmvrf-3014:3014,trmvrf-3015:3015,trmvrf-3016:3016,trmvrf-3017:3017,trmvrf-3018:3018,trmvrf-3019:3019,trmvrf-3020:3020,trmvrf-3021:3021,trmvrf-3022:3022,trmvrf-3023:3023,trmvrf-3024:3024,trmvrf-3025:3025,trmvrf-3026:3026,trmvrf-3027:3027,trmvrf-3028:3028,trmvrf-3029:3029,trmvrf-3030:3030,trmvrf-3031:3031,trmvrf-3032:3032,trmvrf-3033:3033,trmvrf-3034:3034,trmvrf-3035:3035,trmvrf-3036:3036,trmvrf-3037:3037,trmvrf-3038:3038,trmvrf-3039:3039,trmvrf-3040:3040,trmvrf-3041:3041,trmvrf-3042:3042,trmvrf-3043:3043,trmvrf-3044:3044,trmvrf-3045:3045,trmvrf-3046:3046,trmvrf-3047:3047,trmvrf-3048:3048,trmvrf-3049:3049,trmvrf-3050:3050,trmvrf-3051:3051,trmvrf-3052:3052,trmvrf-3053:3053,trmvrf-3054:3054,trmvrf-3055:3055,trmvrf-3056:3056,trmvrf-3057:3057,trmvrf-3058:3058,trmvrf-3059:3059,trmvrf-3060:3060,trmvrf-3061:3061,trmvrf-3062:3062,trmvrf-3063:3063,trmvrf-3064:3064,trmvrf-3065:3065,trmvrf-3066:3066,trmvrf-3067:3067,trmvrf-3068:3068,trmvrf-3069:3069,trmvrf-3070:3070,trmvrf-3071:3071,trmvrf-3072:3072,trmvrf-3073:3073,trmvrf-3074:3074,trmvrf-3075:3075
+
 # ============================================================================
 # Help
 # ============================================================================
@@ -47,48 +65,56 @@ help:
 	@echo "=============================="
 	@echo ""
 	@echo "Container Targets:"
-	@echo "  launch-containers          - Build AGW + pull DPU + run containers + configure network"
-	@echo "  launch-containers-multi    - Build AGW + pull DPU + run N SIMs + configure network"
-	@echo "  shutdown-containers        - Stop and remove both containers"
-	@echo "  shutdown-containers-multi  - Stop AGW and all naples-* containers"
+	@echo "  launch-containers          - Full stack: build AGW + pull DPU + kind cluster + run all"
+	@echo "  launch-containers-multi    - Full stack with N DPU SIMs (SIM_COUNT=N)"
+	@echo "  shutdown-containers        - Stop AGW + DPU + delete kind cluster"
+	@echo "  shutdown-containers-multi  - Stop AGW + all DPU SIMs + delete kind cluster"
 	@echo "  show-containers-status     - Show status and health of all containers"
 	@echo "  show-containers-status-multi - Show status/health for AGW and all SIMs"
 	@echo ""
-	@echo "AGW Targets:"
-	@echo "  build-agw-image            - Build AGW image only"
-	@echo "  launch-agw                 - Run AGW container only"
+	@echo "Individual Targets:"
+	@echo "  build-agw-image            - Build AGW Docker image"
+	@echo "  launch-agw                 - Set up K8s infra and start AGW container"
 	@echo "  attach-agw                 - Attach to running AGW container"
-	@echo ""
-	@echo "DPU Sim Targets:"
 	@echo "  pull-sim-image             - Download DPU Sim tarball from GitHub releases"
-	@echo "  launch-sim                 - Launch DPU Sim container using launch_sas.sh"
+	@echo "  launch-sim                 - Launch single DPU Sim container"
 	@echo "  launch-sim-multi           - Launch multiple DPU Sim containers (SIM_COUNT)"
 	@echo "  attach-sim                 - Attach to running DPU Sim container"
-	@echo ""
-	@echo "Network Configuration:"
 	@echo "  configure-network          - Configure host IP and DPU interface"
+	@echo ""
+	@echo "K8s Infrastructure (used automatically by launch-agw):"
+	@echo "  create-kind-cluster        - Create kind cluster"
+	@echo "  deploy-crds                - Deploy SmartSwitchNetworkPolicy CRDs"
+	@echo "  deploy-prometheus          - Deploy Prometheus remote-write receiver"
+	@echo "  deploy-timescape           - Deploy Hubble Timescape via Helm chart"
+	@echo "  generate-sa-token          - Create ServiceAccount and generate token"
+	@echo "  teardown-kind-cluster      - Delete kind cluster only"
 	@echo ""
 	@echo "Test Targets:"
 	@echo "  install-test-dependencies  - Create venv and install Python packages"
 	@echo "  run-all-tests              - Execute all sanity tests"
-	@echo "  run-tests-with-allure      - Execute all tests and generate Allure report"
+	@echo "  run-tests-with-allure      - Execute tests with Allure report"
 	@echo "  show-allure-report         - Open Allure report in browser"
 	@echo "  run-specific-test          - Run specific test (TEST=test_file::test_name)"
 	@echo ""
-	@echo "Utility Targets:"
+	@echo "Utility:"
 	@echo "  clean-test-artifacts       - Remove venv, reports, and cache files"
 	@echo ""
-	@echo "Configuration Options:"
+	@echo "Configuration:"
 	@echo "  SIM_VERSION=v1.32.0        - Specific release version (default: latest)"
 	@echo "  SIM_COUNT=2                - Number of SIMs for *-multi targets (default: 2)"
 	@echo "  GITHUB_REPO=org/repo       - GitHub repository (default: cisco-hypershield/hs-dpu-pensando)"
 	@echo "  APPLY_ROUTE=1              - Enable DPU bridge routing (default: 0)"
 	@echo ""
+	@echo "Required Environment Variables (for K8s infra targets):"
+	@echo "  TIMESCAPE_PASSWORD         - Timescape push API password"
+	@echo "  PROMETHEUS_PASSWORD        - Prometheus basic auth password"
+	@echo ""
 	@echo "Quick Start:"
-	@echo "  make launch-containers     - Start AGW + DPU Sim integration"
-	@echo "  make install-test-dependencies - Install test dependencies"
-	@echo "  make run-all-tests         - Run tests"
-	@echo "  make shutdown-containers   - Stop containers"
+	@echo "  make launch-containers             - Start full stack (AGW + DPU + K8s)"
+	@echo "  make install-test-dependencies     - Install test dependencies"
+	@echo "  make run-all-tests                 - Run tests"
+	@echo "  make shutdown-containers           - Stop everything"
 
 
 # ============================================================================
@@ -99,26 +125,46 @@ build-agw-image:
 	@echo "Building AGW image: $(AGW_IMAGE)"
 	@cd $(REPO_ROOT) && docker build -f Dockerfile.agw -t $(AGW_IMAGE) .
 
-launch-agw:
-	@echo "Starting AGW container..."
-	@-docker rm -f agw >/dev/null 2>&1 || true
-	@# VRF Mapping: default:1, epbr-1001:1025 (25 VRFs), trmvrf-3001:3075 (75 VRFs)
-	@docker run -d \
+launch-agw: create-kind-cluster deploy-crds deploy-prometheus deploy-timescape generate-sa-token
+	@echo "Starting AGW container with K8s + Prometheus + Timescape..."
+	@AGW_TOKEN="$(AGW_SA_TOKEN)"; \
+	if [ -z "$$AGW_TOKEN" ] && [ -f /tmp/$(KIND_CLUSTER_NAME)-agw-token ]; then \
+		AGW_TOKEN=$$(cat /tmp/$(KIND_CLUSTER_NAME)-agw-token); \
+	fi; \
+	if [ -z "$$AGW_TOKEN" ]; then \
+		echo "❌ No SA token found. Run 'make generate-sa-token' first."; \
+		exit 1; \
+	fi; \
+	KIND_NODE_IP=$$(docker inspect $(KIND_CLUSTER_NAME)-control-plane -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || echo '127.0.0.1'); \
+	TIMESCAPE_NODEPORT=$$(cat /tmp/$(KIND_CLUSTER_NAME)-timescape-nodeport 2>/dev/null || \
+		kubectl --kubeconfig $(KIND_KUBECONFIG) -n hubble-timescape get svc hubble-timescape-ingester -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || \
+		echo '30869'); \
+	echo "Kind node IP: $$KIND_NODE_IP"; \
+	echo "Timescape NodePort: $$TIMESCAPE_NODEPORT"; \
+	docker rm -f agw >/dev/null 2>&1 || true; \
+	docker run -d \
 		--name agw \
 		--network host \
 		-v /tmp:/tmp \
 		-e AGW_CONFIG="" \
 		-e AGW_NETWORK_POLICY="" \
-		-e AGW_ENABLE_K8S="false" \
+		-e AGW_ENABLE_K8S="true" \
 		-e AGW_ENABLE_NXOS="false" \
 		-e AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
-		-e AGW_VRF_MAP="default:1,tims:2,epbr-1001:1001,epbr-1002:1002,epbr-1003:1003,epbr-1004:1004,epbr-1005:1005,epbr-1006:1006,epbr-1007:1007,epbr-1008:1008,epbr-1009:1009,epbr-1010:1010,epbr-1011:1011,epbr-1012:1012,epbr-1013:1013,epbr-1014:1014,epbr-1015:1015,epbr-1016:1016,epbr-1017:1017,epbr-1018:1018,epbr-1019:1019,epbr-1020:1020,epbr-1021:1021,epbr-1022:1022,epbr-1023:1023,epbr-1024:1024,epbr-1025:1025,trmvrf-3001:3001,trmvrf-3002:3002,trmvrf-3003:3003,trmvrf-3004:3004,trmvrf-3005:3005,trmvrf-3006:3006,trmvrf-3007:3007,trmvrf-3008:3008,trmvrf-3009:3009,trmvrf-3010:3010,trmvrf-3011:3011,trmvrf-3012:3012,trmvrf-3013:3013,trmvrf-3014:3014,trmvrf-3015:3015,trmvrf-3016:3016,trmvrf-3017:3017,trmvrf-3018:3018,trmvrf-3019:3019,trmvrf-3020:3020,trmvrf-3021:3021,trmvrf-3022:3022,trmvrf-3023:3023,trmvrf-3024:3024,trmvrf-3025:3025,trmvrf-3026:3026,trmvrf-3027:3027,trmvrf-3028:3028,trmvrf-3029:3029,trmvrf-3030:3030,trmvrf-3031:3031,trmvrf-3032:3032,trmvrf-3033:3033,trmvrf-3034:3034,trmvrf-3035:3035,trmvrf-3036:3036,trmvrf-3037:3037,trmvrf-3038:3038,trmvrf-3039:3039,trmvrf-3040:3040,trmvrf-3041:3041,trmvrf-3042:3042,trmvrf-3043:3043,trmvrf-3044:3044,trmvrf-3045:3045,trmvrf-3046:3046,trmvrf-3047:3047,trmvrf-3048:3048,trmvrf-3049:3049,trmvrf-3050:3050,trmvrf-3051:3051,trmvrf-3052:3052,trmvrf-3053:3053,trmvrf-3054:3054,trmvrf-3055:3055,trmvrf-3056:3056,trmvrf-3057:3057,trmvrf-3058:3058,trmvrf-3059:3059,trmvrf-3060:3060,trmvrf-3061:3061,trmvrf-3062:3062,trmvrf-3063:3063,trmvrf-3064:3064,trmvrf-3065:3065,trmvrf-3066:3066,trmvrf-3067:3067,trmvrf-3068:3068,trmvrf-3069:3069,trmvrf-3070:3070,trmvrf-3071:3071,trmvrf-3072:3072,trmvrf-3073:3073,trmvrf-3074:3074,trmvrf-3075:3075" \
+		-e AGW_VRF_MAP="$(AGW_VRF_MAP)" \
 		-e AGW_DEBUG="true" \
-		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
-		-e AGW_TIMESCAPE_CLIENT_ENABLE="false" \
-		-e AGW_TIMESCAPE_PASSWORD="" \
-		-e AGW_TIMESCAPE_ENDPOINT="" \
-		$(AGW_IMAGE)
+		-e AGW_K8S_SERVICE_ACCOUNT_AUTH="$$AGW_TOKEN" \
+		-e AGW_TIMESCAPE_CLIENT_ENABLE="true" \
+		-e AGW_TIMESCAPE_PASSWORD="$(TIMESCAPE_PASSWORD)" \
+		-e AGW_TIMESCAPE_ENDPOINT="https://$$KIND_NODE_IP:$$TIMESCAPE_NODEPORT/push" \
+		-e AGW_PROMETHEUS_CLIENT_ENABLE="true" \
+		-e AGW_PROMETHEUS_USERNAME="$(PROMETHEUS_USERNAME)" \
+		-e AGW_PROMETHEUS_PASSWORD="$(PROMETHEUS_PASSWORD)" \
+		-e AGW_PROMETHEUS_ENDPOINT="https://$$KIND_NODE_IP:30090/api/v1/write" \
+		$(AGW_IMAGE); \
+	echo "✅ AGW started (K8s + Prometheus + Timescape)"; \
+	echo "  Prometheus: https://$$KIND_NODE_IP:30090/api/v1/write"; \
+	echo "  Timescape:  https://$$KIND_NODE_IP:$$TIMESCAPE_NODEPORT/push"
 
 attach-agw:
 	@echo "Attaching to AGW container: agw"
@@ -216,12 +262,12 @@ launch-containers: build-agw-image pull-sim-image launch-sim launch-agw configur
 	@echo "Stack ready"
 
 shutdown-containers:
-	@echo "Stopping containers..."
-	@echo "Stopping AGW container..."
+	@echo "Stopping containers and K8s infrastructure..."
 	@-docker rm -f agw >/dev/null 2>&1 || true
-	@echo "Stopping DPU Sim container..."
 	@-docker rm -f $(DSC_INSTANCE) >/dev/null 2>&1 || true
-	@echo "✅ All containers stopped"
+	@-kind delete cluster --name $(KIND_CLUSTER_NAME) 2>/dev/null || true
+	@-rm -f $(KIND_KUBECONFIG) /tmp/$(KIND_CLUSTER_NAME)-agw-token /tmp/$(KIND_CLUSTER_NAME)-timescape-nodeport
+	@echo "✅ All containers and kind cluster stopped"
 
 configure-network:
 	@echo "Configuring host IP alias $(HOST_AGW_IP) (Ubuntu)"
@@ -388,20 +434,152 @@ show-containers-status-multi:
 	fi
 
 shutdown-containers-multi:
-	@echo "Stopping containers..."
-	@echo "Stopping AGW container..."
+	@echo "Stopping containers and K8s infrastructure..."
 	@-docker rm -f agw >/dev/null 2>&1 || true
-	@echo "Stopping DPU Sim container(s)..."
 	@-docker rm -f $$(docker ps -aq --filter "name=naples-") >/dev/null 2>&1 || true
+	@-kind delete cluster --name $(KIND_CLUSTER_NAME) 2>/dev/null || true
+	@-rm -f $(KIND_KUBECONFIG) /tmp/$(KIND_CLUSTER_NAME)-agw-token /tmp/$(KIND_CLUSTER_NAME)-timescape-nodeport
 	@echo "Cleaning host SIM interfaces..."
 	@for IFACE in $$(ip -o link show | awk -F': ' '{print $$2}' | sed 's/@.*//' | grep -E '^sim[0-9]+-(eth1-1|eth1-2|dsc0)$$' || true); do \
 		echo "  - deleting $$IFACE"; \
 		sudo ip link delete "$$IFACE" >/dev/null 2>&1 || true; \
 	done
-	@echo "✅ All containers stopped"
+	@echo "✅ All containers and kind cluster stopped"
 
 launch-containers-multi: build-agw-image pull-sim-image launch-sim-multi launch-agw configure-network-multi show-containers-status-multi
 	@echo "Multi-SIM stack ready"
+
+# ============================================================================
+# K8s Infrastructure Targets (prerequisites of launch-agw)
+# ============================================================================
+# These targets are called automatically by launch-agw to set up a local kind
+# cluster with Prometheus, Timescape, CRDs, and a ServiceAccount. They can also
+# be invoked individually for debugging or incremental setup.
+#
+# Prerequisites: kind (https://kind.sigs.k8s.io/), kubectl
+
+create-kind-cluster:
+	@command -v kind >/dev/null 2>&1 || { echo "❌ 'kind' not found. Install: https://kind.sigs.k8s.io/docs/user/quick-start/#installation"; exit 1; }
+	@command -v kubectl >/dev/null 2>&1 || { echo "❌ 'kubectl' not found. Install: https://kubernetes.io/docs/tasks/tools/"; exit 1; }
+	@echo "Creating kind cluster: $(KIND_CLUSTER_NAME)..."
+	@if kind get clusters 2>/dev/null | grep -q "^$(KIND_CLUSTER_NAME)$$"; then \
+		echo "✅ Kind cluster '$(KIND_CLUSTER_NAME)' already exists"; \
+	else \
+		kind create cluster --name $(KIND_CLUSTER_NAME) --kubeconfig $(KIND_KUBECONFIG) --wait 60s; \
+		echo "✅ Kind cluster '$(KIND_CLUSTER_NAME)' created"; \
+	fi
+	@echo "Kubeconfig: $(KIND_KUBECONFIG)"
+
+deploy-crds:
+	@echo "Deploying SmartSwitchNetworkPolicy CRD to kind cluster..."
+	@if [ ! -f "$(CRD_PATH)" ]; then \
+		echo "❌ CRD file not found: $(CRD_PATH)"; \
+		exit 1; \
+	fi
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl apply -f $(CRD_PATH)
+	@echo "✅ CRD deployed"
+
+deploy-prometheus:
+	@echo "Deploying Prometheus with remote-write receiver..."
+	@# Resolve kind node IP for TLS SAN
+	@KIND_NODE_IP=$$(docker inspect $(KIND_CLUSTER_NAME)-control-plane -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || echo '127.0.0.1'); \
+	echo "Kind node IP: $$KIND_NODE_IP"; \
+	KUBECONFIG=$(KIND_KUBECONFIG) kubectl apply -f $(K8S_MANIFESTS_DIR)/prometheus.yaml || true; \
+	echo "Generating Prometheus basic auth secret..."; \
+	BCRYPT_HASH=$$(htpasswd -nbBC 10 "" "$(PROMETHEUS_PASSWORD)" | tr -d ':\n' | sed 's/^\$$2y/\$$2y/'); \
+	printf 'basic_auth_users:\n  $(PROMETHEUS_USERNAME): "%s"\ntls_server_config:\n  cert_file: /etc/prometheus/tls/tls.crt\n  key_file: /etc/prometheus/tls/tls.key\n' "$$BCRYPT_HASH" > /tmp/prometheus-web.yml; \
+	KUBECONFIG=$(KIND_KUBECONFIG) kubectl -n monitoring create secret generic prometheus-auth \
+		--from-file=web.yml=/tmp/prometheus-web.yml --dry-run=client -o yaml | \
+		KUBECONFIG=$(KIND_KUBECONFIG) kubectl apply -f -; \
+	rm -f /tmp/prometheus-web.yml; \
+	echo "Generating self-signed TLS certificate for Prometheus..."; \
+	openssl req -x509 -newkey rsa:2048 -keyout /tmp/prometheus-tls.key -out /tmp/prometheus-tls.crt \
+		-days 365 -nodes -subj '/CN=prometheus.monitoring.svc' \
+		-addext "subjectAltName=DNS:prometheus,DNS:prometheus.monitoring.svc,IP:127.0.0.1,IP:$$KIND_NODE_IP" 2>/dev/null; \
+	KUBECONFIG=$(KIND_KUBECONFIG) kubectl -n monitoring delete secret prometheus-tls 2>/dev/null || true; \
+	KUBECONFIG=$(KIND_KUBECONFIG) kubectl -n monitoring create secret tls prometheus-tls \
+		--cert=/tmp/prometheus-tls.crt --key=/tmp/prometheus-tls.key; \
+	rm -f /tmp/prometheus-tls.key /tmp/prometheus-tls.crt
+	@# Restart deployment to pick up TLS secret
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl rollout restart deployment/prometheus -n monitoring 2>/dev/null || true
+	@echo "Waiting for Prometheus to be ready..."
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl rollout status deployment/prometheus -n monitoring --timeout=120s
+	@echo "✅ Prometheus deployed (NodePort 30090, HTTPS)"
+
+deploy-timescape:
+	@command -v helm >/dev/null 2>&1 || { echo "❌ 'helm' not found. Install: https://helm.sh/docs/intro/install/"; exit 1; }
+	@echo "Deploying Hubble Timescape ($(TIMESCAPE_CHART_VERSION))..."
+	@# Create namespace and push API password secret
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl create namespace hubble-timescape --dry-run=client -o yaml | \
+		KUBECONFIG=$(KIND_KUBECONFIG) kubectl apply -f -
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl -n hubble-timescape create secret generic hubble-timescape-push-api-password \
+		--from-literal "PUSH_API_PASSWORD=$(TIMESCAPE_PASSWORD)" --dry-run=client -o yaml | \
+		KUBECONFIG=$(KIND_KUBECONFIG) kubectl apply -f -
+	@# Pull and install the Helm chart
+	@CHART_FILE="/tmp/hubble-timescape-$(TIMESCAPE_CHART_VERSION).tgz"; \
+	if [ ! -f "$$CHART_FILE" ]; then \
+		echo "Pulling Timescape chart..."; \
+		helm pull $(TIMESCAPE_CHART_OCI) --version $(TIMESCAPE_CHART_VERSION) --destination /tmp/; \
+	else \
+		echo "Using cached chart: $$CHART_FILE"; \
+	fi; \
+	echo "Installing Hubble Timescape via Helm..."; \
+	KUBECONFIG=$(KIND_KUBECONFIG) helm upgrade --install hubble-timescape "$$CHART_FILE" \
+		--namespace hubble-timescape \
+		--values $(TIMESCAPE_VALUES) \
+		--timeout 300s \
+		--wait
+	@echo "Waiting for Timescape pods to be ready..."
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl wait --for=condition=ready pod -l app.kubernetes.io/part-of=hubble-timescape -n hubble-timescape --timeout=300s 2>/dev/null || \
+		KUBECONFIG=$(KIND_KUBECONFIG) kubectl get pods -n hubble-timescape
+	@# Detect the ingester NodePort and patch the client ConfigMap
+	@KIND_NODE_IP=$$(docker inspect $(KIND_CLUSTER_NAME)-control-plane -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || echo '127.0.0.1'); \
+	TIMESCAPE_NODEPORT=$$(kubectl --kubeconfig $(KIND_KUBECONFIG) -n hubble-timescape get svc hubble-timescape-ingester -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo ''); \
+	if [ -z "$$TIMESCAPE_NODEPORT" ]; then \
+		echo "⚠️  Could not detect Timescape NodePort, using default 30869"; \
+		TIMESCAPE_NODEPORT=30869; \
+	fi; \
+	echo "Timescape endpoint: https://$$KIND_NODE_IP:$$TIMESCAPE_NODEPORT/push"; \
+	echo "Deploying client ConfigMap (smartswitch-timescape-config)..."; \
+	sed "s/PLACEHOLDER_HOST/$$KIND_NODE_IP/g; s/PLACEHOLDER_PORT/$$TIMESCAPE_NODEPORT/g; s/PLACEHOLDER_PASSWORD/$(TIMESCAPE_PASSWORD)/g" \
+		$(K8S_MANIFESTS_DIR)/timescape.yaml | KUBECONFIG=$(KIND_KUBECONFIG) kubectl apply -f -; \
+	echo "$$TIMESCAPE_NODEPORT" > /tmp/$(KIND_CLUSTER_NAME)-timescape-nodeport
+	@echo "✅ Hubble Timescape deployed"
+
+generate-sa-token:
+	@echo "Creating ServiceAccount '$(K8S_SA_NAME)' in namespace '$(K8S_NAMESPACE)'..."
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl create serviceaccount $(K8S_SA_NAME) -n $(K8S_NAMESPACE) 2>/dev/null || \
+		echo "ServiceAccount already exists"
+	@echo "Creating ClusterRoleBinding for ServiceAccount..."
+	@KUBECONFIG=$(KIND_KUBECONFIG) kubectl create clusterrolebinding $(K8S_SA_NAME)-admin \
+		--clusterrole=cluster-admin \
+		--serviceaccount=$(K8S_NAMESPACE):$(K8S_SA_NAME) 2>/dev/null || \
+		echo "ClusterRoleBinding already exists"
+	@echo "Generating long-lived SA token..."
+	@printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: $(K8S_SA_NAME)-token\n  namespace: $(K8S_NAMESPACE)\n  annotations:\n    kubernetes.io/service-account.name: $(K8S_SA_NAME)\ntype: kubernetes.io/service-account-token\n' \
+		| KUBECONFIG=$(KIND_KUBECONFIG) kubectl apply -f -
+	@echo "Waiting for token to be populated..."
+	@sleep 3
+	@# Extract API server URL, token, and CA cert; encode as AGW-format base64 token
+	@API_SERVER=$$(KUBECONFIG=$(KIND_KUBECONFIG) kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'); \
+	SA_TOKEN=$$(KUBECONFIG=$(KIND_KUBECONFIG) kubectl get secret $(K8S_SA_NAME)-token -n $(K8S_NAMESPACE) -o jsonpath='{.data.token}' | base64 -d); \
+	CA_CERT=$$(KUBECONFIG=$(KIND_KUBECONFIG) kubectl get secret $(K8S_SA_NAME)-token -n $(K8S_NAMESPACE) -o jsonpath='{.data.ca\.crt}' | base64 -d); \
+	AGW_TOKEN=$$(printf '%s|%s|%s' "$$API_SERVER" "$$SA_TOKEN" "$$CA_CERT" | base64 | tr -d '\n'); \
+	echo ""; \
+	echo "API Server: $$API_SERVER"; \
+	echo "AGW Token (first 80 chars): $$(echo $$AGW_TOKEN | cut -c1-80)..."; \
+	echo ""; \
+	echo "✅ SA token generated. Use with:"; \
+	echo "  make launch-agw AGW_SA_TOKEN=$$AGW_TOKEN"; \
+	echo ""; \
+	echo "$$AGW_TOKEN" > /tmp/$(KIND_CLUSTER_NAME)-agw-token; \
+	echo "Token saved to: /tmp/$(KIND_CLUSTER_NAME)-agw-token"
+
+teardown-kind-cluster:
+	@echo "Deleting kind cluster: $(KIND_CLUSTER_NAME)..."
+	@kind delete cluster --name $(KIND_CLUSTER_NAME) 2>/dev/null || true
+	@rm -f $(KIND_KUBECONFIG) /tmp/$(KIND_CLUSTER_NAME)-agw-token /tmp/$(KIND_CLUSTER_NAME)-timescape-nodeport
+	@echo "✅ Kind cluster deleted"
 
 # ============================================================================
 # Test Targets

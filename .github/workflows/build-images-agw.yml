@@ -309,6 +309,10 @@ jobs:
     secrets:
       HYPERSHIELD_GH_APP_PEM: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
       ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+      QUAY_CHARTS_DEV_USERNAME: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_USERNAME }}
+      QUAY_CHARTS_DEV_PASSWORD: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_PASSWORD }}
+      TIMESCAPE_PASSWORD: ${{ secrets.SMARTSWITCH_TIMESCAPE_PASSWORD }}
+      PROMETHEUS_PASSWORD: ${{ secrets.SMARTSWITCH_PROMETHEUS_PASSWORD }}
 
   combine-artifacts:
     needs: [init, build-agw-image, build-agw-binaries, call-sanity-tests]

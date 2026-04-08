@@ -12,19 +12,26 @@ The test framework validates:
 - Rule hash matching between AGW and each SIM
 - Policy structure validation
 - Packet flow verification on both DPUs
+- Kubernetes integration (CRDs, ConfigMap watcher, ServiceAccount auth)
+- Prometheus remote-write metrics push
+- Hubble Timescape event push
 
 ## Structure
 
 ```
 tests/sanity/smartswitch/
 ├── README.md                       # This file
-├── DEPLOYMENT.md                   # Deployment guide
+├── DEPLOYMENT.md                   # Deployment guide (K8s infra, CI, secrets)
 ├── Makefile                        # Automated deployment and testing
 ├── requirements.txt                # Python dependencies
 ├── pytest.ini                      # Pytest configuration
 ├── conftest.py                     # Pytest fixtures and configuration
 ├── scripts/
 │   └── launch_sas.sh               # DPU Sim launch script
+├── k8s/                            # Kubernetes manifests
+│   ├── prometheus.yaml             # Prometheus deployment + service
+│   ├── timescape.yaml              # Timescape client ConfigMap (patched at deploy)
+│   └── hubble-timescape-values.yaml # Helm values for Timescape chart
 ├── config/
 │   ├── __init__.py
 │   └── testing_config.py           # Test configuration (Docker containers)
@@ -54,8 +61,21 @@ tests/sanity/smartswitch/
 
 - Python 3.12+ (pyenv recommended)
 - Docker
-- Docker Compose (optional)
+- kind ([kind.sigs.k8s.io](https://kind.sigs.k8s.io/))
+- kubectl
+- helm
+- htpasswd (`sudo apt-get install apache2-utils`)
+- openssl (usually pre-installed)
 - Allure (optional, for reporting)
+
+### Required Environment Variables
+
+```bash
+export TIMESCAPE_PASSWORD="your-timescape-password"
+export PROMETHEUS_PASSWORD="your-prometheus-password"
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full list of variables and CI secrets.
 
 ## Test Environment
 
@@ -85,14 +105,18 @@ tests/sanity/smartswitch/
 ```bash
 cd tests/sanity/smartswitch
 
-# Launch Docker containers (AGW + 2 SIMs)
+# Set required passwords
+export TIMESCAPE_PASSWORD="your-timescape-password"
+export PROMETHEUS_PASSWORD="your-prometheus-password"
+
+# Launch full stack (AGW + 2 SIMs + K8s infra)
 make launch-containers-multi
 
 # Install Python test dependencies
 make install-test-dependencies
 
 # Run all tests
-make run-all-tests
+sudo make run-all-tests
 ```
 
 ### Manual Setup
@@ -101,6 +125,10 @@ If you prefer manual control:
 
 ```bash
 cd tests/sanity/smartswitch
+
+# Set required passwords
+export TIMESCAPE_PASSWORD="your-timescape-password"
+export PROMETHEUS_PASSWORD="your-prometheus-password"
 
 # 1. Build AGW image
 make build-agw-image
@@ -111,7 +139,7 @@ make pull-sim-image
 # 3. Launch 2 SIM containers
 make launch-sim-multi SIM_COUNT=2
 
-# 4. Launch AGW container
+# 4. Launch AGW container (also creates kind cluster + deploys K8s infra)
 make launch-agw
 
 # 5. Configure network for all SIMs
@@ -124,7 +152,7 @@ make show-containers-status-multi
 make install-test-dependencies
 
 # 8. Run tests
-make run-all-tests
+sudo make run-all-tests
 ```
 
 ### Single DPU Setup
@@ -186,7 +214,7 @@ pytest -v test_policy.py::test_agw_health
 ## Cleanup
 
 ```bash
-# Stop and remove all containers (AGW + all SIMs)
+# Stop and remove all containers + delete kind cluster
 make shutdown-containers-multi
 
 # Clean test artifacts
@@ -268,6 +296,6 @@ make launch-containers-multi
 
 ## See Also
 
-- [DEPLOYMENT.md](DEPLOYMENT.md) - Detailed deployment guide
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Detailed deployment guide (K8s infra, CI pipeline, secrets)
 - [Makefile](Makefile) - All available targets
 - [SmartSwitchNetworkPolicy Examples](testdata/policies/) - Policy file examples

@@ -34,6 +34,7 @@ class AGWCTL(Enum):
     PING_FWA = "ping_fwa {}"
     SHOW_TOKENS = "show_tokens"
     SHOW_TECH = "show_tech"  # Requires NXOS
+    METRICS_SHOW = "metrics show"
 
 
 class FWACTL(Enum):

@@ -313,6 +313,23 @@ class CommandExecutor:
             f"{TestingConfig.AGWCTL_PATH} {AGWCTL.SHOW_DPU.value}"
         )
     
+    def agw_metrics_show(self) -> str:
+        """Show AGW metrics"""
+        container = self._get_agw_container()
+        return self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} {AGWCTL.METRICS_SHOW.value}"
+        )
+    
+    def agw_metrics_show_json(self) -> dict:
+        """Show AGW metrics in JSON format"""
+        container = self._get_agw_container()
+        output = self._exec_in_container(
+            container,
+            f"{TestingConfig.AGWCTL_PATH} --json {AGWCTL.METRICS_SHOW.value}"
+        )
+        return json.loads(output)
+    
     
     def get_container_logs(self, container_name: str, tail_lines: int = 50) -> str:
         """Get logs from a Docker container"""

@@ -180,3 +180,117 @@ def verify_policy_add_error(result: str, expected_error_substring: str) -> bool:
     return True
 
 
+# Metrics JSON field names matching CurrentMetrics in switchmetrics/metrics.go
+METRICS_FIELDS = [
+    "total_physical_memory_kb_usage",
+    "cpu_usage_percent",
+    "policy_k8s_ids",
+    "policy_dpu_rules",
+    "policy_dpu_insert_errors",
+    "policy_dpu_delete_errors",
+    "policy_dpu_update_errors",
+]
+
+
+def verify_metrics_fields_present(metrics: dict) -> None:
+    """Verify all expected JSON fields are present in metrics output."""
+    missing = [f for f in METRICS_FIELDS if f not in metrics]
+    if missing:
+        raise AssertionError(f"Missing metrics fields: {missing}")
+    logger.info(f"✅ All {len(METRICS_FIELDS)} metrics fields present")
+
+
+def verify_metrics_baseline(metrics: dict) -> None:
+    """Verify metrics values when no policies are loaded."""
+    verify_metrics_fields_present(metrics)
+
+    assert metrics["policy_k8s_ids"] == 0, (
+        f"Expected 0 policy K8s IDs, got {metrics['policy_k8s_ids']}"
+    )
+    assert metrics["policy_dpu_rules"] == 0, (
+        f"Expected 0 DPU rules, got {metrics['policy_dpu_rules']}"
+    )
+    assert metrics["policy_dpu_insert_errors"] == 0, (
+        f"Expected 0 insert errors, got {metrics['policy_dpu_insert_errors']}"
+    )
+    assert metrics["policy_dpu_update_errors"] == 0, (
+        f"Expected 0 update errors, got {metrics['policy_dpu_update_errors']}"
+    )
+    assert metrics["policy_dpu_delete_errors"] == 0, (
+        f"Expected 0 delete errors, got {metrics['policy_dpu_delete_errors']}"
+    )
+    assert metrics["total_physical_memory_kb_usage"] > 0, (
+        f"Expected positive memory usage, got {metrics['total_physical_memory_kb_usage']}"
+    )
+    assert metrics["cpu_usage_percent"] >= 0, (
+        f"Expected non-negative CPU usage, got {metrics['cpu_usage_percent']}"
+    )
+    logger.info("✅ Baseline metrics verified (no policies, zero errors, positive memory)")
+
+
+def verify_metrics_policy_counts(
+    metrics: dict,
+    expected_k8s_ids: int,
+    expected_dpu_rules: Optional[int] = None,
+    min_dpu_rules: Optional[int] = None,
+) -> None:
+    """Verify policy-related metric counts."""
+    verify_metrics_fields_present(metrics)
+
+    assert metrics["policy_k8s_ids"] == expected_k8s_ids, (
+        f"Expected {expected_k8s_ids} policy K8s IDs, got {metrics['policy_k8s_ids']}"
+    )
+    if expected_dpu_rules is not None:
+        assert metrics["policy_dpu_rules"] == expected_dpu_rules, (
+            f"Expected {expected_dpu_rules} DPU rules, got {metrics['policy_dpu_rules']}"
+        )
+    if min_dpu_rules is not None:
+        assert metrics["policy_dpu_rules"] >= min_dpu_rules, (
+            f"Expected at least {min_dpu_rules} DPU rules, got {metrics['policy_dpu_rules']}"
+        )
+    logger.info(
+        f"✅ Metrics policy counts verified: k8s_ids={metrics['policy_k8s_ids']}, "
+        f"dpu_rules={metrics['policy_dpu_rules']}"
+    )
+
+
+def verify_metrics_no_errors(metrics: dict) -> None:
+    """Verify all error counters are zero."""
+    verify_metrics_fields_present(metrics)
+
+    for field in ["policy_dpu_insert_errors", "policy_dpu_update_errors", "policy_dpu_delete_errors"]:
+        assert metrics[field] == 0, (
+            f"Expected 0 for {field}, got {metrics[field]}"
+        )
+    logger.info("✅ All error counters are zero")
+
+
+def verify_metrics_consistent_with_policies(
+    metrics: dict,
+    policies_json: dict,
+) -> None:
+    """Verify metrics policy counts match the actual policies show JSON output.
+
+    Compares policy_k8s_ids against the number of policy entries and
+    policy_dpu_rules against the total number of rules across all policies.
+    """
+    verify_metrics_fields_present(metrics)
+
+    policies_data = policies_json.get("data", policies_json)
+    expected_k8s_ids = len(policies_data)
+    expected_dpu_rules = sum(len(rules) for rules in policies_data.values())
+
+    assert metrics["policy_k8s_ids"] == expected_k8s_ids, (
+        f"Metrics policy_k8s_ids ({metrics['policy_k8s_ids']}) != "
+        f"policies show count ({expected_k8s_ids})"
+    )
+    assert metrics["policy_dpu_rules"] == expected_dpu_rules, (
+        f"Metrics policy_dpu_rules ({metrics['policy_dpu_rules']}) != "
+        f"policies show rules ({expected_dpu_rules})"
+    )
+    logger.info(
+        f"✅ Metrics consistent with policies show: "
+        f"k8s_ids={expected_k8s_ids}, dpu_rules={expected_dpu_rules}"
+    )
+
+

@@ -1,0 +1,95 @@
+# Prometheus with remote-write receiver for AGW metrics testing
+# Deployed to kind cluster via: make deploy-prometheus
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app: agw-test-infra
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    # No scrape configs needed - AGW pushes via remote write
+---
+# prometheus-auth Secret is created dynamically by `make deploy-prometheus`
+# using PROMETHEUS_USERNAME and PROMETHEUS_PASSWORD env vars.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: quay.io/prometheus/prometheus:v3.10.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--web.enable-remote-write-receiver"
+            - "--web.config.file=/etc/prometheus/web.yml"
+            - "--storage.tsdb.retention.time=1h"
+            - "--storage.tsdb.retention.size=256MB"
+          ports:
+            - containerPort: 9090
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+            - name: auth
+              mountPath: /etc/prometheus/web.yml
+              subPath: web.yml
+            - name: tls
+              mountPath: /etc/prometheus/tls
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: auth
+          secret:
+            secretName: prometheus-auth
+        - name: tls
+          secret:
+            secretName: prometheus-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090
+      name: http

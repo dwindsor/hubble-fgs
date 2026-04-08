@@ -25,6 +25,14 @@ on:
         required: true
       ARTIFACTORY_PASSWORD:
         required: true
+      QUAY_CHARTS_DEV_USERNAME:
+        required: true
+      QUAY_CHARTS_DEV_PASSWORD:
+        required: true
+      TIMESCAPE_PASSWORD:
+        required: true
+      PROMETHEUS_PASSWORD:
+        required: true
 
 jobs:
   agw-sanity-tests:
@@ -34,7 +42,7 @@ jobs:
       actions: read
       pages: write
       id-token: write
-    timeout-minutes: 25 
+    timeout-minutes: 35
     
     steps:
       - name: Checkout code
@@ -71,6 +79,37 @@ jobs:
           registry: artifactory.devhub-cloud.cisco.com
           username: ${{ vars.ARTIFACTORY_USERNAME }}
           password: ${{ secrets.ARTIFACTORY_PASSWORD }}
+
+      - name: Install kind
+        run: |
+          KIND_VERSION="v0.27.0"
+          curl -Lo /tmp/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          kind version
+
+      - name: Install kubectl
+        run: |
+          KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+          curl -Lo /tmp/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x /tmp/kubectl
+          sudo mv /tmp/kubectl /usr/local/bin/kubectl
+          kubectl version --client
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version
+
+      - name: Install htpasswd (for Prometheus bcrypt auth)
+        run: sudo apt-get update && sudo apt-get install -y apache2-utils
+
+      - name: Docker login to quay.io (Timescape Helm chart)
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_CHARTS_DEV_USERNAME }}
+          password: ${{ secrets.QUAY_CHARTS_DEV_PASSWORD }}
 
       - name: Build AGW Docker image
         run: |
@@ -219,6 +258,9 @@ jobs:
         run: |
           cd tests/sanity/smartswitch
           make launch-agw
+        env:
+          TIMESCAPE_PASSWORD: ${{ secrets.TIMESCAPE_PASSWORD }}
+          PROMETHEUS_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
 
       - name: Configure network
         run: |
@@ -240,6 +282,42 @@ jobs:
           cd tests/sanity/smartswitch
           sudo make run-tests-with-allure
       
+      - name: Debug K8s infrastructure on failure
+        if: failure()
+        run: |
+          KUBECONFIG=/tmp/agw-test-kubeconfig
+          if [ -f "$KUBECONFIG" ]; then
+            echo "=== Kind Cluster Nodes ==="
+            kubectl --kubeconfig $KUBECONFIG get nodes -o wide || true
+            echo ""
+            echo "=== All Pods ==="
+            kubectl --kubeconfig $KUBECONFIG get pods -A -o wide || true
+            echo ""
+            echo "=== Timescape Pods ==="
+            kubectl --kubeconfig $KUBECONFIG -n hubble-timescape get pods -o wide || true
+            kubectl --kubeconfig $KUBECONFIG -n hubble-timescape describe pods || true
+            echo ""
+            echo "=== Timescape Services ==="
+            kubectl --kubeconfig $KUBECONFIG -n hubble-timescape get svc -o wide || true
+            echo ""
+            echo "=== Timescape Pod Logs ==="
+            for POD in $(kubectl --kubeconfig $KUBECONFIG -n hubble-timescape get pods -o name 2>/dev/null); do
+              echo "--- $POD ---"
+              kubectl --kubeconfig $KUBECONFIG -n hubble-timescape logs $POD --all-containers --tail=50 || true
+            done
+            echo ""
+            echo "=== Prometheus Pods ==="
+            kubectl --kubeconfig $KUBECONFIG -n monitoring get pods -o wide || true
+            echo ""
+            echo "=== Helm Releases ==="
+            KUBECONFIG=$KUBECONFIG helm list -A || true
+            echo ""
+            echo "=== ConfigMaps ==="
+            kubectl --kubeconfig $KUBECONFIG -n hypershield get configmap smartswitch-timescape-config -o yaml || true
+          else
+            echo "No kubeconfig found at $KUBECONFIG — kind cluster may not have been created"
+          fi
+
       - name: Debug DPU containers on failure
         if: failure()
         run: |
