@@ -36,26 +36,27 @@ type EndpointInfo struct {
 	PodName  string
 }
 
+type EventHandler interface {
+	HandleEndpointChange(namespace, name string, oldEndpoints, newEndpoints []EndpointInfo)
+	HandleServiceDelete(namespace, name string, endpoints []EndpointInfo)
+}
+
 // ServiceMap tracks Kubernetes Services and provides ClusterIP -> Service lookup
 type ServiceMap struct {
 	mu sync.RWMutex
 	// byClusterIP maps ClusterIP -> ServiceInfo
 	byClusterIP map[netip.Addr]*ServiceInfo
 	// byName maps namespace/name -> ServiceInfo
-	byName map[types.NamespacedName]*ServiceInfo
+	byName  map[types.NamespacedName]*ServiceInfo
+	handler EventHandler
 }
 
-// OnEndpointChange is called when service endpoints change (set by dns package)
-var OnEndpointChange func(namespace, name string, oldEndpoints, newEndpoints []EndpointInfo)
-
-// OnServiceDelete is called when a service is deleted (set by dns package)
-var OnServiceDelete func(namespace, name string, endpoints []EndpointInfo)
-
 // NewServiceMap creates a new ServiceMap
-func NewServiceMap() *ServiceMap {
+func NewServiceMap(handler EventHandler) *ServiceMap {
 	return &ServiceMap{
 		byClusterIP: make(map[netip.Addr]*ServiceInfo),
 		byName:      make(map[types.NamespacedName]*ServiceInfo),
+		handler:     handler,
 	}
 }
 
@@ -109,9 +110,9 @@ func (sm *ServiceMap) Delete(namespace, name string) {
 	}
 	sm.mu.Unlock()
 
-	// Notify dns package to remove endpoint CIDR records
-	if OnServiceDelete != nil && len(endpoints) > 0 {
-		OnServiceDelete(namespace, name, endpoints)
+	// Notify handler to remove endpoint CIDR records
+	if sm.handler != nil && len(endpoints) > 0 {
+		sm.handler.HandleServiceDelete(namespace, name, endpoints)
 	}
 }
 
@@ -142,9 +143,9 @@ func (sm *ServiceMap) UpdateEndpoints(namespace, name string, endpoints []Endpoi
 	}
 	sm.mu.Unlock()
 
-	// Notify dns package of endpoint changes
-	if OnEndpointChange != nil {
-		OnEndpointChange(namespace, name, oldEndpoints, endpoints)
+	// Notify handler of endpoint changes
+	if sm.handler != nil {
+		sm.handler.HandleEndpointChange(namespace, name, oldEndpoints, endpoints)
 	} else if svcExists {
 		// Log warning if callback not set but service exists
 		// This would indicate initialization order issue

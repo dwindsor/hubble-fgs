@@ -117,12 +117,13 @@ func New(ctx context.Context) (KubernetesManager, error) {
 		if err := addPodInfoInformer(ctx, ossManager); err != nil {
 			return nil, err
 		}
-		sm := servicemap.NewServiceMap()
+		state := netpolstate.Get()
+		sm := servicemap.NewServiceMap(state)
 		if err := servicemap.AddServiceInformer(ctx, ossManager, sm); err != nil {
 			return nil, err
 		}
 		// Set the ServiceMap on the realized state for policy lookups
-		netpolstate.Get().SetServiceMap(sm)
+		state.SetServiceMap(sm)
 	}
 	return &EnterpriseManager{ossManager}, nil
 }

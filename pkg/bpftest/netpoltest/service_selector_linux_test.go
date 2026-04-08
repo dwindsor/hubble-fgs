@@ -289,7 +289,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 	// This tests the full flow: servicemap + CIDR blocking
 	t.Run("WithServiceMap", func(t *testing.T) {
 		// Populate servicemap (simulates K8s service tracking)
-		sm := servicemap.NewServiceMap()
+		sm := servicemap.NewServiceMap(nil)
 		clusterIP := netip.MustParseAddr("127.0.0.1")
 		sm.AddOrUpdate(&servicemap.ServiceInfo{
 			Name:      "test-svc",

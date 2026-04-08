@@ -103,7 +103,7 @@ func TestServiceSelectorRecordGeneration(t *testing.T) {
 	srcPodLabels := "app=client"
 
 	// Setup service in ServiceMap
-	sm := servicemap.NewServiceMap()
+	sm := servicemap.NewServiceMap(s)
 	s.SetServiceMap(sm)
 	clusterIP := netip.MustParseAddr("10.96.0.100")
 	sm.AddOrUpdate(&servicemap.ServiceInfo{
@@ -177,7 +177,7 @@ func TestServiceSelectorWithPorts(t *testing.T) {
 	srcPodLabels := "app=client"
 
 	// Setup service in ServiceMap with multiple ports
-	sm := servicemap.NewServiceMap()
+	sm := servicemap.NewServiceMap(s)
 	s.SetServiceMap(sm)
 	clusterIP := netip.MustParseAddr("10.96.0.101")
 	sm.AddOrUpdate(&servicemap.ServiceInfo{
@@ -266,7 +266,7 @@ func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
 	srcPodLabels := "app=other" // Different from policy subject
 
 	// Setup service
-	sm := servicemap.NewServiceMap()
+	sm := servicemap.NewServiceMap(s)
 	s.SetServiceMap(sm)
 	sm.AddOrUpdate(&servicemap.ServiceInfo{
 		Name:      "test-svc",
@@ -307,7 +307,7 @@ func TestServiceSelectorAllowAction(t *testing.T) {
 	srcPodLabels := "app=client"
 
 	// Setup service
-	sm := servicemap.NewServiceMap()
+	sm := servicemap.NewServiceMap(s)
 	s.SetServiceMap(sm)
 	sm.AddOrUpdate(&servicemap.ServiceInfo{
 		Name:      "allowed-svc",
@@ -359,7 +359,7 @@ func TestServiceSelectorMultiplePolicies(t *testing.T) {
 	srcPodLabels := "app=client"
 
 	// Setup two services
-	sm := servicemap.NewServiceMap()
+	sm := servicemap.NewServiceMap(s)
 	s.SetServiceMap(sm)
 	sm.AddOrUpdate(&servicemap.ServiceInfo{
 		Name:      "svc-1",
@@ -425,7 +425,7 @@ func TestServiceSelectorDefaultNamespace(t *testing.T) {
 	srcPodLabels := "app=client"
 
 	// Setup service in default namespace
-	sm := servicemap.NewServiceMap()
+	sm := servicemap.NewServiceMap(s)
 	s.SetServiceMap(sm)
 	sm.AddOrUpdate(&servicemap.ServiceInfo{
 		Name:      "default-ns-svc",
@@ -474,7 +474,7 @@ func TestServiceSelectorPolicyRemoval(t *testing.T) {
 	srcPodLabels := "app=client"
 
 	// Setup service
-	sm := servicemap.NewServiceMap()
+	sm := servicemap.NewServiceMap(s)
 	s.SetServiceMap(sm)
 	sm.AddOrUpdate(&servicemap.ServiceInfo{
 		Name:      "removable-svc",

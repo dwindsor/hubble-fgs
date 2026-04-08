@@ -16,7 +16,7 @@ import (
 )
 
 func TestServiceMap_AddAndGet(t *testing.T) {
-	sm := NewServiceMap()
+	sm := NewServiceMap(nil)
 
 	clusterIP := netip.MustParseAddr("10.96.0.100")
 	svc := &ServiceInfo{
@@ -58,7 +58,7 @@ func TestServiceMap_AddAndGet(t *testing.T) {
 }
 
 func TestServiceMap_Update(t *testing.T) {
-	sm := NewServiceMap()
+	sm := NewServiceMap(nil)
 
 	oldIP := netip.MustParseAddr("10.96.0.100")
 	newIP := netip.MustParseAddr("10.96.0.200")
@@ -90,7 +90,7 @@ func TestServiceMap_Update(t *testing.T) {
 }
 
 func TestServiceMap_Delete(t *testing.T) {
-	sm := NewServiceMap()
+	sm := NewServiceMap(nil)
 
 	clusterIP := netip.MustParseAddr("10.96.0.100")
 	svc := &ServiceInfo{
@@ -111,7 +111,7 @@ func TestServiceMap_Delete(t *testing.T) {
 }
 
 func TestServiceMap_UpdateEndpoints(t *testing.T) {
-	sm := NewServiceMap()
+	sm := NewServiceMap(nil)
 
 	svc := &ServiceInfo{
 		Name:      "test-svc",
@@ -136,7 +136,7 @@ func TestServiceMap_UpdateEndpoints(t *testing.T) {
 }
 
 func TestServiceMap_GetAllServices(t *testing.T) {
-	sm := NewServiceMap()
+	sm := NewServiceMap(nil)
 
 	sm.AddOrUpdate(&ServiceInfo{Name: "svc-1", Namespace: "ns-1", ClusterIP: netip.MustParseAddr("10.96.0.1")})
 	sm.AddOrUpdate(&ServiceInfo{Name: "svc-2", Namespace: "ns-1", ClusterIP: netip.MustParseAddr("10.96.0.2")})
@@ -149,7 +149,7 @@ func TestServiceMap_GetAllServices(t *testing.T) {
 }
 
 func TestServiceMap_HeadlessService(t *testing.T) {
-	sm := NewServiceMap()
+	sm := NewServiceMap(nil)
 
 	// Headless services have no valid ClusterIP (zero value)
 	svc := &ServiceInfo{

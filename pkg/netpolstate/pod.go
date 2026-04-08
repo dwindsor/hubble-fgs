@@ -155,10 +155,6 @@ func NewPolicyState() *PolicyState {
 	s.workloadID = workloadid.GetState()
 	s.prog = &datapath.BPFProgrammer{}
 
-	// Register handlers for service/endpoint changes
-	servicemap.OnEndpointChange = s.HandleEndpointChange
-	servicemap.OnServiceDelete = s.HandleServiceDelete
-
 	return s
 }
 
