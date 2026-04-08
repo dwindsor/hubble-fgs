@@ -70,7 +70,7 @@ func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.
 	if len(policy.Subject.InProcessName) > 0 {
 		for _, process := range policy.Subject.InProcessName {
 			process = SanitizeWindowsPath(process)
-			self, err := state.prog.GetBinaryId(process, true)
+			self, err := state.deps.prog.GetBinaryId(process, true)
 			if err != nil {
 				logger.GetLogger().Warn("Failed to create record", logfields.Error, err, "uid", policy.PolicyUID, "process", process)
 				return records, err

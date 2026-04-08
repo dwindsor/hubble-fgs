@@ -49,7 +49,7 @@ func delPod(t *testing.T) {
 // mapping like we would on the event of a creation of a new Pod from cluster.
 func registerWorkloadID(t *testing.T, s *PolicyState, ns, name, kind string) {
 	t.Helper()
-	err := s.workloadID.Update(
+	err := s.deps.workloadID.Update(
 		workloadid.WorkloadMeta{
 			Namespace: ns,
 			Workload:  name,
@@ -115,12 +115,19 @@ func (f *fakeK8sReader) List(_ context.Context, _ client.ObjectList, _ ...client
 	return nil
 }
 
+func newFakeExternalDeps(t *testing.T) externalDeps {
+	t.Helper()
+	return externalDeps{
+		prog:       &datapath.DummyBpfProgrammer{},
+		workloadID: workloadid.NewFakeState(t),
+		k8sReader:  &fakeK8sReader{},
+	}
+}
+
 func newTestPolicyState(t *testing.T) *PolicyState {
 	t.Helper()
 	s := NewPolicyState()
-	s.prog = &datapath.DummyBpfProgrammer{}
-	s.workloadID = workloadid.NewFakeState(t)
-	s.k8sReader = &fakeK8sReader{}
+	s.deps = newFakeExternalDeps(t)
 	return s
 }
 
@@ -132,12 +139,12 @@ func TestSrcKeyLookup(t *testing.T) {
 	registerWorkloadID(t, s, testNamespace, "test1", testKind)
 	registerWorkloadID(t, s, testNamespace, "test2", testKind)
 
-	key, err := s.createSrcKey(testNamespace, "test1", testKind)
+	key, err := s.deps.createSrcKey(testNamespace, "test1", testKind)
 	require.NoError(t, err)
 	assert.NotNil(t, key)
 	assert.NotZero(t, key.WLID)
 
-	key, err = s.createSrcKey(testNamespace, "test2", testKind)
+	key, err = s.deps.createSrcKey(testNamespace, "test2", testKind)
 	require.NoError(t, err)
 	assert.NotNil(t, key)
 	assert.NotZero(t, key.WLID)

@@ -43,7 +43,7 @@ const (
 
 // SetK8sReader sets the Kubernetes client reader for namespace lookups
 func (state *PolicyState) SetK8sReader(reader client.Reader) {
-	state.k8sReader = reader
+	state.deps.k8sReader = reader
 }
 
 var getState = sync.OnceValue(NewPolicyState)
@@ -78,7 +78,7 @@ func createObjectEndpoint(object metav1.Object) *endpoint.Endpoint {
 	return &ep
 }
 
-func (state *PolicyState) createObjectSrcKey(object metav1.Object) (*types.ProcessTreeKey, error) {
+func (deps externalDeps) createObjectSrcKey(object metav1.Object) (*types.ProcessTreeKey, error) {
 	var name, namespace, kind string
 	switch o := object.(type) {
 	case *v1alpha1.PodInfo:
@@ -94,7 +94,20 @@ func (state *PolicyState) createObjectSrcKey(object metav1.Object) (*types.Proce
 	default:
 		return nil, fmt.Errorf("object %s has unsupported type", o.GetName())
 	}
-	return state.createSrcKey(namespace, name, kind)
+	return deps.createSrcKey(namespace, name, kind)
+}
+
+// externalDeps contains the systems we interact with (BPF, K8s, workloadID)
+// This provide a clearer separation on the actual state we store (typically
+// maps, list) and the operation we need to perform to program the datapath or
+// read external information like workloadid or k8s info.
+type externalDeps struct {
+	// workloadID is to lookup cgroup ID to workload association
+	workloadID *workloadid.State
+	// Programmer for dataplane default to BPF
+	prog datapath.Interface
+	// k8sReader is used to read namespace labels from Kubernetes
+	k8sReader client.Reader
 }
 
 type PolicyState struct {
@@ -116,11 +129,7 @@ type PolicyState struct {
 
 	Reader sync.RWMutex
 
-	workloadID *workloadid.State
-	// Programmer for dataplane default to BPF
-	prog datapath.Interface
-	// k8sReader is used to read namespace labels from Kubernetes
-	k8sReader client.Reader
+	deps externalDeps
 }
 
 func NewPolicyState() *PolicyState {
@@ -152,8 +161,10 @@ func NewPolicyState() *PolicyState {
 
 	s.Reader = sync.RWMutex{}
 
-	s.workloadID = workloadid.GetState()
-	s.prog = &datapath.BPFProgrammer{}
+	s.deps = externalDeps{
+		workloadID: workloadid.GetState(),
+		prog:       &datapath.BPFProgrammer{},
+	}
 
 	return s
 }
@@ -164,12 +175,10 @@ func NewPolicyState() *PolicyState {
 func (state *PolicyState) TemporaryEmptyState() *PolicyState {
 	s := NewPolicyState()
 
-	if state != nil {
-		// These should be passed to the new one
-		s.workloadID = state.workloadID
-		s.prog = state.prog
-		s.k8sReader = state.k8sReader
-	}
+	// We pass the existing state deps: methods will need them when
+	// computing stuff from the empty state
+	s.deps = state.deps
+
 	return s
 }
 
@@ -239,7 +248,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 
 			for _, subject := range s.Subjects {
 				for _, process := range s.Policy.Subject.InProcessName {
-					self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
+					self, err := state.deps.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 					if err != nil {
 						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue
@@ -294,7 +303,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 		return records, nil
 	}
 
-	subject, err := state.createObjectSrcKey(pod)
+	subject, err := state.deps.createObjectSrcKey(pod)
 	if err != nil {
 		return records, nil
 	}
@@ -329,7 +338,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 				})
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
-				self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
+				self, err := state.deps.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 				if err != nil {
 					logger.GetLogger().Warn("pod remove endpoint binary id error", logfields.Error, err)
 					continue
@@ -368,7 +377,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 		}
 
 		if s.Policy.Destination.CIDR.IsValid() {
-			r, err := state.addDestCIDRRecords(
+			r, err := state.deps.addDestCIDRRecords(
 				policy,
 				&s.Policy.Destination,
 				&s.Policy.Subject,
@@ -400,7 +409,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 				Port: 0,
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
-				self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
+				self, err := state.deps.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 				if err != nil {
 					logger.GetLogger().Warn("pod remove FQDN binary id error", logfields.Error, err)
 					continue
@@ -438,7 +447,7 @@ func (state *PolicyState) PodRemove(pod *v1alpha1.PodInfo) error {
 	if err != nil {
 		return err
 	}
-	return state.prog.RemoveRecords(records)
+	return state.deps.prog.RemoveRecords(records)
 }
 
 func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet, newEP bool) []record.DatapathRecord {
@@ -466,7 +475,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 
 			if len(policyList.Policy.Subject.InProcessName) > 0 {
 				for _, process := range policyList.Policy.Subject.InProcessName {
-					self, err := state.prog.GetBinaryId(process, true) // DNS policies do not include args for now
+					self, err := state.deps.prog.GetBinaryId(process, true) // DNS policies do not include args for now
 					if err != nil {
 						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue
@@ -544,7 +553,7 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 	return records
 }
 
-func (state *PolicyState) getNamespaceLabels(ns string) map[string]string {
+func (deps externalDeps) getNamespaceLabels(ns string) map[string]string {
 	l := make(map[string]string)
 
 	// Skip namespace label lookup for empty namespace (host-level processes)
@@ -556,9 +565,9 @@ func (state *PolicyState) getNamespaceLabels(ns string) map[string]string {
 	l["kubernetes.io/metadata.name"] = ns
 
 	// If we have a k8s client, fetch all other namespace labels
-	if state.k8sReader != nil {
+	if deps.k8sReader != nil {
 		namespace := &corev1.Namespace{}
-		err := state.k8sReader.Get(context.Background(), client.ObjectKey{Name: ns}, namespace)
+		err := deps.k8sReader.Get(context.Background(), client.ObjectKey{Name: ns}, namespace)
 		if err != nil {
 			logger.GetLogger().Warn("failed to get namespace labels for namespaceSelector matching",
 				"namespace", ns, logfields.Error, err)
@@ -577,9 +586,9 @@ func (state *PolicyState) getNamespaceLabels(ns string) map[string]string {
 	return l
 }
 
-func (state *PolicyState) addNamespaceLabels(endpointObject metav1.Object, labels map[string]string) {
+func (deps externalDeps) addNamespaceLabels(endpointObject metav1.Object, labels map[string]string) {
 	ns := endpointObject.GetNamespace()
-	nsLabels := state.getNamespaceLabels(ns)
+	nsLabels := deps.getNamespaceLabels(ns)
 	for k, v := range nsLabels {
 		labels["_tnp_"+k] = v
 	}
@@ -599,13 +608,13 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 		}
 	}
 
-	state.addNamespaceLabels(endpointObject, ml.Labels)
+	state.deps.addNamespaceLabels(endpointObject, ml.Labels)
 
 	ep := createObjectEndpoint(endpointObject)
 
 	epRecords := state.EndpointAdd(ep, ml, true)
 
-	src, err := state.createObjectSrcKey(endpointObject)
+	src, err := state.deps.createObjectSrcKey(endpointObject)
 	if err != nil {
 		return epRecords, err
 	}
@@ -635,5 +644,5 @@ func (state *PolicyState) PodAdd(epPod *v1alpha1.PodInfo) error {
 	}
 	records = append(records, svcSelRecords...)
 
-	return state.prog.AddRecords(records, false)
+	return state.deps.prog.AddRecords(records, false)
 }

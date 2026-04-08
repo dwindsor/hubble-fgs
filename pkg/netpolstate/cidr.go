@@ -66,7 +66,7 @@ func addDestSrcCIDRRecords(
 	return records, nil
 }
 
-func (state *PolicyState) addDestCIDRRecords(
+func (deps externalDeps) addDestCIDRRecords(
 	policy types.TetragonPolicyUniqueID,
 	dest *types.TetragonNetworkDestination,
 	subject *types.TetragonNetworkSubject,
@@ -76,7 +76,7 @@ func (state *PolicyState) addDestCIDRRecords(
 	records := []record.DatapathRecord{}
 
 	for _, process := range subject.InProcessName {
-		self, err := state.prog.GetBinaryId(process, true) // CIDR policies do not include args for now
+		self, err := deps.prog.GetBinaryId(process, true) // CIDR policies do not include args for now
 		if err != nil {
 			logger.GetLogger().Warn("add cidr binary id error", logfields.Error, err)
 			continue

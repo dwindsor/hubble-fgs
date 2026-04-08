@@ -118,18 +118,18 @@ func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) erro
 
 	// Necessary order to ensure any updates to records are in place before we
 	// remove stale records.
-	err = state.prog.AddRecords(updateSet, true)
+	err = state.deps.prog.AddRecords(updateSet, true)
 	if err != nil {
 		return fmt.Errorf("failed to add records: %w", err)
 	}
-	err = state.prog.RemoveRecords(zombieSet)
+	err = state.deps.prog.RemoveRecords(zombieSet)
 	if err != nil {
 		return fmt.Errorf("failed to remove records: %w", err)
 	}
 	return nil
 }
 
-func (state *PolicyState) createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
+func (deps externalDeps) createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	var wlid workloadid.WorkloadID
 	if namespace != "" {
 		var ok bool
@@ -144,7 +144,7 @@ func (state *PolicyState) createSrcKey(namespace, wl, kind string) (*types.Proce
 		// an imperfect solution. Ideally we would just modify the policyfilter state
 		// to preallocate an ID.But, its in OSS and not obvious how to extend it to
 		// support this.
-		wlid, ok = state.workloadID.LookupID(workload)
+		wlid, ok = deps.workloadID.LookupID(workload)
 		if !ok {
 			logger.GetLogger().Debug("workload info does not exist yet, queuing for workload updates.", "namespace", namespace, "workload", wl)
 			return nil, nil
@@ -351,7 +351,7 @@ func (state *PolicyState) createServiceSelectorRecordsForPolicy(podInfo *v1alpha
 		return records, nil
 	}
 
-	src, err := state.createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
+	src, err := state.deps.createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
 	if err != nil || src == nil {
 		return records, err
 	}
@@ -546,11 +546,11 @@ func (state *PolicyState) AddPolicies(policies []*types.TetragonNetworkPolicy) e
 
 	// Order matters lets add the new set of records. Then second remove any
 	// old records that are no longer valid.
-	err = state.prog.AddRecords(addSet, false)
+	err = state.deps.prog.AddRecords(addSet, false)
 	if err != nil {
 		return fmt.Errorf("failed to add records: %w", err)
 	}
-	err = state.prog.RemoveRecords(removeSet)
+	err = state.deps.prog.RemoveRecords(removeSet)
 	if err != nil {
 		return fmt.Errorf("failed to remove records: %w", err)
 	}
@@ -614,7 +614,7 @@ func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name 
 				continue
 			}
 
-			src, err := state.createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
+			src, err := state.deps.createSrcKey(podInfo.WorkloadObject.Namespace, podInfo.WorkloadObject.Name, podInfo.WorkloadType.Kind)
 			if err != nil || src == nil {
 				continue
 			}
@@ -629,10 +629,10 @@ func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name 
 	}
 
 	if len(addRecords) > 0 {
-		state.prog.AddRecords(addRecords, false)
+		state.deps.prog.AddRecords(addRecords, false)
 	}
 	if len(removeRecords) > 0 {
-		state.prog.RemoveRecords(removeRecords)
+		state.deps.prog.RemoveRecords(removeRecords)
 	}
 
 	log.Debug("serviceSelector endpoint CIDR delta applied", "added", len(addRecords), "removed", len(removeRecords))
@@ -741,7 +741,7 @@ func (state *PolicyState) CreateServiceSelectorRecords(pod metav1.Object) ([]rec
 		return records, nil
 	}
 
-	src, err := state.createObjectSrcKey(pod)
+	src, err := state.deps.createObjectSrcKey(pod)
 	if err != nil {
 		return records, err
 	}
