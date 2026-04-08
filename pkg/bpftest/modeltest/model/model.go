@@ -31,6 +31,7 @@ import (
 
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	k8sTypes "github.com/isovalent/ipa/common/k8s/type/v1alpha"
+	commonNetV1 "github.com/isovalent/ipa/common/net/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/checklist"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/deps"
@@ -228,9 +229,10 @@ type ConnectionChecker interface {
 }
 
 type DNSConnectionCheck struct {
-	Names []string
-	Port  UInt64Checker
-	Stats StatsCheck
+	Names    []string
+	Port     UInt64Checker
+	Protocol commonNetV1.IPProtocol
+	Stats    StatsCheck
 }
 
 // String implements ConnectionChecker.
@@ -264,13 +266,21 @@ func (check *DNSConnectionCheck) CheckConnection(connection *v1alpha.Application
 		return ConnectionCheckSkip{Err: fmt.Errorf("missing destination name(s) %v", keys)}
 	}
 	// Check stats
-	return check.Stats.CheckStats(connection.Stats)
+	if err := check.Stats.CheckStats(connection.Stats); err != nil {
+		return err
+	}
+	// Check protocol
+	if check.Protocol != 0 && check.Protocol != connection.Protocol {
+		return fmt.Errorf("protocol mismatch, expected %s, got %s", check.Protocol, connection.Protocol)
+	}
+	return nil
 }
 
 type IPConnectionCheck struct {
-	CIDR  string
-	Port  UInt64Checker
-	Stats StatsCheck
+	CIDR     string
+	Port     UInt64Checker
+	Protocol commonNetV1.IPProtocol
+	Stats    StatsCheck
 }
 
 // String implements ConnectionChecker.
@@ -301,7 +311,14 @@ func (check *IPConnectionCheck) CheckConnection(connection *v1alpha.ApplicationC
 		return ConnectionCheckSkip{Err: fmt.Errorf("IP %s does not match CIDR %s", destination.Ip, check.CIDR)}
 	}
 	// Check stats
-	return check.Stats.CheckStats(connection.Stats)
+	if err := check.Stats.CheckStats(connection.Stats); err != nil {
+		return err
+	}
+	// Check protocol
+	if check.Protocol != 0 && check.Protocol != connection.Protocol {
+		return fmt.Errorf("protocol mismatch, expected %s, got %s", check.Protocol, connection.Protocol)
+	}
+	return nil
 }
 
 func parseCIDR(cidr string) (*stdNet.IPNet, error) {
@@ -334,6 +351,7 @@ type WorkloadConnectionCheck struct {
 	Namespace string
 	Kind      k8sTypes.WorkloadKind
 	Port      UInt64Checker
+	Protocol  commonNetV1.IPProtocol
 	Stats     StatsCheck
 }
 
@@ -366,7 +384,14 @@ func (check *WorkloadConnectionCheck) CheckConnection(connection *v1alpha.Applic
 		return ConnectionCheckSkip{Err: fmt.Errorf("workload kind mismatch, expected %s, got %s", check.Kind.String(), destination.Kind.String())}
 	}
 	// Check stats
-	return check.Stats.CheckStats(connection.Stats)
+	if err := check.Stats.CheckStats(connection.Stats); err != nil {
+		return err
+	}
+	// Check protocol
+	if check.Protocol != 0 && check.Protocol != connection.Protocol {
+		return fmt.Errorf("protocol mismatch, expected %s, got %s", check.Protocol, connection.Protocol)
+	}
+	return nil
 }
 
 type StatsCheck struct {

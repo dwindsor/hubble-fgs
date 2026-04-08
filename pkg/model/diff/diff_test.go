@@ -18,6 +18,7 @@ import (
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
+	commonNetV1 "github.com/isovalent/ipa/common/net/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -169,6 +170,40 @@ func TestConnectionStatsDiff(t *testing.T) {
 	assert.Equal(t, uint64(15), d[1].Stats.DefaultDropBytes)
 	assert.Equal(t, uint64(25), d[1].Stats.DefaultAllowBytes)
 	assert.Equal(t, "aTestPolicy", d[1].Policy.PolicyName)
+}
+
+func TestConnectionDiffDistinguishesProtocol(t *testing.T) {
+	// Use distinct baseline stats for TCP and UDP so that incorrect cross-protocol
+	// pairing produces wrong diff values (not just wrong order).
+	tcpOld := &appModelV1.ConnectionStats{TxBytes: 10}
+	udpOld := &appModelV1.ConnectionStats{TxBytes: 20}
+	tcpNew := &appModelV1.ConnectionStats{TxBytes: 100}
+	udpNew := &appModelV1.ConnectionStats{TxBytes: 200}
+
+	a := []*appModelV1.ApplicationConnection{
+		{Destination: destA(), Stats: tcpNew, Policy: policy(), Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP},
+		{Destination: destA(), Stats: udpNew, Policy: policy(), Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_UDP},
+	}
+	b := []*appModelV1.ApplicationConnection{
+		{Destination: destA(), Stats: tcpOld, Policy: policy(), Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP},
+		{Destination: destA(), Stats: udpOld, Policy: policy(), Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_UDP},
+	}
+
+	d, err := ConnectionDiff(a, b)
+	require.NoError(t, err)
+	require.Len(t, d, 2)
+
+	byProtocol := make(map[commonNetV1.IPProtocol]*appModelV1.ApplicationConnection)
+	for _, conn := range d {
+		byProtocol[conn.Protocol] = conn
+	}
+	require.Contains(t, byProtocol, commonNetV1.IPProtocol_IP_PROTOCOL_TCP)
+	require.Contains(t, byProtocol, commonNetV1.IPProtocol_IP_PROTOCOL_UDP)
+
+	// TCP must diff against TCP baseline (100-10=90), not UDP (100-20=80).
+	assert.Equal(t, uint64(90), byProtocol[commonNetV1.IPProtocol_IP_PROTOCOL_TCP].Stats.TxBytes)
+	// UDP must diff against UDP baseline (200-20=180), not TCP (200-10=190).
+	assert.Equal(t, uint64(180), byProtocol[commonNetV1.IPProtocol_IP_PROTOCOL_UDP].Stats.TxBytes)
 }
 
 func psGroup() []*appModelV1.ApplicationProcessGroup {
@@ -692,6 +727,46 @@ func TestToNetworkFlatHost(t *testing.T) {
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
 }
 
+func TestToNetworkFlatProtocol(t *testing.T) {
+	ctx := context.Background()
+
+	ps := []*appModelV1.ApplicationProcessGroup{{
+		Name: "test",
+		Connections: []*appModelV1.ApplicationConnection{
+			{
+				Destination: destA(),
+				Stats:       connStatsA(),
+				Policy:      policy(),
+				Protocol:    commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
+			},
+			{
+				Destination: destB(),
+				Stats:       connStatsB(),
+				Policy:      policy(),
+				Protocol:    commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+			},
+		},
+	}}
+	m := &appModelV1.ApplicationModel{
+		Id:   "proto-test",
+		Host: &appModelV1.ApplicationHost{Processes: ps},
+	}
+
+	f, err := ApplicationModelToNetworkFlat(ctx, m)
+	require.NoError(t, err)
+	require.Len(t, f, 2)
+
+	byDest := make(map[string]*appModelV1.NetworkConnectTelemetry)
+	for _, entry := range f {
+		byDest[entry.DestinationName] = entry
+	}
+
+	assert.Equal(t, commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
+		byDest["10.0.0.1"].Protocol)
+	assert.Equal(t, commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+		byDest["ebpf.io"].Protocol)
+}
+
 // This is broken after IPA upgrades the UNSPECIFIED should be a service.
 func Test_getDestination(t *testing.T) {
 	dest := appModelV1.Destination{
@@ -734,6 +809,7 @@ func TestTelemetryToConnection(t *testing.T) {
 				DestinationPort:                   443,
 				TxBytes:                           1234,
 				ApplicationModelId:                "u-u-i-d",
+				Protocol:                          commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
 			},
 			expected: &graphV1.Connection{
 				Source: &graphV1.Vertex{
@@ -752,8 +828,9 @@ func TestTelemetryToConnection(t *testing.T) {
 				Destination: &graphV1.Vertex{
 					Family: &graphV1.Vertex_WorldEntity{
 						WorldEntity: &graphV1.VertexFamilyWorldEntity{
-							DnsName: "grafana.com",
-							Port:    443,
+							DnsName:    "grafana.com",
+							Port:       443,
+							IpProtocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
 						},
 					},
 				},
@@ -835,6 +912,7 @@ func TestTelemetryToConnection(t *testing.T) {
 				DestinationPort:                   443,
 				TxBytes:                           1234,
 				ApplicationModelId:                "u-u-i-d",
+				Protocol:                          commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
 			},
 			expected: &graphV1.Connection{
 				Source: &graphV1.Vertex{
@@ -860,6 +938,7 @@ func TestTelemetryToConnection(t *testing.T) {
 							ServiceKind:  common.ServiceKind_SERVICE_KIND_CLUSTER_IP,
 							WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 							Port:         443,
+							IpProtocol:   commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
 						},
 					},
 				},

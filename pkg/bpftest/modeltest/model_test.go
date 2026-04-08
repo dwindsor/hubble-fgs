@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	commonNetV1 "github.com/isovalent/ipa/common/net/v1alpha"
+
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
@@ -89,8 +91,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				Timeout: 10 * time.Second,
 				ConnectionChecks: model.ConnectionChecks{
 					&model.DNSConnectionCheck{
-						Names: []string{"localhost."},
-						Port:  model.UInt64Exactly(8080),
+						Names:    []string{"localhost."},
+						Port:     model.UInt64Exactly(8080),
+						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
 						Stats: model.StatsCheck{
 							TxBytes: model.UInt64GreaterThan(0),
 							RxBytes: model.UInt64GreaterThan(0),
@@ -122,14 +125,103 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				Timeout: 10 * time.Second,
 				ConnectionChecks: model.ConnectionChecks{
 					&model.DNSConnectionCheck{
-						Names: []string{"localhost."},
-						Port:  model.UInt64Exactly(9999),
+						Names:    []string{"localhost."},
+						Port:     model.UInt64Exactly(9999),
+						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
 						Stats: model.StatsCheck{
 							// Exact lengths as reported
 							TxBytes: model.UInt64GreaterThan(0),
 							RxBytes: model.UInt64GreaterThan(0),
 							TxDrops: model.UInt64Exactly(0),
 						},
+					},
+				},
+			},
+		},
+	},
+
+	"UDPNetcatMessage": {
+		Host: model.Binaries{
+			// UDP netcat server
+			{
+				Cmd:             "nc",
+				Args:            []string{"-4", "-u", "-l", "-p", "9998"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+			},
+			// UDP client
+			{
+				Cmd:  "nc",
+				Args: []string{"-4", "-u", "-w1", "localhost", "9998"},
+				Dependencies: []deps.Dependency{
+					deps.NewUDPPortOpen(9998),
+				},
+				Stdin:           "hello udp",
+				Timeout:         5 * time.Second,
+				TimeoutExpected: true,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:    []string{"localhost."},
+						Port:     model.UInt64Exactly(9998),
+						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						Stats:    model.StatsCheck{TxBytes: model.UInt64GreaterThan(0)},
+					},
+				},
+			},
+		},
+	},
+
+	"TCPAndUDPSamePort": {
+		Host: model.Binaries{
+			// TCP server on port 9997
+			{
+				Cmd:             "nc",
+				Args:            []string{"-4", "-l", "-p", "9997"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+			},
+			// UDP server on port 9997
+			{
+				Cmd:             "nc",
+				Args:            []string{"-4", "-u", "-l", "-p", "9997"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+				Dependencies:    []deps.Dependency{deps.NewTCPPortOpen(9997)},
+			},
+			// TCP client
+			{
+				Cmd:  "nc",
+				Args: []string{"-4", "localhost", "9997"},
+				Dependencies: []deps.Dependency{
+					deps.NewUDPPortOpen(9997),
+				},
+				Stdin:   "hello tcp",
+				Timeout: 10 * time.Second,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:    []string{"localhost."},
+						Port:     model.UInt64Exactly(9997),
+						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
+						Stats:    model.StatsCheck{TxBytes: model.UInt64GreaterThan(0)},
+					},
+				},
+			},
+			// UDP client
+			{
+				Cmd:  "nc",
+				Args: []string{"-4", "-u", "-w1", "localhost", "9997"},
+				Dependencies: []deps.Dependency{
+					deps.NewUDPPortOpen(9997),
+				},
+				Stdin:           "hello udp",
+				Timeout:         5 * time.Second,
+				TimeoutExpected: true,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:    []string{"localhost."},
+						Port:     model.UInt64Exactly(9997),
+						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						Stats:    model.StatsCheck{TxBytes: model.UInt64GreaterThan(0)},
 					},
 				},
 			},

@@ -219,6 +219,76 @@ func (tpo *TCPPortOpen) String() string {
 	return fmt.Sprintf("TCPPortOpen(%d)", tpo.Port)
 }
 
+// UDPPortOpen checks if a UDP port is bound (has a socket open)
+type UDPPortOpen struct {
+	Port uint16
+}
+
+// NewUDPPortOpen creates a new UDPPortOpen dependency
+func NewUDPPortOpen(port uint16) *UDPPortOpen {
+	return &UDPPortOpen{Port: port}
+}
+
+func (upo *UDPPortOpen) Check(_ context.Context, _ *ProcessRegistry) (bool, error) {
+	files := []string{"/proc/net/udp", "/proc/net/udp6"}
+	for _, file := range files {
+		if found, err := upo.checkUDPFile(file); err != nil {
+			return false, err
+		} else if found {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (upo *UDPPortOpen) checkUDPFile(filename string) (bool, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to open %s: %w", filename, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	// Skip header line
+	if !scanner.Scan() {
+		return false, nil
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		localAddr := fields[1]
+		parts := strings.Split(localAddr, ":")
+		if len(parts) != 2 {
+			continue
+		}
+
+		portHex := parts[1]
+		port, err := strconv.ParseUint(portHex, 16, 16)
+		if err != nil {
+			continue
+		}
+
+		// UDP has no LISTEN state; any bound socket matches.
+		if uint16(port) == upo.Port {
+			return true, nil
+		}
+	}
+
+	return false, scanner.Err()
+}
+
+func (upo *UDPPortOpen) String() string {
+	return fmt.Sprintf("UDPPortOpen(%d)", upo.Port)
+}
+
 // CheckDependencies checks all dependencies with the given timeout
 func CheckDependencies(ctx context.Context, deps []Dependency, registry *ProcessRegistry, timeout time.Duration) error {
 	if len(deps) == 0 {
