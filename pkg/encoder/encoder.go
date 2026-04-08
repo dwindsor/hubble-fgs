@@ -290,7 +290,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, event.Process)
 
 		eventName := p.colorer.Blue.Sprintf("💢 %-7s", "udp-seq-err")
-		details := p.colorer.Cyan.Sprint(event.Socket.SourceIp, "->", event.Socket.DestinationIp, fmt.Sprintf("%d(expected)", event.SeqNumExpected), fmt.Sprintf("%d(received)", event.SeqNumReceived))
+		details := p.colorer.Cyan.Sprint(event.Socket.SourceIp, "->", event.Socket.DestinationIp, fmt.Sprintf(" %d(expected)", event.SeqNumExpected), fmt.Sprintf(" %d(received)", event.SeqNumReceived))
 
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", eventName, processInfo, details), caps), nil
 	case *tetragon.GetEventsResponse_ProcessFileExec:
