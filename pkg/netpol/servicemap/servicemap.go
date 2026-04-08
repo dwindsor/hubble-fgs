@@ -14,6 +14,7 @@ import (
 	"net/netip"
 	"sync"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -149,7 +150,7 @@ func (sm *ServiceMap) UpdateEndpoints(namespace, name string, endpoints []Endpoi
 	} else if svcExists {
 		// Log warning if callback not set but service exists
 		// This would indicate initialization order issue
-		println("WARNING: servicemap.OnEndpointChange is nil, endpoint changes won't update policies")
+		logger.GetLogger().Warn("servicemap.OnEndpointChange is nil, endpoint changes won't update policies")
 	}
 }
 
