@@ -121,6 +121,7 @@ func (p *bpfRecordBackend) populateStatEntry(key types.DestinationEndpointKey, v
 	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
 	if key.DestinationPort != 0 {
 		key.DestinationPort = 0
+		key.Protocol = 0
 		value.Port = 0
 		if err := p.conflictUpdateMap(key, value); err != nil {
 			return err

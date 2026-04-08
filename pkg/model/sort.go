@@ -136,7 +136,7 @@ func EnsureSorted(model *appModelV1.ApplicationModel) {
 							}
 						case *appModelV1.ApplicationConnection:
 							b := b.(*appModelV1.ApplicationConnection)
-							return CompareDestination(a.Destination, b.Destination)
+							return CompareConnection(a, b)
 						default:
 							unhandledErr = fmt.Errorf("%w: %T", ErrUnhandledMessageType, a)
 							return 0
@@ -162,6 +162,14 @@ func EnsureSorted(model *appModelV1.ApplicationModel) {
 			}
 			return nil
 		})
+}
+
+// CompareConnection compares two [appModelV1.ApplicationConnection] by destination and protocol.
+func CompareConnection(a, b *appModelV1.ApplicationConnection) int {
+	if res := CompareDestination(a.Destination, b.Destination); res != 0 {
+		return res
+	}
+	return cmp.Compare(int32(a.Protocol), int32(b.Protocol))
 }
 
 // CompareDestination compares two [appModelV1.Destination].
@@ -282,6 +290,9 @@ func CompareNetworkKeys(a, b NetworkKey) int {
 		return result
 	}
 	if result := cmp.Compare(a.DestinationPort, b.DestinationPort); result != 0 {
+		return result
+	}
+	if result := cmp.Compare(a.Protocol, b.Protocol); result != 0 {
 		return result
 	}
 	return 0

@@ -542,12 +542,14 @@ func getProcessModel(namespaces []string,
 				DestinationNames: []string{},
 				Port:             0,
 				Stats:            stats,
+				Protocol:         dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_DNS:
 			d = &types.Destination{
 				DestinationNames: strings.Split(ep.Dns, ","),
 				Port:             dstVal.Port,
 				Stats:            stats,
+				Protocol:         dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_POD:
 			d = &types.Destination{
@@ -556,14 +558,16 @@ func getProcessModel(namespaces []string,
 					Workload:     ep.Name,
 					WorkloadKind: ep.Kind,
 				},
-				Port:  dstVal.Port,
-				Stats: stats,
+				Port:     dstVal.Port,
+				Stats:    stats,
+				Protocol: dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
 			d = &types.Destination{
 				DestinationNames: []string{ep.CIDR.String()},
 				Port:             dstVal.Port,
 				Stats:            stats,
+				Protocol:         dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_SERVICE:
 			d = &types.Destination{
@@ -571,31 +575,36 @@ func getProcessModel(namespaces []string,
 					Namespace: ep.Namespace,
 					Name:      ep.Name,
 				},
-				Port:  dstVal.Port,
-				Stats: stats,
+				Port:     dstVal.Port,
+				Stats:    stats,
+				Protocol: dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_LISTEN:
 			d = &types.Destination{
-				Port:  dstVal.Port,
-				Stats: stats,
+				Port:     dstVal.Port,
+				Stats:    stats,
+				Protocol: dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_BPF_DNS:
 			d = &types.Destination{
 				DestinationNames: []string{ep.Name},
 				Port:             dstVal.Port,
 				Stats:            stats,
+				Protocol:         dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_NODE:
 			d = &types.Destination{
 				DestinationNames: []string{ep.Name},
 				Port:             dstVal.Port,
 				Stats:            stats,
+				Protocol:         dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_CIDR:
 			d = &types.Destination{
 				DestinationNames: []string{ep.CIDR.String()},
 				Port:             dstVal.Port,
 				Stats:            stats,
+				Protocol:         dstVal.Protocol,
 			}
 		}
 

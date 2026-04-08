@@ -63,8 +63,7 @@ func ConnectionDiff(a, b []*appModelV1.ApplicationConnection) ([]*appModelV1.App
 	for _, connA := range a {
 		found := false
 		for _, connB := range b {
-			res := model.CompareDestination(connA.Destination, connB.Destination)
-			if res == 0 {
+			if model.CompareConnection(connA, connB) == 0 {
 				found = true
 				stats, err := StatsDiff(connA.Stats, connB.Stats)
 				if err != nil {
@@ -76,6 +75,7 @@ func ConnectionDiff(a, b []*appModelV1.ApplicationConnection) ([]*appModelV1.App
 					Destination: connA.Destination,
 					Stats:       stats,
 					Policy:      connA.Policy,
+					Protocol:    connA.Protocol,
 				}
 				if !StatsZero(diff.Stats) {
 					connsDiff = append(connsDiff, diff)
@@ -607,6 +607,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							RuleName:                          c.Policy.RuleName,
 							Verdict:                           verdict,
 							ApplicationModelId:                a.Id,
+							Protocol:                          c.Protocol,
 						}
 						n = append(n, entry)
 					}
@@ -648,6 +649,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					RuleName:                          c.Policy.RuleName,
 					Verdict:                           verdict,
 					ApplicationModelId:                a.Id,
+					Protocol:                          c.Protocol,
 				}
 				n = append(n, entry)
 			}
@@ -694,6 +696,7 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 					ServiceKind:  telemetry.DestinationKubernetesServiceKind,
 					WorkloadKind: telemetry.DestinationKubernetesWorkloadKind,
 					Port:         telemetry.DestinationPort,
+					IpProtocol:   telemetry.Protocol,
 				},
 			},
 		}
@@ -702,8 +705,9 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		destination = &graphV1.Vertex{
 			Family: &graphV1.Vertex_WorldEntity{
 				WorldEntity: &graphV1.VertexFamilyWorldEntity{
-					DnsName: telemetry.DestinationName,
-					Port:    telemetry.DestinationPort,
+					DnsName:    telemetry.DestinationName,
+					Port:       telemetry.DestinationPort,
+					IpProtocol: telemetry.Protocol,
 				},
 			},
 		}
@@ -711,8 +715,9 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		destination = &graphV1.Vertex{
 			Family: &graphV1.Vertex_WorldEntity{
 				WorldEntity: &graphV1.VertexFamilyWorldEntity{
-					DnsName: telemetry.DestinationName,
-					Port:    telemetry.DestinationPort,
+					DnsName:    telemetry.DestinationName,
+					Port:       telemetry.DestinationPort,
+					IpProtocol: telemetry.Protocol,
 				},
 			},
 		}

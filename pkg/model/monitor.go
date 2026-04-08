@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
+	commonNetV1 "github.com/isovalent/ipa/common/net/v1alpha"
 
 	"github.com/cilium/tetragon/pkg/logger"
 
@@ -57,7 +58,8 @@ type NetworkKey struct {
 	SourceContainer            types.ContainerInfo
 	SourceProcessName          string
 	SourceProcessArgs          string
-	DestinationPort            uint64
+	DestinationPort            uint32
+	Protocol                   commonNetV1.IPProtocol
 	// DNS
 	DestinationNames string
 	// IP
@@ -336,11 +338,12 @@ func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 		nwKey.DestinationResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_SERVICE
 	}
 
-	nwKey.DestinationPort = uint64(dst.Port)
+	nwKey.DestinationPort = dst.Port
+	nwKey.Protocol = commonNetV1.IPProtocol(dst.Protocol)
 }
 
 // addDestinationInfoAppModel adds destination information from a [appModelV1.Destination] to a [NetworkKey].
-func addDestinationInfoAppModel(dst *appModelV1.Destination, nwKey *NetworkKey) {
+func addDestinationInfoAppModel(dst *appModelV1.Destination, protocol commonNetV1.IPProtocol, nwKey *NetworkKey) {
 	switch dt := dst.Type.(type) {
 	case *appModelV1.Destination_Dns:
 		nwKey.DestinationNames = strings.Join(dt.Dns.DestinationNames, ",")
@@ -355,13 +358,14 @@ func addDestinationInfoAppModel(dst *appModelV1.Destination, nwKey *NetworkKey) 
 		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", dt))
 	}
 
-	nwKey.DestinationPort = dst.Port
+	nwKey.DestinationPort = uint32(dst.Port)
+	nwKey.Protocol = protocol
 }
 
 // nwKeyToDestination creates an [appModelV1.Destination] corresponding to a [NetworkKey].
 func nwKeyToDestination(nwKey *NetworkKey) *appModelV1.Destination {
 	res := &appModelV1.Destination{
-		Port: nwKey.DestinationPort,
+		Port: uint64(nwKey.DestinationPort),
 	}
 
 	if nwKey.DestinationNames != "" {

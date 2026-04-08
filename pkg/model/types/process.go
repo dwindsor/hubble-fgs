@@ -86,6 +86,7 @@ type Destination struct {
 	Port               uint32
 	Stats              *DestinationStats
 	DestinationService *Service
+	Protocol           uint32
 }
 
 type Workload struct {
