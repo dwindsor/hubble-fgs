@@ -118,14 +118,20 @@ func DefaultDpSyslogInput() InputSection {
 						"call": "cb_syslog",
 						"code": `function cb_syslog(tag, timestamp, record)
 	local formatted_message = ""
+	local src_vlan = record["src_vlan"] or record["vlan"] or ""
+	local dst_vlan = record["dst_vlan"] or record["vlan"] or ""
+	local src_vrf = record["src_vrf"] or record["vrf"] or ""
+	local dst_vrf = record["dst_vrf"] or record["vrf"] or ""
 
 	if record["msg_code"] == 1 then  -- SYSLOG_POLICY_MATCH
 		formatted_message = "[FWPOLICY] policy_match"
 			.. " src_ip=" .. (record["src_ip"] or "")
 			.. " dst_ip=" .. (record["dst_ip"] or "")
 			.. " dst_port=" .. (record["dst_port"] or "")
-			.. " vlan=" .. (record["vlan"] or "")
-			.. " vrf=" .. (record["vrf"] or "")
+			.. " src_vlan=" .. src_vlan
+			.. " dst_vlan=" .. dst_vlan
+			.. " src_vrf=" .. src_vrf
+			.. " dst_vrf=" .. dst_vrf
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " decision=" .. (record["policy_decision"] or "")
 			.. " policy=" .. (record["policy_name"] or "")
@@ -137,8 +143,10 @@ func DefaultDpSyslogInput() InputSection {
 			.. " src_ip=" .. (record["src_ip"] or "")
 			.. " dst_ip=" .. (record["dst_ip"] or "")
 			.. " dst_port=" .. (record["dst_port"] or "")
-			.. " vlan=" .. (record["vlan"] or "")
-			.. " vrf=" .. (record["vrf"] or "")
+			.. " src_vlan=" .. src_vlan
+			.. " dst_vlan=" .. dst_vlan
+			.. " src_vrf=" .. src_vrf
+			.. " dst_vrf=" .. dst_vrf
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " severity=" .. (record["severity"] or "")
 			.. " count=" .. (record["count"] or "")
@@ -147,8 +155,10 @@ func DefaultDpSyslogInput() InputSection {
             .. " src_ip=" .. (record["src_ip"] or "")
             .. " dst_ip=" .. (record["dst_ip"] or "")
             .. " dst_port=" .. (record["dst_port"] or "")
-			.. " vlan=" .. (record["vlan"] or "")
-			.. " vrf=" .. (record["vrf"] or "")
+			.. " src_vlan=" .. src_vlan
+			.. " dst_vlan=" .. dst_vlan
+			.. " src_vrf=" .. src_vrf
+			.. " dst_vrf=" .. dst_vrf
 			.. " protocol=" .. (record["protocol"] or "")
             .. " severity=" .. (record["severity"] or "")
             .. " count=" .. (record["count"] or "")
@@ -158,8 +168,10 @@ func DefaultDpSyslogInput() InputSection {
 			.. " src_ip=" .. (record["src_ip"] or "")
 			.. " dst_ip=" .. (record["dst_ip"] or "")
 			.. " dst_port=" .. (record["dst_port"] or "")
-			.. " vlan=" .. (record["vlan"] or "")
-			.. " vrf=" .. (record["vrf"] or "")
+			.. " src_vlan=" .. src_vlan
+			.. " dst_vlan=" .. dst_vlan
+			.. " src_vrf=" .. src_vrf
+			.. " dst_vrf=" .. dst_vrf
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " facility=" .. (record["facility"] or "")
 			.. " severity=" .. (record["severity"] or "")
