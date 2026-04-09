@@ -154,7 +154,7 @@ func TestManager(t *testing.T) {
 		oldFailures = status.Log.Failures
 		oldTotal = status.Log.Total
 		err = os.Rename(
-			filepath.Join(tmpDir, "mandate-failure.yaml"),
+			filepath.Join(tmpDir, mandateFailure),
 			filepath.Join(tmpDir, "mandate.yaml"),
 		)
 		require.NoError(t, err)
