@@ -999,12 +999,10 @@ func (m *manager) ProcessMemberInfo(ctx context.Context, peer string, info types
 
 	// Update member criteria: only hard failures (model/version/DPU mismatch)
 	// affect membership. Soft failures (svc failure, policy mismatch) do not.
+	// peer_vrf_gid is NOT cleared here — Reconcile is the sole writer of that
+	// criterion. Clearing it on hard failure would clobber server-side Reconcile
+	// results on the next tick and prevent recovery when the failure clears.
 	m.haStore.UpdatePeerMemberCriterion(ctx, peer, types.HACritPeerCompatible, !isHardFailure)
-
-	// Clear VRF GID criterion when membership fails
-	if isHardFailure {
-		m.haStore.UpdatePeerMemberCriterion(ctx, peer, types.HACritPeerVrfGid, false)
-	}
 
 	// Update partner svc state to exactly reflect what the peer reports.
 	m.validator.UpdatePartner(ctx, peer, info)
@@ -1426,9 +1424,10 @@ func (m *manager) sendAdjacency(ctx context.Context, peer string, localInfo type
 	m.haStore.UpdatePeerConnected(ctx, peer, true, time.Now().Unix())
 	// Re-push DPU aggregate criteria on reconnection.
 	// UpdatePeerConnected(false) resets all criteria to false; the adjacency
-	// exchange restores peer_compatible, peer_service, and peer_vrf_gid via
-	// ProcessMemberInfo, but peer_dpu_keepalive and peer_dpu_bulk_sync are only
-	// written by aggregateDPUStatus() which is not triggered during adjacency.
+	// exchange restores peer_compatible and peer_service via ProcessMemberInfo,
+	// and peer_vrf_gid via Reconcile (on both success and failure paths), but
+	// peer_dpu_keepalive and peer_dpu_bulk_sync are only written by
+	// aggregateDPUStatus() which is not triggered during adjacency.
 	if wasDisconnected {
 		m.aggregateDPUStatus(ctx)
 	}
@@ -1445,6 +1444,17 @@ func (m *manager) sendAdjacency(ctx context.Context, peer string, localInfo type
 			// is updated without waiting for the next adjacency cycle.
 			if resp.MbrInfo.HaInfo != nil {
 				m.ProcessHaInfo(ctx, peer, resp.MbrInfo.HaInfo)
+			}
+			// Reconcile GIDs even on ADJ_FAILURE. The response always includes
+			// VrfInfo and GID reconciliation is independent of membership
+			// validation. Without this, peer_vrf_gid stays stuck at false
+			// after a criteria reset when the peer keeps returning ADJ_FAILURE.
+			if m.reconciler != nil {
+				ok, err := m.reconciler.Reconcile(ctx, peer, resp.MbrInfo, localInfo.LbMode)
+				if err != nil {
+					logger.GetLogger().Warn("HA reconciliation failed (adj-failure path)", "peer", peer, "error", err)
+				}
+				m.haStore.UpdatePeerMemberCriterion(ctx, peer, types.HACritPeerVrfGid, ok)
 			}
 		}
 		return fmt.Errorf("adjacency failed: %s", resp.Details)

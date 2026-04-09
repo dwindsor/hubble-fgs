@@ -43,11 +43,12 @@ func (s *haStore) handleDelete(ctx context.Context, path string) {
 	// Delete of ha-items container (full HA config deleted).
 	// Match the ha-items container path but not ext-items children (agent-managed).
 	if paths.PathMatches(path, paths.HAStoreHaItems) {
-		// Clear admin state first so pushHaToNx becomes false for subsequent operations.
+		// Clear config fields before removing peers so isHAConfiguredLocked()
+		// returns false once the peer list is also empty.
 		s.SetEnabled(ctx, "")
 		s.SetSwitchState(ctx, "")
 		s.SetHaIP(ctx, "")
-		// Remove peers (no gNMI writes since pushHaToNx is now false).
+		// Remove peers — no gNMI writes since isHAConfiguredLocked() is now false.
 		peerIPs := s.PeerIPs()
 		for _, ip := range peerIPs {
 			s.RemovePeer(ctx, ip)

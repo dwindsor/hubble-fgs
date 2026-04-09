@@ -213,6 +213,16 @@ func (m *manager) Setup(ctx context.Context) error {
 		}
 	}
 
+	// Seed LbMode from gNMI GET before starting subscriptions.
+	// This ensures isPinningActive() returns the correct value when
+	// VRFs/VLANs are activated from gNMI subscription notifications.
+	if strs, err := m.gnmiHandler.Get(ctx, paths.DeviceStoreLoadBalancingMode); err != nil {
+		logger.GetLogger().Warn("Failed to GET LbMode, will rely on subscription", logfields.Error, err)
+	} else if len(strs) > 0 && strs[0] != "" {
+		m.deviceStore.SetLbMode(ctx, strs[0])
+		logger.GetLogger().Info("Seeded LbMode from gNMI GET", "lbMode", strs[0])
+	}
+
 	// Register VRF change watcher to keep policyHandler and config library in sync.
 	m.setupVRFPolicyWatcher()
 

@@ -278,5 +278,11 @@ func (s *haStore) persist(ctx context.Context) {
 	}
 }
 
+// isHAConfiguredLocked reports whether any HA configuration exists on the switch.
+// Must be called with s.mu held.
+func (s *haStore) isHAConfiguredLocked() bool {
+	return s.haIP != "" || s.switchState != "" || len(s.peers) > 0 || s.enabled != ""
+}
+
 // Ensure haStore implements Store interface
 var _ Store = (*haStore)(nil)

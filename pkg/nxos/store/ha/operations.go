@@ -141,13 +141,12 @@ func (s *haStore) SetLocalDerivedStates(ctx context.Context, haState, svcState s
 	if svcChanged {
 		s.localState.SvcStateEpoch = now
 	}
-	// Only push HA state to NX-OS when the switch HA container is operational.
-	// The container exists only when the switch is in ha-ready state; when not
-	// ha-ready it rejects SET operations with "Only end-users can create
-	// high-availability config". Gating on switchState (not adminState) ensures
-	// cleanup writes land during the brief window after admin-disable while the
-	// switch is still in ha-ready.
-	pushHaToNx := s.switchState == SwitchStateHaReady
+	// Only push HA state to NX-OS when HA is configured on the switch.
+	// Gating on any HA configuration existing (IP, oper state, peers, or admin
+	// state) ensures writes land even when the switch oper state is not yet
+	// ha-ready, which can occur transiently during bring-up or after a config
+	// change.
+	pushHaToNx := s.isHAConfiguredLocked()
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -463,7 +462,7 @@ func (s *haStore) UpdatePeerHaState(ctx context.Context, ip string, haState stri
 		peer.HaStateEpoch = now
 	}
 	s.peers[ip] = peer
-	pushHaToNx := s.switchState == SwitchStateHaReady
+	pushHaToNx := s.isHAConfiguredLocked()
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	// Not persisted — peer HA state is runtime state computed by the HA state machine.
@@ -494,7 +493,7 @@ func (s *haStore) UpdatePeerSvcState(ctx context.Context, ip string, svcState st
 		peer.SvcStateEpoch = now
 	}
 	s.peers[ip] = peer
-	pushHaToNx := s.switchState == SwitchStateHaReady
+	pushHaToNx := s.isHAConfiguredLocked()
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 	// Not persisted — peer service state is runtime state rebuilt via HA protocol.
@@ -589,7 +588,7 @@ func (s *haStore) SetLocalHaStateToNotReady(ctx context.Context, reason types.Re
 	reasonChanged := s.localState.HaStateReason != reason
 	s.localState.HaState = types.HAStateNotReady
 	s.localState.HaStateReason = reason
-	pushHaToNx := s.switchState == SwitchStateHaReady
+	pushHaToNx := s.isHAConfiguredLocked()
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -639,7 +638,7 @@ func (s *haStore) SetRemoteStatesAdjDown(ctx context.Context, peerIP string) err
 		peer.SvcStateReason = reason
 		s.peers[peerIP] = peer
 	}
-	pushHaToNx := s.switchState == SwitchStateHaReady
+	pushHaToNx := s.isHAConfiguredLocked()
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -687,7 +686,7 @@ func writePeerCleanupToNx(ctx context.Context, handler gnmi.GnmiHandler, peerIP 
 // Called during deactivation teardown. Does not remove peers from the map.
 func (s *haStore) ResetAllPeerStates(ctx context.Context, reason types.ReasonString) {
 	s.mu.Lock()
-	pushHaToNx := s.switchState == SwitchStateHaReady
+	pushHaToNx := s.isHAConfiguredLocked()
 	handler := s.gnmiHandler
 	peers := make([]string, 0, len(s.peers))
 	for ip := range s.peers {

@@ -227,11 +227,11 @@ func TestSetRemoteStatesAdjDown_SetsReasonsViaGnmi(t *testing.T) {
 	}
 }
 
-func TestSetLocalDerivedStates_SwitchNotReady_SkipsHaGnmi_PushesSvc(t *testing.T) {
+func TestSetLocalDerivedStates_NoHAConfig_SkipsHaGnmi_PushesSvc(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	// switchState is "" (not "ha-ready") — switch HA container is not up.
+	// No HA config fields set — isHAConfiguredLocked() returns false.
 
 	reason := types.NewReasonString("criteria not met")
 	store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
@@ -246,20 +246,66 @@ func TestSetLocalDerivedStates_SwitchNotReady_SkipsHaGnmi_PushesSvc(t *testing.T
 	}
 
 	data := handler.GetAllData()
-	// HA state should NOT be written to gNMI when switch is not in ha-ready.
+	// HA state should NOT be written to gNMI when no HA config exists.
 	haStateKey := normalizeMockPath(paths.HAStoreLocalHaState)
 	if _, ok := data[haStateKey]; ok {
-		t.Error("expected NO gNMI SET for HAStoreLocalHaState when switch not ha-ready")
+		t.Error("expected NO gNMI SET for HAStoreLocalHaState when no HA config exists")
 	}
 	haReasonKey := normalizeMockPath(paths.HAStoreLocalHaStateReason)
 	if _, ok := data[haReasonKey]; ok {
-		t.Error("expected NO gNMI SET for HAStoreLocalHaStateReason when switch not ha-ready")
+		t.Error("expected NO gNMI SET for HAStoreLocalHaStateReason when no HA config exists")
 	}
 
 	// SVC state SHOULD still be written to gNMI.
 	svcStateKey := normalizeMockPath(paths.HAStoreLocalSvcState)
 	if v, ok := data[svcStateKey]; !ok || v != types.SvcStateFailure {
 		t.Errorf("expected gNMI SET for HAStoreLocalSvcState=%q, got %v (found=%v)", types.SvcStateFailure, v, ok)
+	}
+}
+
+func TestSetLocalDerivedStates_HAConfiguredNotHaReady_PushesHaGnmi(t *testing.T) {
+	ctx := context.Background()
+	peerIP := "10.0.0.9"
+
+	tests := []struct {
+		name  string
+		setup func(s *haStore)
+	}{
+		{
+			name:  "switchState non-ha-ready",
+			setup: func(s *haStore) { s.switchState = SwitchStateHaNotInitialized },
+		},
+		{
+			name:  "haIP only",
+			setup: func(s *haStore) { s.haIP = "192.168.1.1" },
+		},
+		{
+			name:  "enabled only",
+			setup: func(s *haStore) { s.enabled = AdminStateEnabled },
+		},
+		{
+			name: "peer only",
+			setup: func(s *haStore) {
+				s.peers[peerIP] = types.HAPeerState{IP: peerIP}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := mock.NewHandler()
+			store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
+			tt.setup(store)
+
+			reason := types.NewReasonString("criteria not met")
+			store.SetLocalDerivedStates(ctx, types.HAStateNotReady, types.SvcStateFailure, reason, reason, true)
+
+			data := handler.GetAllData()
+			haStateKey := normalizeMockPath(paths.HAStoreLocalHaState)
+			if v, ok := data[haStateKey]; !ok || v != types.HAStateNotReady {
+				t.Errorf("expected gNMI SET for HAStoreLocalHaState=%q, got %v (found=%v)", types.HAStateNotReady, v, ok)
+			}
+		})
 	}
 }
 
@@ -907,20 +953,21 @@ func TestResetAllPeerStates_WritesGnmiAndResetsCriteria(t *testing.T) {
 	}
 }
 
-func TestResetAllPeerStates_SkipsGnmiWhenDisabled(t *testing.T) {
+func TestResetAllPeerStates_SkipsGnmiWhenNoHAConfig(t *testing.T) {
 	ctx := context.Background()
 	handler := mock.NewHandler()
 	store := NewStore(ctx, WithGnmiHandler(handler)).(*haStore)
-	// enabled is "" — HA disabled.
+	// No HA config fields set and no peers — isHAConfiguredLocked() returns false.
+	// We use a sentinel peer IP to confirm no peer-state gNMI SETs occur.
+	const sentinelPeer = "10.255.0.1"
 
-	store.SetPeer(ctx, "10.0.0.1", types.HAPeerState{IP: "10.0.0.1"})
 	store.ResetAllPeerStates(ctx, types.NewReasonString("ha deactivated"))
 
-	// No gNMI SETs should have been written for peer states.
+	// No gNMI SETs should have been written for peer HA/svc state.
 	data := handler.GetAllData()
-	haStatePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaState, "10.0.0.1"))
+	haStatePath := normalizeMockPath(fmt.Sprintf(paths.HAStorePeerHaState, sentinelPeer))
 	if _, ok := data[haStatePath]; ok {
-		t.Error("expected NO gNMI SET for peer haState when HA disabled")
+		t.Error("expected NO gNMI SET for peer haState when no HA config exists")
 	}
 }
 

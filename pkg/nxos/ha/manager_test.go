@@ -22,6 +22,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/dpu"
 	hastore "github.com/isovalent/hubble-fgs/pkg/nxos/store/ha"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/vlan"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/store/vrf"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
@@ -1673,6 +1675,131 @@ func TestSendAdjacency_AdjFailure_ProcessesHaInfo(t *testing.T) {
 	}
 	if peer.SvcState != types.SvcStateSuccess {
 		t.Errorf("expected peer SvcState=success, got %q", peer.SvcState)
+	}
+}
+
+// TestSendAdjacency_AdjFailure_RunsReconcile verifies that Reconcile runs on the
+// ADJ_FAILURE path, restoring peer_vrf_gid after a criteria reset.
+func TestSendAdjacency_AdjFailure_RunsReconcile(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+	vrfStore := vrf.NewStore(ctx)
+	vlanStore := vlan.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithLocalIP("10.0.0.1"),
+		WithDeviceStore(deviceStore),
+		WithVRFStore(vrfStore),
+		WithVLANStore(vlanStore),
+		WithClientFactory(func() Client {
+			c := NewMockClient()
+			c.SetAdjacencyHandler(func(_ context.Context, _ *hav1.AdjRequest) (*hav1.AdjResponse, error) {
+				return &hav1.AdjResponse{
+					Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
+					Details: "membership failure",
+					MbrInfo: &hav1.MbrInfo{
+						VrfInfo: []*hav1.VrfInfo{
+							{Name: "vrf-1", Id: 100},
+						},
+						HaInfo: &hav1.HaInfo{
+							LocalSvcState: hav1.LOCAL_SVC_STATE_LOCAL_SVC_SUCCESS,
+						},
+					},
+				}, nil
+			})
+			return c
+		}),
+	).(*manager)
+
+	// Add peer and connect.
+	haStore.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                "10.0.0.2",
+		Connected:         false,
+		MemberCriteria:    make(types.HACriteria),
+		ServiceCriteria:   make(types.HACriteria),
+		AdjacencyCriteria: make(types.HACriteria),
+	})
+	if err := mgr.ConnectPeer(ctx, "10.0.0.2"); err != nil {
+		t.Fatalf("ConnectPeer failed: %v", err)
+	}
+
+	// Simulate criteria reset: peer_vrf_gid set to false.
+	haStore.UpdatePeerMemberCriterion(ctx, "10.0.0.2", types.HACritPeerVrfGid, false)
+
+	// sendAdjacency returns error (ADJ_FAILURE) — that's expected.
+	_ = mgr.sendAdjacency(ctx, "10.0.0.2", types.HAPeerMember{})
+
+	// peer_vrf_gid must have been restored by Reconcile on the failure path.
+	peer, ok := haStore.Peer("10.0.0.2")
+	if !ok {
+		t.Fatal("peer not found in store")
+	}
+	vrfGid, exists := peer.MemberCriteria[types.HACritPeerVrfGid]
+	if !exists {
+		t.Fatal("expected peer_vrf_gid criterion to exist after ADJ_FAILURE reconcile")
+	}
+	if !vrfGid {
+		t.Error("expected peer_vrf_gid=true after ADJ_FAILURE reconcile, got false")
+	}
+}
+
+// TestProcessMemberInfo_HardFailure_DoesNotClearVrfGid verifies that a hard
+// membership failure (model mismatch) sets peer_compatible=false but does NOT
+// clobber peer_vrf_gid. Reconcile is the sole writer of peer_vrf_gid.
+func TestProcessMemberInfo_HardFailure_DoesNotClearVrfGid(t *testing.T) {
+	ctx := context.Background()
+	haStore := hastore.NewStore(ctx)
+
+	haStore.SetPeer(ctx, "10.0.0.2", types.HAPeerState{
+		IP:                "10.0.0.2",
+		Connected:         true,
+		MemberCriteria:    make(types.HACriteria),
+		ServiceCriteria:   make(types.HACriteria),
+		AdjacencyCriteria: make(types.HACriteria),
+	})
+
+	// Pre-set peer_vrf_gid to true (as if Reconcile had restored it).
+	haStore.UpdatePeerMemberCriterion(ctx, "10.0.0.2", types.HACritPeerVrfGid, true)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithLocalIP("10.0.0.1"),
+		WithDeviceInfoProvider(func() LocalDeviceInfo {
+			return LocalDeviceInfo{
+				Model:     "N9K-C9364C",
+				SWVersion: "10.5(1)",
+				LbMode:    "symmetric_hash",
+			}
+		}),
+	).(*manager)
+
+	// Send peer info with model mismatch → triggers hard failure.
+	mgr.ProcessMemberInfo(ctx, "10.0.0.2", types.HAPeerMember{
+		Model:     "N9K-C9332C",
+		SWVersion: "10.5(1)",
+		LbMode:    "symmetric_hash",
+		Service:   types.SvcStateSuccess,
+	})
+
+	peer, ok := haStore.Peer("10.0.0.2")
+	if !ok {
+		t.Fatal("peer not found in store")
+	}
+
+	// peer_compatible must be false (hard failure).
+	if peer.MemberCriteria[types.HACritPeerCompatible] {
+		t.Error("expected peer_compatible=false after model mismatch")
+	}
+
+	// peer_vrf_gid must NOT have been clobbered — still true from pre-set.
+	vrfGid, exists := peer.MemberCriteria[types.HACritPeerVrfGid]
+	if !exists {
+		t.Fatal("expected peer_vrf_gid criterion to still exist after hard failure")
+	}
+	if !vrfGid {
+		t.Error("expected peer_vrf_gid=true (not clobbered by hard failure), got false")
 	}
 }
 
