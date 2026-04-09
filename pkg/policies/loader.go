@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/defaults"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -98,13 +97,9 @@ func (p *defaultLoader) OnNetworkPolicy(_ context.Context, _ string, bytes []byt
 }
 
 func (p *defaultLoader) OnAlertRule(_ context.Context, fname string, bytes []byte) error {
-	obj, err := alerts.FromYAML(string(bytes))
+	ar, err := alerts.RuleFromYAML(string(bytes))
 	if err != nil {
 		return err
-	}
-	ar, ok := obj.(*v1alpha1.AlertRule)
-	if !ok {
-		return fmt.Errorf("unexpected object type: %T", obj)
 	}
 	if ar.Spec.Export.Filename == "" {
 		ar.Spec.Export.Filename = filepath.Base(fname) + ".log"
