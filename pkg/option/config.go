@@ -13,8 +13,6 @@ package option
 import (
 	"time"
 
-	"github.com/cilium/tetragon/pkg/option"
-
 	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
@@ -165,11 +163,3 @@ var (
 		ApplicationModelSplitMaxHostProcs: 100,
 	}
 )
-
-func K8SControlPlaneEnabled() bool {
-	return option.K8SControlPlaneEnabled() || len(Config.K8sServiceAccountAuth) > 0
-}
-
-func InClusterControlPlaneEnabled() bool {
-	return option.InClusterControlPlaneEnabled() && len(Config.K8sServiceAccountAuth) == 0
-}
