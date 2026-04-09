@@ -15,26 +15,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/yaml"
 
-	"github.com/cilium/tetragon/pkg/crdutils"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-)
-
-var (
-	spContext  *crdutils.CRDContext[*v1alpha1.SandboxPolicy]
-	spOnce     sync.Once
-	spnContext *crdutils.CRDContext[*v1alpha1.SandboxPolicyNamespaced]
-	spnOnce    sync.Once
 )
 
 func AddSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj interface{}) error {
@@ -91,54 +79,4 @@ func AddSandboxPolicyFromYAML(
 
 	log = log.With("from-yaml", true)
 	return AddSandboxPolicy(ctx, log, s, sp)
-}
-
-// FromYAML inspects the YAML input to determine the kind, then dispatches to
-// the generic FromYAML function.
-func FromYAML(data string) (crdutils.CRDObject, error) {
-	var unstr unstructured.Unstructured
-	if err := yaml.UnmarshalStrict([]byte(data), &unstr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal YAML: %w", err)
-	}
-
-	switch unstr.GetKind() {
-	case "SandboxPolicy":
-		crdCtx, err := getSPContext()
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve CRD context for SandboxPolicy: %w", err)
-		}
-		obj, err := crdCtx.FromYAML(data)
-		if err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "SandboxPolicyNamespaced":
-		crdCtx, err := getSPNContext()
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve CRD context for SandboxPolicyNamespaced: %w", err)
-		}
-		obj, err := crdCtx.FromYAML(data)
-		if err != nil {
-			return nil, err
-		}
-		return obj, nil
-	default:
-		return nil, fmt.Errorf("unknown CRD kind: %s", unstr.GetKind())
-	}
-}
-
-func getSPContext() (*crdutils.CRDContext[*v1alpha1.SandboxPolicy], error) {
-	var err error
-	spOnce.Do(func() {
-		spContext, err = crdutils.NewCRDContext[*v1alpha1.SandboxPolicy](&client.SandboxPolicyCRD.Definition)
-	})
-	return spContext, err
-}
-
-func getSPNContext() (*crdutils.CRDContext[*v1alpha1.SandboxPolicyNamespaced], error) {
-	var err error
-	spnOnce.Do(func() {
-		spnContext, err = crdutils.NewCRDContext[*v1alpha1.SandboxPolicyNamespaced](&client.SandboxPolicyNamespacedCRD.Definition)
-	})
-	return spnContext, err
 }

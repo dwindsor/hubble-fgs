@@ -23,8 +23,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/common"
 
-	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	slimv1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
 )
 
@@ -199,31 +197,12 @@ func (b *tpBuilder) Policy() (*SandboxTracingPolicy, error) {
 	b.finalizeSpec()
 	return &SandboxTracingPolicy{
 		tracingpolicy.GenericTracingPolicy{
-			TypeMeta: k8sv1.TypeMeta{
+			TypeMeta: tracingpolicy.TypeMeta{
 				Kind:       "TracingPolicy",
 				APIVersion: "cilium.io/v1alpha1",
 			},
-			Metadata: k8sv1.ObjectMeta{
+			Metadata: tracingpolicy.ObjectMeta{
 				Name: b.name,
-			},
-			Spec: b.tpSpec,
-		},
-		nil,
-		rawSyscallTracepointTranslate,
-	}, nil
-}
-
-func (b *tpBuilder) NamespacedPolicy(namespace string) (*SandboxTracingPolicyNamespaced, error) {
-	b.finalizeSpec()
-	return &SandboxTracingPolicyNamespaced{
-		tracingpolicy.GenericTracingPolicyNamespaced{
-			TypeMeta: k8sv1.TypeMeta{
-				Kind:       "TracingPolicyNamespaced",
-				APIVersion: "cilium.io/v1alpha1",
-			},
-			Metadata: k8sv1.ObjectMeta{
-				Name:      b.name,
-				Namespace: namespace,
 			},
 			Spec: b.tpSpec,
 		},
