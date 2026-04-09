@@ -24,8 +24,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/cgroups"
-	"github.com/cilium/tetragon/pkg/cgroups/fsscan"
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/protoutils"
@@ -99,30 +97,6 @@ func RewritePerPodConstants(consts map[string]any) error {
 	// Copy at the very end to avoid partial write in case of error
 	maps.Copy(consts, toWrite)
 	return nil
-}
-
-// GetKubepodsSliceCgroupID is a global var that can be set for testing purposes.
-var GetKubepodsSliceCgroupID = getKubepodsSliceCgroupID
-
-// getKubepodsSliceCgroupID scans the filesystem for the "kubepods.slice"
-// cgroup directory
-func getKubepodsSliceCgroupID() (uint64, error) {
-	fsscanner := fsscan.New()
-	podDir, err := fsscanner.FindPodPath("kubepods.slice")
-	if err != nil {
-		return 0, fmt.Errorf("failed to find kubepods.slice cgroup directory: %w", err)
-	}
-
-	if podDir == "" {
-		return 0, errors.New("kubepods.slice was not found in the cgroup hierarchy")
-	}
-
-	cgid, err := cgroups.GetCgroupIdFromPath(podDir)
-	if err != nil {
-		return 0, fmt.Errorf("failed getting the cgroup ID from the cgroup directory: %w", err)
-	}
-
-	return cgid, nil
 }
 
 // These functions (this one plus the IP to ID related one) fill the DNS map
