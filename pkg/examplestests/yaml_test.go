@@ -8,6 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+//go:build !nok8s
+
 // The purpose of the examples_test package is to validate that example
 // configuration/policy files are syntactically valid.
 package examples_test
