@@ -35,7 +35,6 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 
 const (
@@ -121,11 +120,6 @@ var (
 	DNSIPToIDMaps        = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 	AllocationIDMap      = program.MapBuilder(dnsparser.AllocationIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 	CgroupIDToAllocIDMap = program.MapBuilder(dnsparser.CgroupIDToAllocIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
-
-	// This is needed for pkg/workloadid for the application model to do the
-	// cgroup ID / workload resolution, ideally the MapBuilder should be in
-	// the layer3_linux.go file but we have an import cycle.
-	CgroupIDToWorkloadIDMap = program.MapBuilder(workloadid.CgroupIDWorkloadIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -255,13 +249,11 @@ func getFdLookupMaps() []*program.Map {
 			ProcessTreeIdMap,
 			Addr4LpmMap,
 			Addr6LpmMap,
-			CgroupIDToWorkloadIDMap,
 		}...)
 
-		if enterpriseOption.Config.EnableApplicationModel {
-			CgroupIDToWorkloadIDMap.SetMaxEntries(workloadid.MaxWorkloadID)
-		}
 	}
+
+	maps = appendApplicationModelMaps(maps)
 
 	if enterpriseOption.Config.EnableBPFDNSParser {
 		DNSIPToIDMaps.SetMaxEntries(dnsparser.MaxNumberOfPods)

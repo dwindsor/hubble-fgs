@@ -24,7 +24,6 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -37,7 +36,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
-	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -53,7 +51,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 
 const (
@@ -77,14 +74,6 @@ var (
 	lastInitProg   *program.Program
 	firstStatsProg *program.Program
 )
-
-func init() {
-	// rthooks register callbacks can only be called at init, so we need to
-	// register this even if the application model is not enabled unfortunately
-	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
-		CreateContainer: workloadid.GetState().CreateContainerHook,
-	})
-}
 
 func unloadLayer3Sensor(pin bool) error {
 	// We want to make sure we stand configuration up when loading/unloading the programs.
@@ -210,9 +199,6 @@ var (
 	// Layer3 configuration map, shared with many L3 programs
 	protoCfgMap = program.MapUserFrom(base.CfgMap)
 
-	// Process tree (application model) maps
-	CgroupIDToWorkloadIDMap = program.MapUserFrom(ip.CgroupIDToWorkloadIDMap)
-
 	// LPM maps
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
 	Addr4LpmMap = program.MapUserFrom(base.Addr4LpmMap)
@@ -248,9 +234,8 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		progsInitSock = append(socktrackProgs, fdLookupProgs...)
 	}
 
-	if utils.SupportProcessTree() && enterpriseOption.Config.EnableApplicationModel {
-		maps = append(maps, CgroupIDToWorkloadIDMap)
-	}
+	maps = appendApplicationModelMaps(maps)
+
 	if tcpEnabled {
 		tcpProgsInit, tcpProgsStats, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
 		progsInitSock = append(progsInitSock, tcpProgsInit...)
@@ -518,18 +503,8 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		config.Proto.UDP6Enabled = 1
 	}
 	if enterpriseOption.Config.EnableApplicationModel {
-		// Initialize the workloadid state with the BPF map so it can be
-		// used even without a K8s control plane (e.g. in tests). We
-		// have already registered the hook for the container creation
-		// at init, we need to enable the hook by wiring the BPF map.
-		workloadid.GetState().SetMap(CgroupIDToWorkloadIDMap.MapHandle)
-
-		// Start the reconciler only if there is a k8s control plane
-		controllerManager := manager.Get().GetControllerManager()
-		if controllerManager != nil {
-			if err := workloadid.GetState().SetupWithManager(controllerManager.Manager); err != nil {
-				return fmt.Errorf("failed to setup the state ID reconciler for the application model: %w", err)
-			}
+		if err := setupWorkloadID(); err != nil {
+			return err
 		}
 	}
 	if udpEnabled && enterpriseOption.Config.EnableBPFDNSParser && enterpriseOption.Config.EnableApplicationModel {
@@ -567,17 +542,9 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		}
 
 		if enterpriseOption.Config.EnableBPFDNSPerPod {
-			controllerManager := manager.Get().GetControllerManager()
-			// Start the reconciler only if there is a k8s control plane
-			if controllerManager != nil {
-				m := controllerManager.Manager
-				reconciler, err := dnsparser.NewPodReconciler(m.GetClient(), &ipToIDMaps)
-				if err != nil {
-					return fmt.Errorf("failed to create a new Pod reconciler for the DNS parser per Pod feature: %w", err)
-				}
-				if err = reconciler.SetupWithManager(m); err != nil {
-					return fmt.Errorf("failed to setup the Pod reconciler for the DNS parser per Pod feature: %w", err)
-				}
+			err := enableBPFDnsPerPod(ipToIDMaps)
+			if err != nil {
+				return err
 			}
 		} else {
 			// If the reconciler does not manage this map, let's
