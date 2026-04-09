@@ -32,12 +32,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
-	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
-	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 )
 
@@ -181,8 +179,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	// cache where a retry will happen.
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
-		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod, fgsEvent.DestinationService = destK8sInfo(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
@@ -285,8 +282,7 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 	// cache where a retry will happen.
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
-		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod, fgsEvent.DestinationService = destK8sInfo(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
@@ -422,8 +418,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	// cache where a retry will happen.
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
-		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod, fgsEvent.DestinationService = destK8sInfo(destinationIP)
 	}
 
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
@@ -869,8 +864,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	// cache where a retry will happen.
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0)
-		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod, fgsEvent.DestinationService = destK8sInfo(destinationIP)
 	}
 
 	ec := eventcache.Get()
