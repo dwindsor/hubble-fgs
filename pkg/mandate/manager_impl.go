@@ -180,23 +180,29 @@ func (m *manager) attemptLoadPolicy(
 ) (policy, error) {
 	var unstr unstructured.Unstructured
 	if err := yaml.UnmarshalStrict([]byte(data), &unstr); err != nil {
-		return invalidPolicy(), fmt.Errorf("failed to unmarshal YAML: %w", err)
+		err = fmt.Errorf("failed to unmarshal YAML: %w", err)
+		att.Complete(err)
+		return invalidPolicy(), err
 	}
 
 	switch unstr.GetKind() {
 	case "TracingPolicy":
 		mp, err := m.attemptLoadMandateTracingPolicy(ctx, att, data, pol.mode_)
 		if err != nil {
+			att.Complete(err)
 			return invalidPolicy(), err
 		}
 		return newTracingPolicy(pol.url_.String(), mp, pol.mode_), nil
 	case "TracingPolicyNamespaced":
-		return invalidPolicy(), errors.New("namespaced tracing policies are not supported")
+		err := errors.New("namespaced tracing policies are not supported")
+		att.Complete(err)
+		return invalidPolicy(), err
 	case "AlertRule":
 		return m.attemptLoadAlert(att, data, pol)
 	default:
-		return invalidPolicy(), errors.New("unknown policy")
-
+		err := errors.New("unknown policy")
+		att.Complete(err)
+		return invalidPolicy(), err
 	}
 }
 
