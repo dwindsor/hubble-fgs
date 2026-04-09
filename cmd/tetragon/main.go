@@ -35,13 +35,10 @@ import (
 	"github.com/cilium/tetragon/pkg/server/eventlog"
 
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
-	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
 	mandatesrv "github.com/isovalent/hubble-fgs/pkg/mandate/server"
-	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
@@ -53,7 +50,6 @@ import (
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/rule"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/powershell"
-	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/bugtool"
@@ -63,7 +59,6 @@ import (
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metricsconfig"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -74,8 +69,6 @@ import (
 	"github.com/cilium/tetragon/pkg/tgsyscall"
 	"github.com/cilium/tetragon/pkg/unixlisten"
 	"github.com/cilium/tetragon/pkg/version"
-	"github.com/cilium/tetragon/pkg/watcher"
-	"github.com/cilium/tetragon/pkg/watcher/crdwatcher"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
@@ -422,9 +415,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if option.Config.MetricsServer != "" {
 		go metricsconfig.EnableMetrics(option.Config.MetricsServer)
 		enterpriseMetricsConfig.InitAllMetrics(metricsconfig.GetRegistry())
-		go enterpriseMetrics.StartPodDeleteHandler()
-		// Handler must be registered before the watcher is started
-		metrics.RegisterPodDeleteHandler()
+		initK8sMetrics()
 	}
 
 	if enterpriseOption.Config.EnableAWSSonar {
@@ -445,17 +436,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Initialize a pod accessor used to retrieve process metadata. This should
 	// happen before the sensors are loaded, otherwise events will be stuck
 	// waiting for metadata.
-	var podAccessor watcher.PodAccessor
-	// Start Kubernetes manager. Note this doesn't have to be in the if block
-	// below. If Kubernetes is not enabled, this call returns a fake manager.
-	kubernetesManager := manager.Get()
-	if enterpriseOption.K8SControlPlaneEnabled() && enterpriseOption.InClusterControlPlaneEnabled() {
-		log.Info("Enabling Kubernetes API")
-		podAccessor = kubernetesManager.GetControllerManager()
-	} else {
-		log.Info("Disabling Kubernetes API")
-		podAccessor = watcher.NewFakeK8sWatcher(nil)
-	}
+	podAccessor := k8sPodAccessor()
 	nodeMetadata, err := local.GetMetadataService()
 	if err != nil {
 		log.Warn("Failed to get node info. node_labels field will be empty", logfields.Error, err)
@@ -478,7 +459,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		}
 	}
 
-	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium)
+	err = initCilumState(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}
@@ -608,42 +589,9 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	saveInitInfo()
 	updateServiceStarting()
 
-	// Initialize a k8s watcher used to manage policies. This should happen
-	// after the sensors are loaded, otherwise existing policies will fail to
-	// load on the first attempt.
-	if enterpriseOption.K8SControlPlaneEnabled() {
-		log.Info("Enabling policy watcher")
-
-		// add informers for all resources
-		if enterpriseOption.Config.EnablePolicyK8sWatcher {
-			// NB(anna): Check this option for OSS compatibility, but it's not
-			// recommended to use it to disable watching TracingPolicy in EE.
-			// Use --enable-policy-k8swatcher=false instead.
-			if option.Config.EnableTracingPolicyCRD {
-				err = crdwatcher.AddTracingPolicyInformer(ctx, kubernetesManager.GetControllerManager(), observer.GetSensorManager())
-				if err != nil {
-					return err
-				}
-			}
-			if enterpriseOption.Config.EnableSandboxPolicies {
-				err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, kubernetesManager.GetControllerManager(), observer.GetSensorManager())
-				if err != nil {
-					return err
-				}
-			}
-			if enterpriseOption.Config.EnableAlerts {
-				err = enterpriseWatcher.AddAlertRuleInformer(ctx, kubernetesManager.GetControllerManager(), alertsManager)
-				if err != nil {
-					return err
-				}
-			}
-			if enterpriseOption.Config.EnableApplicationModel {
-				err = netpol.AddTetragonNetworkPolicyInformer(ctx, kubernetesManager.GetControllerManager())
-				if err != nil {
-					return err
-				}
-			}
-		}
+	err = initK8s(ctx, alertsManager)
+	if err != nil {
+		return err
 	}
 
 	obs.LogPinnedBpf(observerDir)
@@ -843,86 +791,21 @@ func getExporter(ctx context.Context, server *server.Server) (*exporter.Exporter
 	return exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 }
 
-func startApplicationModelExporter(ctx context.Context, modelServer *model.Server) error {
-	var flatWriter *lumberjack.Logger
-	var writer *lumberjack.Logger
-	var connectionWriter *lumberjack.Logger
-	var err error
-
-	if enterpriseOption.Config.ApplicationModelExportFilename != "" {
-		writer, err = getWriter(
-			enterpriseOption.Config.ApplicationModelExportFilename,
-			option.Config.ExportFileMaxSizeMB,
-			option.Config.ExportFileMaxBackups,
-			option.Config.ExportFileCompress,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	if enterpriseOption.Config.TelemetryExportFilename != "" {
-		flatWriter, err = getWriter(
-			enterpriseOption.Config.TelemetryExportFilename,
-			option.Config.ExportFileMaxSizeMB,
-			option.Config.ExportFileMaxBackups,
-			option.Config.ExportFileCompress,
-		)
-		if err != nil {
-			return err
-		}
-	}
-	if enterpriseOption.Config.ConnectionLogFileName != "" {
-		connectionWriter, err = getWriter(
-			enterpriseOption.Config.ConnectionLogFileName,
-			option.Config.ExportFileMaxSizeMB,
-			option.Config.ExportFileMaxBackups,
-			option.Config.ExportFileCompress,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	if option.Config.ExportFileRotationInterval < 0 {
-		// Passed an invalid interval let's error out
-		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
-	} else if option.Config.ExportFileRotationInterval > 0 {
-		log.Info("Periodically rotating JSON application model export files", "frequency", option.Config.ExportFileRotationInterval.String())
-		go func() {
-			ticker := time.NewTicker(option.Config.ExportFileRotationInterval)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					if rotationErr := writer.Rotate(); rotationErr != nil {
-						log.Warn("Failed to rotate JSON application model export file", logfields.Error, rotationErr,
-							"file", enterpriseOption.Config.ApplicationModelExportFilename)
-					}
-				}
-			}
-		}()
-	}
-
-	go model.ExportApplicationModel(ctx, modelServer, writer, flatWriter, connectionWriter,
-		enterpriseOption.Config.ApplicationModelExportInterval)
-
-	return nil
-}
-
 func Serve(
 	ctx context.Context, listenAddr string,
 	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server, eventlogSrv *eventlog.Server) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
-	registerProcessModelServiceServer(grpcServer, model)
 	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
 	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
 	tetragon.RegisterRuleServiceServer(grpcServer, rule)
 	tetragon.RegisterNetworkPolicyServiceServer(grpcServer, netpol)
 	tetragon.RegisterEventLogServiceServer(grpcServer, eventlogSrv)
-	registerApplicationModelServiceServer(grpcServer, model)
+
+	if model != nil {
+		registerApplicationModelServiceServer(grpcServer, model)
+		registerProcessModelServiceServer(grpcServer, model)
+	}
 
 	proto, addr, err := server.SplitListenAddr(listenAddr)
 	if err != nil {
