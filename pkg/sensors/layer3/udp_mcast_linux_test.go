@@ -162,7 +162,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpL7Config); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
@@ -305,7 +305,7 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpL7Config); err != nil {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfigBasic); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
