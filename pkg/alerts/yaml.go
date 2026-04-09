@@ -8,6 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+//go:build !nok8s
+
 package alerts
 
 import (
@@ -65,4 +67,16 @@ func CRDContext() (*crdutils.CRDContext[*v1alpha1.AlertRule], error) {
 		arContext, err = crdutils.NewCRDContext[*v1alpha1.AlertRule](&client.AlertRuleCRD.Definition)
 	})
 	return arContext, err
+}
+
+func RuleFromYAML(data string) (*v1alpha1.AlertRule, error) {
+	obj, err := FromYAML(data)
+	if err != nil {
+		return nil, err
+	}
+	ar, ok := obj.(*v1alpha1.AlertRule)
+	if !ok {
+		return nil, fmt.Errorf("unexpected object type: %T", obj)
+	}
+	return ar, nil
 }

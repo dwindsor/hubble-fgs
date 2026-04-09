@@ -28,7 +28,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
@@ -202,13 +201,9 @@ func ruleToProto(r *rule) *tetragon.AlertRule {
 }
 
 func (a *alerter) AddAlertRuleFromYAML(_ context.Context, req *tetragon.AddAlertRuleFromYAMLRequest) (*tetragon.AddAlertRuleResponse, error) {
-	obj, err := FromYAML(req.Yaml)
+	ar, err := RuleFromYAML(req.Yaml)
 	if err != nil {
 		return nil, err
-	}
-	ar, ok := obj.(*v1alpha1.AlertRule)
-	if !ok {
-		return nil, fmt.Errorf("unexpected object type: %T", obj)
 	}
 	err = a.ruleManager.AddAlertRule(ar)
 	if err != nil {
