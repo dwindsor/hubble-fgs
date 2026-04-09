@@ -19,7 +19,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -40,6 +40,7 @@ import (
 
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -50,10 +51,12 @@ import (
 )
 
 const (
-	udpMulticastIP4  = "239.1.1.1"
-	udpMulticastPort = 6858
-	localhostIP4     = "127.0.0.1"
-	numSeqPackets    = 33
+	localhostIP4         = "127.0.0.1"
+	numSeqPackets        = 33
+	udpMulticastConnIP4  = "225.1.1.1"
+	udpMulticastConnPort = 6858
+	udpMulticastSeqIP4   = "225.2.2.2"
+	udpMulticastSeqPort  = 7858
 )
 
 func TestUdpMulticastLSEGConnID(t *testing.T) {
@@ -64,6 +67,9 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	if !kernels.MinKernelVersion("5.15.0") {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
+
+	udpMulticastIP4 := udpMulticastConnIP4
+	udpMulticastPort := udpMulticastConnPort
 
 	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
 	enterpriseOption.Config.EnableNetworkEvents = true
@@ -81,12 +87,14 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	})
 
 	server := getSocatCommand(t, "socat")
+	ifAddr, err := getDefaultInterfaceAddress()
+	require.NoError(t, err)
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
-	socatArg1 := "-"
-	socatArg2 := fmt.Sprintf("UDP4-LISTEN:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, localhostIP4)
+	socatArg1 := "STDOUT"
+	socatArg2 := fmt.Sprintf("UDP4-LISTEN:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
 	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
 	socatSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -102,7 +110,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 		WithSocket(ec.NewSockInfoChecker().
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithDestinationIp(sm.Full(udpMulticastIP4)).
-			WithDestinationPort(udpMulticastPort)).
+			WithDestinationPort(uint32(udpMulticastPort))).
 		WithConnectionId(7)
 
 	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
@@ -111,7 +119,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 		WithSocket(ec.NewSockInfoChecker().
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithSourceIp(sm.Full(udpMulticastIP4)).
-			WithSourcePort(udpMulticastPort)).
+			WithSourcePort(uint32(udpMulticastPort))).
 		WithConnectionId(7)
 
 	checker := ec.NewUnorderedEventChecker(
@@ -128,14 +136,14 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 			WithProcess(socatSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full(udpMulticastIP4)).
-			WithSourcePort(udpMulticastPort).
+			WithSourcePort(uint32(udpMulticastPort)).
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithConnectionId(7),
 		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(clientProcess).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full(udpMulticastIP4)).
-			WithDestinationPort(udpMulticastPort).
+			WithDestinationPort(uint32(udpMulticastPort)).
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithConnectionId(7),
 		clientStatsChecker,
@@ -144,14 +152,14 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 			WithProcess(socatSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full(udpMulticastIP4)).
-			WithSourcePort(udpMulticastPort).
+			WithSourcePort(uint32(udpMulticastPort)).
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithConnectionId(7),
 		ec.NewProcessCloseChecker("clientClose").
 			WithProcess(clientProcess).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full(udpMulticastIP4)).
-			WithDestinationPort(udpMulticastPort).
+			WithDestinationPort(uint32(udpMulticastPort)).
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithConnectionId(7),
 	)
@@ -172,6 +180,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
+	layer3.StartLayer3Progs(ctx, nil)
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
@@ -181,7 +190,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	serverStdout, err := cmdServer.StdoutPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), udpMulticastPort, syscall.IPPROTO_UDP, syscall.AF_INET)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(udpMulticastPort), syscall.IPPROTO_UDP, syscall.AF_INET)
 	assert.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
@@ -223,6 +232,9 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
+	udpMulticastIP4 := udpMulticastSeqIP4
+	udpMulticastPort := udpMulticastSeqPort
+
 	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
 	enterpriseOption.Config.EnableNetworkEvents = true
 	oldMulticastAppID := enterpriseOption.Config.MulticastAppID
@@ -239,9 +251,11 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 	})
 
 	server := getSocatCommand(t, "socat")
+	ifAddr, err := getDefaultInterfaceAddress()
+	require.NoError(t, err)
 
-	socatArg1 := "-"
-	socatArg2 := fmt.Sprintf("UDP4-LISTEN:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, localhostIP4)
+	socatArg1 := "STDOUT"
+	socatArg2 := fmt.Sprintf("UDP4-LISTEN:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
 	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
 	socatSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -260,35 +274,35 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 			WithProcess(socatSrvChecker).
 			WithApplicationId(1).
 			WithAppSpecificId(5).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpMulticastPort)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(uint32(udpMulticastPort))).
 			WithSeqNumExpected(3).
 			WithSeqNumReceived(4),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId6Seq4Got5").
 			WithProcess(socatSrvChecker).
 			WithApplicationId(1).
 			WithAppSpecificId(6).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpMulticastPort)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(uint32(udpMulticastPort))).
 			WithSeqNumExpected(4).
 			WithSeqNumReceived(5),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId8Seq3Got4").
 			WithProcess(socatSrvChecker).
 			WithApplicationId(1).
 			WithAppSpecificId(8).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpMulticastPort)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(uint32(udpMulticastPort))).
 			WithSeqNumExpected(3).
 			WithSeqNumReceived(4),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq0Got5").
 			WithProcess(socatSrvChecker).
 			WithApplicationId(1).
 			WithAppSpecificId(65536).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpMulticastPort)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(uint32(udpMulticastPort))).
 			WithSeqNumExpected(0).
 			WithSeqNumReceived(5),
 		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq8Got9").
 			WithProcess(socatSrvChecker).
 			WithApplicationId(1).
 			WithAppSpecificId(65536).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpMulticastPort)).
+			WithSocket(ec.NewSockInfoChecker().WithSourcePort(uint32(udpMulticastPort))).
 			WithSeqNumExpected(8).
 			WithSeqNumReceived(9),
 		ec.NewProcessCloseChecker("serverClose").
@@ -314,6 +328,7 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	layer3.StartLayer3Progs(ctx, nil)
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
@@ -323,7 +338,7 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 	serverStdout, err := cmdServer.StdoutPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), udpMulticastPort, syscall.IPPROTO_UDP, syscall.AF_INET)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(udpMulticastPort), syscall.IPPROTO_UDP, syscall.AF_INET)
 	assert.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
@@ -333,16 +348,14 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 	err = clientCmd.Run()
 	assert.NoError(t, err, "cannot start client")
 
-	// Wait for some data to arrive.
-	serverScanner := bufio.NewScanner(serverStdout)
-	serverPackets := 0
-	for serverScanner.Scan() {
-		serverData := serverScanner.Bytes()
-		if len(serverData) > 0 {
-			serverPackets++
-			if serverPackets >= numSeqPackets {
-				break
-			}
+	// Wait for the data to arrive.
+	serverData := make([]byte, UDPBUFSIZE+UDPBUFVAR)
+	packetsReceived := 0
+	for packetsReceived < numSeqPackets {
+		numBytesRead, err := serverStdout.Read(serverData)
+		require.NoError(t, err, "cannot read from server stdout")
+		if numBytesRead > 0 {
+			packetsReceived++
 		}
 	}
 
@@ -356,37 +369,8 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-}
-
-func runUdpMulticastServer() {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGTERM)
-	go func() {
-		sig := <-sigs
-		if sig == syscall.SIGTERM {
-			os.Exit(0)
-		}
-	}()
-
-	addr, err := net.ResolveUDPAddr(udpProtocol, fmt.Sprintf("%s:%d", udpMulticastIP4, udpMulticastPort))
-
-	conn, err := net.ListenMulticastUDP(udpProtocol, nil, addr)
-	if err != nil {
-		fmt.Printf("NotReady: %s", err)
-		panic(err)
-	}
-	buf := make([]byte, 2*UDPBUFSIZE)
-	fmt.Printf("Ready\n")
-	for {
-		_, _, err = conn.ReadFrom(buf)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR reading from socket\n")
-			panic(err)
-		}
-	}
 }
 
 func storeMSB(buf []byte, index uint, size uint, value uint) {
@@ -407,11 +391,32 @@ func sendSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqN
 	buf[0] = flags
 	storeMSB(buf, 1, lineIdSize, lineId)
 	storeMSB(buf, 1+lineIdSize, seqNumSize, seqNum)
-	udpSendData(socket, buf)
+	_, err := socket.Write(buf)
+	if err != nil {
+		fmt.Printf("ERROR writing to socket\n")
+		panic(err)
+	}
 	time.Sleep(10 * time.Millisecond)
 }
 
 func runUdpMulticastClient(ty multicastTest) {
+	var udpMulticastIP4 string
+	var udpMulticastPort int
+	switch ty {
+	case multicastTestLSEGConnID:
+		udpMulticastIP4 = udpMulticastConnIP4
+		udpMulticastPort = udpMulticastConnPort
+	case multicastTestLSEGSeq:
+		udpMulticastIP4 = udpMulticastSeqIP4
+		udpMulticastPort = udpMulticastSeqPort
+	}
+
+	ifAddr, err := getDefaultInterfaceAddress()
+	if err != nil {
+		fmt.Printf("ERROR getting default interface address")
+		panic(err)
+	}
+
 	randFile, err := os.Open("/dev/urandom")
 	if err != nil {
 		fmt.Printf("ERROR opening urandom\n")
@@ -427,7 +432,7 @@ func runUdpMulticastClient(ty multicastTest) {
 	}
 	randFile.Close()
 
-	laddr, err := net.ResolveUDPAddr(udpProtocol, net.JoinHostPort(localhostIP4, fmt.Sprintf("%d", udpMulticastPort+1)))
+	laddr, err := net.ResolveUDPAddr(udpProtocol, net.JoinHostPort(ifAddr, fmt.Sprintf("%d", udpMulticastPort+1)))
 	if err != nil {
 		fmt.Printf("ERROR resolving localhost IP address\n")
 		panic(err)
@@ -481,4 +486,14 @@ func runUdpMulticastClient(ty multicastTest) {
 		sendSeqData(socket, buf, 0, 0, 3, 11)
 		sendSeqData(socket, buf, 0, 0, 3, 12)
 	}
+}
+
+func getDefaultInterfaceAddress() (string, error) {
+	defaultRoute, err := exec.Command("bash", "-c", "ip r | grep default").Output()
+	if err != nil {
+		return "", err
+	}
+	defaultRouteFields := strings.Fields(string(defaultRoute))
+	ifAddr := defaultRouteFields[8]
+	return ifAddr, nil
 }
