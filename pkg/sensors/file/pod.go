@@ -8,24 +8,48 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-//go:build !windows
+//go:build !windows && !nok8s
 
 package file
 
 import (
 	"context"
 	"fmt"
+	mapHelpers "maps"
 	"sync"
 
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	"github.com/cilium/tetragon/pkg/podhooks"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
+	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
+
+func init() {
+	podhooks.RegisterCallbacksAtInit(podhooks.Callbacks{
+		PodCallbacks: func(podInformer cache.SharedIndexInformer) {
+			podInformer.AddEventHandler(
+				cache.ResourceEventHandlerFuncs{
+					AddFunc:    podhooksAddFunc,
+					UpdateFunc: podhooksUpdateFunc,
+					DeleteFunc: podhooksDeleteFunc,
+				},
+			)
+		},
+	})
+	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
+		CreateContainer: rthooksCreateContainer,
+	})
+}
 
 type ContInit struct {
 	cid, namespace, name, root string
@@ -353,4 +377,64 @@ func podhooksDeleteFunc(obj interface{}) {
 			logger.GetLogger().Warn("delete: TracingPolicyDestroyContainerFsScanner failed", logfields.Error, err)
 		}
 	}
+}
+
+func addFileMonitoringSensorK8s(
+	policy tracingpolicy.TracingPolicy,
+	kprobes v1alpha1.FileSpec,
+	mode TpMode,
+	sel *fm.KernelSelectorState,
+	allInodes map[fileapi.InodeKey]fileapi.InodeVal,
+	allDigestMaps map[string][]string,
+	e *pol.FileMonitoring,
+) (int, int) {
+	l := logger.GetLogger()
+	// check for existing pod files when we create a new tracing policy
+	allContainers := []ContInit{}
+	allPodsMu.Lock()
+	for _, p := range allPods {
+		for _, r := range p.containers {
+			allContainers = append(allContainers, ContInit{
+				cid:       r.ContainerID,
+				namespace: p.podNamespace,
+				name:      p.podName,
+				root:      r.RootDir,
+			})
+		}
+	}
+	allPodsMu.Unlock()
+	for _, i := range allContainers {
+		s := fm.SpecPinPath{
+			PolicyName:  policy.TpName(),
+			PinPath:     e.PinPathPrefix,
+			Spec:        kprobes,
+			IsPathBased: mode == PathBasedTpMode,
+		}
+
+		containerInodes, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
+		if err != nil {
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
+			logger.GetLogger().Warn("TracingPolicyInitContainerFsScanner failed", logfields.Error, err)
+		} else {
+			mapHelpers.Copy(allInodes, containerInodes)
+		}
+
+		s.DigestPaths = sel.GetDigestPaths()
+		s.PathMetadata = sel.GetPathMetadata()
+		digestMap, err := TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
+		if err != nil {
+			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
+			l.Warn("TracingPolicyPathDigestsContainerFsScanner failed!", logfields.Error, err)
+		} else {
+			for k, v := range digestMap {
+				if _, ok := allDigestMaps[k]; !ok {
+					allDigestMaps[k] = []string{v}
+				} else {
+					allDigestMaps[k] = append(allDigestMaps[k], v)
+				}
+			}
+		}
+	}
+
+	return len(allPods), len(allContainers)
 }

@@ -42,14 +42,11 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/podhooks"
 	"github.com/cilium/tetragon/pkg/policyconf"
 	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -931,20 +928,6 @@ func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_LINK, handleFileLinkOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_SYMLINK, handleFileSymlinkOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_OPENRAW, handleFileOpenrawOps)
-	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
-		CreateContainer: rthooksCreateContainer,
-	})
-	podhooks.RegisterCallbacksAtInit(podhooks.Callbacks{
-		PodCallbacks: func(podInformer cache.SharedIndexInformer) {
-			podInformer.AddEventHandler(
-				cache.ResourceEventHandlerFuncs{
-					AddFunc:    podhooksAddFunc,
-					UpdateFunc: podhooksUpdateFunc,
-					DeleteFunc: podhooksDeleteFunc,
-				},
-			)
-		},
-	})
 }
 
 func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
@@ -1450,60 +1433,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 		}
 	}
 	numHostInodes := len(allInodes)
-
-	// check for existing pod files when we create a new tracing policy
-	allContainers := []ContInit{}
-	allPodsMu.Lock()
-	for _, p := range allPods {
-		for _, r := range p.containers {
-			allContainers = append(allContainers, ContInit{
-				cid:       r.ContainerID,
-				namespace: p.podNamespace,
-				name:      p.podName,
-				root:      r.RootDir,
-			})
-		}
-	}
-	allPodsMu.Unlock()
-	for _, i := range allContainers {
-		s := fm.SpecPinPath{
-			PolicyName:  policy.TpName(),
-			PinPath:     e.PinPathPrefix,
-			Spec:        kprobes,
-			IsPathBased: mode == PathBasedTpMode,
-		}
-
-		containerInodes, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
-		if err != nil {
-			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
-			logger.GetLogger().Warn("TracingPolicyInitContainerFsScanner failed", logfields.Error, err)
-		} else {
-			mapHelpers.Copy(allInodes, containerInodes)
-		}
-
-		s.DigestPaths = sel.GetDigestPaths()
-		s.PathMetadata = sel.GetPathMetadata()
-		digestMap, err := TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
-		if err != nil {
-			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
-			l.Warn("TracingPolicyPathDigestsContainerFsScanner failed!", logfields.Error, err)
-		} else {
-			for k, v := range digestMap {
-				if _, ok := allDigestMaps[k]; !ok {
-					allDigestMaps[k] = []string{v}
-				} else {
-					allDigestMaps[k] = append(allDigestMaps[k], v)
-				}
-			}
-		}
-	}
+	numPods, numContainers := addFileMonitoringSensorK8s(policy, kprobes, mode, sel, allInodes, allDigestMaps, e)
 
 	logger.GetLogger().Info(fmt.Sprintf("Completed path scanning for %s.", e.TpName),
 		"time", time.Since(t0).String(),
 		"total-inodes", len(allInodes),
 		"host-inodes", numHostInodes,
-		"num-pods", len(allPods),
-		"num-containers", len(allContainers))
+		"num-pods", numPods,
+		"num-containers", numContainers)
 
 	switch tpConf.watchedInodeMapSizePolicy {
 	case "auto":
