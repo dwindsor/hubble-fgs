@@ -23,7 +23,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 )
@@ -42,13 +41,9 @@ func testCommand() *cobra.Command {
 				return fmt.Errorf("failed to read yaml file %s: %w", args[0], err)
 			}
 
-			obj, err := alerts.FromYAML(string(yamlb))
+			ar, err := alerts.RuleFromYAML(string(yamlb))
 			if err != nil {
 				return err
-			}
-			ar, ok := obj.(*v1alpha1.AlertRule)
-			if !ok {
-				return fmt.Errorf("unexpected object type: %T", obj)
 			}
 
 			cef := filters.NewCELExpressionFilter(logger.GetLogger())
