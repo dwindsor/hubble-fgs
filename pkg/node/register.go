@@ -8,6 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+//go:build !nok8s
+
 package node
 
 import (
@@ -31,11 +33,6 @@ const (
 	defaultNodeNamespace = "default"
 )
 
-// Register defines the interface for registering a TetragonNode.
-type Register interface {
-	Register(ctx context.Context) error
-}
-
 // NewNodeRegisterer returns a Register implementation based on the current
 // environment. If K8s control plane is enabled and a valid metadata service
 // is provided, it returns a registerer that uses the metadata service to
@@ -53,12 +50,6 @@ func NewNodeRegisterer(metadata local.MetadataService) (Register, error) {
 		}
 	}
 	return &noOpsRegisterer{}, nil
-}
-
-type noOpsRegisterer struct{}
-
-func (n *noOpsRegisterer) Register(_ context.Context) error {
-	return nil
 }
 
 type registerer struct {
