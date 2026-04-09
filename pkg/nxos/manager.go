@@ -54,6 +54,12 @@ const (
 	fwStateFwReady                   // SysStFwReady — DPUs healthy and in-service
 )
 
+// DpuInSyncSettlingWindow is the settling window for DPU out-of-sync transitions.
+// When a DPU reports out-of-sync, the HACritDpuInSync criterion stays true for
+// this duration before the degradation is applied. This dampens transient mismatches
+// during policy deployments.
+const DpuInSyncSettlingWindow = 60 * time.Second
+
 // Status represents the current status of the NXOS manager.
 type Status struct {
 	Phase     Phase
@@ -94,6 +100,12 @@ type manager struct {
 
 	// Internal state
 	closed atomic.Bool
+
+	// dpuInSyncSettlingStart is the time when DPU first reported out-of-sync in the
+	// current episode. Zero when not settling. Written only from the agw.DpuHealthCheck
+	// goroutine; no synchronization needed.
+	dpuInSyncSettlingStart  time.Time
+	dpuInSyncSettlingWindow time.Duration // defaults to DpuInSyncSettlingWindow; overridable in tests
 }
 
 // NewManager creates a new Manager with the given options.
@@ -125,13 +137,14 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 	// lbModePinning is a callback shared by VRF and VLAN stores to check
 	// whether per-DPU pinning is active at redirect-programming time.
 	lbModePinning := func() bool {
-		return devStore.LbMode() == "dpu_pinning"
+		return devStore.LbMode() == "pinning"
 	}
 
 	m := &manager{
-		fwStatus:        fwStateDisabled, // starts disabled
-		redirDone:       false,           // no redirects yet
-		lastSystemState: -1,              // not yet written
+		fwStatus:                fwStateDisabled, // starts disabled
+		redirDone:               false,           // no redirects yet
+		lastSystemState:         -1,              // not yet written
+		dpuInSyncSettlingWindow: DpuInSyncSettlingWindow,
 		// Create stores with integrated storage - they load persisted state automatically
 		vrfStore: vrf.NewStore(ctx,
 			vrf.WithStorage(storageBackend),
@@ -225,6 +238,9 @@ func (m *manager) Setup(ctx context.Context) error {
 
 	// Register VRF change watcher to keep policyHandler and config library in sync.
 	m.setupVRFPolicyWatcher()
+
+	// Register LB mode watcher to repin VRFs/VLANs when mode changes.
+	m.setupLbModeWatcher()
 
 	// Set dpuPending — signals to NXOS that we are waiting for DPU inventory.
 	m.setDpuPending(ctx)
@@ -546,6 +562,18 @@ func (m *manager) setupInServiceHooks() {
 	})
 }
 
+// setupLbModeWatcher registers a watcher on the device store that re-pins all
+// active VRFs and VLANs when the load balancing mode changes.
+func (m *manager) setupLbModeWatcher() {
+	m.deviceStore.Watch(func(event device.Event) {
+		if event.Type == device.EventLbModeChanged {
+			ctx := context.Background()
+			m.vrfStore.RepinAll(ctx)
+			m.vlanStore.RepinAll(ctx)
+		}
+	})
+}
+
 // setupVRFPolicyWatcher registers a watcher on the VRF store that keeps the
 // policyHandler's L3 network map and the config library's NetworkConfig in
 // sync whenever active VRFs change. This mirrors the old doVRFPolicyMapUpdate.
@@ -795,7 +823,7 @@ func (m *manager) IsInService(ctx context.Context) bool {
 
 // IsLbModePinning returns true if in pinning load balancing mode.
 func (m *manager) IsLbModePinning(ctx context.Context) bool {
-	return m.deviceStore.LbMode() == "dpu_pinning"
+	return m.deviceStore.LbMode() == "pinning"
 }
 
 // GetToken returns the Kubernetes controller authentication token.
@@ -1030,14 +1058,50 @@ func (s Status) String() string {
 		s.Phase, s.Ready, s.VRFCount, s.VLANCount, s.DPUCount, s.HAEnabled, s.HALeader, s.Connected)
 }
 
-// DpuInSync updates the DPU in-sync status.
+// DpuInSync updates the DPU in-sync status with a settling window.
 // No-op when skipDPU is enabled (DPUless mode).
+// When inSync transitions from true→false, the HACritDpuInSync criterion is held
+// at true for up to dpuInSyncSettlingWindow before applying the degradation. This
+// dampens transient mismatches during policy deployments (~60s).
 func (m *manager) DpuInSync(ctx context.Context, inSync bool) {
 	if m.dpuStore.IsSkipDPU() {
 		return
 	}
 	m.dpuStore.SetInSync(inSync)
-	m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, inSync)
+
+	if inSync {
+		// Recovered — clear settling, update criterion immediately.
+		m.dpuInSyncSettlingStart = time.Time{}
+		m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, true)
+		return
+	}
+
+	// Already degraded — no settling needed.
+	local := m.haStore.Local()
+	if !local.Criteria[types.HACritDpuInSync] {
+		return
+	}
+
+	// Out-of-sync — dampen the true→false transition.
+	now := time.Now()
+	if m.dpuInSyncSettlingStart.IsZero() {
+		// First failure in this episode — start settling window.
+		m.dpuInSyncSettlingStart = now
+		logger.GetLogger().Info("DPU out-of-sync settling started",
+			"window", m.dpuInSyncSettlingWindow)
+		return // suppress
+	}
+
+	elapsed := now.Sub(m.dpuInSyncSettlingStart)
+	if elapsed < m.dpuInSyncSettlingWindow {
+		logger.GetLogger().Debug("DPU out-of-sync settling in progress",
+			"elapsed", elapsed, "remaining", m.dpuInSyncSettlingWindow-elapsed)
+		return // within window — suppress
+	}
+
+	// Window expired — apply degradation.
+	m.dpuInSyncSettlingStart = time.Time{}
+	m.haStore.UpdateLocalCriterion(ctx, types.HACritDpuInSync, false)
 }
 
 // GnmiHandler returns the underlying gNMI handler.

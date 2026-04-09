@@ -152,8 +152,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, peer string, peerMbrInfo *ha
 		}
 	}
 
-	// Phase 3: VLAN DPU pinning reconciliation (non-leader only, dpu_pinning mode only)
-	if !isLeader && localLbMode == "dpu_pinning" && peerMbrInfo.VlanInfo != nil {
+	// Phase 3: VLAN DPU pinning reconciliation (non-leader only, pinning mode only)
+	if !isLeader && localLbMode == "pinning" && peerMbrInfo.VlanInfo != nil {
 		for _, vlanInfo := range peerMbrInfo.VlanInfo {
 			vlanName := fmt.Sprintf("vlan-%d", vlanInfo.Id)
 			localVlan, ok := r.vlanStore.Get(vlanName)
@@ -180,8 +180,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, peer string, peerMbrInfo *ha
 		}
 	}
 
-	// Phase 4: Pinning mismatch warnings (when both peers are in dpu_pinning mode)
-	if localLbMode == "dpu_pinning" {
+	// Phase 4: Pinning mismatch warnings (when both peers are in pinning mode)
+	if localLbMode == "pinning" {
 		// Build local VRF DPUPinned map
 		localVRFs := r.vrfStore.List()
 		localVRFPinned := make(map[string]uint16)

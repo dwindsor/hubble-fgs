@@ -756,6 +756,40 @@ func (s *vlanStore) assignPinningLocked(vlan types.VLAN) types.VLAN {
 	return vlan
 }
 
+// RepinAll re-evaluates DPU pinning for all active VLANs.
+// Called when the load balancing mode changes so that existing VLANs
+// pick up the new pinning mode (e.g. switching from symmetric hash
+// to per-DPU pinning or vice versa).
+//
+// Data-layer updates (DPUPinned in memory + persist) happen unconditionally
+// so pinning is correct when the device later goes in-service and
+// ProgramAllRedirects is called. gNMI redirect programming is gated by
+// inService inside programRedirects.
+func (s *vlanStore) RepinAll(ctx context.Context) {
+	s.mu.Lock()
+	changed := false
+	for name, vlan := range s.vlans {
+		if !vlan.Active {
+			continue
+		}
+		oldDPU := vlan.DPUPinned
+		vlan = s.assignPinningLocked(vlan)
+		if vlan.DPUPinned != oldDPU {
+			s.vlans[name] = vlan
+			changed = true
+		}
+	}
+	s.mu.Unlock()
+
+	if !changed {
+		return
+	}
+
+	logger.GetLogger().Info("VLAN RepinAll: re-pinning active VLANs after LB mode change")
+	s.persist(ctx)
+	s.programRedirects(ctx)
+}
+
 // fnv1a computes an FNV-1a 64-bit hash. Used to distribute dynamic VLANs
 // across DPUs deterministically.
 func fnv1a(buf []byte) uint64 {

@@ -84,6 +84,10 @@ type Store interface {
 	// When false, programRedirects no-ops for newly activated VRFs/VLANs.
 	SetInService(inService bool)
 
+	// RepinAll re-evaluates DPU pinning for all active VRFs.
+	// Called when the load balancing mode changes.
+	RepinAll(ctx context.Context)
+
 	// ProgramAllRedirects programs redirects for all active VRFs.
 	// Used during in-service transition and startup reconciliation.
 	ProgramAllRedirects(ctx context.Context) int

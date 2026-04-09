@@ -2132,3 +2132,88 @@ func TestStore_Idempotency_DuplicateGnmiNotification(t *testing.T) {
 		t.Errorf("expected no events on duplicate gNMI notification, got %d", len(events))
 	}
 }
+
+func TestStore_RepinAll_SymmetricToPinning(t *testing.T) {
+	ctx := context.Background()
+	pinning := false
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+
+	// Activate VRFs in symmetric hash mode → DPUPinned = 65535
+	vs.SetGlobal(ctx, "tenant1", true)
+	vs.SetService(ctx, "tenant1", true)
+	vs.SetAffinity(ctx, "tenant1", 2) // direct affinity
+
+	vs.SetGlobal(ctx, "tenant2", true)
+	vs.SetService(ctx, "tenant2", true)
+	vs.SetAffinity(ctx, "tenant2", 0) // dynamic (hash)
+
+	p1, _ := vs.GetPinning("tenant1")
+	p2, _ := vs.GetPinning("tenant2")
+	if p1 != 65535 {
+		t.Errorf("expected DPUPinned=65535 in symmetric mode for tenant1, got %d", p1)
+	}
+	if p2 != 65535 {
+		t.Errorf("expected DPUPinned=65535 in symmetric mode for tenant2, got %d", p2)
+	}
+
+	// Switch to pinning mode and repin.
+	pinning = true
+	vs.RepinAll(ctx)
+
+	p1, _ = vs.GetPinning("tenant1")
+	p2, _ = vs.GetPinning("tenant2")
+	if p1 != 2 {
+		t.Errorf("expected DPUPinned=2 after RepinAll for tenant1 (affinity=2), got %d", p1)
+	}
+	if p2 < 1 || p2 > 4 {
+		t.Errorf("expected DPUPinned in 1-4 after RepinAll for tenant2 (dynamic), got %d", p2)
+	}
+}
+
+func TestStore_RepinAll_PinningToSymmetric(t *testing.T) {
+	ctx := context.Background()
+	pinning := true
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+
+	// Activate VRF in pinning mode → DPUPinned = affinity value
+	vs.SetGlobal(ctx, "tenant1", true)
+	vs.SetService(ctx, "tenant1", true)
+	vs.SetAffinity(ctx, "tenant1", 3)
+
+	p, _ := vs.GetPinning("tenant1")
+	if p != 3 {
+		t.Fatalf("expected DPUPinned=3 in pinning mode, got %d", p)
+	}
+
+	// Switch to symmetric hash mode and repin.
+	pinning = false
+	vs.RepinAll(ctx)
+
+	p, _ = vs.GetPinning("tenant1")
+	if p != 65535 {
+		t.Errorf("expected DPUPinned=65535 after RepinAll to symmetric mode, got %d", p)
+	}
+}
+
+func TestStore_RepinAll_NoChange(t *testing.T) {
+	ctx := context.Background()
+	pinning := true
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+
+	vs.SetGlobal(ctx, "tenant1", true)
+	vs.SetService(ctx, "tenant1", true)
+	vs.SetAffinity(ctx, "tenant1", 2)
+
+	p, _ := vs.GetPinning("tenant1")
+	if p != 2 {
+		t.Fatalf("expected DPUPinned=2, got %d", p)
+	}
+
+	// RepinAll with unchanged mode → no change
+	vs.RepinAll(ctx)
+
+	p, _ = vs.GetPinning("tenant1")
+	if p != 2 {
+		t.Errorf("expected DPUPinned=2 after no-op RepinAll, got %d", p)
+	}
+}

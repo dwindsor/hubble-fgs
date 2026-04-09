@@ -60,7 +60,7 @@ func (b *HandlerBuilder) WithTree(subtree map[string]interface{}) *HandlerBuilde
 }
 
 // WithPath sets a single leaf value at the given slash-separated normalized path.
-// For example: WithPath("System/sas-items/globalpol-items/lbMode", "dpu_pinning")
+// For example: WithPath("System/sas-items/globalpol-items/lbMode", "pinning")
 func (b *HandlerBuilder) WithPath(path, value string) *HandlerBuilder {
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	cur := b.tree

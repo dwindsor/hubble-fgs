@@ -321,6 +321,11 @@ const (
 
 	// HATimeout is the timeout for considering a peer adjacency or member as expired.
 	HATimeout = 10 * time.Second
+
+	// PeerPolicySettlingWindow is the settling window for peer policy mismatch transitions.
+	// When a peer reports a policy mismatch, HACritPeerPolicy stays true for this duration
+	// before the degradation is applied. This dampens transient mismatches during deployments.
+	PeerPolicySettlingWindow = 60 * time.Second
 )
 
 // Manager defines the interface for HA orchestration.
@@ -454,6 +459,11 @@ type manager struct {
 	// nil when no recovery is pending. Only accessed from the runActive goroutine.
 	holdDownTimer *time.Timer
 
+	// peerPolicySettlingStart tracks when the first policy mismatch was observed
+	// per peer in the current episode. Access is guarded by m.mu.
+	peerPolicySettlingStart  map[string]time.Time
+	peerPolicySettlingWindow time.Duration // defaults to PeerPolicySettlingWindow; overridable in tests
+
 	// Server lifecycle — managed independently by startServer/stopServer
 	server       Server
 	serverCtx    context.Context
@@ -464,9 +474,11 @@ type manager struct {
 // NewManager creates a new HA manager.
 func NewManager(opts ...ManagerOption) Manager {
 	m := &manager{
-		peerClients: make(map[string]Client),
-		lastAdjTime: make(map[string]time.Time),
-		dpuStatuses: make(map[string]*dpuStatus),
+		peerClients:              make(map[string]Client),
+		lastAdjTime:              make(map[string]time.Time),
+		dpuStatuses:              make(map[string]*dpuStatus),
+		peerPolicySettlingStart:  make(map[string]time.Time),
+		peerPolicySettlingWindow: PeerPolicySettlingWindow,
 		clientFactory: func() Client {
 			return NewClient()
 		},
@@ -916,6 +928,7 @@ func (m *manager) disconnectAllPeers(ctx context.Context) {
 	}
 	m.peerClients = make(map[string]Client)
 	m.lastAdjTime = make(map[string]time.Time)
+	m.peerPolicySettlingStart = make(map[string]time.Time)
 }
 
 // IsLeader returns true if this node is the HA leader.
@@ -979,6 +992,7 @@ func (m *manager) DisconnectPeer(peer string) error {
 		}
 		delete(m.peerClients, peer)
 		delete(m.lastAdjTime, peer)
+		delete(m.peerPolicySettlingStart, peer)
 		logger.GetLogger().Info("Disconnected from HA peer", "peer", peer)
 	}
 	return nil
@@ -1025,10 +1039,49 @@ func (m *manager) ProcessMemberInfo(ctx context.Context, peer string, info types
 		m.haStore.RemovePeerAdjacencyCriterion(ctx, peer, types.HACritDebugAdjacencyFailRemote)
 	}
 
-	// Compute peer policy criterion
+	// Compute peer policy criterion with settling window.
 	localInfo := m.haStore.Local()
 	polOk := m.validator.ComputePeerPolicy(localInfo.PolicyCheck, localInfo.PolicyRev, info)
-	m.haStore.UpdatePeerAdjacencyCriterion(ctx, peer, types.HACritPeerPolicy, polOk)
+	if polOk {
+		// Policy matches — clear settling, update criterion immediately.
+		m.mu.Lock()
+		delete(m.peerPolicySettlingStart, peer)
+		m.mu.Unlock()
+		m.haStore.UpdatePeerAdjacencyCriterion(ctx, peer, types.HACritPeerPolicy, true)
+	} else {
+		// Already degraded — no settling needed.
+		peerState, peerOk := m.haStore.Peer(peer)
+		if peerOk && !peerState.AdjacencyCriteria[types.HACritPeerPolicy] {
+			// criterion is already false — skip settling
+		} else {
+			// Policy mismatch — dampen with settling window.
+			now := time.Now()
+			m.mu.Lock()
+			start, settling := m.peerPolicySettlingStart[peer]
+			if !settling {
+				// First mismatch — start settling window.
+				m.peerPolicySettlingStart[peer] = now
+				m.mu.Unlock()
+				logger.GetLogger().Info("Peer policy settling started",
+					"peer", peer, "window", m.peerPolicySettlingWindow)
+				// suppress — keep criterion at current (true) value
+			} else {
+				elapsed := now.Sub(start)
+				if elapsed < m.peerPolicySettlingWindow {
+					m.mu.Unlock()
+					logger.GetLogger().Debug("Peer policy settling in progress",
+						"peer", peer, "elapsed", elapsed,
+						"remaining", m.peerPolicySettlingWindow-elapsed)
+					// within window — suppress
+				} else {
+					// Window expired — apply degradation.
+					delete(m.peerPolicySettlingStart, peer)
+					m.mu.Unlock()
+					m.haStore.UpdatePeerAdjacencyCriterion(ctx, peer, types.HACritPeerPolicy, false)
+				}
+			}
+		}
+	}
 
 	// Recompute state
 	m.recomputeAndApplyState(ctx)

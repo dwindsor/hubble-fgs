@@ -3273,7 +3273,7 @@ func (agw *AgentGateway) MockGnmiLog(_ context.Context, msgData ipc.MessageData)
 }
 
 // defaultAffinity returns "0" (dynamic). The store determines pinning mode via
-// isLbModePinning(); affinity 0 is valid in both symmetric_hash and dpu_pinning modes.
+// isLbModePinning(); affinity 0 is valid in both symmetric_hash and pinning modes.
 func defaultAffinity(_ interface {
 	GetData(string) (interface{}, bool)
 }) string {

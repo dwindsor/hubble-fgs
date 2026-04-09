@@ -440,3 +440,65 @@ func TestVLANStore_HandleGnmiNotification(t *testing.T) {
 		}
 	})
 }
+
+func TestVLANStore_RepinAll_SymmetricToPinning(t *testing.T) {
+	ctx := context.Background()
+	pinning := false
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+
+	// Activate VLANs in symmetric hash mode → DPUPinned = 65535
+	vs.SetGlobal(ctx, "vlan-10", true)
+	vs.SetService(ctx, "vlan-10", true)
+	vs.SetAffinity(ctx, "vlan-10", 2) // direct affinity
+
+	vs.SetGlobal(ctx, "vlan-20", true)
+	vs.SetService(ctx, "vlan-20", true)
+	vs.SetAffinity(ctx, "vlan-20", 0) // dynamic (hash)
+
+	p1, _ := vs.GetPinning("vlan-10")
+	p2, _ := vs.GetPinning("vlan-20")
+	if p1 != 65535 {
+		t.Errorf("expected DPUPinned=65535 in symmetric mode for vlan-10, got %d", p1)
+	}
+	if p2 != 65535 {
+		t.Errorf("expected DPUPinned=65535 in symmetric mode for vlan-20, got %d", p2)
+	}
+
+	// Switch to pinning mode and repin.
+	pinning = true
+	vs.RepinAll(ctx)
+
+	p1, _ = vs.GetPinning("vlan-10")
+	p2, _ = vs.GetPinning("vlan-20")
+	if p1 != 2 {
+		t.Errorf("expected DPUPinned=2 after RepinAll for vlan-10 (affinity=2), got %d", p1)
+	}
+	if p2 < 1 || p2 > 4 {
+		t.Errorf("expected DPUPinned in 1-4 after RepinAll for vlan-20 (dynamic), got %d", p2)
+	}
+}
+
+func TestVLANStore_RepinAll_PinningToSymmetric(t *testing.T) {
+	ctx := context.Background()
+	pinning := true
+	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+
+	// Activate VLAN in pinning mode → DPUPinned = affinity value
+	vs.SetGlobal(ctx, "vlan-10", true)
+	vs.SetService(ctx, "vlan-10", true)
+	vs.SetAffinity(ctx, "vlan-10", 3)
+
+	p, _ := vs.GetPinning("vlan-10")
+	if p != 3 {
+		t.Fatalf("expected DPUPinned=3 in pinning mode, got %d", p)
+	}
+
+	// Switch to symmetric hash mode and repin.
+	pinning = false
+	vs.RepinAll(ctx)
+
+	p, _ = vs.GetPinning("vlan-10")
+	if p != 65535 {
+		t.Errorf("expected DPUPinned=65535 after RepinAll to symmetric mode, got %d", p)
+	}
+}

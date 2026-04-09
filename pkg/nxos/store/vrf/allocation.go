@@ -319,6 +319,49 @@ func (s *vrfStore) assignPinningLocked(vrf types.VRF) types.VRF {
 	return vrf
 }
 
+// RepinAll re-evaluates DPU pinning for all active VRFs.
+// Called when the load balancing mode changes so that existing VRFs
+// pick up the new pinning mode (e.g. switching from symmetric hash
+// to per-DPU pinning or vice versa).
+//
+// Data-layer updates (DPUPinned in memory + persist) happen unconditionally
+// so pinning is correct when the device later goes in-service and
+// ProgramAllRedirects is called. gNMI redirect programming is gated by
+// inService inside deleteDpuEndpointForRepin and repinRedirects.
+func (s *vrfStore) RepinAll(ctx context.Context) {
+	type repinEntry struct {
+		vrf    types.VRF
+		oldDPU uint16
+	}
+
+	s.mu.Lock()
+	var changed []repinEntry
+	for name, vrf := range s.vrfs {
+		if !vrf.Active {
+			continue
+		}
+		oldDPU := vrf.DPUPinned
+		vrf = s.assignPinningLocked(vrf)
+		if vrf.DPUPinned != oldDPU {
+			s.vrfs[name] = vrf
+			changed = append(changed, repinEntry{vrf: vrf, oldDPU: oldDPU})
+		}
+	}
+	s.mu.Unlock()
+
+	if len(changed) == 0 {
+		return
+	}
+
+	logger.GetLogger().Info("VRF RepinAll: re-pinning active VRFs after LB mode change", "count", len(changed))
+	s.persist(ctx)
+
+	for _, e := range changed {
+		s.deleteDpuEndpointForRepin(ctx, e.vrf.Name, e.oldDPU)
+		s.repinRedirects(ctx, e.vrf)
+	}
+}
+
 // fnv1a computes an FNV-1a 64-bit hash. Used to distribute dynamic VRFs
 // across DPUs deterministically.
 func fnv1a(buf []byte) uint64 {
