@@ -572,3 +572,8 @@ jobs:
           }
 
           & "${{ github.workspace }}\tests\e2e\windows\test-script.ps1"
+          if ($LASTEXITCODE -ne 0) {
+              Write-Output "✗ Smoke tests failed with exit code $LASTEXITCODE"
+              exit $LASTEXITCODE
+          }
+          Write-Output "✓ Smoke tests passed"

@@ -16,10 +16,6 @@ spec:
     action: "deny"
     destination:
     - ipBlock:
-        cidr: "127.0.0.1/32"
-      ports:
-        protocol: "TCP"
-    - ipBlock:
         cidr: "142.250.217.78/24" # google
       ports:
         protocol: "TCP"
