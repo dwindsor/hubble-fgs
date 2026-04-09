@@ -8,26 +8,27 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-//go:build !windows && !nok8s
+//go:build nok8s
 
 package server
 
 import (
-	"github.com/cilium/tetragon/pkg/cgidmap"
+	"fmt"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 )
 
-var cgmap cgidmap.Map
-
-func initContainerIDMap() error {
-	var err error
-	cgmap, err = cgidmap.GlobalMap()
-	if cgmap == nil || err != nil {
-		return err
-	}
-
-	return nil
+type Server struct {
+	tetragon.UnimplementedProcessModelServiceServer
+	appModelV1.UnimplementedApplicationModelServiceServer
 }
 
-func getContainerID(cgroupid uint64) (string, bool) {
-	return cgmap.Get(cgroupid)
+func DefaultNewServer() (*Server, error) {
+	var err error
+	if enterpriseOption.Config.EnableApplicationModel {
+		err = fmt.Errorf("application server model not supported in nok8s builds")
+	}
+	return nil, err
 }
