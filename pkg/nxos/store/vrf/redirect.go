@@ -50,7 +50,7 @@ func (s *vrfStore) programRedirects(ctx context.Context, vrf types.VRF) {
 func (s *vrfStore) programFwPolicyState(ctx context.Context, handler gnmi.GnmiHandler, vrf types.VRF) {
 	reason := ""
 	affinity := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
-	if vrf.DPUPinned > 0 && s.isPinningActive() {
+	if vrf.DPUPinned > 0 && s.isPinningActiveLocked() {
 		affinity = dpuToModulePinning(vrf.DPUPinned)
 	}
 	extItems := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_IpvrfstateItems_DomItems_DomStateList_ExtItems{
@@ -126,7 +126,7 @@ func (s *vrfStore) programServiceEndpoints(ctx context.Context, handler gnmi.Gnm
 
 	gid := vrf.GID
 	dpuNum := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
-	if vrf.DPUPinned > 0 && s.isPinningActive() {
+	if vrf.DPUPinned > 0 && s.isPinningActiveLocked() {
 		dpuNum = dpuToModulePinning(vrf.DPUPinned)
 	}
 
@@ -304,7 +304,7 @@ func (s *vrfStore) programFwPolicyStateBatch(ctx context.Context, handler gnmi.G
 	for _, vrf := range vrfs {
 		reason := ""
 		affinity := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
-		if vrf.DPUPinned > 0 && s.isPinningActive() {
+		if vrf.DPUPinned > 0 && s.isPinningActiveLocked() {
 			affinity = dpuToModulePinning(vrf.DPUPinned)
 		}
 		name := vrf.Name
@@ -345,7 +345,7 @@ func (s *vrfStore) programServiceEndpointsBatch(ctx context.Context, handler gnm
 		}
 		gid := vrf.GID
 		dpuNum := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
-		if vrf.DPUPinned > 0 && s.isPinningActive() {
+		if vrf.DPUPinned > 0 && s.isPinningActiveLocked() {
 			dpuNum = dpuToModulePinning(vrf.DPUPinned)
 		}
 		name := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
@@ -477,7 +477,7 @@ func (s *vrfStore) setDpuEndpoint(ctx context.Context, handler gnmi.GnmiHandler,
 	svcName := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
 	gid := vrf.GID
 	dpuNum := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
-	if vrf.DPUPinned > 0 && s.isPinningActive() {
+	if vrf.DPUPinned > 0 && s.isPinningActiveLocked() {
 		dpuNum = dpuToModulePinning(vrf.DPUPinned)
 	}
 

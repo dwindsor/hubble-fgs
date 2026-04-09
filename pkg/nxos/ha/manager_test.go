@@ -12,6 +12,7 @@ package ha
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -19,6 +20,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/version"
 
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/mock"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/device"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store/dpu"
 	hastore "github.com/isovalent/hubble-fgs/pkg/nxos/store/ha"
@@ -1770,7 +1773,7 @@ func TestProcessMemberInfo_HardFailure_DoesNotClearVrfGid(t *testing.T) {
 			return LocalDeviceInfo{
 				Model:     "N9K-C9364C",
 				SWVersion: "10.5(1)",
-				LbMode:    "symmetric_hash",
+				LbMode:    "symmetric-hash",
 			}
 		}),
 	).(*manager)
@@ -1779,7 +1782,7 @@ func TestProcessMemberInfo_HardFailure_DoesNotClearVrfGid(t *testing.T) {
 	mgr.ProcessMemberInfo(ctx, "10.0.0.2", types.HAPeerMember{
 		Model:     "N9K-C9332C",
 		SWVersion: "10.5(1)",
-		LbMode:    "symmetric_hash",
+		LbMode:    "symmetric-hash",
 		Service:   types.SvcStateSuccess,
 	})
 
@@ -2075,6 +2078,145 @@ func TestManager_Run_AdminDisable_NoSvcFlap(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("Run() did not return after context cancellation")
 	}
+}
+
+// TestManager_Run_PeerHaStateWrittenBeforeNotifyServiceFailure is a regression
+// test for the race where NX-OS showed stale "ha-ok" for the peer during the
+// blocking NotifyServiceFailure gRPC call.
+//
+// The fix: recomputeAndApplyState is called before NotifyServiceFailure so
+// that the peer HA state gNMI SET reaches NX-OS before the peer is notified.
+// We verify this by capturing the gNMI mock state inside the mock adjacency
+// handler (which runs while the blocking gRPC call is in flight).
+func TestManager_Run_PeerHaStateWrittenBeforeNotifyServiceFailure(t *testing.T) {
+	ctx := context.Background()
+
+	gnmiHandler := mock.NewHandler()
+	haStore := hastore.NewStore(ctx, hastore.WithGnmiHandler(gnmiHandler))
+	deviceStore := device.NewStore(ctx)
+
+	// peerHaStateAtAdj captures the peer HA state from the gNMI mock at the
+	// moment the NotifyServiceFailure Adjacency RPC arrives at the "peer".
+	var peerHaStateAtAdj string
+	var captureMu sync.Mutex
+	captured := false
+	adjReceived := make(chan struct{}, 1)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client {
+			c := NewMockClient()
+			c.SetAdjacencyHandler(func(ctx context.Context, req *hav1.AdjRequest) (*hav1.AdjResponse, error) {
+				// Snapshot the gNMI peer HA state at the moment this call arrives.
+				// With the fix, recomputeAndApplyState has already run before
+				// NotifyServiceFailure called us, so the state must already be written.
+				captureMu.Lock()
+				if !captured {
+					captured = true
+					peerHaStatePath := normalizeMockManagerPath(
+						fmt.Sprintf(paths.HAStorePeerHaState, "10.0.0.2"))
+					if v, ok := gnmiHandler.GetData(peerHaStatePath); ok {
+						peerHaStateAtAdj, _ = v.(string)
+					}
+					select {
+					case adjReceived <- struct{}{}:
+					default:
+					}
+				}
+				captureMu.Unlock()
+				return &hav1.AdjResponse{Status: hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS}, nil
+			})
+			return c
+		}),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	bgCtx := context.Background()
+
+	// Activate HA: enabled + haIP + peer + in-service.
+	deviceStore.SetInService(bgCtx, "in-service")
+	haStore.SetEnabled(bgCtx, "enabled")
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{
+		IP:            "10.0.0.2",
+		IpConfigState: hastore.PeerIpCfgStateSuccess,
+		Connected:     true,
+		ServiceCriteria: types.HACriteria{
+			types.HACritPeerService: true,
+		},
+	})
+
+	// Give Run() time to activate.
+	time.Sleep(50 * time.Millisecond)
+
+	// Connect peer so NotifyServiceFailure can reach the mock.
+	if err := mgr.ConnectPeer(bgCtx, "10.0.0.2"); err != nil {
+		t.Fatalf("ConnectPeer failed: %v", err)
+	}
+
+	// Drain any adjacency messages from the activation / keepalive ticker,
+	// and reset the capture flag so we only capture the out-of-service notification.
+	time.Sleep(20 * time.Millisecond)
+	captureMu.Lock()
+	captured = false
+	peerHaStateAtAdj = ""
+	captureMu.Unlock()
+	for len(adjReceived) > 0 {
+		<-adjReceived
+	}
+
+	// Transition to out-of-service — triggers recomputeAndApplyState then NotifyServiceFailure.
+	deviceStore.SetInService(bgCtx, "out-of-service")
+
+	// Wait for NotifyServiceFailure to reach the mock peer.
+	select {
+	case <-adjReceived:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("did not receive adjacency notification after out-of-service transition")
+	}
+
+	// The peer HA state must have been written to NX-OS BEFORE NotifyServiceFailure
+	// called the mock adjacency handler. Without the fix it would be "" (not yet
+	// written). With the fix it must be "ha-unavailable" (local service failure with
+	// a healthy peer: computePeerHaState returns PeerHAStateUnavailable).
+	captureMu.Lock()
+	got := peerHaStateAtAdj
+	captureMu.Unlock()
+	if got != types.PeerHAStateUnavailable {
+		t.Errorf("peer HA state at NotifyServiceFailure time: want %q, got %q",
+			types.PeerHAStateUnavailable, got)
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
+// normalizeMockManagerPath strips the "device:" scheme prefix used in path
+// constants so it matches the key format used by the gNMI mock handler.
+func normalizeMockManagerPath(path string) string {
+	if len(path) > 7 && path[:7] == "device:" {
+		path = path[7:]
+	}
+	if len(path) > 0 && path[0] == '/' {
+		path = path[1:]
+	}
+	return path
 }
 
 var _ Manager = (*mockManager)(nil)

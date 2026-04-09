@@ -40,8 +40,8 @@ type vrfStore struct {
 	nextGID   uint16
 	gidsInUse map[uint16]int
 	// DPU pinning configuration
-	dpuCount        uint16      // number of DPUs for hash-based pinning
-	isLbModePinning func() bool // returns true when per-DPU pinning is active
+	dpuCount        uint16 // number of DPUs for hash-based pinning
+	isLbModePinning bool   // true when per-DPU pinning is active
 	// In-service gate: when false, reactive programRedirects no-ops.
 	// Set to true when the device transitions to in-service.
 	inService bool
@@ -79,12 +79,11 @@ func WithDPUCount(count uint16) Option {
 	}
 }
 
-// WithLbModePinning sets the callback that determines whether per-DPU
-// pinning is active. When this returns false, all redirects use "all" DPUs
-// regardless of the computed DPUPinned value.
-func WithLbModePinning(fn func() bool) Option {
+// WithLbModePinning sets the initial per-DPU pinning mode.
+// When false, all redirects use "all" DPUs regardless of the computed DPUPinned value.
+func WithLbModePinning(active bool) Option {
 	return func(vs *vrfStore) {
-		vs.isLbModePinning = fn
+		vs.isLbModePinning = active
 	}
 }
 
@@ -402,13 +401,16 @@ func (s *vrfStore) ReservePreset(ctx context.Context, name string, gid uint16) {
 	s.persist(ctx)
 }
 
-// isPinningActive returns true when per-DPU pinning is active.
-// Needed as a nil check on isLbModePinning closure
-func (s *vrfStore) isPinningActive() bool {
-	if s.isLbModePinning == nil {
-		return false
-	}
-	return s.isLbModePinning()
+// SetLbModePinning updates whether per-DPU pinning is active.
+func (s *vrfStore) SetLbModePinning(active bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isLbModePinning = active
+}
+
+// isPinningActiveLocked returns true when per-DPU pinning is active.
+func (s *vrfStore) isPinningActiveLocked() bool {
+	return s.isLbModePinning
 }
 
 // Ensure vrfStore implements Store interface

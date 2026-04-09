@@ -162,6 +162,11 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 
 	// Setup metrics collector
 	metricsCollector := setupMetricsCollector(ctx)
+	// Set the policy handler immediately so agwctl metrics show returns
+	// correct policy/rule counts even before the K8s informer is ready.
+	if metricsCollector != nil {
+		metricsCollector.SetPolicyHandler(agwAgent.PolicyHandler)
+	}
 
 	if Config.EnableKubernetes {
 		// Wait for agent token to be ready before proceeding

@@ -34,13 +34,15 @@ func parseVLANID(name string) uint16 {
 }
 
 // handleActivateLocked checks whether the VLAN should be active, assigns
-// pinning if so, and stores the result. Returns (vlan, oldActive).
+// pinning if so, and stores the result. Returns (vlan, oldActive, oldDPUPinned).
 // Use vlan.Active for current state.
 // Must be called with the write lock held.
-func (s *vlanStore) handleActivateLocked(vlan types.VLAN, oldVLAN *types.VLAN) (types.VLAN, bool) {
+func (s *vlanStore) handleActivateLocked(vlan types.VLAN, oldVLAN *types.VLAN) (types.VLAN, bool, uint16) {
 	var oldActive bool
+	var oldDPUPinned uint16
 	if oldVLAN != nil {
 		oldActive = oldVLAN.Active
+		oldDPUPinned = oldVLAN.DPUPinned
 	}
 
 	shouldBeActive := vlan.Global && vlan.Service && vlan.HasAffinity
@@ -56,7 +58,7 @@ func (s *vlanStore) handleActivateLocked(vlan types.VLAN, oldVLAN *types.VLAN) (
 	}
 
 	s.vlans[vlan.Name] = vlan
-	return vlan, oldActive
+	return vlan, oldActive, oldDPUPinned
 }
 
 func (s *vlanStore) SetGlobal(ctx context.Context, name string, isGlobal bool) error {
@@ -92,7 +94,7 @@ func (s *vlanStore) SetGlobal(ctx context.Context, name string, isGlobal bool) e
 		return nil
 	}
 
-	vlan, oldActive := s.handleActivateLocked(vlan, oldVLAN)
+	vlan, oldActive, oldDPUPinned := s.handleActivateLocked(vlan, oldVLAN)
 	s.mu.Unlock()
 
 	eventType := store.EventUpdated
@@ -107,6 +109,8 @@ func (s *vlanStore) SetGlobal(ctx context.Context, name string, isGlobal bool) e
 		s.programRedirects(ctx)
 	case oldActive && !vlan.Active:
 		s.cleanupRedirects(ctx, vlan.Name)
+	case oldActive && vlan.Active && oldDPUPinned != vlan.DPUPinned:
+		s.programRedirects(ctx)
 	}
 	return nil
 }
@@ -151,7 +155,7 @@ func (s *vlanStore) SetService(ctx context.Context, name string, isService bool)
 		return nil
 	}
 
-	vlan, oldActive := s.handleActivateLocked(vlan, oldVLAN)
+	vlan, oldActive, oldDPUPinned := s.handleActivateLocked(vlan, oldVLAN)
 	s.mu.Unlock()
 
 	eventType := store.EventUpdated
@@ -166,6 +170,8 @@ func (s *vlanStore) SetService(ctx context.Context, name string, isService bool)
 		s.programRedirects(ctx)
 	case oldActive && !vlan.Active:
 		s.cleanupRedirects(ctx, vlan.Name)
+	case oldActive && vlan.Active && oldDPUPinned != vlan.DPUPinned:
+		s.programRedirects(ctx)
 	}
 	return nil
 }
@@ -186,7 +192,7 @@ func (s *vlanStore) SetAffinity(ctx context.Context, name string, affinity uint1
 	vlan.HasAffinity = true
 	vlan.Affinity = affinity
 
-	vlan, oldActive := s.handleActivateLocked(vlan, oldVLAN)
+	vlan, oldActive, oldDPUPinned := s.handleActivateLocked(vlan, oldVLAN)
 	s.mu.Unlock()
 
 	eventType := store.EventUpdated
@@ -201,6 +207,8 @@ func (s *vlanStore) SetAffinity(ctx context.Context, name string, affinity uint1
 		s.programRedirects(ctx)
 	case oldActive && !vlan.Active:
 		s.cleanupRedirects(ctx, vlan.Name)
+	case oldActive && vlan.Active && oldDPUPinned != vlan.DPUPinned:
+		s.programRedirects(ctx)
 	}
 	return nil
 }
@@ -219,5 +227,8 @@ func (s *vlanStore) SetPinning(ctx context.Context, name string, dpuPinned uint1
 
 	s.notify(Event{Type: store.EventUpdated, VLAN: vlan, OldVLAN: &old})
 	s.persist(ctx)
+	if old.Active && old.DPUPinned != dpuPinned {
+		s.programRedirects(ctx)
+	}
 	return nil
 }

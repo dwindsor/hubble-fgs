@@ -61,7 +61,7 @@ class TestDeviceStorePopulation:
         assert data.get("in_service_state") == "in-service", (
             f"in_service_state: expected 'in-service', got '{data.get('in_service_state')}'"
         )
-        assert data.get("lb_mode") == "symmetric_hash", (
+        assert data.get("lb_mode") == "symmetric-hash", (
             f"lb_mode: expected 'symmetric_hash', got '{data.get('lb_mode')}'"
         )
         assert data.get("cpa_version"), (
@@ -76,7 +76,7 @@ class TestDeviceLoadBalancing:
     def test_lb_mode_change_via_gnmi(self, cmd, seed_gnmi):
         """Changing LB mode via gNMI updates device store."""
         data_before = cmd.agw_gnmi_device_show_json()
-        original_mode = data_before.get("lb_mode", "symmetric_hash")
+        original_mode = data_before.get("lb_mode", "symmetric-hash")
         try:
             cmd.agw_mock_gnmi_set(LB_MODE_PATH, '"dpu_pinning"')
             time.sleep(2)

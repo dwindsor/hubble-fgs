@@ -40,7 +40,7 @@ func activateVRFInStore(vs vrf.Store, name string) {
 // TestReconcile_NilMbrInfo verifies that Reconcile(nil) returns (false, nil) without error.
 func TestReconcile_NilMbrInfo(t *testing.T) {
 	r, _, _, _ := newTestReconciler(t)
-	ok, err := r.Reconcile(context.Background(), "10.0.0.2", nil, "symmetric_hash")
+	ok, err := r.Reconcile(context.Background(), "10.0.0.2", nil, "symmetric-hash")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -62,7 +62,7 @@ func TestReconcile_NoConflicts_ReturnsTrue(t *testing.T) {
 		},
 	}
 
-	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -86,7 +86,7 @@ func TestReconcile_NonLeaderSetsPresets(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestReconcile_NonLeaderAdoptsPeerGID(t *testing.T) {
 		},
 	}
 
-	ok2, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	ok2, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestReconcile_LeaderKeepsOwnGID(t *testing.T) {
 		},
 	}
 
-	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestReconcile_BatchedGIDChanges(t *testing.T) {
 		},
 	}
 
-	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestReconcile_LeaderAdoptsCheaperSide(t *testing.T) {
 		},
 	}
 
-	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -284,7 +284,7 @@ func TestReconcile_LeaderBreaksTie(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -327,7 +327,7 @@ func TestReconcile_LeaderAdoptsMultiple(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -365,7 +365,7 @@ func TestReconcile_NoConflictsLeaderUnchanged(t *testing.T) {
 		},
 	}
 
-	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	ok, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestReconcile_ReservePresetForMissingVRF(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -435,7 +435,7 @@ func TestReconcile_ReservePresetSkipsActiveVRF(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -486,7 +486,7 @@ func TestBuildLocalVRFInfo_IncludesActiveVRFs(t *testing.T) {
 // the computed DPUPinned value from the store.
 func TestBuildLocalVRFInfo_SendsDPUPinned(t *testing.T) {
 	ctx := context.Background()
-	vs := vrf.NewStore(ctx, vrf.WithLbModePinning(func() bool { return true }))
+	vs := vrf.NewStore(ctx, vrf.WithLbModePinning(true))
 
 	// Activate VRF with affinity=2 — in pinning mode, static affinity
 	// goes directly to DPUPinned
@@ -514,7 +514,7 @@ func TestBuildLocalVRFInfo_SendsDPUPinned(t *testing.T) {
 // get FNV-1a pinning when dpuCount is set.
 func TestBuildLocalVRFInfo_DynamicWithDPUCount(t *testing.T) {
 	ctx := context.Background()
-	vs := vrf.NewStore(ctx, vrf.WithLbModePinning(func() bool { return true }), vrf.WithDPUCount(4))
+	vs := vrf.NewStore(ctx, vrf.WithLbModePinning(true), vrf.WithDPUCount(4))
 
 	// Activate VRF with affinity=0 (dynamic)
 	vs.SetGlobal(ctx, "test-vrf", true)
@@ -603,7 +603,7 @@ func TestReconcile_StoresPeerVlanIDs(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric_hash")
+	_, err := r.Reconcile(ctx, "10.0.0.2", peerMbrInfo, "symmetric-hash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -626,7 +626,7 @@ func TestReconcile_StoresPeerVlanIDs(t *testing.T) {
 // the computed DPUPinned value regardless of lbMode.
 func TestBuildLocalVLANInfo_SendsDPUPinned(t *testing.T) {
 	ctx := context.Background()
-	vlanStore := vlan.NewStore(ctx, vlan.WithLbModePinning(func() bool { return true }))
+	vlanStore := vlan.NewStore(ctx, vlan.WithLbModePinning(true))
 
 	// Activate VLAN with affinity=4 — in pinning mode, static pinning
 	vlanStore.SetGlobal(ctx, "vlan-100", true)

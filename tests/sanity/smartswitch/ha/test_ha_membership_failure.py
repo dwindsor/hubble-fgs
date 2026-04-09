@@ -111,7 +111,7 @@ class TestMembershipFailure:
         assert poll_peer_membership_ok(ha_cmd_leader, FOLLOWER_IP, expected=False, timeout=45), \
             "Mismatch not detected"
 
-        ha_cmd_leader.agw_mock_gnmi_set(LB_MODE_PATH, '"symmetric_hash"')
+        ha_cmd_leader.agw_mock_gnmi_set(LB_MODE_PATH, '"symmetric-hash"')
 
         assert wait_for_ha_ready(ha_cmd_leader, timeout=60), \
             "Leader did not recover to ha-ready after LB mode restore"

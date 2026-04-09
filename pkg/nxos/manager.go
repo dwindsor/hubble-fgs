@@ -128,17 +128,11 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 		logger.GetLogger().Warn("Failed to initialize storage", "error", err)
 	}
 
-	// Create the device store first so VRF/VLAN stores can reference its LbMode.
+	// Create the device store first so VRF/VLAN stores can seed from its LbMode.
 	devStore := device.NewStore(ctx, device.WithStorage(storageBackend), device.WithAgentTokenProvider(token.GetAgentToken()))
 	dpuSt := dpu.NewStore(ctx, dpu.WithStorage(storageBackend))
 	// Pre-create haStore so the isLeader closure can reference it.
 	haSt := hastore.NewStore(ctx, hastore.WithStorage(storageBackend))
-
-	// lbModePinning is a callback shared by VRF and VLAN stores to check
-	// whether per-DPU pinning is active at redirect-programming time.
-	lbModePinning := func() bool {
-		return devStore.LbMode() == "pinning"
-	}
 
 	m := &manager{
 		fwStatus:                fwStateDisabled, // starts disabled
@@ -149,11 +143,11 @@ func NewManager(ctx context.Context, opts ...Option) Manager {
 		vrfStore: vrf.NewStore(ctx,
 			vrf.WithStorage(storageBackend),
 			vrf.WithPreSeededGIDs(options.vrfGIDs),
-			vrf.WithLbModePinning(lbModePinning),
+			vrf.WithLbModePinning(devStore.LbMode() == "pinning"),
 		),
 		vlanStore: vlan.NewStore(ctx,
 			vlan.WithStorage(storageBackend),
-			vlan.WithLbModePinning(lbModePinning),
+			vlan.WithLbModePinning(devStore.LbMode() == "pinning"),
 		),
 		dpuStore:    dpuSt,
 		haStore:     haSt,
@@ -233,8 +227,21 @@ func (m *manager) Setup(ctx context.Context) error {
 		logger.GetLogger().Warn("Failed to GET LbMode, will rely on subscription", logfields.Error, err)
 	} else if len(strs) > 0 && strs[0] != "" {
 		m.deviceStore.SetLbMode(ctx, strs[0])
+		pinning := strs[0] == "pinning"
+		m.vrfStore.SetLbModePinning(pinning)
+		m.vlanStore.SetLbModePinning(pinning)
 		logger.GetLogger().Info("Seeded LbMode from gNMI GET", "lbMode", strs[0])
 	}
+
+	// Re-evaluate DPU pinning for VRFs/VLANs loaded from storage.
+	// On restart, stored DPUPinned values may be stale (e.g. 65535/all from a
+	// previous symmetric-hash run) while the current LB mode is pinning.
+	// The LbMode watcher is not yet registered, and subscriptions won't fire
+	// EventLbModeChanged if the value is unchanged, so RepinAll must be called
+	// explicitly. Redirect programming is gated on inService (false here), so
+	// only in-memory state and persistence are updated.
+	m.vrfStore.RepinAll(ctx)
+	m.vlanStore.RepinAll(ctx)
 
 	// Register VRF change watcher to keep policyHandler and config library in sync.
 	m.setupVRFPolicyWatcher()
@@ -267,6 +274,13 @@ func (m *manager) Setup(ctx context.Context) error {
 	// Update VRF and VLAN stores with discovered DPU count for hash-based pinning.
 	m.vrfStore.SetDPUCount(uint16(m.dpuStore.DpuCount()))
 	m.vlanStore.SetDPUCount(uint16(m.dpuStore.DpuCount()))
+
+	// Re-evaluate DPU pinning with the definitive DPU count from inventory.
+	// VRFs/VLANs with Affinity=0 use FNV-1a hash which depends on dpuCount.
+	// The earlier RepinAll used the GET-seeded count which may have been 0 if
+	// the GET failed; this corrects those entries with the confirmed count.
+	m.vrfStore.RepinAll(ctx)
+	m.vlanStore.RepinAll(ctx)
 
 	return nil
 }
@@ -568,6 +582,9 @@ func (m *manager) setupLbModeWatcher() {
 	m.deviceStore.Watch(func(event device.Event) {
 		if event.Type == device.EventLbModeChanged {
 			ctx := context.Background()
+			pinning := event.Status == "pinning"
+			m.vrfStore.SetLbModePinning(pinning)
+			m.vlanStore.SetLbModePinning(pinning)
 			m.vrfStore.RepinAll(ctx)
 			m.vlanStore.RepinAll(ctx)
 		}

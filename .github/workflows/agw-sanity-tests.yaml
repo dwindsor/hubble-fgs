@@ -270,7 +270,7 @@ jobs:
       - name: Show container status
         run: |
           cd tests/sanity/smartswitch
-          make status
+          make show-containers-status-multi
 
       - name: Install test dependencies
         run: |
@@ -431,4 +431,4 @@ jobs:
         if: always()
         run: |
           cd tests/sanity/smartswitch
-          make shutdown
+          make shutdown-containers-multi

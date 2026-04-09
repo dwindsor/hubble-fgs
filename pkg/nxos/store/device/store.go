@@ -180,7 +180,7 @@ func NewStore(ctx context.Context, opts ...Option) Store {
 	}
 
 	if s.lbMode == "" {
-		s.lbMode = "symmetric_hash"
+		s.lbMode = "symmetric-hash"
 	}
 
 	// Parse headless mode from /etc/sas.cfg (overrides persisted state).

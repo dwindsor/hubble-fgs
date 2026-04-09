@@ -17,7 +17,7 @@
     },
     "sas-items": {
       "globalpol-items": {
-        "lbMode": "symmetric_hash"
+        "lbMode": "symmetric-hash"
       },
       "state-items": {
         "agent-items": {

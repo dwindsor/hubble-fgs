@@ -13,9 +13,11 @@ package vlan
 import (
 	"context"
 	"testing"
+	"time"
 
 	gnmiproto "github.com/openconfig/gnmi/proto/gnmi"
 
+	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store"
 )
@@ -314,7 +316,7 @@ func TestVLANStore_Persistence(t *testing.T) {
 }
 
 func TestVLANStore_AutoPinning_StaticAffinity(t *testing.T) {
-	vs := NewStore(context.Background(), WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(context.Background(), WithLbModePinning(true), WithDPUCount(4))
 	ctx := context.Background()
 
 	vs.SetGlobal(ctx, "vlan-10", true)
@@ -348,7 +350,7 @@ func TestVLANStore_AutoPinning_Dynamic(t *testing.T) {
 }
 
 func TestVLANStore_AutoPinning_DynamicPinningMode(t *testing.T) {
-	vs := NewStore(context.Background(), WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(context.Background(), WithLbModePinning(true), WithDPUCount(4))
 	ctx := context.Background()
 
 	vs.SetGlobal(ctx, "vlan-10", true)
@@ -443,8 +445,7 @@ func TestVLANStore_HandleGnmiNotification(t *testing.T) {
 
 func TestVLANStore_RepinAll_SymmetricToPinning(t *testing.T) {
 	ctx := context.Background()
-	pinning := false
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+	vs := NewStore(ctx, WithDPUCount(4))
 
 	// Activate VLANs in symmetric hash mode → DPUPinned = 65535
 	vs.SetGlobal(ctx, "vlan-10", true)
@@ -465,7 +466,7 @@ func TestVLANStore_RepinAll_SymmetricToPinning(t *testing.T) {
 	}
 
 	// Switch to pinning mode and repin.
-	pinning = true
+	vs.SetLbModePinning(true)
 	vs.RepinAll(ctx)
 
 	p1, _ = vs.GetPinning("vlan-10")
@@ -478,10 +479,106 @@ func TestVLANStore_RepinAll_SymmetricToPinning(t *testing.T) {
 	}
 }
 
+// mockGnmiHandler is a minimal gNMI handler that counts Set calls.
+type mockGnmiHandler struct {
+	setCalls int
+}
+
+func (m *mockGnmiHandler) Close() error                                      { return nil }
+func (m *mockGnmiHandler) Get(_ context.Context, _ string) ([]string, error) { return nil, nil }
+func (m *mockGnmiHandler) Delete(_ context.Context, _ string) error          { return nil }
+func (m *mockGnmiHandler) RegisterHandler(_ gnmi.SubscriptionCallback, _ ...string) {
+}
+func (m *mockGnmiHandler) UnregisterHandler(_ gnmi.SubscriptionCallback) {}
+func (m *mockGnmiHandler) StartSubscriptions(_ context.Context)          {}
+func (m *mockGnmiHandler) StopSubscriptions()                            {}
+func (m *mockGnmiHandler) LastNotificationTime() time.Time               { return time.Time{} }
+func (m *mockGnmiHandler) Set(_ context.Context, _ string, _ any) error {
+	m.setCalls++
+	return nil
+}
+
+func TestVLANStore_SetPinning_TriggersRedirects(t *testing.T) {
+	ctx := context.Background()
+	handler := &mockGnmiHandler{}
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
+	s := vs.(*vlanStore)
+	s.SetGnmiHandler(handler)
+	s.SetInService(true)
+
+	vs.SetGlobal(ctx, "vlan-10", true)
+	vs.SetService(ctx, "vlan-10", true)
+	vs.SetAffinity(ctx, "vlan-10", 2) // DPUPinned=2, triggers initial programRedirects
+
+	setCalls := handler.setCalls // capture after activation
+
+	// Change pinning to DPU 3 — should trigger programRedirects
+	if err := vs.SetPinning(ctx, "vlan-10", 3); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if handler.setCalls <= setCalls {
+		t.Error("expected gNMI SET calls after SetPinning on active VLAN with changed DPU")
+	}
+
+	vlan, _ := vs.Get("vlan-10")
+	if vlan.DPUPinned != 3 {
+		t.Errorf("expected DPUPinned=3, got %d", vlan.DPUPinned)
+	}
+}
+
+func TestVLANStore_SetAffinity_RepinsActiveVLAN(t *testing.T) {
+	ctx := context.Background()
+	handler := &mockGnmiHandler{}
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
+	s := vs.(*vlanStore)
+	s.SetGnmiHandler(handler)
+	s.SetInService(true)
+
+	vs.SetGlobal(ctx, "vlan-10", true)
+	vs.SetService(ctx, "vlan-10", true)
+	vs.SetAffinity(ctx, "vlan-10", 1) // DPUPinned=1
+
+	setCalls := handler.setCalls
+
+	// Change affinity — DPUPinned changes from 1 to 2, should trigger programRedirects
+	vs.SetAffinity(ctx, "vlan-10", 2)
+
+	if handler.setCalls <= setCalls {
+		t.Error("expected gNMI SET calls after SetAffinity on active VLAN with changed pinning")
+	}
+
+	vlan, _ := vs.Get("vlan-10")
+	if vlan.DPUPinned != 2 {
+		t.Errorf("expected DPUPinned=2, got %d", vlan.DPUPinned)
+	}
+}
+
+func TestVLANStore_SetPinning_NoOpWhenInactive(t *testing.T) {
+	ctx := context.Background()
+	handler := &mockGnmiHandler{}
+	vs := NewStore(ctx)
+	s := vs.(*vlanStore)
+	s.SetGnmiHandler(handler)
+	s.SetInService(true)
+
+	// Create a VLAN but don't activate it (no service flag)
+	vs.SetGlobal(ctx, "vlan-10", true)
+
+	setCalls := handler.setCalls
+
+	if err := vs.SetPinning(ctx, "vlan-10", 2); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if handler.setCalls != setCalls {
+		t.Errorf("expected no gNMI SET calls for inactive VLAN, got %d new calls", handler.setCalls-setCalls)
+	}
+}
+
 func TestVLANStore_RepinAll_PinningToSymmetric(t *testing.T) {
 	ctx := context.Background()
-	pinning := true
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
 
 	// Activate VLAN in pinning mode → DPUPinned = affinity value
 	vs.SetGlobal(ctx, "vlan-10", true)
@@ -494,7 +591,7 @@ func TestVLANStore_RepinAll_PinningToSymmetric(t *testing.T) {
 	}
 
 	// Switch to symmetric hash mode and repin.
-	pinning = false
+	vs.SetLbModePinning(false)
 	vs.RepinAll(ctx)
 
 	p, _ = vs.GetPinning("vlan-10")

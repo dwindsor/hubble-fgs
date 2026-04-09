@@ -759,7 +759,7 @@ func TestStore_AutoGIDAllocation_TriggersRedirect(t *testing.T) {
 }
 
 func TestStore_AutoPinning_StaticAffinity(t *testing.T) {
-	vs := NewStore(context.Background(), WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(context.Background(), WithLbModePinning(true))
 	ctx := context.Background()
 
 	// Activate with a non-zero affinity in pinning mode → DPUPinned = Affinity
@@ -795,7 +795,7 @@ func TestStore_AutoPinning_Dynamic(t *testing.T) {
 }
 
 func TestStore_AutoPinning_DynamicPinningMode(t *testing.T) {
-	vs := NewStore(context.Background(), WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(context.Background(), WithLbModePinning(true), WithDPUCount(4))
 	ctx := context.Background()
 
 	// Activate with zero affinity in pinning mode → FNV-1a hash (1-4)
@@ -853,7 +853,7 @@ func TestStore_SetAffinity_ActivatesVRF(t *testing.T) {
 }
 
 func TestStore_SetAffinity_RepinsActiveVRF(t *testing.T) {
-	vs := NewStore(context.Background(), WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(context.Background(), WithLbModePinning(true))
 	ctx := context.Background()
 
 	// Activate with affinity=2 in pinning mode
@@ -1871,7 +1871,7 @@ func TestRestoreGIDsFromGnmi_RepinDeletesOldEndpoint(t *testing.T) {
 		Build()
 	defer handler.Close()
 
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(ctx, WithLbModePinning(true))
 	vs.SetGnmiHandler(handler)
 
 	// Activate vrf-a with DPUPinned=2 (affinity=2 in pinning mode).
@@ -1923,7 +1923,7 @@ func TestRestoreGIDsFromGnmi_SamePinningNoDelete(t *testing.T) {
 		Build()
 	defer handler.Close()
 
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(ctx, WithLbModePinning(true))
 	vs.SetGnmiHandler(handler)
 
 	// Activate vrf-a with DPUPinned=1.
@@ -1979,7 +1979,7 @@ func TestRestoreGIDsFromGnmi_NoPinningDeletesAll(t *testing.T) {
 	// In symmetric-hash mode, active VRFs get DPUPinned=65535, not 0.
 	// Let's manually set up a VRF with DPUPinned=0 by not having dpuCount set.
 	// Actually, with dpuCount=0 and affinity=0 in pinning mode, DPUPinned=0.
-	vs2 := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(0))
+	vs2 := NewStore(ctx, WithLbModePinning(true))
 	vs2.SetGnmiHandler(handler)
 	activateVRF(vs2, "vrf-a", 0)
 	vrf, _ := vs2.Get("vrf-a")
@@ -2029,7 +2029,7 @@ func TestRestoreGIDsFromGnmi_MultipleStaleEndpoints(t *testing.T) {
 		Build()
 	defer handler.Close()
 
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return true }), WithDPUCount(4))
+	vs := NewStore(ctx, WithLbModePinning(true))
 	vs.SetGnmiHandler(handler)
 
 	// Activate vrf-a with DPUPinned=2.
@@ -2135,8 +2135,7 @@ func TestStore_Idempotency_DuplicateGnmiNotification(t *testing.T) {
 
 func TestStore_RepinAll_SymmetricToPinning(t *testing.T) {
 	ctx := context.Background()
-	pinning := false
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+	vs := NewStore(ctx, WithDPUCount(4))
 
 	// Activate VRFs in symmetric hash mode → DPUPinned = 65535
 	vs.SetGlobal(ctx, "tenant1", true)
@@ -2157,7 +2156,7 @@ func TestStore_RepinAll_SymmetricToPinning(t *testing.T) {
 	}
 
 	// Switch to pinning mode and repin.
-	pinning = true
+	vs.SetLbModePinning(true)
 	vs.RepinAll(ctx)
 
 	p1, _ = vs.GetPinning("tenant1")
@@ -2172,8 +2171,7 @@ func TestStore_RepinAll_SymmetricToPinning(t *testing.T) {
 
 func TestStore_RepinAll_PinningToSymmetric(t *testing.T) {
 	ctx := context.Background()
-	pinning := true
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+	vs := NewStore(ctx, WithLbModePinning(true))
 
 	// Activate VRF in pinning mode → DPUPinned = affinity value
 	vs.SetGlobal(ctx, "tenant1", true)
@@ -2186,7 +2184,7 @@ func TestStore_RepinAll_PinningToSymmetric(t *testing.T) {
 	}
 
 	// Switch to symmetric hash mode and repin.
-	pinning = false
+	vs.SetLbModePinning(false)
 	vs.RepinAll(ctx)
 
 	p, _ = vs.GetPinning("tenant1")
@@ -2197,8 +2195,7 @@ func TestStore_RepinAll_PinningToSymmetric(t *testing.T) {
 
 func TestStore_RepinAll_NoChange(t *testing.T) {
 	ctx := context.Background()
-	pinning := true
-	vs := NewStore(ctx, WithLbModePinning(func() bool { return pinning }), WithDPUCount(4))
+	vs := NewStore(ctx, WithLbModePinning(true))
 
 	vs.SetGlobal(ctx, "tenant1", true)
 	vs.SetService(ctx, "tenant1", true)

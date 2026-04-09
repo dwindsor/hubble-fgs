@@ -885,6 +885,14 @@ func (m *manager) runActive(ctx context.Context, storeCh <-chan hastore.Event, d
 				// transition to HA_TAKEOVER without waiting for adjacency
 				// timeout. Mirrors old code: hubble-fgs/pkg/nxos/handler.go:616
 				if !isInService {
+					// Recompute and flush peer HA state to NX-OS before
+					// notifying the peer. Without this, NX-OS still shows
+					// the stale "ha-ok" peer HA state during the blocking
+					// NotifyServiceFailure gRPC call. Also updates CriteriaMet
+					// and local HaState so NotifyServiceFailure sends the
+					// correct HaInfo.Ha (ha-notready) rather than the stale
+					// pre-transition value.
+					m.recomputeAndApplyState(ctx)
 					m.NotifyServiceFailure(ctx)
 				}
 

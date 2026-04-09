@@ -26,7 +26,7 @@ func newSettlingManager(ctx context.Context) (*manager, hastore.Store) {
 		WithHAStoreForManager(haStore),
 		WithLocalIP("10.0.0.1"),
 		WithDeviceInfoProvider(func() LocalDeviceInfo {
-			return LocalDeviceInfo{Model: "N9K-C9364C", SWVersion: "10.5(1)", LbMode: "symmetric_hash"}
+			return LocalDeviceInfo{Model: "N9K-C9364C", SWVersion: "10.5(1)", LbMode: "symmetric-hash"}
 		}),
 	).(*manager)
 	mgr.peerPolicySettlingWindow = 10 * time.Millisecond
@@ -51,7 +51,7 @@ func policyMismatchInfo() types.HAPeerMember {
 	return types.HAPeerMember{
 		Model:     "N9K-C9364C",
 		SWVersion: "10.5(1)",
-		LbMode:    "symmetric_hash",
+		LbMode:    "symmetric-hash",
 		Service:   types.SvcStateSuccess,
 		PolicyRev: "v2",
 	}
@@ -62,7 +62,7 @@ func policyMatchInfo() types.HAPeerMember {
 	return types.HAPeerMember{
 		Model:     "N9K-C9364C",
 		SWVersion: "10.5(1)",
-		LbMode:    "symmetric_hash",
+		LbMode:    "symmetric-hash",
 		Service:   types.SvcStateSuccess,
 		PolicyRev: "",
 	}

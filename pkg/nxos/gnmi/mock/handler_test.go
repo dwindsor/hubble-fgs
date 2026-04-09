@@ -414,7 +414,7 @@ func TestTreeToFlat(t *testing.T) {
 			},
 			"sas-items": map[string]interface{}{
 				"globalpol-items": map[string]interface{}{
-					"lbMode": "symmetric_hash",
+					"lbMode": "symmetric-hash",
 				},
 			},
 		},
@@ -424,7 +424,7 @@ func TestTreeToFlat(t *testing.T) {
 
 	expected := map[string]string{
 		"System/ch-items/spbp-items/spcmn-items/serialNum": "MOCK-SERIAL-001",
-		"System/sas-items/globalpol-items/lbMode":          "symmetric_hash",
+		"System/sas-items/globalpol-items/lbMode":          "symmetric-hash",
 	}
 
 	if len(flat) != len(expected) {

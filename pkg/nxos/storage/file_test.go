@@ -117,7 +117,7 @@ func TestFileStorage_Device(t *testing.T) {
 	state := &DeviceState{
 		ProxyServer: "proxy.example.com",
 		ProxyPort:   8080,
-		LbMode:      "symmetric_hash",
+		LbMode:      "symmetric-hash",
 	}
 	err = fs.SaveDevice(ctx, state)
 	require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestFileStorage_Device(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "proxy.example.com", loaded.ProxyServer)
 	assert.Equal(t, uint32(8080), loaded.ProxyPort)
-	assert.Equal(t, "symmetric_hash", loaded.LbMode)
+	assert.Equal(t, "symmetric-hash", loaded.LbMode)
 }
 
 func TestFileStorage_HA(t *testing.T) {

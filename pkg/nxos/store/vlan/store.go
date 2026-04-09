@@ -45,8 +45,8 @@ type vlanStore struct {
 	storage     storage.Storage
 	gnmiHandler gnmi.GnmiHandler
 	// DPU pinning configuration
-	dpuCount        uint16      // number of DPUs for hash-based pinning
-	isLbModePinning func() bool // returns true when per-DPU pinning is active
+	dpuCount        uint16 // number of DPUs for hash-based pinning
+	isLbModePinning bool   // true when per-DPU pinning is active
 	// In-service gate: when false, reactive programRedirects no-ops.
 	// Set to true when the device transitions to in-service.
 	inService bool
@@ -69,12 +69,11 @@ func WithDPUCount(count uint16) Option {
 	}
 }
 
-// WithLbModePinning sets the callback that determines whether per-DPU
-// pinning is active. When this returns false, all redirects use "all" DPUs
-// regardless of the computed DPUPinned value.
-func WithLbModePinning(fn func() bool) Option {
+// WithLbModePinning sets the initial per-DPU pinning mode.
+// When false, all redirects use "all" DPUs regardless of the computed DPUPinned value.
+func WithLbModePinning(active bool) Option {
 	return func(vs *vlanStore) {
-		vs.isLbModePinning = fn
+		vs.isLbModePinning = active
 	}
 }
 
@@ -232,7 +231,7 @@ func (s *vlanStore) programFwPolicyState(ctx context.Context, handler gnmi.GnmiH
 	for _, vlan := range vlans {
 		reason := ""
 		affinity := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
-		if vlan.DPUPinned > 0 && s.isPinningActive() {
+		if vlan.DPUPinned > 0 && s.isPinningActiveLocked() {
 			affinity = dpuToModulePinning(vlan.DPUPinned)
 		}
 		extItems := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_BdstateItems_VlanItems_VlanStateList_ExtItems{
@@ -276,7 +275,7 @@ func (s *vlanStore) programEnforcement(ctx context.Context, handler gnmi.GnmiHan
 	for _, vlan := range vlans {
 		id := vlan.Name
 		pinned := vlan.DPUPinned
-		if !s.isPinningActive() {
+		if !s.isPinningActiveLocked() {
 			pinned = 0
 		}
 		pol := dpuToPolicyName(pinned)
@@ -425,12 +424,16 @@ func (s *vlanStore) RestorePinningFromGnmi(ctx context.Context) error {
 	return nil
 }
 
-// isPinningActive returns true when per-DPU pinning is active.
-func (s *vlanStore) isPinningActive() bool {
-	if s.isLbModePinning == nil {
-		return false
-	}
-	return s.isLbModePinning()
+// SetLbModePinning updates whether per-DPU pinning is active.
+func (s *vlanStore) SetLbModePinning(active bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isLbModePinning = active
+}
+
+// isPinningActiveLocked returns true when per-DPU pinning is active.
+func (s *vlanStore) isPinningActiveLocked() bool {
+	return s.isLbModePinning
 }
 
 // dpuToModulePinning converts a DPU number to the corresponding SvcModulePinning enum.
@@ -717,18 +720,18 @@ func (s *vlanStore) SetDPUCount(count uint16) {
 
 // assignPinningLocked sets DPUPinned based on lb mode and VLAN affinity.
 //
-// Symmetric hash mode (!isPinningActive):
+// Symmetric hash mode (!isPinningActiveLocked):
 //   - DPUPinned is always set to 65535 (all DPUs)
 //   - Logs an error if affinity is non-zero (misconfiguration)
 //
-// Pinning mode (isPinningActive):
+// Pinning mode (isPinningActiveLocked):
 //   - Affinity 1..dpuCount → direct DPU assignment
 //   - Affinity > dpuCount → invalid, log warning, fall back to FNV-1a
 //   - Affinity 0 → FNV-1a hash to distribute across DPUs
 //
 // Must be called with write lock held.
 func (s *vlanStore) assignPinningLocked(vlan types.VLAN) types.VLAN {
-	if !s.isPinningActive() {
+	if !s.isPinningActiveLocked() {
 		// Symmetric hash mode: all VLANs use dpu_all redirect
 		if vlan.Affinity != 0 {
 			logger.GetLogger().Error("VLAN has non-zero affinity in symmetric hash mode",

@@ -100,7 +100,7 @@ func TestMemoryStorage_Device(t *testing.T) {
 		ServiceIP:     "192.168.1.1",
 		SkipReg:       false,
 		SkipRegReason: "",
-		LbMode:        "symmetric_hash",
+		LbMode:        "symmetric-hash",
 	}
 	err = ms.SaveDevice(ctx, state)
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestMemoryStorage_Device(t *testing.T) {
 	assert.Equal(t, "proxy.example.com", loaded.ProxyServer)
 	assert.Equal(t, uint32(8080), loaded.ProxyPort)
 	assert.Equal(t, "192.168.1.1", loaded.ServiceIP)
-	assert.Equal(t, "symmetric_hash", loaded.LbMode)
+	assert.Equal(t, "symmetric-hash", loaded.LbMode)
 
 	// Clear
 	err = ms.Clear(ctx)

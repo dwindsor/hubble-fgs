@@ -251,7 +251,7 @@ func (s *vrfStore) sendGIDUpdateBatch(ctx context.Context, handler gnmi.GnmiHand
 		svcName := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
 		gid := vrf.GID
 		dpuNum := model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
-		if vrf.DPUPinned > 0 && s.isPinningActive() {
+		if vrf.DPUPinned > 0 && s.isPinningActiveLocked() {
 			dpuNum = dpuToModulePinning(vrf.DPUPinned)
 		}
 		serviceItems.ServiceList[svcName] = &model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList{
@@ -280,18 +280,18 @@ func (s *vrfStore) sendGIDUpdateBatch(ctx context.Context, handler gnmi.GnmiHand
 
 // assignPinningLocked sets DPUPinned based on lb mode and VRF affinity.
 //
-// Symmetric hash mode (!isPinningActive):
+// Symmetric hash mode (!isPinningActiveLocked):
 //   - DPUPinned is always set to 65535 (all DPUs)
 //   - Logs an error if affinity is non-zero (misconfiguration)
 //
-// Pinning mode (isPinningActive):
+// Pinning mode (isPinningActiveLocked):
 //   - Affinity 1..dpuCount → direct DPU assignment
 //   - Affinity > dpuCount → invalid, log warning, fall back to FNV-1a
 //   - Affinity 0 → FNV-1a hash to distribute across DPUs
 //
 // Must be called with write lock held.
 func (s *vrfStore) assignPinningLocked(vrf types.VRF) types.VRF {
-	if !s.isPinningActive() {
+	if !s.isPinningActiveLocked() {
 		// Symmetric hash mode: all VRFs use dpu_all redirect
 		if vrf.Affinity != 0 {
 			logger.GetLogger().Error("VRF has non-zero affinity in symmetric hash mode",

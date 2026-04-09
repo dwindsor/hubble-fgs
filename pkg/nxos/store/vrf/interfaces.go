@@ -80,6 +80,10 @@ type Store interface {
 	// Called after DPU inventory completes.
 	SetDPUCount(count uint16)
 
+	// SetLbModePinning updates whether per-DPU pinning is active.
+	// Called when the load balancing mode changes.
+	SetLbModePinning(active bool)
+
 	// SetInService controls the in-service gate for reactive redirect programming.
 	// When false, programRedirects no-ops for newly activated VRFs/VLANs.
 	SetInService(inService bool)
