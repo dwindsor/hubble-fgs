@@ -332,7 +332,7 @@ func modeUpdateNeeded(newPolMode, loadedPolMode string, data []byte) (bool, tetr
 	if newPolMode == "" {
 		// Since we already validated the checksum of policydata
 		// (that is already loaded) this cannot fail.
-		tp, _ := tracingpolicy.TPContext.FromYAML(string(data))
+		tp, _ := tracingpolicy.FromYAML(string(data))
 		newPolMode = getModeFromTracingPolicy(tp)
 		if newPolMode == "" {
 			// empty defaults to enforce
@@ -509,7 +509,7 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 		att = att.WithInfo("mode", mode)
 	}
 
-	ret, err = tracingpolicy.TPContext.FromYAML(string(data))
+	ret, err = tracingpolicy.FromYAML(string(data))
 	if err != nil {
 		return nil, err
 	}
@@ -555,13 +555,9 @@ func (m *manager) attemptLoadAlert(
 	}
 
 	var ar *v1alpha1.AlertRule
-	crdCtx, err := alerts.CRDContext()
+	ar, err = alerts.RuleFromYAML(string(data))
 	if err != nil {
-		err = fmt.Errorf("failed to retrieve CRD context for AlertRule: %w", err)
-		return
-	}
-	ar, err = crdCtx.FromYAML(string(data))
-	if err != nil {
+		err = fmt.Errorf("failed to parse YAML for AlertRule: %w", err)
 		return
 	}
 
