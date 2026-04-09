@@ -8,6 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+//go:build !nok8s
+
 // Package token provides interfaces and implementations for managing authentication tokens,
 // such as Kubernetes service account tokens or JWTs. The main responsibility of this package
 // is to manage, validate, persist, and load authentication tokens required for secure
