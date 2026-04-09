@@ -113,3 +113,8 @@ jobs:
     - name: Run unit tests
       run: |
         go test ./...
+
+    # NB: run some simple tests for packages that have no trivial nok8s code
+    - name: Run unit tests (nok8s)
+      run: |
+        go test -tags nok8s ./pkg/mandate ./pkg/sandboxpolicy ./pkg/alerts
