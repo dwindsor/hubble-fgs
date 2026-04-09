@@ -23,13 +23,17 @@ GO_TEST_PACKAGES ?= ./pkg/... ./cmd/... ./operator/...
 CONTAINER_ENGINE_ARGS ?=
 LSEG ?= 0
 
-TEST_TAGS = sudo_tests
-EXTRA_TAGS =
+comma := ,
+TEST_TAGS := sudo_tests
+TETRAGON_TAGS :=
 ifeq ($(LSEG),1)
-	TEST_TAGS = sudo_tests,lseg
-	EXTRA_TAGS = -tags lseg
+	TETRAGON_TAGS := $(TETRAGON_TAGS)$(if $(TETRAGON_TAGS),$(comma))lseg
+	TEST_TAGS := $(TEST_TAGS)$(if $(TEST_TAGS),$(comma))lseg
 endif
+TETRAGON_TAGS_ARG := $(if $(TETRAGON_TAGS),-tags $(TETRAGON_TAGS),)
 
+TETRAGON_NOK8S_TAGS := $(TETRAGON_TAGS)$(if $(TETRAGON_TAGS),$(comma))nok8s
+TETRAGON_NOK8S_TAGS_ARG := -tags $(TETRAGON_NOK8S_TAGS)
 
 # Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
 # or let uname detect the appropriate arch for native build
@@ -151,7 +155,11 @@ package-fwa: ## Build FWA agent docker image for elba
 
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
-	$(GO_BUILD) $(EXTRA_TAGS) ./cmd/bin/tetragon
+	$(GO_BUILD) $(TETRAGON_TAGS_ARG) ./cmd/bin/tetragon
+
+.PHONY: tetragon-nok8s
+tetragon-nok8s: tetragon-fs-scanner ## Compile the Tetragon agent (nok8s build).
+	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetragon
 
 .PHONY: tetragon-aggregator
 tetragon-aggregator: ## Compile the Tetragon aggregator
@@ -165,14 +173,27 @@ tetragon-operator: ## Compile the Tetragon operator.
 tetra: ## Compile the Tetragon gRPC client.
 	$(GO_BUILD) ./cmd/bin/tetra
 
+.PHONY: tetra-nok8s
+tetra-nok8s: ## Compile the Tetragon gRPC client (nok8s build)
+	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetra
+
 .PHONY: tetrabox
 tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
-	$(GO_BUILD) ./cmd/bin/tetrabox
+	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetrabox
 	# set up symlinks so that things work
 	rm -f tetra tetragon $(FS_SCANNER_BIN)
 	ln -s tetrabox tetra
 	ln -s tetrabox tetragon
 	ln -s `dirname $(FS_SCANNER_BIN) | sed -e 's:[^/]\+:..:g'`/tetrabox $(FS_SCANNER_BIN)
+
+.PHONY: tetrabox-k8s
+tetrabox-k8s: tetragon-runner ## Compile single multi-call tetragon binary
+	$(GO_BUILD) -o $@ ./cmd/bin/tetrabox
+	# set up symlinks so that things work
+	rm -f tetra tetragon $(FS_SCANNER_BIN)
+	ln -s $@ tetra
+	ln -s $@ tetragon
+	ln -s `dirname $(FS_SCANNER_BIN) | sed -e 's:[^/]\+:..:g'`/$@ $(FS_SCANNER_BIN)
 
 .PHONY: tetragon-bpf
 ifeq (1,$(LOCAL_CLANG))

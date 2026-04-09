@@ -2,7 +2,9 @@
 lib/*
 /release
 /tetragon
+/tetragon-nok8s
 /tetra
+/tetra-nok8s
 /tetragon-aggregator
 /tetragon-operator
 /fgs-bench
@@ -35,3 +37,5 @@ compile_commands.json
 /agwctl
 /fwa
 /fwactl
+/tetrabox
+/tetrabox-k8s
