@@ -34,6 +34,7 @@ struct msg_ip_tuple {
 	uint8_t send;
 	uint8_t version_byte;
 	uint8_t ipv6;
+	uint64_t conn_id;
 }; // All fields aligned so no 'packed' attribute.
 
 struct connection_key {
