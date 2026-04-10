@@ -263,7 +263,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 #ifdef PROCESS_TREE
 		__insert_process_tree(value->key.pid, config->cgrpid);
 		if (tcp_stats->socket_flags == SOCKFLAGS_TYPE_LISTEN) {
-			__process_listen_add(tcp_stats, &config->tuple, config->cgrpid);
+			__process_listen_add(&tcp_stats->key, &config->tuple, config->cgrpid);
 		} else {
 			check_process_socketmap_add(tcp_stats, &config->tuple, config->cgrpid);
 		}

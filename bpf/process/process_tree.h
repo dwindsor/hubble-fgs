@@ -313,7 +313,7 @@ static inline __attribute__((always_inline)) __u64 tg_get_socket_cgroup_id(struc
 	return tg_sockops_get_current_cgroup_id();
 }
 
-int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
+int __process_listen_add(struct msg_execve_key *process_key, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct process_tree_config *cfg;
 	int zero = 0;
@@ -324,7 +324,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 
 	if (!tuple)
 		return 0;
-	if (!v)
+	if (!process_key)
 		return 0;
 
 	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
@@ -340,7 +340,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	if (!value)
 		return 0;
 
-	uid = find_my_self(v->key.pid);
+	uid = find_my_self(process_key->pid);
 	value->self.uid = uid & 0xffffffff;
 	value->self.cpu = uid >> 32;
 	tree_id_set_ignore_args(&value->self, false);
@@ -493,7 +493,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 							     struct destination_endpoint_key *usrkey,
 							     struct destination_endpoint_key *destkey,
 							     struct msg_ip_tuple *tuple,
-							     struct tcpsocketmap_value *v)
+							     struct destination_endpoint_key *dst_key)
 {
 	uint64_t dnsv, usrv, destv, lpmv, orv;
 
@@ -508,36 +508,36 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 
 	if (orv & TNP_POLICY_DENY) {
 		if (dnsv & TNP_POLICY_DENY) {
-			v->dst_key = *dnskey;
+			*dst_key = *dnskey;
 			return dnsv;
 		}
 		if (lpmv & TNP_POLICY_DENY) {
-			v->dst_key = *lpmkey;
+			*dst_key = *lpmkey;
 			return lpmv;
 		}
 		if (usrv & TNP_POLICY_DENY) {
-			v->dst_key = *usrkey;
+			*dst_key = *usrkey;
 			return usrv;
 		}
 		if (destv & TNP_POLICY_DENY) {
-			v->dst_key = *destkey;
+			*dst_key = *destkey;
 			return destv;
 		}
 	} else if (orv & TNP_POLICY_ALLOW) {
 		if (dnsv & TNP_POLICY_ALLOW) {
-			v->dst_key = *dnskey;
+			*dst_key = *dnskey;
 			return dnsv;
 		}
 		if (lpmv & TNP_POLICY_ALLOW) {
-			v->dst_key = *lpmkey;
+			*dst_key = *lpmkey;
 			return lpmv;
 		}
 		if (usrv & TNP_POLICY_ALLOW) {
-			v->dst_key = *usrkey;
+			*dst_key = *usrkey;
 			return usrv;
 		}
 		if (destv & TNP_POLICY_ALLOW) {
-			v->dst_key = *destkey;
+			*dst_key = *destkey;
 			return destv;
 		}
 	} else {
@@ -566,19 +566,19 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		 * here: dns, lpm, usr, bpf, dflt.
 		 */
 		if (dnskey->source) {
-			v->dst_key = *dnskey;
+			*dst_key = *dnskey;
 			updatekey = dnskey;
 		} else if (lpmkey->source) {
-			v->dst_key = *lpmkey;
+			*dst_key = *lpmkey;
 			updatekey = lpmkey;
 		} else if (usrkey->source) {
-			v->dst_key = *usrkey;
+			*dst_key = *usrkey;
 			updatekey = usrkey;
 		} else if (destkey->source) {
-			v->dst_key = *destkey;
+			*dst_key = *destkey;
 			updatekey = destkey;
 		} else {
-			v->dst_key = *dfltkey;
+			*dst_key = *dfltkey;
 			updatekey = dfltkey;
 		}
 
@@ -637,7 +637,7 @@ struct {
 	__uint(max_entries, 1);
 } tg_h_ps_keys SEC(".maps");
 
-static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
+static inline __attribute__((always_inline)) int __process_socketmap_add(struct msg_execve_key *process_key, struct destination_endpoint_key *dst_key, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct destination_endpoint_keys_heap *heap_keys;
 	struct destination_endpoint_key *dnskey, *lpmkey, *usrkey, *destkey;
@@ -669,14 +669,11 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	if (!tuple)
 		return 0;
 
-	if (!v)
-		return 0;
-
 	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
 	if (!cfg || !cfg->enableProcessTree)
 		return 0;
 
-	uid = find_my_self(v->key.pid);
+	uid = find_my_self(process_key->pid);
 	self_uid.uid = uid & 0xffffffff;
 	self_uid.cpu = uid >> 32;
 	/* preserve ignore_args bit from uid (stored in high bit of cpu) */
@@ -747,7 +744,7 @@ found_id:
 			dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = *wlid;
 	}
 
-	return resolve_key(dnskey, lpmkey, usrkey, destkey, tuple, v);
+	return resolve_key(dnskey, lpmkey, usrkey, destkey, tuple, dst_key);
 }
 
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
@@ -755,7 +752,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	__u64 cgid;
 
 	cgid = tg_sockops_get_current_cgroup_id();
-	return __process_socketmap_add(v, tuple, cgid);
+	return __process_socketmap_add(&v->key, &v->dst_key, tuple, cgid);
 }
 
 int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
@@ -784,8 +781,15 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 
 		listen = map_lookup_elem(&listen_endpoint_map, &key);
 		if (!listen) {
+			/* BPF verifier hint: v is always non-null here (caller guarantees
+			 * this). The map_lookup_elem calls above cause the verifier on
+			 * kernel 6.8 to lose the map_value type of callee-saved registers;
+			 * this guard restores the non-null proof before v->key is accessed.
+			 */
+			if (!v)
+				return 0;
 			cgid = 0;
-			__process_socketmap_add(v, tuple, cgid);
+			__process_socketmap_add(&v->key, &v->dst_key, tuple, cgid);
 		}
 	}
 	return 0;
@@ -1034,7 +1038,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	}
 err_out:
 	cgid = tg_get_socket_cgroup_id(skb->sk);
-	v->deny = __process_socketmap_add(v, &v->tuple, cgid);
+	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
 	verdict = send(v->deny, &v->dst_key, len);
 	if (verdict < 0)
 		return SK_PASS;
@@ -1071,7 +1075,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	}
 err_out:
 	cgid = tg_get_socket_cgroup_id(skb->sk);
-	v->deny = __process_socketmap_add(v, &v->tuple, cgid);
+	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
 	verdict = recv(v->deny, &v->dst_key, len);
 	if (verdict < 0)
 		return SK_PASS;
