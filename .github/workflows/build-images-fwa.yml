@@ -1,18 +1,9 @@
 name: Build Hubble FGS FWA Images
+# DISABLED: Migrated to isovalent/hs-fw
+# To re-enable, restore pull_request/schedule triggers.
 
 on:
-  pull_request:
-    paths-ignore:
-      - "**.md"
-    branches: [master]
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - labeled
   workflow_dispatch: {}
-  schedule:
-    - cron: "0 5 * * *" # 9 PM PST (5 AM UTC)
 
 permissions:
   contents: write

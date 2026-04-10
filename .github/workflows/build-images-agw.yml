@@ -1,17 +1,8 @@
 name: Build Hubble FGS AGW Docker Images, Binaries and Test Images
+# DISABLED: Migrated to isovalent/hs-fw
+# To re-enable, restore push/pull_request triggers.
 
 on:
-  push:
-    branches: [master]
-  pull_request:
-    paths-ignore:
-      - "**.md"
-      - "contrib/grafana/**"
-    branches: [master]
-    types:
-      - opened
-      - synchronize
-      - reopened
   workflow_dispatch: {}
 
 permissions:
