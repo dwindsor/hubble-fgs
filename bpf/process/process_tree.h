@@ -755,6 +755,21 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	return __process_socketmap_add(&v->key, &v->dst_key, tuple, cgid);
 }
 
+__attribute__((noinline)) int process_socketmap_add_udp(struct udpsocketmap_value *udp, struct msg_ip_tuple *tuple)
+{
+	__u64 cgid;
+
+	cgid = tg_sockops_get_current_cgroup_id();
+	/* BPF verifier hint: udp is always non-null here (caller guarantees this).
+	 * tg_sockops_get_current_cgroup_id() causes the verifier on kernel 6.8 to
+	 * lose the map_value type of callee-saved registers; this guard restores
+	 * the non-null proof before udp->key is accessed.
+	 */
+	if (!udp)
+		return 0;
+	return __process_socketmap_add(&udp->key, &udp->dst_key, tuple, cgid);
+}
+
 int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct listen_endpoint_key key;

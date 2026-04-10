@@ -485,19 +485,22 @@ type UdpInfoKey struct {
 }
 
 type UdpInfoValue struct {
-	TXBytes     uint64    `align:"tx_bytes"`
-	RXBytes     uint64    `align:"rx_bytes"`
-	SegsIn      uint64    `align:"segs_in"`
-	SegsOut     uint64    `align:"segs_out"`
-	Ktime       uint64    `align:"ktime"`
-	PidKtime    uint64    `align:"pid_ktime"`
-	Pid         uint32    `align:"pid"`
-	SkDrops     uint32    `align:"sk_drops"`
-	Buckets     [8]uint64 `align:"buckets"`
-	LatencySum  uint64    `align:"latency_sum"`
-	CreateTime  uint64    `align:"create_time"`
-	PsVersion   uint64    `align:"ps_version"`
-	McastSeqNum uint64    `align:"mcast_seq_num"`
+	TXBytes     uint64                 `align:"tx_bytes"`
+	RXBytes     uint64                 `align:"rx_bytes"`
+	SegsIn      uint64                 `align:"segs_in"`
+	SegsOut     uint64                 `align:"segs_out"`
+	Ktime       uint64                 `align:"ktime"`
+	PidKtime    uint64                 `align:"pid_ktime"`
+	Pid         uint32                 `align:"pid"`
+	SkDrops     uint32                 `align:"sk_drops"`
+	Buckets     [8]uint64              `align:"buckets"`
+	LatencySum  uint64                 `align:"latency_sum"`
+	CreateTime  uint64                 `align:"create_time"`
+	PsVersion   uint64                 `align:"ps_version"`
+	McastSeqNum uint64                 `align:"mcast_seq_num"`
+	Deny        uint8                  `align:"deny"`
+	Pad         [7]uint8               `align:"pad"`
+	DstKey      DestinationEndpointKey `align:"dst_key"`
 }
 
 func (k *UdpInfoKey) String() string {

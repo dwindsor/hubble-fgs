@@ -226,7 +226,16 @@ var (
 			program.MapUserFrom(base.Addr4LpmMap),
 		}...)
 	dispatcherProcessTreeTimerMaps = append(dispatcherProcessTreeMaps, udpTimerMap)
-	dispatcherMaps                 = udpMaps
+	dispatcherMaps                 = append(udpMaps,
+		[]*program.Map{
+			program.MapUserFrom(base.DestinationEndpointMap),
+			program.MapUserFrom(base.ListenEndpointMap),
+			program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
+			program.MapUserFrom(base.BpfEndpointIdMap),
+			program.MapUserFrom(base.EndpointIdMap),
+			program.MapUserFrom(base.Addr6LpmMap),
+			program.MapUserFrom(base.Addr4LpmMap),
+		}...)
 )
 
 func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {

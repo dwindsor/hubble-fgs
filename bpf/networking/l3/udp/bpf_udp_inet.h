@@ -21,6 +21,9 @@
 #include "bpf_process_network_watermarks.h"
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"
+#ifdef PROCESS_TREE
+#include "process/process_tree.h"
+#endif
 #include "lib/address_family.h"
 #include "bpf_tracing.h"
 #include "dns/bpf_dns.h"
@@ -69,10 +72,11 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
  * The process is populated by looking up the cookie/sock in the
  * socket_map.
  */
+
 static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	   s64 latency, struct udphdr *udp, int payload_off, int payload_sz,
-	   struct latency_protocol_config *latency_config, u64 send,
+	   struct latency_protocol_config *latency_config, u64 egress,
 	   struct socketmap_value *process)
 {
 	struct udp_info_value *value;
@@ -86,7 +90,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	key = (struct udp_info_key *)map_lookup_elem(&tg_p_l3_udp_key, &zero);
 	if (!key)
 		return 0;
-	udp_key(key, &dns_combined, cookie, cookie_ver, ip, ipv6, udp, send);
+	udp_key(key, &dns_combined, cookie, cookie_ver, ip, ipv6, udp, egress);
 #ifndef IS_KPROBE
 	// If this is a multicast packet, and we're observing multicast, and it
 	// matches the ports we're observing, then extract the connection ID and
@@ -102,11 +106,17 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	 * and any other statistics needed.
 	 */
 	if (value && value->pid == process->key.pid) {
-		if (send)
+		if (egress) {
 			update_tx_value(value, payload_sz);
-		else {
+#ifdef PROCESS_TREE
+			send(value->deny, &value->dst_key, payload_sz);
+#endif
+		} else {
 			update_rx_value(value, payload_sz);
 			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
+#ifdef PROCESS_TREE
+			recv(value->deny, &value->dst_key, payload_sz);
+#endif
 		}
 #ifdef USE_BPF_TIMER
 		update_udp_timer();
@@ -124,7 +134,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	 * socket has moved to a new pid. Either way restart statistics and
 	 * create a new mapping.
 	 */
-	if (send)
+	if (egress)
 		udp_info_tx_reset(value, payload_sz);
 	else {
 		udp_info_rx_reset(value, payload_sz);
@@ -148,8 +158,23 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	else
 		add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
 #endif
+#ifdef PROCESS_TREE
+	struct udpsocketmap_value *udpsock;
 
+	udpsock = map_lookup_elem(&tg_h_udp_sockval, &zero);
+	if (!udpsock)
+		return 0;
+	udpsock->key = process->key;
+	value->deny = process_socketmap_add_udp(udpsock, &key->tuple);
+	value->dst_key = udpsock->dst_key;
+#endif
 	add_udp_map(key, value);
+#ifdef PROCESS_TREE
+	if (egress)
+		send(value->deny, &value->dst_key, payload_sz);
+	else
+		recv(value->deny, &value->dst_key, payload_sz);
+#endif
 	return value;
 }
 
@@ -475,6 +500,10 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 		 payload_off,
 		 payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, &vars->cookie, ip, payload_sz, false, send);
+	/* TODO: UDP enforcement is observability-only. udp_send() computes the
+	 * deny verdict and records it in stats, but the handler always returns
+	 * SK_PASS so no UDP traffic is actually dropped.
+	 */
 	return SK_PASS;
 }
 
@@ -528,6 +557,10 @@ int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 		 payload_off,
 		 payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, &vars->cookie, (struct iphdr *)ip6, payload_sz, true, send);
+	/* TODO: UDP enforcement is observability-only. udp_send() computes the
+	 * deny verdict and records it in stats, but the handler always returns
+	 * SK_PASS so no UDP traffic is actually dropped.
+	 */
 	return SK_PASS;
 }
 #endif //__BPF_INET_H_
