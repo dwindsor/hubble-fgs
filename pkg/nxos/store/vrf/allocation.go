@@ -302,7 +302,12 @@ func (s *vrfStore) assignPinningLocked(vrf types.VRF) types.VRF {
 	}
 	// Pinning mode
 	if vrf.Affinity >= 1 {
-		if s.dpuCount > 0 && vrf.Affinity > s.dpuCount {
+		if s.dpuCount == 0 {
+			// No DPU inventory yet; defer pinning until RepinAll after inventory.
+			vrf.DPUPinned = 0
+			return vrf
+		}
+		if vrf.Affinity > s.dpuCount {
 			logger.GetLogger().Warn("VRF affinity exceeds DPU count, using FNV-1a",
 				"vrf", vrf.Name, "affinity", vrf.Affinity, "dpuCount", s.dpuCount)
 		} else {

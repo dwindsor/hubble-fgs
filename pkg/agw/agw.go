@@ -382,13 +382,11 @@ func (agw *AgentGateway) LoadK8sAuth(ctx context.Context) (string, error) {
 
 // LoadAuth attempts to load authentication data for the AgentGateway.
 // It sets the Kubernetes authentication token path from the configuration,
-// then tries to load from multiple sources in order:
-// 1. Controller store (token received via gNMI from NXOS)
-// 2. Token file on disk
-// 3. Environment variable
-// If no token is immediately available, it watches for token changes from the
-// controller store via gNMI notifications. The function returns true if
-// authentication data is loaded successfully, or false and an error otherwise.
+// then tries to load from multiple sources in parallel:
+// 1. Token file on disk / environment variable (with retry loop)
+// 2. Controller store (gNMI/persistence) synchronous check + watcher
+// The function returns true as soon as either source succeeds,
+// or false and an error if the context is canceled.
 func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 	logger.GetLogger().Debug("loading authentication data")
 	// Setting token path.
@@ -398,49 +396,17 @@ func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("config TokenPath is empty")
 	}
 
-	// First, check if token is already available in the controller store (from gNMI/persistence)
-	if token := agw.nxosManager.DeviceStore().Token(); token != "" {
-		logger.GetLogger().Info("Token found in controller store")
-		if err := agw.Token.ValidK8sAuth(token); err == nil {
-			if err := agw.Token.SetAndPersistK8sAuthToken(token); err != nil {
-				logger.GetLogger().Warn("Failed to persist token from controller store", "error", err)
-			}
-			return true, nil
-		}
-		logger.GetLogger().Warn("Token in controller store is invalid, trying other sources")
+	// Try getting authentication from file/env immediately first.
+	reg, err := agw.tryLoadK8sAuth()
+	if err == nil {
+		return reg, nil
 	}
 
 	// Finding and setting Token.
 	registered := make(chan bool, 1)
 
-	// Subscribe to controller store for token changes via gNMI
-	tokenReceived := make(chan string, 1)
-	unsubscribe := agw.nxosManager.DeviceWatcher().Watch(func(event device.Event) {
-		if event.Type == device.EventTokenChanged {
-			token := agw.nxosManager.DeviceStore().Token()
-			if token != "" {
-				logger.GetLogger().Info("Token received via gNMI notification")
-				select {
-				case tokenReceived <- token:
-				default:
-				}
-			}
-		}
-	})
-	defer unsubscribe()
-
+	// Source 1: file/env retry loop
 	go func() {
-		// Try getting authentication from file/env immediately first
-		reg, err := agw.tryLoadK8sAuth()
-		if err == nil {
-			select {
-			case registered <- reg:
-			default:
-			}
-			return
-		}
-
-		// Then enter the retry loop with delays
 		for {
 			select {
 			case <-ctx.Done():
@@ -458,6 +424,34 @@ func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 			}
 		}
 	}()
+
+	// Source 2: controller store (gNMI/persistence) check + watcher
+	tokenReceived := make(chan string, 1)
+	unsubscribe := agw.nxosManager.DeviceWatcher().Watch(func(event device.Event) {
+		if event.Type == device.EventTokenChanged {
+			token := agw.nxosManager.DeviceStore().Token()
+			if token != "" {
+				logger.GetLogger().Info("Token received via gNMI notification")
+				select {
+				case tokenReceived <- token:
+				default:
+				}
+			}
+		}
+	})
+	defer unsubscribe()
+
+	// Check if token is already available in the controller store (from gNMI/persistence)
+	if token := agw.nxosManager.DeviceStore().Token(); token != "" {
+		logger.GetLogger().Info("Token found in controller store")
+		if err := agw.Token.ValidK8sAuth(token); err == nil {
+			if err := agw.Token.SetAndPersistK8sAuthToken(token); err != nil {
+				logger.GetLogger().Warn("Failed to persist token from controller store", "error", err)
+			}
+			return true, nil
+		}
+		logger.GetLogger().Warn("Token in controller store is invalid, trying other sources")
+	}
 
 	// Waiting for tokens to be loaded from any source.
 	select {

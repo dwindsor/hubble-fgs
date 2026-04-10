@@ -486,7 +486,7 @@ func TestBuildLocalVRFInfo_IncludesActiveVRFs(t *testing.T) {
 // the computed DPUPinned value from the store.
 func TestBuildLocalVRFInfo_SendsDPUPinned(t *testing.T) {
 	ctx := context.Background()
-	vs := vrf.NewStore(ctx, vrf.WithLbModePinning(true))
+	vs := vrf.NewStore(ctx, vrf.WithLbModePinning(true), vrf.WithDPUCount(4))
 
 	// Activate VRF with affinity=2 — in pinning mode, static affinity
 	// goes directly to DPUPinned
@@ -502,11 +502,11 @@ func TestBuildLocalVRFInfo_SendsDPUPinned(t *testing.T) {
 		t.Errorf("expected DPUPinned=2, got %d", infos[0].Affinity)
 	}
 
-	// Test with affinity=0 (dynamic) — DPUPinned is 0 without dpuCount
+	// Test with affinity=0 (dynamic) — DPUPinned is FNV-1a hash in range 1-4 with dpuCount=4
 	vs.SetAffinity(ctx, "test-vrf", 0)
 	infos = BuildLocalVRFInfo(vs)
-	if infos[0].Affinity != 0 {
-		t.Errorf("expected DPUPinned=0 when dynamic without dpuCount, got %d", infos[0].Affinity)
+	if infos[0].Affinity < 1 || infos[0].Affinity > 4 {
+		t.Errorf("expected DPUPinned in 1-4 for dynamic VRF with dpuCount=4, got %d", infos[0].Affinity)
 	}
 }
 
@@ -626,7 +626,7 @@ func TestReconcile_StoresPeerVlanIDs(t *testing.T) {
 // the computed DPUPinned value regardless of lbMode.
 func TestBuildLocalVLANInfo_SendsDPUPinned(t *testing.T) {
 	ctx := context.Background()
-	vlanStore := vlan.NewStore(ctx, vlan.WithLbModePinning(true))
+	vlanStore := vlan.NewStore(ctx, vlan.WithLbModePinning(true), vlan.WithDPUCount(4))
 
 	// Activate VLAN with affinity=4 — in pinning mode, static pinning
 	vlanStore.SetGlobal(ctx, "vlan-100", true)

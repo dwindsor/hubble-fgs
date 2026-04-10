@@ -29,6 +29,69 @@ const (
 	seqNum = 10
 )
 
+// repinStaleVRF corrects a single VRF with DPUPinned==allDpu in pinning mode.
+// Returns the corrected VRF (or unchanged if no correction needed).
+// No-op when not in pinning mode.
+func (s *vrfStore) repinStaleVRF(ctx context.Context, vrf types.VRF) types.VRF {
+	if !s.isPinningActiveLocked() || vrf.DPUPinned != 65535 {
+		return vrf
+	}
+
+	var corrected bool
+	s.mu.Lock()
+	v, ok := s.vrfs[vrf.Name]
+	if ok && v.DPUPinned == 65535 {
+		v = s.assignPinningLocked(v)
+		s.vrfs[vrf.Name] = v
+		vrf = v
+		corrected = true
+		logger.GetLogger().Warn("Corrected stale allDpu pinning for VRF",
+			"vrf", vrf.Name, "newDPU", v.DPUPinned)
+	}
+	s.mu.Unlock()
+
+	if corrected {
+		s.persist(ctx)
+	}
+	return vrf
+}
+
+// repinStaleEntries detects VRFs with DPUPinned==allDpu in pinning mode,
+// corrects them in-store, and returns the updated snapshot. No-op when not
+// in pinning mode. Transient TOCTOU inconsistency is acceptable — the lbMode
+// watcher's RepinAll will reprogram if needed.
+func (s *vrfStore) repinStaleEntries(ctx context.Context, vrfs []types.VRF) []types.VRF {
+	if !s.isPinningActiveLocked() {
+		return vrfs
+	}
+
+	result := make([]types.VRF, len(vrfs))
+	copy(result, vrfs)
+
+	var corrected bool
+	for i, vrf := range result {
+		if vrf.DPUPinned != 65535 {
+			continue
+		}
+		s.mu.Lock()
+		v, ok := s.vrfs[vrf.Name]
+		if ok && v.DPUPinned == 65535 {
+			v = s.assignPinningLocked(v)
+			s.vrfs[vrf.Name] = v
+			result[i] = v
+			corrected = true
+			logger.GetLogger().Warn("Corrected stale allDpu pinning for VRF",
+				"vrf", vrf.Name, "newDPU", v.DPUPinned)
+		}
+		s.mu.Unlock()
+	}
+
+	if corrected {
+		s.persist(ctx)
+	}
+	return result
+}
+
 // programRedirects programs all redirect components for a single VRF.
 // Called when a VRF transitions to active. Each sub-call sets the individual
 // list entry path so that sibling VRF entries are not overwritten.
@@ -40,6 +103,7 @@ func (s *vrfStore) programRedirects(ctx context.Context, vrf types.VRF) {
 	if handler == nil || !inService {
 		return
 	}
+	vrf = s.repinStaleVRF(ctx, vrf)
 	s.programFwPolicyState(ctx, handler, vrf)
 	s.programServiceEndpoints(ctx, handler, vrf)
 	s.programPolicyMap(ctx, handler, vrf)
@@ -443,6 +507,7 @@ func (s *vrfStore) ProgramAllRedirects(ctx context.Context) int {
 	if len(active) == 0 {
 		return 0
 	}
+	active = s.repinStaleEntries(ctx, active)
 	// Program in order: fwPolicyState → endpoints → policyMaps → enforcement
 	s.programFwPolicyStateBatch(ctx, handler, active)
 	s.programServiceEndpointsBatch(ctx, handler, active)
@@ -568,6 +633,7 @@ func dpuToModulePinning(dpu uint16) model.E_Cisco_NX_OSDevice_Sas_SvcModulePinni
 	case 4:
 		return model.Cisco_NX_OSDevice_Sas_SvcModulePinning_4
 	default:
+		logger.GetLogger().Error("Unexpected DPU value in dpuToModulePinning, using all", "dpu", dpu)
 		return model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
 	}
 }

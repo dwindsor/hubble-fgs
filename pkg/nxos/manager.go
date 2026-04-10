@@ -551,6 +551,11 @@ func (m *manager) setupInServiceHooks() {
 				if err := m.programSharedRedirects(ctx); err != nil {
 					logger.GetLogger().Error("Failed to reprogram shared redirects on in-service", "error", err)
 				}
+				// Repin all active entries before programming. This corrects stale
+				// DPUPinned values from VLANs/VRFs that were deactivated while lbMode
+				// changed and reactivated before the lbMode watcher's RepinAll ran.
+				m.vrfStore.RepinAll(ctx)
+				m.vlanStore.RepinAll(ctx)
 				m.vrfStore.ProgramAllRedirects(ctx)
 				m.vlanStore.ProgramAllRedirects(ctx)
 				m.vrfStore.SetInService(true)
@@ -567,12 +572,20 @@ func (m *manager) setupInServiceHooks() {
 		}
 	})
 
-	m.deviceStore.SetPostInServiceHook(func(ctx context.Context, oldState string) {
-		if oldState == device.InServiceStateInService {
-			logger.GetLogger().Info("Out-of-service transition, removing redirects")
-			m.removeAllRedirects(ctx)
-			m.setFwDisabled(ctx)
+	m.deviceStore.SetPostInServiceHook(func(ctx context.Context, oldState, newState string) {
+		switch {
+		case newState == device.InServiceStateOutOfService &&
+			(oldState == "" || oldState == device.InServiceStateInService):
+			logger.GetLogger().Info("Out-of-service transition, removing redirects",
+				"oldState", oldState, "newState", newState)
+		case oldState == device.InServiceStateInService && newState == "":
+			logger.GetLogger().Info("Firewall policy deleted, removing redirects",
+				"oldState", oldState, "newState", newState)
+		default:
+			return
 		}
+		m.removeAllRedirects(ctx)
+		m.setFwDisabled(ctx)
 	})
 }
 

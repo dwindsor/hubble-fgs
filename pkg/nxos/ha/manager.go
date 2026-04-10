@@ -1840,6 +1840,10 @@ func (m *manager) NotifyServiceFailure(ctx context.Context) {
 	localInfo.Service = types.SvcStateFailure
 
 	mbrInfo := convertPeerMemberToMbrInfo(localInfo)
+	// Override HaInfo with the authoritative store-based version which includes
+	// IsLeader. convertPeerMemberToMbrInfo omits IsLeader (defaults to false),
+	// causing the peer to clear our leader status and trigger a spurious election.
+	mbrInfo.HaInfo = m.buildLocalHaInfo()
 	// Include VRF and VLAN info so the peer can also use it.
 	if m.vrfStore != nil {
 		mbrInfo.VrfInfo = BuildLocalVRFInfo(m.vrfStore)

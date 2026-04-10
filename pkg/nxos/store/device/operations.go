@@ -296,7 +296,7 @@ func (s *deviceStore) SetInService(ctx context.Context, inService string) {
 
 	// Post-hook: runs AFTER state changes and notification (for out-of-service cleanup).
 	if postHook != nil {
-		postHook(ctx, old)
+		postHook(ctx, old, inService)
 	}
 
 	s.persist(ctx)
@@ -310,7 +310,7 @@ func (s *deviceStore) SetPreInServiceHook(hook func(ctx context.Context, newStat
 }
 
 // SetPostInServiceHook registers a hook called AFTER in-service state changes.
-func (s *deviceStore) SetPostInServiceHook(hook func(ctx context.Context, oldState string)) {
+func (s *deviceStore) SetPostInServiceHook(hook func(ctx context.Context, oldState, newState string)) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.postInServiceHook = hook

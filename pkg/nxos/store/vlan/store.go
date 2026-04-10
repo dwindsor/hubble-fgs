@@ -198,6 +198,46 @@ func (s *vlanStore) persist(ctx context.Context) {
 	}
 }
 
+// repinStaleEntries detects VLANs with DPUPinned==allDpu in pinning mode,
+// corrects them in-store, and returns the updated snapshot. No-op when not
+// in pinning mode. Transient TOCTOU inconsistency is acceptable — the lbMode
+// watcher's RepinAll will reprogram if needed.
+func (s *vlanStore) repinStaleEntries(ctx context.Context, vlans []types.VLAN) []types.VLAN {
+	s.mu.RLock()
+	isPinning := s.isLbModePinning
+	s.mu.RUnlock()
+
+	if !isPinning {
+		return vlans
+	}
+
+	result := make([]types.VLAN, len(vlans))
+	copy(result, vlans)
+
+	var corrected bool
+	for i, vlan := range result {
+		if vlan.DPUPinned != allDpu {
+			continue
+		}
+		s.mu.Lock()
+		v, ok := s.vlans[vlan.Name]
+		if ok && v.DPUPinned == allDpu {
+			v = s.assignPinningLocked(v)
+			s.vlans[vlan.Name] = v
+			result[i] = v
+			corrected = true
+			logger.GetLogger().Warn("Corrected stale allDpu pinning for VLAN",
+				"vlan", vlan.Name, "newDPU", v.DPUPinned)
+		}
+		s.mu.Unlock()
+	}
+
+	if corrected {
+		s.persist(ctx)
+	}
+	return result
+}
+
 // programRedirects triggers service redirect programming for all active VLANs.
 // It programs fwPolicyState and BD enforcement bindings. BD policy maps are
 // per-DPU (shared) and not managed here.
@@ -218,6 +258,7 @@ func (s *vlanStore) programRedirects(ctx context.Context) {
 		return
 	}
 
+	vlans = s.repinStaleEntries(ctx, vlans)
 	s.programFwPolicyState(ctx, handler, vlans)
 	s.programEnforcement(ctx, handler, vlans)
 }
@@ -448,6 +489,7 @@ func dpuToModulePinning(dpu uint16) model.E_Cisco_NX_OSDevice_Sas_SvcModulePinni
 	case 4:
 		return model.Cisco_NX_OSDevice_Sas_SvcModulePinning_4
 	default:
+		logger.GetLogger().Error("Unexpected DPU value in dpuToModulePinning, using all", "dpu", dpu)
 		return model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
 	}
 }
@@ -456,6 +498,8 @@ func dpuToModulePinning(dpu uint16) model.E_Cisco_NX_OSDevice_Sas_SvcModulePinni
 // When dpu == 0, returns the "all DPUs" shared policy name.
 func dpuToPolicyName(dpu uint16) string {
 	switch dpu {
+	case 0:
+		return "__dpu_all_dpu_vlan_redir"
 	case 1:
 		return "__dpu1_dpu_vlan_redir"
 	case 2:
@@ -465,6 +509,7 @@ func dpuToPolicyName(dpu uint16) string {
 	case 4:
 		return "__dpu4_dpu_vlan_redir"
 	default:
+		logger.GetLogger().Error("Unexpected DPU value in dpuToPolicyName, using all", "dpu", dpu)
 		return "__dpu_all_dpu_vlan_redir"
 	}
 }
@@ -742,7 +787,12 @@ func (s *vlanStore) assignPinningLocked(vlan types.VLAN) types.VLAN {
 	}
 	// Pinning mode
 	if vlan.Affinity >= 1 {
-		if s.dpuCount > 0 && vlan.Affinity > s.dpuCount {
+		if s.dpuCount == 0 {
+			// No DPU inventory yet; defer pinning until RepinAll after inventory.
+			vlan.DPUPinned = 0
+			return vlan
+		}
+		if vlan.Affinity > s.dpuCount {
 			logger.GetLogger().Warn("VLAN affinity exceeds DPU count, using FNV-1a",
 				"vlan", vlan.Name, "affinity", vlan.Affinity, "dpuCount", s.dpuCount)
 		} else {
@@ -823,6 +873,7 @@ func (s *vlanStore) ProgramAllRedirects(ctx context.Context) {
 		return
 	}
 
+	vlans = s.repinStaleEntries(ctx, vlans)
 	s.programFwPolicyState(ctx, handler, vlans)
 	s.programEnforcement(ctx, handler, vlans)
 }

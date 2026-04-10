@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi/paths"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 )
 
 func makeStringUpdate(s string) *gnmiproto.Update {
@@ -759,7 +760,7 @@ func TestStore_AutoGIDAllocation_TriggersRedirect(t *testing.T) {
 }
 
 func TestStore_AutoPinning_StaticAffinity(t *testing.T) {
-	vs := NewStore(context.Background(), WithLbModePinning(true))
+	vs := NewStore(context.Background(), WithLbModePinning(true), WithDPUCount(4))
 	ctx := context.Background()
 
 	// Activate with a non-zero affinity in pinning mode → DPUPinned = Affinity
@@ -853,7 +854,7 @@ func TestStore_SetAffinity_ActivatesVRF(t *testing.T) {
 }
 
 func TestStore_SetAffinity_RepinsActiveVRF(t *testing.T) {
-	vs := NewStore(context.Background(), WithLbModePinning(true))
+	vs := NewStore(context.Background(), WithLbModePinning(true), WithDPUCount(4))
 	ctx := context.Background()
 
 	// Activate with affinity=2 in pinning mode
@@ -1871,7 +1872,7 @@ func TestRestoreGIDsFromGnmi_RepinDeletesOldEndpoint(t *testing.T) {
 		Build()
 	defer handler.Close()
 
-	vs := NewStore(ctx, WithLbModePinning(true))
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
 	vs.SetGnmiHandler(handler)
 
 	// Activate vrf-a with DPUPinned=2 (affinity=2 in pinning mode).
@@ -1923,7 +1924,7 @@ func TestRestoreGIDsFromGnmi_SamePinningNoDelete(t *testing.T) {
 		Build()
 	defer handler.Close()
 
-	vs := NewStore(ctx, WithLbModePinning(true))
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
 	vs.SetGnmiHandler(handler)
 
 	// Activate vrf-a with DPUPinned=1.
@@ -2029,7 +2030,7 @@ func TestRestoreGIDsFromGnmi_MultipleStaleEndpoints(t *testing.T) {
 		Build()
 	defer handler.Close()
 
-	vs := NewStore(ctx, WithLbModePinning(true))
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
 	vs.SetGnmiHandler(handler)
 
 	// Activate vrf-a with DPUPinned=2.
@@ -2171,7 +2172,7 @@ func TestStore_RepinAll_SymmetricToPinning(t *testing.T) {
 
 func TestStore_RepinAll_PinningToSymmetric(t *testing.T) {
 	ctx := context.Background()
-	vs := NewStore(ctx, WithLbModePinning(true))
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
 
 	// Activate VRF in pinning mode → DPUPinned = affinity value
 	vs.SetGlobal(ctx, "tenant1", true)
@@ -2195,7 +2196,7 @@ func TestStore_RepinAll_PinningToSymmetric(t *testing.T) {
 
 func TestStore_RepinAll_NoChange(t *testing.T) {
 	ctx := context.Background()
-	vs := NewStore(ctx, WithLbModePinning(true))
+	vs := NewStore(ctx, WithLbModePinning(true), WithDPUCount(4))
 
 	vs.SetGlobal(ctx, "tenant1", true)
 	vs.SetService(ctx, "tenant1", true)
@@ -2212,5 +2213,166 @@ func TestStore_RepinAll_NoChange(t *testing.T) {
 	p, _ = vs.GetPinning("tenant1")
 	if p != 2 {
 		t.Errorf("expected DPUPinned=2 after no-op RepinAll, got %d", p)
+	}
+}
+
+// TestVRFStore_RepinStaleEntries verifies that repinStaleEntries corrects
+// allDpu (65535) values in pinning mode and leaves them unchanged in symmetric mode.
+func TestVRFStore_RepinStaleEntries(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("corrects_allDpu_in_pinning_mode", func(t *testing.T) {
+		vs := NewStore(ctx, WithDPUCount(4))
+		s := vs.(*vrfStore)
+
+		// Insert a VRF with stale allDpu (65535) directly in the store.
+		s.mu.Lock()
+		s.vrfs["tenant1"] = types.VRF{Name: "tenant1", Active: true, DPUPinned: 65535}
+		s.isLbModePinning = true
+		s.mu.Unlock()
+
+		stale := []types.VRF{{Name: "tenant1", Active: true, DPUPinned: 65535}}
+		corrected := s.repinStaleEntries(ctx, stale)
+
+		if len(corrected) != 1 {
+			t.Fatalf("expected 1 entry, got %d", len(corrected))
+		}
+		if corrected[0].DPUPinned == 65535 {
+			t.Errorf("expected DPUPinned to be corrected from allDpu, still got %d", corrected[0].DPUPinned)
+		}
+		if corrected[0].DPUPinned < 1 || corrected[0].DPUPinned > 4 {
+			t.Errorf("expected DPUPinned in 1-4 after correction, got %d", corrected[0].DPUPinned)
+		}
+		// Verify the store was also updated.
+		stored, _ := vs.Get("tenant1")
+		if stored.DPUPinned == 65535 {
+			t.Error("expected store to be updated with corrected DPUPinned")
+		}
+	})
+
+	t.Run("noop_in_symmetric_mode", func(t *testing.T) {
+		vs := NewStore(ctx, WithDPUCount(4)) // isLbModePinning=false by default
+		s := vs.(*vrfStore)
+
+		s.mu.Lock()
+		s.vrfs["tenant1"] = types.VRF{Name: "tenant1", Active: true, DPUPinned: 65535}
+		s.mu.Unlock()
+
+		input := []types.VRF{{Name: "tenant1", Active: true, DPUPinned: 65535}}
+		result := s.repinStaleEntries(ctx, input)
+
+		if result[0].DPUPinned != 65535 {
+			t.Errorf("expected DPUPinned to remain allDpu in symmetric mode, got %d", result[0].DPUPinned)
+		}
+	})
+
+	t.Run("leaves_valid_pinning_unchanged", func(t *testing.T) {
+		vs := NewStore(ctx, WithDPUCount(4))
+		s := vs.(*vrfStore)
+
+		s.mu.Lock()
+		s.vrfs["tenant1"] = types.VRF{Name: "tenant1", Active: true, DPUPinned: 2}
+		s.isLbModePinning = true
+		s.mu.Unlock()
+
+		input := []types.VRF{{Name: "tenant1", Active: true, DPUPinned: 2}}
+		result := s.repinStaleEntries(ctx, input)
+
+		if result[0].DPUPinned != 2 {
+			t.Errorf("expected DPUPinned=2 to remain unchanged, got %d", result[0].DPUPinned)
+		}
+	})
+}
+
+// TestVRFStore_ProgramAllRedirects_RepinsBeforeProgramming verifies that
+// ProgramAllRedirects corrects stale allDpu VRFs before programming the switch.
+func TestVRFStore_ProgramAllRedirects_RepinsBeforeProgramming(t *testing.T) {
+	ctx := context.Background()
+	handler := mock.NewHandler()
+
+	vs := NewStore(ctx, WithDPUCount(4))
+	s := vs.(*vrfStore)
+	s.SetGnmiHandler(handler)
+
+	// Insert a VRF with stale allDpu (65535) in pinning mode. GID must be set
+	// for service endpoint programming to proceed.
+	s.mu.Lock()
+	s.vrfs["tenant1"] = types.VRF{Name: "tenant1", Active: true, DPUPinned: 65535, GID: 10}
+	s.isLbModePinning = true
+	s.mu.Unlock()
+
+	s.ProgramAllRedirects(ctx)
+
+	// Verify the store was corrected.
+	stored, ok := vs.Get("tenant1")
+	if !ok {
+		t.Fatal("expected tenant1 to exist")
+	}
+	if stored.DPUPinned == 65535 {
+		t.Errorf("expected DPUPinned to be corrected from allDpu by ProgramAllRedirects, got %d", stored.DPUPinned)
+	}
+	if stored.DPUPinned < 1 || stored.DPUPinned > 4 {
+		t.Errorf("expected DPUPinned in 1-4 after ProgramAllRedirects, got %d", stored.DPUPinned)
+	}
+}
+
+// TestVRFStore_AssignPinning_DpuCountZeroWithAffinity verifies that
+// assignPinningLocked defers pinning (DPUPinned=0) when dpuCount=0.
+func TestVRFStore_AssignPinning_DpuCountZeroWithAffinity(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx) // dpuCount defaults to 0
+	s := vs.(*vrfStore)
+
+	s.mu.Lock()
+	s.isLbModePinning = true
+	vrf := types.VRF{Name: "tenant1", Affinity: 3}
+	result := s.assignPinningLocked(vrf)
+	s.mu.Unlock()
+
+	if result.DPUPinned != 0 {
+		t.Errorf("expected DPUPinned=0 when dpuCount=0, got %d", result.DPUPinned)
+	}
+}
+
+// TestVRFStore_RepinAll_AfterReactivation verifies the lbMode-first ordering:
+// VRFs deactivated → lbMode changes to pinning → VRFs reactivated
+// → activation calls assignPinningLocked with isPinningActive=true → correct value.
+func TestVRFStore_RepinAll_AfterReactivation(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx, WithDPUCount(4))
+
+	// Activate VRF in symmetric mode → DPUPinned = 65535
+	vs.SetGlobal(ctx, "tenant1", true)
+	vs.SetService(ctx, "tenant1", true)
+	vs.SetAffinity(ctx, "tenant1", 0)
+
+	p, _ := vs.GetPinning("tenant1")
+	if p != 65535 {
+		t.Fatalf("expected DPUPinned=65535 in symmetric mode, got %d", p)
+	}
+
+	// Deactivate VRF (simulates FW disable)
+	vs.SetService(ctx, "tenant1", false)
+	vrf, _ := vs.Get("tenant1")
+	if vrf.Active {
+		t.Fatal("expected VRF to be inactive after SetService(false)")
+	}
+
+	// lbMode changes to pinning — RepinAll skips inactive VRFs
+	vs.SetLbModePinning(true)
+	vs.RepinAll(ctx)
+
+	// Reactivate VRF (simulates FW re-enable: NX-OS sends service + affinity + in-service).
+	// SetService(false) cleared HasAffinity, so we must call SetAffinity again to fully reactivate.
+	// handleActivateLocked calls assignPinningLocked with isPinningActive=true → correct value.
+	vs.SetService(ctx, "tenant1", true)
+	vs.SetAffinity(ctx, "tenant1", 0)
+
+	p, ok := vs.GetPinning("tenant1")
+	if !ok {
+		t.Fatal("expected pinning to be set after reactivation")
+	}
+	if p < 1 || p > 4 {
+		t.Errorf("expected DPUPinned in 1-4 after reactivation in pinning mode, got %d", p)
 	}
 }

@@ -101,5 +101,5 @@ type Store interface {
 
 	// SetPostInServiceHook registers a hook that runs AFTER the in-service state changes.
 	// Used to remove redirects after the device transitions to out-of-service.
-	SetPostInServiceHook(hook func(ctx context.Context, oldState string))
+	SetPostInServiceHook(hook func(ctx context.Context, oldState, newState string))
 }

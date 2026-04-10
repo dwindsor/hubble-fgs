@@ -85,7 +85,7 @@ type deviceStore struct {
 
 	// Hooks for in-service transitions, called by SetInService.
 	preInServiceHook  func(ctx context.Context, newState string)
-	postInServiceHook func(ctx context.Context, oldState string)
+	postInServiceHook func(ctx context.Context, oldState, newState string)
 }
 
 // AgentTokenProvider is an optional interface for advanced token processing.

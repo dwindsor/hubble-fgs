@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nxos/gnmi"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/storage"
 	"github.com/isovalent/hubble-fgs/pkg/nxos/store"
+	"github.com/isovalent/hubble-fgs/pkg/nxos/types"
 )
 
 func makeStringUpdate(s string) *gnmiproto.Update {
@@ -597,5 +598,178 @@ func TestVLANStore_RepinAll_PinningToSymmetric(t *testing.T) {
 	p, _ = vs.GetPinning("vlan-10")
 	if p != 65535 {
 		t.Errorf("expected DPUPinned=65535 after RepinAll to symmetric mode, got %d", p)
+	}
+}
+
+// TestVLANStore_RepinStaleEntries verifies that repinStaleEntries corrects
+// allDpu (65535) values in pinning mode and leaves them unchanged in symmetric mode.
+func TestVLANStore_RepinStaleEntries(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("corrects_allDpu_in_pinning_mode", func(t *testing.T) {
+		vs := NewStore(ctx, WithDPUCount(4))
+		s := vs.(*vlanStore)
+
+		// Insert a VLAN with stale allDpu (65535) directly in the store, simulating
+		// the race where lbMode changed after VLAN was activated in symmetric mode.
+		s.mu.Lock()
+		s.vlans["vlan-10"] = types.VLAN{Name: "vlan-10", Active: true, DPUPinned: allDpu}
+		s.isLbModePinning = true
+		s.mu.Unlock()
+
+		stale := []types.VLAN{{Name: "vlan-10", Active: true, DPUPinned: allDpu}}
+		corrected := s.repinStaleEntries(ctx, stale)
+
+		if len(corrected) != 1 {
+			t.Fatalf("expected 1 entry, got %d", len(corrected))
+		}
+		if corrected[0].DPUPinned == allDpu {
+			t.Errorf("expected DPUPinned to be corrected from allDpu, still got %d", corrected[0].DPUPinned)
+		}
+		if corrected[0].DPUPinned < 1 || corrected[0].DPUPinned > 4 {
+			t.Errorf("expected DPUPinned in 1-4 after correction, got %d", corrected[0].DPUPinned)
+		}
+		// Verify the store was also updated
+		stored, _ := vs.Get("vlan-10")
+		if stored.DPUPinned == allDpu {
+			t.Error("expected store to be updated with corrected DPUPinned")
+		}
+	})
+
+	t.Run("noop_in_symmetric_mode", func(t *testing.T) {
+		vs := NewStore(ctx, WithDPUCount(4)) // isLbModePinning=false by default
+		s := vs.(*vlanStore)
+
+		s.mu.Lock()
+		s.vlans["vlan-10"] = types.VLAN{Name: "vlan-10", Active: true, DPUPinned: allDpu}
+		s.mu.Unlock()
+
+		input := []types.VLAN{{Name: "vlan-10", Active: true, DPUPinned: allDpu}}
+		result := s.repinStaleEntries(ctx, input)
+
+		if result[0].DPUPinned != allDpu {
+			t.Errorf("expected DPUPinned to remain allDpu in symmetric mode, got %d", result[0].DPUPinned)
+		}
+	})
+
+	t.Run("leaves_valid_pinning_unchanged", func(t *testing.T) {
+		vs := NewStore(ctx, WithDPUCount(4))
+		s := vs.(*vlanStore)
+
+		s.mu.Lock()
+		s.vlans["vlan-10"] = types.VLAN{Name: "vlan-10", Active: true, DPUPinned: 3}
+		s.isLbModePinning = true
+		s.mu.Unlock()
+
+		input := []types.VLAN{{Name: "vlan-10", Active: true, DPUPinned: 3}}
+		result := s.repinStaleEntries(ctx, input)
+
+		if result[0].DPUPinned != 3 {
+			t.Errorf("expected DPUPinned=3 to remain unchanged, got %d", result[0].DPUPinned)
+		}
+	})
+}
+
+// TestVLANStore_ProgramAllRedirects_RepinsBeforeProgramming verifies that
+// ProgramAllRedirects corrects stale allDpu VLANs in pinning mode before
+// programming the switch (the silent 65535 fallback bug).
+func TestVLANStore_ProgramAllRedirects_RepinsBeforeProgramming(t *testing.T) {
+	ctx := context.Background()
+	handler := &mockGnmiHandler{}
+
+	vs := NewStore(ctx, WithDPUCount(4))
+	s := vs.(*vlanStore)
+	s.SetGnmiHandler(handler)
+
+	// Insert a VLAN with stale allDpu (65535) in pinning mode.
+	s.mu.Lock()
+	s.vlans["vlan-10"] = types.VLAN{Name: "vlan-10", Active: true, DPUPinned: allDpu, Affinity: 0}
+	s.isLbModePinning = true
+	s.mu.Unlock()
+
+	s.ProgramAllRedirects(ctx)
+
+	// Verify the store was corrected before programming.
+	stored, ok := vs.Get("vlan-10")
+	if !ok {
+		t.Fatal("expected vlan-10 to exist")
+	}
+	if stored.DPUPinned == allDpu {
+		t.Errorf("expected DPUPinned to be corrected from allDpu by ProgramAllRedirects, got %d", stored.DPUPinned)
+	}
+	if stored.DPUPinned < 1 || stored.DPUPinned > 4 {
+		t.Errorf("expected DPUPinned in 1-4 after ProgramAllRedirects, got %d", stored.DPUPinned)
+	}
+	// Verify gNMI Set was called.
+	if handler.setCalls == 0 {
+		t.Error("expected gNMI Set calls from ProgramAllRedirects")
+	}
+}
+
+// TestVLANStore_AssignPinning_DpuCountZeroWithAffinity verifies that
+// assignPinningLocked defers pinning (DPUPinned=0) when dpuCount=0,
+// rather than accepting a raw unvalidated affinity value.
+func TestVLANStore_AssignPinning_DpuCountZeroWithAffinity(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx) // dpuCount defaults to 0
+	s := vs.(*vlanStore)
+
+	s.mu.Lock()
+	s.isLbModePinning = true
+	vlan := types.VLAN{Name: "vlan-10", Affinity: 3}
+	result := s.assignPinningLocked(vlan)
+	s.mu.Unlock()
+
+	if result.DPUPinned != 0 {
+		t.Errorf("expected DPUPinned=0 when dpuCount=0, got %d", result.DPUPinned)
+	}
+}
+
+// TestVLANStore_RepinAll_AfterReactivation verifies the lbMode-first ordering:
+// VLANs deactivated (FW disable) → lbMode changes to pinning → VLANs reactivated
+// → RepinAll corrects stale DPUPinned values.
+func TestVLANStore_RepinAll_AfterReactivation(t *testing.T) {
+	ctx := context.Background()
+	vs := NewStore(ctx, WithDPUCount(4))
+
+	// Activate VLANs in symmetric mode → DPUPinned = 65535
+	vs.SetGlobal(ctx, "vlan-10", true)
+	vs.SetService(ctx, "vlan-10", true)
+	vs.SetAffinity(ctx, "vlan-10", 0)
+
+	p, _ := vs.GetPinning("vlan-10")
+	if p != allDpu {
+		t.Fatalf("expected DPUPinned=allDpu in symmetric mode, got %d", p)
+	}
+
+	// Deactivate VLAN (simulates FW disable: service flag cleared)
+	vs.SetService(ctx, "vlan-10", false)
+	vlan, _ := vs.Get("vlan-10")
+	if vlan.Active {
+		t.Fatal("expected VLAN to be inactive after SetService(false)")
+	}
+
+	// lbMode changes to pinning — RepinAll skips inactive VLANs
+	vs.SetLbModePinning(true)
+	vs.RepinAll(ctx)
+
+	p, _ = vs.GetPinning("vlan-10")
+	// DPUPinned still allDpu because VLAN was inactive during RepinAll
+	if p != allDpu {
+		t.Logf("note: DPUPinned=%d after RepinAll on inactive VLAN (not necessarily allDpu if entry was cleared)", p)
+	}
+
+	// Reactivate VLAN (simulates FW re-enable: NX-OS sends service + affinity + in-service).
+	// SetService(false) cleared HasAffinity, so we must call SetAffinity again to fully reactivate.
+	// handleActivateLocked calls assignPinningLocked with isPinningActive=true → correct value.
+	vs.SetService(ctx, "vlan-10", true)
+	vs.SetAffinity(ctx, "vlan-10", 0)
+
+	p, ok := vs.GetPinning("vlan-10")
+	if !ok {
+		t.Fatal("expected pinning to be set after reactivation")
+	}
+	if p < 1 || p > 4 {
+		t.Errorf("expected DPUPinned in 1-4 after reactivation in pinning mode, got %d", p)
 	}
 }

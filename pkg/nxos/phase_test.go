@@ -355,14 +355,92 @@ func TestOutOfServiceClearsRedirPending(t *testing.T) {
 		t.Fatal("expected redirPending=true after unhealthy in-service")
 	}
 
-	// Go out-of-service.
-	m.removeAllRedirects(ctx)
-	m.setFwDisabled(ctx)
+	// Go out-of-service via the hook path.
+	m.deviceStore.SetInService(ctx, device.InServiceStateOutOfService)
+
+	state := m.deviceStore.SystemState()
+	if state&SysStFwReady != 0 {
+		t.Errorf("FwReady should be cleared on out-of-service: 0x%X", state)
+	}
+	if state&SysStRedirDone != 0 {
+		t.Errorf("RedirDone should be cleared on out-of-service: 0x%X", state)
+	}
 
 	m.stateMu.Lock()
 	stillPending := m.redirPending
 	m.stateMu.Unlock()
 	if stillPending {
 		t.Error("redirPending should be cleared on out-of-service")
+	}
+}
+
+// TestStartupOutOfServiceClearsRedirects verifies that the "" -> "out-of-service"
+// startup transition clears stale redirects even though oldState is empty.
+func TestStartupOutOfServiceClearsRedirects(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	// Simulate stale state from a previous run.
+	m.setFwReady(ctx)
+	m.setRedirDone(ctx, true)
+	m.stateMu.Lock()
+	m.redirPending = true
+	m.stateMu.Unlock()
+
+	m.setupInServiceHooks()
+
+	// Startup: initial state is "" -> trigger out-of-service transition.
+	m.deviceStore.SetInService(ctx, device.InServiceStateOutOfService)
+
+	state := m.deviceStore.SystemState()
+	if state&SysStFwReady != 0 {
+		t.Errorf("FwReady should be cleared on startup out-of-service: 0x%X", state)
+	}
+	if state&SysStRedirDone != 0 {
+		t.Errorf("RedirDone should be cleared on startup out-of-service: 0x%X", state)
+	}
+
+	m.stateMu.Lock()
+	pending := m.redirPending
+	m.stateMu.Unlock()
+	if pending {
+		t.Error("redirPending should be cleared on startup out-of-service")
+	}
+}
+
+// TestFwPolicyDeleteClearsRedirects verifies that the "in-service" -> ""
+// transition (firewall policy deleted) clears redirects.
+func TestFwPolicyDeleteClearsRedirects(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManagerFull(ctx)
+
+	m.setupInServiceHooks()
+
+	// Transition to in-service first.
+	m.deviceStore.SetInService(ctx, device.InServiceStateInService)
+
+	// Simulate stale state.
+	m.setFwReady(ctx)
+	m.setRedirDone(ctx, true)
+	m.stateMu.Lock()
+	m.redirPending = true
+	m.stateMu.Unlock()
+
+	// Firewall policy deleted: in-service -> "".
+	m.deviceStore.SetInService(ctx, "")
+
+	state := m.deviceStore.SystemState()
+	if state&SysStFwReady != 0 {
+		t.Errorf("FwReady should be cleared on fw policy delete: 0x%X", state)
+	}
+	if state&SysStRedirDone != 0 {
+		t.Errorf("RedirDone should be cleared on fw policy delete: 0x%X", state)
+	}
+
+	m.stateMu.Lock()
+	pending := m.redirPending
+	m.stateMu.Unlock()
+	if pending {
+		t.Error("redirPending should be cleared on fw policy delete")
 	}
 }

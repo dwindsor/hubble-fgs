@@ -486,7 +486,7 @@ func TestStore_SetInService_HookOrdering(t *testing.T) {
 		cs.SetInService(ctx, "in-service") // start in-service
 
 		var postHookState string
-		cs.SetPostInServiceHook(func(_ context.Context, _ string) {
+		cs.SetPostInServiceHook(func(_ context.Context, _, _ string) {
 			// At this point the store should already be out-of-service
 			postHookState = cs.InServiceState()
 		})
@@ -505,7 +505,7 @@ func TestStore_SetInService_HookOrdering(t *testing.T) {
 		cs.SetPreInServiceHook(func(_ context.Context, newState string) {
 			sequence = append(sequence, "pre:"+newState)
 		})
-		cs.SetPostInServiceHook(func(_ context.Context, oldState string) {
+		cs.SetPostInServiceHook(func(_ context.Context, oldState, _ string) {
 			sequence = append(sequence, "post:"+oldState)
 		})
 		cs.Watch(func(e Event) {
@@ -541,7 +541,7 @@ func TestStore_SetInService_HookOrdering(t *testing.T) {
 		cs.SetPreInServiceHook(func(_ context.Context, _ string) {
 			hookCalled = true
 		})
-		cs.SetPostInServiceHook(func(_ context.Context, _ string) {
+		cs.SetPostInServiceHook(func(_ context.Context, _, _ string) {
 			hookCalled = true
 		})
 

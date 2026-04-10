@@ -2207,6 +2207,112 @@ func TestManager_Run_PeerHaStateWrittenBeforeNotifyServiceFailure(t *testing.T) 
 	}
 }
 
+// TestManager_Run_NotifyServiceFailurePreservesLeader is a regression test
+// for a bug where NotifyServiceFailure sent an Adjacency request with
+// IsLeader=false (because convertPeerMemberToMbrInfo omits IsLeader).
+// The peer cleared the leader's IsLeader status, triggering a spurious
+// election where the healthy follower became leader — causing leadership
+// flap and traffic disruption.
+//
+// The fix: NotifyServiceFailure overrides MbrInfo.HaInfo with
+// buildLocalHaInfo() which includes the correct IsLeader value.
+func TestManager_Run_NotifyServiceFailurePreservesLeader(t *testing.T) {
+	ctx := context.Background()
+
+	haStore := hastore.NewStore(ctx)
+	deviceStore := device.NewStore(ctx)
+
+	// adjReceived captures adjacency requests received by the mock peer.
+	adjReceived := make(chan *hav1.AdjRequest, 10)
+
+	mgr := NewManager(
+		WithHAStoreForManager(haStore),
+		WithDeviceStore(deviceStore),
+		WithLocalIP("10.0.0.1"),
+		WithClientFactory(func() Client {
+			c := NewMockClient()
+			c.SetAdjacencyHandler(func(ctx context.Context, req *hav1.AdjRequest) (*hav1.AdjResponse, error) {
+				select {
+				case adjReceived <- req:
+				default:
+				}
+				return &hav1.AdjResponse{Status: hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS}, nil
+			})
+			return c
+		}),
+	)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mgr.Run(runCtx)
+	}()
+
+	bgCtx := context.Background()
+
+	// Activate HA: enabled + haIP + peer + in-service.
+	deviceStore.SetInService(bgCtx, "in-service")
+	haStore.SetEnabled(bgCtx, "enabled")
+	haStore.SetHaIP(bgCtx, "10.0.0.1")
+	haStore.SetPeer(bgCtx, "10.0.0.2", types.HAPeerState{
+		IP:            "10.0.0.2",
+		IpConfigState: hastore.PeerIpCfgStateSuccess,
+	})
+
+	// Give Run() time to activate.
+	time.Sleep(50 * time.Millisecond)
+
+	// Make this node the leader.
+	haStore.SetLeader(bgCtx, true)
+
+	// Connect peer so NotifyServiceFailure can reach the mock.
+	if err := mgr.ConnectPeer(bgCtx, "10.0.0.2"); err != nil {
+		t.Fatalf("ConnectPeer failed: %v", err)
+	}
+
+	// Drain any adjacency messages from activation / keepalive.
+	time.Sleep(20 * time.Millisecond)
+	for len(adjReceived) > 0 {
+		<-adjReceived
+	}
+
+	// Transition to out-of-service — triggers NotifyServiceFailure.
+	deviceStore.SetInService(bgCtx, "out-of-service")
+
+	// Wait for the NotifyServiceFailure adjacency to arrive.
+	select {
+	case req := <-adjReceived:
+		if req.MbrInfo == nil || req.MbrInfo.HaInfo == nil {
+			t.Fatal("expected MbrInfo.HaInfo in adjacency request")
+		}
+		// The critical assertion: IsLeader must be true. Before the fix,
+		// convertPeerMemberToMbrInfo omitted IsLeader, defaulting to false.
+		if !req.MbrInfo.HaInfo.IsLeader {
+			t.Error("NotifyServiceFailure sent IsLeader=false; " +
+				"peer would clear leader status and trigger spurious election")
+		}
+		// LocalSvcState should be failure (sanity check).
+		if req.MbrInfo.HaInfo.LocalSvcState != hav1.LOCAL_SVC_STATE_LOCAL_SVC_FAILURE {
+			t.Errorf("expected LocalSvcState=LOCAL_SVC_FAILURE, got %v",
+				req.MbrInfo.HaInfo.LocalSvcState)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Error("did not receive adjacency notification after out-of-service transition")
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Run() returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("Run() did not return after context cancellation")
+	}
+}
+
 // normalizeMockManagerPath strips the "device:" scheme prefix used in path
 // constants so it matches the key format used by the gNMI mock handler.
 func normalizeMockManagerPath(path string) string {
