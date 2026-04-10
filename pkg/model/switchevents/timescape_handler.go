@@ -293,11 +293,11 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool) error {
 				GetVersion: func() string {
 					return agw.Version()
 				},
-				GetDeviceConnectionStatus: func() string {
+				GetControllerConnectionStatus: func() string {
 					if enableNxos {
-						return agw.GetDeviceConnectionStatus()
+						return agw.GetControllerConnectionStatus()
 					}
-					return device.CommonStateUnknown
+					return device.ControllerStateUnknown
 				},
 			},
 			PolicyStatusDataProvider: policystatus.PolicyStatusDataProvider{

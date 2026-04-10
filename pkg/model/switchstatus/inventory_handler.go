@@ -40,12 +40,12 @@ type InventoryHandler interface {
 
 // InventoryDataProvider provides data needed for inventory updates
 type InventoryDataProvider struct {
-	GetDPUStatus              func() ([]switchpolicy.DPUReportStatus, error)
-	GetK8sNamespace           func() string
-	GetServiceMAC             func() string
-	GetServiceIP              func() string
-	GetDeviceConnectionStatus func() string
-	GetSerialNum              func(ctx context.Context) string
+	GetDPUStatus                  func() ([]switchpolicy.DPUReportStatus, error)
+	GetK8sNamespace               func() string
+	GetServiceMAC                 func() string
+	GetServiceIP                  func() string
+	GetControllerConnectionStatus func() string
+	GetSerialNum                  func(ctx context.Context) string
 }
 
 // inventoryHandler implements InventoryHandler
@@ -117,10 +117,10 @@ func (h *inventoryHandler) periodicUpdateLoop(ctx context.Context, kubernetesMan
 // isControllerConnectionHealthy checks if the controller connection is healthy
 func (h *inventoryHandler) isControllerConnectionHealthy() bool {
 	// Check device connection status via callback
-	connectionStatus := h.dataProvider.GetDeviceConnectionStatus()
+	connectionStatus := h.dataProvider.GetControllerConnectionStatus()
 
 	// Connection is healthy if status is success
-	return connectionStatus == device.CommonStateSuccess
+	return connectionStatus == device.ControllerStateSuccess
 }
 
 // updateInventory performs the actual inventory update

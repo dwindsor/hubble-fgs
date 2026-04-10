@@ -124,15 +124,15 @@ func (s *deviceStore) updateProxyEnvVars() {
 
 func (s *deviceStore) SetConnectionStatus(ctx context.Context, status string, reason string) {
 	s.mu.Lock()
-	connChanged := s.connectionStatus != status
-	s.connectionStatus = status
-	s.rejectReason = reason
+	connChanged := s.controllerConnectionStatus != status
+	s.controllerConnectionStatus = status
+	s.controllerRejectReason = reason
 
 	// Update ConnPending bit in systemState atomically.
 	// In headless mode, ConnPending is never set.
 	oldState := s.systemState
 	if !s.headlessMode {
-		if status == CommonStateSuccess {
+		if status == ControllerStateSuccess {
 			s.systemState &^= sysStConnPending
 		} else {
 			s.systemState |= sysStConnPending
@@ -171,9 +171,9 @@ func (s *deviceStore) SetConnectionStatus(ctx context.Context, status string, re
 
 func (s *deviceStore) SetAdmissionStatus(ctx context.Context, status string, reason string) {
 	s.mu.Lock()
-	changed := s.admissionStatus != status
-	s.admissionStatus = status
-	s.rejectReason = reason
+	changed := s.controllerAdmissionStatus != status
+	s.controllerAdmissionStatus = status
+	s.controllerRejectReason = reason
 	handler := s.gnmiHandler
 	s.mu.Unlock()
 
@@ -337,14 +337,14 @@ func (s *deviceStore) SetLbMode(ctx context.Context, mode string) {
 
 func (s *deviceStore) ResetRegistration(ctx context.Context) {
 	s.mu.Lock()
-	s.admissionStatus = CommonStateUnknown
-	s.rejectReason = ""
+	s.controllerAdmissionStatus = ControllerStateUnknown
+	s.controllerRejectReason = ""
 	s.mu.Unlock()
 	s.persist(ctx)
 }
 
 func (s *deviceStore) ResetConnection(ctx context.Context) {
-	s.SetConnectionStatus(ctx, CommonStateUnknown, "")
+	s.SetConnectionStatus(ctx, ControllerStateUnknown, "")
 }
 
 func (s *deviceStore) SetControllerEndpoint(ctx context.Context, endpoint string) {

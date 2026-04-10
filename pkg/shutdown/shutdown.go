@@ -127,7 +127,9 @@ func (sm *ShutdownManager) Shutdown(exitCode int) {
 
 	// Safety net: force-kill the process if graceful shutdown exceeds the deadline.
 	go func() {
-		time.Sleep(forceKillTimeout)
+		ticker := time.NewTicker(forceKillTimeout)
+		defer ticker.Stop()
+		<-ticker.C
 		logger.GetLogger().Error("Graceful shutdown timed out, forcing process exit",
 			"timeout", forceKillTimeout, "exitCode", exitCode)
 		os.Exit(exitCode)

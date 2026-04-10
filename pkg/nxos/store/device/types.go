@@ -15,9 +15,9 @@ import nxosmodel "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 // CommonState string values - derived directly from E_Cisco_NX_OSDevice_Sas_CommonStateE YANG enum.
 // Using .String() ensures exact compliance with NX-OS expected values.
 var (
-	CommonStateUnknown = nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_unknown.String()
-	CommonStateSuccess = nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_success.String()
-	CommonStateFailure = nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_failure.String()
+	ControllerStateUnknown = nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_unknown.String()
+	ControllerStateSuccess = nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_success.String()
+	ControllerStateFailure = nxosmodel.Cisco_NX_OSDevice_Sas_CommonStateE_failure.String()
 )
 
 // In-service state string values - derived from SasInstState YANG enum.

@@ -141,7 +141,7 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 			GetServiceIP: func() string {
 				return agw.nxosManager.DeviceStore().ServiceIP()
 			},
-			GetDeviceConnectionStatus: func() string {
+			GetControllerConnectionStatus: func() string {
 				return agw.nxosManager.DeviceStore().ConnectionStatus()
 			},
 			GetSerialNum: func(_ context.Context) string {
@@ -268,7 +268,7 @@ func (agw *AgentGateway) DisableHaWatching(_ context.Context) {
 	logger.GetLogger().Info("HA watching disabled (headless mode)")
 }
 
-func (agw *AgentGateway) GetDeviceConnectionStatus() string {
+func (agw *AgentGateway) GetControllerConnectionStatus() string {
 	return agw.nxosManager.DeviceStore().ConnectionStatus()
 }
 
@@ -295,11 +295,11 @@ func (agw *AgentGateway) RegisterStatus(ctx context.Context, status bool) {
 	logger.GetLogger().Debug("Setting registration status", "status", status)
 	agw.nxosManager.DeviceStore().ResetRegistration(ctx)
 	if !status {
-		agw.nxosManager.DeviceStore().SetAdmissionStatus(ctx, device.CommonStateFailure, nxos.RegFailK8sAuth)
+		agw.nxosManager.DeviceStore().SetAdmissionStatus(ctx, device.ControllerStateFailure, nxos.RegFailK8sAuth)
 		agw.nxosManager.DeviceStore().SetSkipReg(ctx, true, nxos.RegFailK8sAuth)
 		agw.nxosManager.SetConnFail(ctx, nxos.ConnFailed)
 	} else {
-		agw.nxosManager.DeviceStore().SetAdmissionStatus(ctx, device.CommonStateSuccess, nxos.RegOk)
+		agw.nxosManager.DeviceStore().SetAdmissionStatus(ctx, device.ControllerStateSuccess, nxos.RegOk)
 		agw.nxosManager.SetConnOk(ctx, nxos.ConnOk)
 	}
 }
@@ -573,7 +573,7 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 				retries++
 				if retries > maxRetries {
 					agw.nxosManager.DpuInSync(ctx, false)
-					logger.GetLogger().Error("DPU out of sync!")
+					logger.GetLogger().Error("DPU out of sync!", "retries", retries)
 				}
 			} else {
 				agw.nxosManager.DpuInSync(ctx, true)

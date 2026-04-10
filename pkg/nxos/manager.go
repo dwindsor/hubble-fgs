@@ -200,8 +200,8 @@ func (m *manager) Setup(ctx context.Context) error {
 
 	// In mock mode, simulate a successful connection/admission status.
 	if isMock {
-		m.deviceStore.SetConnectionStatus(ctx, device.CommonStateSuccess, "mock")
-		m.deviceStore.SetAdmissionStatus(ctx, device.CommonStateSuccess, "mock")
+		m.deviceStore.SetConnectionStatus(ctx, device.ControllerStateSuccess, "mock")
+		m.deviceStore.SetAdmissionStatus(ctx, device.ControllerStateSuccess, "mock")
 	}
 
 	// Seed DPU count from gNMI GET before starting subscriptions.
@@ -325,7 +325,7 @@ func (m *manager) Close(ctx context.Context) error {
 		if err := m.haStore.SetLocalSvcStateToFailure(ctx, types.NewReasonString("agent shutdown")); err != nil {
 			logger.GetLogger().Warn("Failed to set local svc state to failure", "error", err)
 		}
-		m.deviceStore.SetConnectionStatus(ctx, device.CommonStateUnknown, "")
+		m.deviceStore.SetConnectionStatus(ctx, device.ControllerStateUnknown, "")
 	}
 
 	// 3. Clean up per-VRF/VLAN fwPolicyState and service redirect items
@@ -853,8 +853,8 @@ func (m *manager) SetToken(ctx context.Context, token string) (bool, error) {
 	return m.deviceStore.SetToken(ctx, token)
 }
 
-// GetDeviceConnectionStatus returns the device connection status.
-func (m *manager) GetDeviceConnectionStatus() string {
+// GetControllerConnectionStatus returns the device connection status.
+func (m *manager) GetControllerConnectionStatus() string {
 	return m.deviceStore.ConnectionStatus()
 }
 
@@ -868,7 +868,7 @@ func (m *manager) GetSerialNum(ctx context.Context) string {
 // When reason is RegFailK8sAuth, also sets SkipReg so callers can gate on it.
 func (m *manager) SetRegFail(ctx context.Context, reason string) {
 	logger.GetLogger().Debug("SetRegFail", "reason", reason)
-	m.deviceStore.SetAdmissionStatus(ctx, device.CommonStateFailure, reason)
+	m.deviceStore.SetAdmissionStatus(ctx, device.ControllerStateFailure, reason)
 	if reason == RegFailK8sAuth {
 		m.deviceStore.SetSkipReg(ctx, true, reason)
 	}
@@ -878,21 +878,21 @@ func (m *manager) SetRegFail(ctx context.Context, reason string) {
 // State synchronization to gNMI is handled by the controller store.
 func (m *manager) SetRegOk(ctx context.Context, reason string) {
 	logger.GetLogger().Debug("SetRegOk", "reason", reason)
-	m.deviceStore.SetAdmissionStatus(ctx, device.CommonStateSuccess, reason)
+	m.deviceStore.SetAdmissionStatus(ctx, device.ControllerStateSuccess, reason)
 }
 
 // SetConnFail sets the connection failure status.
 // ConnPending bit is managed atomically by SetConnectionStatus in the device store.
 func (m *manager) SetConnFail(ctx context.Context, reason string) {
 	logger.GetLogger().Debug("SetConnFail", "reason", reason)
-	m.deviceStore.SetConnectionStatus(ctx, device.CommonStateFailure, reason)
+	m.deviceStore.SetConnectionStatus(ctx, device.ControllerStateFailure, reason)
 }
 
 // SetConnOk sets the connection success status.
 // ConnPending bit is managed atomically by SetConnectionStatus in the device store.
 func (m *manager) SetConnOk(ctx context.Context, reason string) {
 	logger.GetLogger().Debug("SetConnOk", "reason", reason)
-	m.deviceStore.SetConnectionStatus(ctx, device.CommonStateSuccess, reason)
+	m.deviceStore.SetConnectionStatus(ctx, device.ControllerStateSuccess, reason)
 }
 
 // ResetReg resets the registration status.
@@ -956,7 +956,7 @@ func (m *manager) ShowStatus(ctx context.Context) string {
 	fmt.Fprintf(w, "DPU Count:\t%d\n", m.dpuStore.Count())
 	fmt.Fprintf(w, "HA Enabled:\t%v\n", m.haStore.Enabled() == "enabled")
 	fmt.Fprintf(w, "HA Leader:\t%v\n", m.haStore.IsLeader())
-	fmt.Fprintf(w, "Connected:\t%v\n", m.deviceStore.ConnectionStatus() == device.CommonStateSuccess)
+	fmt.Fprintf(w, "Connected:\t%v\n", m.deviceStore.ConnectionStatus() == device.ControllerStateSuccess)
 	fmt.Fprintf(w, "Serial:\t%s\n", m.deviceStore.SerialNumber())
 	fmt.Fprintf(w, "Model:\t%s\n", m.deviceStore.Model())
 	fmt.Fprintf(w, "SW Version:\t%s\n", m.deviceStore.SoftwareVersion())
@@ -1065,7 +1065,7 @@ func (m *manager) Status() Status {
 		DPUCount:  m.dpuStore.Count(),
 		HAEnabled: m.haStore.Enabled() == "enabled",
 		HALeader:  m.haStore.IsLeader(),
-		Connected: m.deviceStore.ConnectionStatus() == device.CommonStateSuccess,
+		Connected: m.deviceStore.ConnectionStatus() == device.ControllerStateSuccess,
 	}
 }
 

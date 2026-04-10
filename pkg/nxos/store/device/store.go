@@ -52,27 +52,27 @@ const (
 type deviceStore struct {
 	mu sync.RWMutex
 
-	token              string
-	proxyServer        string
-	proxyPort          uint32
-	connectionStatus   string
-	admissionStatus    string
-	rejectReason       string
-	serialNumber       string
-	model              string
-	softwareVersion    string
-	serviceIP          string
-	controllerEndpoint string
-	controllerPort     uint32
-	controllerVersion  string
-	cpaVersion         string
-	systemState        int
-	headlessMode       bool
-	inService          string
-	skipReg            bool
-	skipRegReason      string
-	reload             bool
-	lbMode             string
+	token                      string
+	proxyServer                string
+	proxyPort                  uint32
+	controllerConnectionStatus string
+	controllerAdmissionStatus  string
+	controllerRejectReason     string
+	serialNumber               string
+	model                      string
+	softwareVersion            string
+	serviceIP                  string
+	controllerEndpoint         string
+	controllerPort             uint32
+	controllerVersion          string
+	cpaVersion                 string
+	systemState                int
+	headlessMode               bool
+	inService                  string
+	skipReg                    bool
+	skipRegReason              string
+	reload                     bool
+	lbMode                     string
 
 	callbacks     map[int]func(Event)
 	nextCbID      int
@@ -133,12 +133,12 @@ func WithHeadlessMode(headless bool) Option {
 // If storage is provided, it loads initial state and persists changes automatically.
 func NewStore(ctx context.Context, opts ...Option) Store {
 	s := &deviceStore{
-		connectionStatus: CommonStateUnknown,
-		admissionStatus:  CommonStateUnknown,
-		hsaPortLow:       DefaultHSAPortLow,
-		hsaPortHigh:      DefaultHSAPortHigh,
-		callbacks:        make(map[int]func(Event)),
-		cpaVersion:       version.Version,
+		controllerConnectionStatus: ControllerStateUnknown,
+		controllerAdmissionStatus:  ControllerStateUnknown,
+		hsaPortLow:                 DefaultHSAPortLow,
+		hsaPortHigh:                DefaultHSAPortHigh,
+		callbacks:                  make(map[int]func(Event)),
+		cpaVersion:                 version.Version,
 	}
 
 	for _, opt := range opts {
@@ -235,13 +235,13 @@ func (s *deviceStore) ProxyAddress() string {
 func (s *deviceStore) ConnectionStatus() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.connectionStatus
+	return s.controllerConnectionStatus
 }
 
 func (s *deviceStore) AdmissionStatus() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.admissionStatus
+	return s.controllerAdmissionStatus
 }
 
 func (s *deviceStore) SerialNumber() string {
@@ -301,7 +301,7 @@ func (s *deviceStore) SystemState() int {
 func (s *deviceStore) RejectReason() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.rejectReason
+	return s.controllerRejectReason
 }
 
 func (s *deviceStore) SkipReg() bool {

@@ -36,10 +36,10 @@ func TestStore_SetGnmiHandler(t *testing.T) {
 
 	// Verify handler is set by checking that gNMI-dependent operations work
 	ctx := context.Background()
-	cs.SetAdmissionStatus(ctx, CommonStateSuccess, "")
-	cs.SetConnectionStatus(ctx, CommonStateSuccess, "")
+	cs.SetAdmissionStatus(ctx, ControllerStateSuccess, "")
+	cs.SetConnectionStatus(ctx, ControllerStateSuccess, "")
 
-	if cs.AdmissionStatus() != CommonStateSuccess {
+	if cs.AdmissionStatus() != ControllerStateSuccess {
 		t.Errorf("expected admission status success, got %v", cs.AdmissionStatus())
 	}
 }
@@ -265,13 +265,13 @@ func TestStore_SetAdmissionAndConnectionStatus(t *testing.T) {
 	ctx := context.Background()
 	cs := NewStore(ctx, WithGnmiHandler(handler))
 
-	cs.SetAdmissionStatus(ctx, CommonStateSuccess, "")
-	cs.SetConnectionStatus(ctx, CommonStateSuccess, "")
+	cs.SetAdmissionStatus(ctx, ControllerStateSuccess, "")
+	cs.SetConnectionStatus(ctx, ControllerStateSuccess, "")
 
-	if cs.AdmissionStatus() != CommonStateSuccess {
+	if cs.AdmissionStatus() != ControllerStateSuccess {
 		t.Errorf("expected admission status success, got %v", cs.AdmissionStatus())
 	}
-	if cs.ConnectionStatus() != CommonStateSuccess {
+	if cs.ConnectionStatus() != ControllerStateSuccess {
 		t.Errorf("expected connection status success, got %v", cs.ConnectionStatus())
 	}
 }
@@ -575,14 +575,14 @@ func TestStore_SettersNilHandler(t *testing.T) {
 	cs := NewStore(ctx)
 
 	// All setters should work without panicking when gnmiHandler is nil
-	cs.SetAdmissionStatus(ctx, CommonStateSuccess, "")
-	cs.SetConnectionStatus(ctx, CommonStateSuccess, "")
+	cs.SetAdmissionStatus(ctx, ControllerStateSuccess, "")
+	cs.SetConnectionStatus(ctx, ControllerStateSuccess, "")
 	cs.SetControllerEndpoint(ctx, "test.example.com")
 	cs.SetControllerPort(ctx, 443)
 	cs.SetControllerVersion(ctx, "1.0.0")
 	cs.SetSystemState(ctx, 0)
 
-	if cs.AdmissionStatus() != CommonStateSuccess {
+	if cs.AdmissionStatus() != ControllerStateSuccess {
 		t.Errorf("expected admission status success, got %v", cs.AdmissionStatus())
 	}
 	if cs.ControllerEndpoint() != "test.example.com" {

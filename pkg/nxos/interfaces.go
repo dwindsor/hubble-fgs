@@ -49,7 +49,7 @@ type Manager interface {
 	// Controller management
 	GetToken() string
 	SetToken(ctx context.Context, token string) (bool, error)
-	GetDeviceConnectionStatus() string
+	GetControllerConnectionStatus() string
 	GetSerialNum(ctx context.Context) string
 	// Registration status
 	SetRegFail(ctx context.Context, reason string)

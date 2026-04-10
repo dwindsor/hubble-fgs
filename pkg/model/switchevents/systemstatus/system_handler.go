@@ -54,8 +54,8 @@ type SystemStatusDataProvider struct {
 	GetVersion func() string
 	// GetSerialNumber returns the system serial number
 	GetSerialNumber func() string
-	// GetDeviceConnectionStatus returns the device connection status as a string
-	GetDeviceConnectionStatus func() string
+	// GetControllerConnectionStatus returns the device connection status as a string
+	GetControllerConnectionStatus func() string
 }
 
 // SystemConnectionHandler manages periodic system connection status updates to timescape
@@ -169,7 +169,7 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 	h.mu.RUnlock()
 
 	// Get current system connection status from NXOS device
-	currentStatus := h.dataProvider.GetDeviceConnectionStatus()
+	currentStatus := h.dataProvider.GetControllerConnectionStatus()
 
 	// Convert system connection status to system status event
 	event := h.writeSystemStatusUpdate(currentStatus)
@@ -254,13 +254,13 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status string) *v1alph
 
 	// Map NXOS system connection status to conditions
 	switch status {
-	case device.CommonStateSuccess:
+	case device.ControllerStateSuccess:
 		statusUpdate.TotalConditions = 0
 		statusUpdate.FailingConditions = []*v1alpha.FailingCondition{}
 		statusUpdate.ExtraData = map[string]string{
 			"connection_status": CONNECTED,
 		}
-	case device.CommonStateFailure:
+	case device.ControllerStateFailure:
 		// Failure: add error condition
 		statusUpdate.TotalConditions = 1
 		statusUpdate.FailingConditions = []*v1alpha.FailingCondition{
@@ -271,7 +271,7 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status string) *v1alph
 			},
 		}
 		logger.GetLogger().Info("timescape:  sending DISCONNECTED status update")
-	case device.CommonStateUnknown:
+	case device.ControllerStateUnknown:
 		fallthrough
 	default:
 		// Unknown: add error condition
