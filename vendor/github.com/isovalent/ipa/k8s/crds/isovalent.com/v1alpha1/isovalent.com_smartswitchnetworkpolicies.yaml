@@ -246,13 +246,6 @@ spec:
                               name:
                                 description: Name of the NetworkObjectGroup.
                                 type: string
-                              namespace:
-                                description: |-
-                                  Namespace of the NetworkObjectGroup.
-
-                                  If not specified, this defaults to the same namespace as the parent
-                                  SmartSwitchNetworkPolicy resource.
-                                type: string
                             required:
                             - name
                             type: object
@@ -500,13 +493,6 @@ spec:
                                 x-kubernetes-map-type: atomic
                               name:
                                 description: Name of the NetworkObjectGroup.
-                                type: string
-                              namespace:
-                                description: |-
-                                  Namespace of the NetworkObjectGroup.
-
-                                  If not specified, this defaults to the same namespace as the parent
-                                  SmartSwitchNetworkPolicy resource.
                                 type: string
                             required:
                             - name

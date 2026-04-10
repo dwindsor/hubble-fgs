@@ -121,14 +121,6 @@ type SmartSwitchProtocolPort struct {
 //
 //nolint:godoclint
 type NetworkObjectGroupRef struct {
-	// Namespace of the NetworkObjectGroup.
-	//
-	// If not specified, this defaults to the same namespace as the parent
-	// SmartSwitchNetworkPolicy resource.
-	//
-	// +kubebuilder:validation:Optional
-	Namespace string `json:"namespace,omitempty"`
-
 	// Name of the NetworkObjectGroup.
 	//
 	// +kubebuilder:validation:Required
