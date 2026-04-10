@@ -324,7 +324,8 @@ type DestinationEndpointKey struct {
 	LocalWLID     uint64 `align:"local_wlid"`
 	DestinationId uint64 `align:"destination_id"`
 	Source        uint64 `align:"source"`
-	Port          uint64 `align:"port"`
+	Port          uint32 `align:"port"`
+	Protocol      uint32 `align:"protocol"`
 }
 
 type TcpValue struct {

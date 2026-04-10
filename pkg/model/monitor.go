@@ -336,7 +336,7 @@ func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 		nwKey.DestinationResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_SERVICE
 	}
 
-	nwKey.DestinationPort = dst.Port
+	nwKey.DestinationPort = uint64(dst.Port)
 }
 
 // addDestinationInfoAppModel adds destination information from a [appModelV1.Destination] to a [NetworkKey].

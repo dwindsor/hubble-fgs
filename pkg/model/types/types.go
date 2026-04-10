@@ -55,11 +55,12 @@ type DestinationEndpointKey struct {
 	LocalWLID         uint64
 	DestinationId     uint64
 	DestinationSource uint64
-	DestinationPort   uint64
+	DestinationPort   uint32
+	Protocol          uint32
 }
 
 func (v DestinationEndpointKey) String() string {
-	return fmt.Sprintf("DestinationEndpointKey: %d-%d-%d-%d-%d", v.LocalId, v.LocalWLID, v.DestinationId, v.DestinationSource, v.DestinationPort)
+	return fmt.Sprintf("DestinationEndpointKey: %d-%d-%d-%d-%d-%d", v.LocalId, v.LocalWLID, v.DestinationId, v.DestinationSource, v.DestinationPort, v.Protocol)
 }
 
 // DestFlagPolicyTemplateOnly indicates an entry created by policy programming
@@ -82,7 +83,8 @@ type DestinationEndpointValue struct {
 	IPv6              uint64
 	KtimeCreate       uint64
 	AddrCreate        [2]uint64
-	Port              uint64
+	Port              uint32
+	Protocol          uint32
 	Flags             uint64
 }
 

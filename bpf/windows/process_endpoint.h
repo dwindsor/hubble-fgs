@@ -71,7 +71,8 @@ struct destination_endpoint_key {
 	uint64_t local_nsid;
 	uint64_t destination_id; // unwrapped endpoint_id_value
 	uint64_t source;
-	uint64_t port;
+	uint32_t port;
+	uint32_t protocol;
 };
 
 // Flags for destination_endpoint_value
@@ -93,7 +94,8 @@ struct destination_endpoint_value {
 	__u64 ipv6;
 	__u64 ktime_create;
 	__u64 addr_create[2];
-	__u64 port;
+	__u32 port;
+	__u32 protocol;
 	__u64 flags;
 };
 

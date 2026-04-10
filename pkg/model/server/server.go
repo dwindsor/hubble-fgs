@@ -142,7 +142,7 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 			LocalNsId:         k.LocalWLID,
 			DestinationId:     k.DestinationId,
 			DestinationSource: k.DestinationSource,
-			DestinationPort:   k.DestinationPort,
+			DestinationPort:   uint64(k.DestinationPort),
 			TxQuota:           v.TxQuota,
 			TxLimit:           v.TxLimit,
 			TxDrops:           v.TxDrops,
@@ -540,7 +540,7 @@ func getProcessModel(namespaces []string,
 		case tetragon.EndpointType_ENDPOINT_TYPE_UNKNOWN:
 			d = &types.Destination{
 				DestinationNames: []string{},
-				Port:             uint64(0),
+				Port:             0,
 				Stats:            stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_DNS:

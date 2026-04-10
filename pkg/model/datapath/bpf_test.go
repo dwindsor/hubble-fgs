@@ -125,7 +125,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+				DestinationPort:   inputRecord.Endpoint.Port,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
@@ -139,7 +139,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceBPF,
-				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+				DestinationPort:   inputRecord.Endpoint.Port,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
@@ -153,7 +153,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceDNS,
-				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+				DestinationPort:   inputRecord.Endpoint.Port,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
@@ -196,7 +196,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+				DestinationPort:   inputRecord.Endpoint.Port,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
@@ -211,7 +211,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(0),
+				DestinationPort:   0,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
@@ -225,7 +225,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(0),
+				DestinationPort:   0,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
@@ -239,7 +239,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(0),
+				DestinationPort:   0,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
@@ -296,7 +296,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+				DestinationPort:   inputRecord.Endpoint.Port,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
@@ -313,7 +313,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(0),
+				DestinationPort:   0,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
@@ -329,7 +329,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     42,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(0),
+				DestinationPort:   0,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
@@ -345,7 +345,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 				LocalWLID:         inputRecord.Src.WLID,
 				DestinationId:     0,
 				DestinationSource: types.DestinationSourceUser,
-				DestinationPort:   uint64(0),
+				DestinationPort:   0,
 			},
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,

@@ -394,29 +394,50 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->addr_create[0] = tuple->daddr[0];
 		destvalue->addr_create[1] = tuple->daddr[1];
 		destvalue->port = tuple->dport;
+		destvalue->protocol = tuple->proto;
 	}
 
-	/* Try another lookup, this time with a wildcard port. */
-	key->port = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, key);
 	/* These do not check TNP_POLICY_REFRESH because we only cache keys for
 	 * exact matches. Here we have wildcard lookups.
 	 */
+
+	/* Try same port but wildcard protocol. Entries programmed without
+	 * protocol awareness use protocol=0 to mean "any protocol".
+	 */
+	key->protocol = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny) {
+		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
+		key->protocol = tuple->proto;
+		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		DEBUG("%s: found policy protocol=0 deny=0x%llx", __func__, dest->deny);
+		return dest->deny;
+	}
+	key->protocol = tuple->proto; // restore
+
+	/* Try with a wildcard port (and protocol). */
+	key->port = 0;
+	key->protocol = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->port = tuple->dport;
+		key->protocol = tuple->proto;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-		DEBUG("%s: found policy deny=0x%llx", __func__, dest->deny);
+		DEBUG("%s: found policy port=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 
-	/* Restore port and try with a wildcard local_id. */
+	/* Restore port and protocol, then try with a wildcard local_id. */
 	self = key->local_id;
 	key->local_id.uid = 0;
 	key->local_id.cpu = 0;
 	key->port = tuple->dport;
+	key->protocol = tuple->proto;
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
@@ -427,11 +448,25 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		DEBUG("%s: found policy local_id=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
 		return dest->deny;
 	}
-	/* wildcard local_id with wildcard port */
+	/* wildcard local_id with wildcard protocol (specific port) */
+	key->protocol = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny) {
+		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
+		key->local_id = self; // restore local_id for caller
+		key->protocol = tuple->proto;
+		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		DEBUG("%s: found policy local_id=0 protocol=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
+		return dest->deny;
+	}
+	/* wildcard local_id with wildcard port and protocol */
 	key->port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	key->local_id = self; // restore local_id for caller
 	key->port = tuple->dport; // restore port for caller
+	key->protocol = tuple->proto; // restore protocol for caller
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
@@ -524,6 +559,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		dfltkey->local_id.cpu = 0;
 		/* default key ignore_args cleared */
 		dfltkey->port = 0;
+		dfltkey->protocol = 0;
 
 		/* If there is no explicit policy we want to do accounting
 		 * with the most specific dst key. We create a precedence
@@ -573,6 +609,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->addr_create[1] = tuple->daddr[1];
 			destvalue->ipv6 = tuple->ipv6;
 			destvalue->port = tuple->dport;
+			destvalue->protocol = tuple->proto;
 			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
 			destvalue->tx_quota = destvalue->tx_limit = 0;
 			destvalue->tx_bytes = destvalue->rx_bytes = 0;
@@ -698,6 +735,10 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
 found_id:
 	dnskey->port = lpmkey->port = usrkey->port = destkey->port = tuple->dport;
+	dnskey->protocol = tuple->proto;
+	lpmkey->protocol = tuple->proto;
+	usrkey->protocol = tuple->proto;
+	destkey->protocol = tuple->proto;
 	dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = 0;
 
 	if (cgid) {
@@ -876,6 +917,7 @@ static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_ke
 	k.destination_id = key->destination_id;
 	k.source = key->source;
 	k.port = 0;
+	k.protocol = 0;
 
 	dest = map_lookup_elem(&destination_endpoint_map, &k);
 	if (!dest) {

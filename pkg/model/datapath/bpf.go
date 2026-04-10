@@ -208,7 +208,7 @@ func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error 
 		LocalWLID:         r.Src.WLID,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
-		DestinationPort:   uint64(r.Endpoint.Port),
+		DestinationPort:   r.Endpoint.Port,
 	}
 
 	value := types.DestinationEndpointValue{
@@ -225,7 +225,7 @@ func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error 
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,
-		Port:           uint64(r.Endpoint.Port),
+		Port:           r.Endpoint.Port,
 		// Mark as policy template - BPF will clear this flag when real traffic flows
 		Flags: types.DestFlagPolicyTemplateOnly,
 	}
@@ -318,7 +318,7 @@ func (p *bpfRecordBackend) removeRecord(r record.DatapathRecord) error {
 		LocalWLID:         src.WLID,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
-		DestinationPort:   uint64(r.Endpoint.Port),
+		DestinationPort:   r.Endpoint.Port,
 	}
 
 	value := types.DestinationEndpointValue{

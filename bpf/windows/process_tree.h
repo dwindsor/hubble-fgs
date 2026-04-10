@@ -96,18 +96,36 @@ FUNC_INLINE uint64_t find_key(struct destination_endpoint_key *key, struct msg_i
 		destvalue->addr_create[0] = tuple->daddr[0];
 		destvalue->addr_create[1] = tuple->daddr[1];
 		destvalue->port = tuple->dport;
+		destvalue->protocol = tuple->proto;
 	}
 
-	key->port = 0;
-	dest = bpf_map_lookup_elem(&destination_endpoint_map, key);
 	/* These do not check TNP_POLICY_REFRESH because we only cache keys for
 	 * exact matches. Here we have wildcard lookups.
 	 */
+
+	/* Try same port but wildcard protocol (protocol=0 means "any"). */
+	key->protocol = 0;
+	dest = bpf_map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny) {
+		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
+		key->protocol = tuple->proto;
+		bpf_map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		return dest->deny;
+	}
+	key->protocol = tuple->proto; // restore
+
+	/* Try wildcard port (and protocol). */
+	key->port = 0;
+	key->protocol = 0;
+	dest = bpf_map_lookup_elem(&destination_endpoint_map, key);
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->port = tuple->dport;
+		key->protocol = tuple->proto;
 		bpf_map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
 	}
@@ -115,10 +133,36 @@ FUNC_INLINE uint64_t find_key(struct destination_endpoint_key *key, struct msg_i
 	self = key->local_id;
 	key->local_id.uid = 0;
 	key->local_id.cpu = 0;
-	/* wildcard local_id ignore_args cleared */
+	/* wildcard local_id, specific port+protocol */
+	key->port = tuple->dport;
+	key->protocol = tuple->proto;
+	dest = bpf_map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny) {
+		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
+		key->local_id = self;
+		bpf_map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		return dest->deny;
+	}
+	/* wildcard local_id with wildcard protocol (specific port) */
+	key->protocol = 0;
+	dest = bpf_map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny) {
+		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
+		key->local_id = self;
+		key->protocol = tuple->proto;
+		bpf_map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		return dest->deny;
+	}
+	/* wildcard local_id, port, and protocol */
+	key->port = 0;
 	dest = bpf_map_lookup_elem(&destination_endpoint_map, key);
 	key->local_id = self; // restore local_id for caller
 	key->port = tuple->dport; // restore port for caller
+	key->protocol = tuple->proto; // restore protocol for caller
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
@@ -191,6 +235,7 @@ FUNC_INLINE int resolve_key(struct destination_endpoint_key *dnskey,
 		dfltkey->local_id.cpu = 0;
 		/* default key ignore_args cleared */
 		dfltkey->port = 0;
+		dfltkey->protocol = 0;
 
 		/* If there is no explicit policy we want to do accounting
 		 * with the most specific dst key. We create a precedence
@@ -234,6 +279,7 @@ FUNC_INLINE int resolve_key(struct destination_endpoint_key *dnskey,
 			destvalue->addr_create[1] = tuple->daddr[1];
 			destvalue->ipv6 = tuple->ipv6;
 			destvalue->port = tuple->dport;
+			destvalue->protocol = tuple->proto;
 			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
 			destvalue->tx_quota = 0;
 			destvalue->tx_limit = 0;
@@ -363,6 +409,10 @@ found_id:
 	lpmkey->port = tuple->dport;
 	usrkey->port = tuple->dport;
 	destkey->port = tuple->dport;
+	dnskey->protocol = tuple->proto;
+	lpmkey->protocol = tuple->proto;
+	usrkey->protocol = tuple->proto;
+	destkey->protocol = tuple->proto;
 	dnskey->local_nsid = 0;
 	lpmkey->local_nsid = 0;
 	usrkey->local_nsid = 0;

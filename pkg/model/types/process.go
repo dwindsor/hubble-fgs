@@ -83,7 +83,7 @@ type Pod struct {
 type Destination struct {
 	DestinationNames   []string
 	DestinationPod     *Pod
-	Port               uint64
+	Port               uint32
 	Stats              *DestinationStats
 	DestinationService *Service
 }
