@@ -12,6 +12,6 @@ CONTAINER_ENGINE ?= docker
 
 BUF ?= buf
 BUF_BREAKING_AGAINST_BRANCH ?= origin/master
-# renovate: datasource=docker depName=quay.io/isovalent-dev/ipa-builder
-BUILDER_VERSION=v1.18.0-dev.0-20250818154258@sha256:2a7d2fef35ee1bc62070bb3c7729f90dc12b18fabc1bdd4f66eafe680e0f4af3
-BUILDER_IMAGE ?= quay.io/isovalent-dev/ipa-builder:$(BUILDER_VERSION)
+
+# renovate: datasource=docker
+BUILDER_IMAGE ?= quay.io/isovalent-dev/ipa-builder:v1.18.0-dev.0-20250818154258@sha256:2a7d2fef35ee1bc62070bb3c7729f90dc12b18fabc1bdd4f66eafe680e0f4af3
