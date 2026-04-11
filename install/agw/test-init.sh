@@ -64,7 +64,7 @@ socat \
 
 # 4. Create /etc/sas.cfg so init.sh's headless-mode check does not fail.
 #    If NXOS is disabled, set NX_AGENT_HEADLESS_MODE=1 to skip DNS resolution.
-if [ "$AGW_ENABLE_NXOS" = "false" ]; then
+if [ "$AGW_ENABLE_K8S" = "false" ]; then
     echo "NX_AGENT_HEADLESS_MODE=1" > /etc/sas.cfg
 else
     touch /etc/sas.cfg
