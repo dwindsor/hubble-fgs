@@ -688,6 +688,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchCapabilities:
                             description: A list of capabilities and IDs
@@ -940,6 +941,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
@@ -2362,6 +2364,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchCapabilities:
                             description: A list of capabilities and IDs
@@ -2614,6 +2617,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
@@ -3172,6 +3176,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchCapabilities:
                             description: A list of capabilities and IDs
@@ -3424,6 +3429,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
@@ -4541,6 +4547,7 @@ spec:
                         - operator
                         - values
                         type: object
+                      maxItems: 1
                       type: array
                     matchCapabilities:
                       description: A list of capabilities and IDs
@@ -4789,6 +4796,7 @@ spec:
                         - operator
                         - values
                         type: object
+                      maxItems: 1
                       type: array
                     matchReturnActions:
                       description: A list of actions to execute when MatchReturnArgs
@@ -5302,6 +5310,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchCapabilities:
                             description: A list of capabilities and IDs
@@ -5554,6 +5563,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
@@ -6326,6 +6336,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchCapabilities:
                             description: A list of capabilities and IDs
@@ -6578,6 +6589,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
@@ -7114,6 +7126,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchCapabilities:
                             description: A list of capabilities and IDs
@@ -7366,6 +7379,7 @@ spec:
                               - operator
                               - values
                               type: object
+                            maxItems: 1
                             type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs

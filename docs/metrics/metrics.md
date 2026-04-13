@@ -30,7 +30,7 @@ Build information about tetragon
 | label | values |
 | ----- | ------ |
 | `commit` | `931b70f2c9878ba985ba6b589827bea17da6ec33` |
-| `go_version` | `go1.26.1` |
+| `go_version` | `go1.26.2` |
 | `modified` | `false` |
 | `time ` | `2022-05-13T15:54:45Z` |
 | `version` | `v1.2.0` |
@@ -175,9 +175,13 @@ The total number of Tetragon flags. For internal use only.
 | ----- | ------ |
 | `type ` | `clone, dataArgs, dataFilename, errorArgs, errorCWD, errorCgroupID, errorCgroupName, errorCgroupSubsys, errorCgroupSubsysCgrp, errorCgroups, errorEnvs, errorFilename, errorPathResolutionCwd, execve, inInitTree, miss, nocwd, procFS, rootcwd, truncArgs, unknown` |
 
-### `tetragon_generic_kprobe_merge_errors_total`
+### `tetragon_generic_kprobe_merge_pushed_total`
 
-The total number of failed attempts to merge a kprobe and kretprobe event.
+The total number of pushed events for later merge.
+
+### `tetragon_generic_kprobe_merge_total`
+
+The total number of attempts to merge a kprobe and kretprobe event.
 
 | label | values |
 | ----- | ------ |
@@ -185,14 +189,7 @@ The total number of failed attempts to merge a kprobe and kretprobe event.
 | `curr_type` | `enter, exit` |
 | `prev_fn` | `example_kprobe` |
 | `prev_type` | `enter, exit` |
-
-### `tetragon_generic_kprobe_merge_ok_total`
-
-The total number of successful attempts to merge a kprobe and kretprobe event.
-
-### `tetragon_generic_kprobe_merge_pushed_total`
-
-The total number of pushed events for later merge.
+| `status` | `error, ok` |
 
 ### `tetragon_handler_errors_total`
 
@@ -425,7 +422,7 @@ Information about the Go environment.
 
 | label | values |
 | ----- | ------ |
-| `version` | `go1.26.1` |
+| `version` | `go1.26.2` |
 
 ### `go_memstats_alloc_bytes`
 
