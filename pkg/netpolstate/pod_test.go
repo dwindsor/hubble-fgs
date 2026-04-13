@@ -58,9 +58,7 @@ func registerWorkloadID(t *testing.T, s *PolicyState, ns, name, kind string) {
 	require.NoError(t, err)
 }
 
-// newPodFromCluster creates a new fake Pod like we would receive from the API,
-// it also registers the workload fake workload ID.
-func newPodFromCluster(t *testing.T, s *PolicyState, ns, name, kind, matchLabels string) *v1alpha1.PodInfo {
+func newPod(t *testing.T, ns, name, kind, matchLabels string) *v1alpha1.PodInfo {
 	t.Helper()
 
 	ml := make(map[string]string)
@@ -85,13 +83,22 @@ func newPodFromCluster(t *testing.T, s *PolicyState, ns, name, kind, matchLabels
 		Namespace: ns,
 	}
 
-	registerWorkloadID(t, s, ns, name, kind)
-
 	return &v1alpha1.PodInfo{
 		WorkloadType:   ty,
 		WorkloadObject: wl,
 		ObjectMeta:     meta,
 	}
+}
+
+// newPodFromCluster creates a new fake Pod like we would receive from the API,
+// it also registers the workload fake workload ID.
+func newPodFromCluster(t *testing.T, s *PolicyState, ns, name, kind, matchLabels string) *v1alpha1.PodInfo {
+	t.Helper()
+	pod := newPod(t, ns, name, kind, matchLabels)
+
+	registerWorkloadID(t, s, ns, name, kind)
+
+	return pod
 }
 
 // This tests assumes WorkloadID space is incrementing every addPolicyFilter
@@ -1298,4 +1305,61 @@ func TestConcurrentExportedPolicyStateCall(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+// TestPodAddMatchAfterUpdate tests that calling PodAdd twice with the same pod
+// but updated labels works correctly when the update makes a policy match.
+func TestPodAddMatchAfterUpdate(t *testing.T) {
+	state := NewFakePolicyState(t)
+
+	// Create a policy that matches pods with env=prod label as subject
+	// and app=backend as destination
+	policy := testMatchDstLabelsPolicy("prod-policy", "env=prod", "app=backend")
+	err := state.AddPolicies([]*types.TetragonNetworkPolicy{policy})
+	require.NoError(t, err)
+
+	// Create destination pod that matches the policy destination selector
+	dstPodName := "dst-pod"
+	dstPod := newPod(t, testNamespace, dstPodName, testKind, "app=backend")
+	_, err = state.objectAdd(dstPod)
+	require.NoError(t, err)
+	_, isRemote := state.remoteObjects[dstPod.UID]
+	require.True(t, isRemote, "Destination pod should be in remoteObjects")
+
+	// Create source pod WITHOUT env=prod label (won't match policy initially)
+	srcPodName := "src-pod"
+	srcPod := newPodFromCluster(t, state, testNamespace, srcPodName, testKind, "app=frontend,env=dev")
+	records, err := state.objectAdd(srcPod)
+	require.NoError(t, err)
+	_, isLocal := state.localObjects[srcPod.UID]
+	require.True(t, isLocal, "Source pod should be in localObjects")
+	assert.Equal(t, 0, len(records), "Should have no records because policy doesn't match")
+
+	// Check that policy doesn't have this source initially
+	srcKey, err := state.deps.createObjectSrcKey(srcPod)
+	require.NoError(t, err)
+	policyList := state.src[policy.PolicyUID]
+	require.NotNil(t, policyList, "Policy should exist in Src")
+	assert.Zero(t, len(policyList.Subjects), "Policy should have no subject before label update")
+
+	// Update the pod labels to match the policy (env=prod)
+	srcPod.Labels = map[string]string{
+		"app": "frontend",
+		"env": "prod",
+	}
+	records, err = state.objectAdd(srcPod)
+	require.NoError(t, err)
+	require.Greater(t, len(records), 0, "Should have records after matching policy")
+
+	// Verify the policy now includes this source
+	policyList = state.src[policy.PolicyUID]
+	require.NotNil(t, policyList, "Policy should exist in Src")
+	foundSubject := false
+	for _, subject := range policyList.Subjects {
+		if subject.WLID == srcKey.WLID {
+			foundSubject = true
+			break
+		}
+	}
+	require.True(t, foundSubject, "Source pod should now be a subject of the policy after label update")
 }
