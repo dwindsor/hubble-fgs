@@ -99,7 +99,7 @@ func split(s, sep string) []string {
 // TestServiceSelectorRecordGeneration verifies that serviceSelector policies
 // generate CIDR records for ClusterIP and endpoint IPs
 func TestServiceSelectorRecordGeneration(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
@@ -173,7 +173,7 @@ func TestServiceSelectorRecordGeneration(t *testing.T) {
 
 // TestServiceSelectorWithPorts verifies port-specific serviceSelector policies
 func TestServiceSelectorWithPorts(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
@@ -233,7 +233,7 @@ func TestServiceSelectorWithPorts(t *testing.T) {
 // TestServiceSelectorNoMatchingService verifies behavior when service doesn't exist in servicemap.
 // No records are generated since CIDR records require the service to exist to get ClusterIP/endpoint IPs.
 func TestServiceSelectorNoMatchingService(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
@@ -262,7 +262,7 @@ func TestServiceSelectorNoMatchingService(t *testing.T) {
 // TestServiceSelectorPodNotMatchingSubject verifies that pods not matching
 // the subject selector don't get serviceSelector records
 func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "other-pod"
 	srcPodLabels := "app=other" // Different from policy subject
@@ -303,7 +303,7 @@ func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
 
 // TestServiceSelectorAllowAction verifies allow rules work correctly
 func TestServiceSelectorAllowAction(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
@@ -355,7 +355,7 @@ func TestServiceSelectorAllowAction(t *testing.T) {
 
 // TestServiceSelectorMultiplePolicies verifies multiple serviceSelector policies work together
 func TestServiceSelectorMultiplePolicies(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
@@ -421,7 +421,7 @@ func TestServiceSelectorMultiplePolicies(t *testing.T) {
 
 // TestServiceSelectorDefaultNamespace verifies CIDR records are generated for services in default namespace
 func TestServiceSelectorDefaultNamespace(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"
@@ -470,7 +470,7 @@ func TestServiceSelectorDefaultNamespace(t *testing.T) {
 
 // TestServiceSelectorPolicyRemoval verifies policy removal cleans up correctly
 func TestServiceSelectorPolicyRemoval(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "client-pod"
 	srcPodLabels := "app=client"

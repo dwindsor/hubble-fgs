@@ -13,22 +13,18 @@
 package netpolstate
 
 import (
-	"context"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stype "k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/workloadid"
@@ -98,45 +94,10 @@ func newPodFromCluster(t *testing.T, s *PolicyState, ns, name, kind, matchLabels
 	}
 }
 
-// fakeK8sReader is a mock implementation of client.Reader for testing
-type fakeK8sReader struct{}
-
-func (f *fakeK8sReader) Get(_ context.Context, key client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
-	// For namespace lookups, return a basic namespace object
-	if ns, ok := obj.(*corev1.Namespace); ok {
-		ns.Name = key.Name
-		ns.Labels = map[string]string{
-			"kubernetes.io/metadata.name": key.Name,
-		}
-		return nil
-	}
-	return nil
-}
-
-func (f *fakeK8sReader) List(_ context.Context, _ client.ObjectList, _ ...client.ListOption) error {
-	return nil
-}
-
-func newFakeExternalDeps(t *testing.T) externalDeps {
-	t.Helper()
-	return externalDeps{
-		prog:       &datapath.DummyBpfProgrammer{},
-		workloadID: workloadid.NewFakeState(t),
-		k8sReader:  &fakeK8sReader{},
-	}
-}
-
-func newTestPolicyState(t *testing.T) *PolicyState {
-	t.Helper()
-	s := NewPolicyState()
-	s.deps = newFakeExternalDeps(t)
-	return s
-}
-
 // This tests assumes WorkloadID space is incrementing every addPolicyFilter
 // which allows us to check cgroupID
 func TestSrcKeyLookup(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	registerWorkloadID(t, s, testNamespace, "test1", testKind)
 	registerWorkloadID(t, s, testNamespace, "test2", testKind)
@@ -156,7 +117,7 @@ func TestSrcKeyLookup(t *testing.T) {
 }
 
 func TestCheckMatchLabelsPolicy(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "netpol"
 
 	srcPodName := "testNamePodSrc"
@@ -255,7 +216,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestSrcPolicyAddsDefaultAction(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "netpol"
 
 	srcPodName := "testNamePodSrc"
@@ -302,7 +263,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 
 // Test addPod again, but bring up subject after destinations are already loaded
 func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "netpol"
 
 	srcPodName := "testNamePodSrc"
@@ -366,7 +327,7 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 }
 
 func TestPolicySet(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "netpol"
 
 	srcPodName := "testNamePodSrc"
@@ -435,7 +396,7 @@ func cntRecordsEPTypes(records []record.DatapathRecord) (int, int, int, int) {
 }
 
 func TestPolicySetWithPods(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "netpol"
 
 	srcPodName := "testNamePodSrc"
@@ -484,7 +445,7 @@ func TestPolicySetWithPods(t *testing.T) {
 }
 
 func TestPolicyOverlapping(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -563,7 +524,7 @@ func TestPolicyOverlapping(t *testing.T) {
 }
 
 func TestPolicyOverlappingPolicyDelete(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -672,7 +633,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 }
 
 func TestDestSrcProcessPolicy(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -733,7 +694,7 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 }
 
 func TestSrcDestProcessPolicy(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -794,7 +755,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 }
 
 func TestProcessPolicySrcDest(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -848,7 +809,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 }
 
 func TestProcessPolicyDestSrc(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -902,7 +863,7 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 }
 
 func TestProcessPortPolicyDestSrc(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1007,7 +968,7 @@ func countPorts(records []record.DatapathRecord, port uint32) int {
 }
 
 func TestProcessPortPolicySrcDest(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1087,7 +1048,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 }
 
 func TestProcessCIDRPolicySrcDest(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -1209,7 +1170,7 @@ func TestObjectAddConcurrentPodLabelAccess(t *testing.T) {
 		},
 	}
 
-	state := newTestPolicyState(t)
+	state := NewFakePolicyState(t)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -1255,7 +1216,7 @@ func TestObjectAddPodLabelsNotModified(t *testing.T) {
 		},
 	}
 
-	state := newTestPolicyState(t)
+	state := NewFakePolicyState(t)
 	// Call objectAdd which should not modify the original labels
 	_, err := state.objectAdd(pod)
 	require.NoError(t, err)
@@ -1272,7 +1233,7 @@ func TestObjectAddPodLabelsNotModified(t *testing.T) {
 //
 //	go test -race ./pkg/netpolstate -run TestConcurrentExportedPolicyStateCall
 func TestConcurrentExportedPolicyStateCall(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	srcPodLabels := "A=a,B=b"
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"

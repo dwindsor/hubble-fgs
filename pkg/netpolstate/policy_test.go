@@ -119,7 +119,7 @@ func testMatchPortCIDRDstProcessLabelsDenyPolicy(name, src, dst, action, cidr st
 }
 
 func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "testName"
 
 	policy := testMatchSrcLabelsPolicy(name, "A=a,B=b")
@@ -134,7 +134,7 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestCreateDstMatchLabelsPolicy(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "testName"
 
 	policy := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
@@ -149,7 +149,7 @@ func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestCreateSrcKey(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	ml := make(map[string]string)
 	ml["A"] = "a"
@@ -201,7 +201,7 @@ func TestCreateSrcKey(t *testing.T) {
 }
 
 func CreateDstMatchLabels(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	s.createDstMatchLabelsPolicy(netpol)
@@ -212,7 +212,7 @@ func CreateDstMatchLabels(t *testing.T) {
 }
 
 func CreateSrcMatchLabels(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	s.createSrcMatchLabelsPolicy(netpol)
@@ -224,7 +224,7 @@ func CreateSrcMatchLabels(t *testing.T) {
 }
 
 func TestAddNetworkPolicy(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	err := s.createMatchLabelsPolicy(netpol)
@@ -242,7 +242,7 @@ func TestAddNetworkPolicy(t *testing.T) {
 }
 
 func testAddNetworkActionPolicy(t *testing.T, action string) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
 	err := s.createMatchLabelsPolicy(netpol)
@@ -283,7 +283,7 @@ var tests = []policyCalcTest{
 }
 
 func TestMatchLabelsTable(t *testing.T) {
-	s := newTestPolicyState(t)
+	s := NewFakePolicyState(t)
 
 	for _, test := range tests {
 		testPolicyCalculator(t, s, test.PodML, test.Policy, test.Check)
