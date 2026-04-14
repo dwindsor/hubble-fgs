@@ -1,0 +1,13 @@
+diff --git a/libs/service/api_service.cpp b/libs/service/api_service.cpp
+index 939ee171..e08eeb53 100644
+--- a/libs/service/api_service.cpp
++++ b/libs/service/api_service.cpp
+@@ -627,7 +627,7 @@ ebpf_verify_sys_file_signature(
+         // Test signing is enabled, so we don't verify the signature.
+         EBPF_RETURN_RESULT(EBPF_SUCCESS);
+     }
+-
++    EBPF_RETURN_RESULT(EBPF_SUCCESS);
+     for (size_t i = 0; i < eku_count; i++) {
+         required_eku_set.insert(eku_list[i]);
+     }

@@ -23,6 +23,94 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
 jobs:
+  windows-ebpfsvc-build:
+    name: Patch and Build ebpf-for-windows-service
+    runs-on: windows-2025
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Create Temp Directory
+        shell: pwsh
+        run: mkdir D:\temp
+
+      - name: Checkout Tetragon Repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: true
+
+      - name: Set up Environment Variables
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          powershell.exe "echo 'msvc_tools_path=%VCToolsInstallDir%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo 'msvc_tools_version=%VCToolsVersion%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo 'ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE=true' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo 'VCINSTALLDIR=%VCINSTALLDIR%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo '%VCINSTALLDIR%\tools\llvm\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+        with:
+          msbuild-architecture: x64
+
+      - name: Clone eBPF-for-Windows source
+        id: download-ebpf-for-windows
+        shell: pwsh
+        working-directory: ${{ env.TEMP }}
+        run: |
+          git clone --recursive https://github.com/microsoft/ebpf-for-windows.git
+          cd ${{ env.TEMP }}\ebpf-for-windows
+          git checkout tags/Release-v1.1.0
+
+      - name: Apply eBPF-for-Windows patch
+        shell: pwsh
+        working-directory: ${{ env.TEMP }}\ebpf-for-windows
+        run: |
+          git apply -p1 --verbose "${{ github.workspace }}\install\windows\efw.patch"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "✗ Failed to apply patch"
+            exit $LASTEXITCODE
+          }
+          Write-Output "✓ Patch applied successfully"
+
+      - name: Initialize eBPF-for-Windows repo
+        shell: pwsh
+        working-directory: ${{ env.TEMP }}\ebpf-for-windows
+        run: |
+          .\scripts\initialize_ebpf_repo.ps1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "✗ Failed to initialize repo"
+            exit $LASTEXITCODE
+          }
+          Write-Output "✓ Repository initialized successfully"
+
+      - name: Build ebpfsvc project
+        shell: pwsh
+        working-directory: ${{ env.TEMP }}\ebpf-for-windows
+        run: |
+          msbuild -target:service\ebpfsvc:Rebuild `
+            /m `
+            /p:Configuration=${{env.BUILD_CONFIGURATION}} `
+            /p:Platform=${{env.BUILD_PLATFORM}} `
+            /bl:${{env.BUILD_PLATFORM}}_${{env.BUILD_CONFIGURATION}}\ebpfsvc_build.binlog `
+            ${{env.BUILD_OPTIONS}} `
+            ebpf-for-windows.sln
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "✗ Failed to build ebpfsvc"
+            exit $LASTEXITCODE
+          }
+          Write-Output "✓ ebpfsvc built successfully"
+
+      - name: Upload ebpfsvc.exe binary
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ebpfsvc-build-output
+          path: ${{ env.TEMP }}\ebpf-for-windows\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}}\ebpfsvc.exe
+          retention-days: 5
+
   windows-ebpf-prog-build:
     name: Build Windows ebpf programs
     runs-on: windows-2025
@@ -40,37 +128,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: true
-
-      - name: "Download LLVM 18.1.8"
-        id: download-llvm
-        uses: ./.github/actions/download-file
-        with:
-          file-url: "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe"
-          download-dir: "${{ env.TEMP }}"
-
-      - name: Install LLVM 18.1.8
-        shell: pwsh
-        run: |
-          # Install LLVM 18.1.8 to ensure consistent version across runners
-          try { 
-            Start-Process -FilePath "${{ steps.download-llvm.outputs.downloaded-file }}" `
-                -ArgumentList "/S" `
-                -Wait `
-                -NoNewWindow `
-                -PassThru            
-
-            # Add installed LLVM to PATH first so it takes precedence
-            echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            Write-Output "✓ Successfully installed LLVM 18.1.8"
-
-            Write-Output "Clang (LLVM):"
-            Write-Output "  $(& 'C:\Program Files\LLVM\bin\clang.exe' --version)"
-          } 
-          catch {
-            Write-Warning "✗ Failed to install LLVM 18.1.8:  $($_.Exception.Message)"
-            Write-Output "Continuing with pre-installed LLVM version"
-          }
-
+      
       - name: Set up Environment Variables
         shell: cmd
         run: |
@@ -85,6 +143,36 @@ jobs:
         uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
         with:
           msbuild-architecture: x64
+
+      - name: "Download LLVM 18.1.8"
+        id: download-llvm
+        uses: ./.github/actions/download-file
+        with:
+          file-url: "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe"
+          download-dir: "${{ env.TEMP }}"
+
+      - name: Install LLVM 18.1.8
+        shell: pwsh
+        run: |
+          # Install LLVM 18.1.8 to ensure consistent version across runners
+          try {
+            Start-Process -FilePath "${{ steps.download-llvm.outputs.downloaded-file }}" `
+                -ArgumentList "/S" `
+                -Wait `
+                -NoNewWindow `
+                -PassThru
+
+            # Add installed LLVM to PATH first so it takes precedence
+            echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            Write-Output "✓ Successfully installed LLVM 18.1.8"
+
+            Write-Output "Clang (LLVM):"
+            Write-Output "  $(& 'C:\Program Files\LLVM\bin\clang.exe' --version)"
+          }
+          catch {
+            Write-Warning "✗ Failed to install LLVM 18.1.8:  $($_.Exception.Message)"
+            Write-Output "Continuing with pre-installed LLVM version"
+          }
 
       - name: Check Clang version (MSVC)
         shell: pwsh
@@ -141,7 +229,7 @@ jobs:
         id: download-ebpf-nuget
         uses: ./.github/actions/download-file
         with:
-          file-url: "https://www.nuget.org/api/v2/package/eBPF-for-Windows.x64/1.0.0-rc1"
+          file-url: "https://www.nuget.org/api/v2/package/eBPF-for-Windows.x64/1.1.0"
           download-dir: "${{ env.TEMP }}"
 
       - name: "Rename .nuget -> .zip"
@@ -153,14 +241,14 @@ jobs:
         uses: ./.github/actions/extract-zip
         with:
           zip-file: "${{ env.TEMP }}/efw.zip"
-          extract-dir: "${{ env.TEMP }}/packages/eBPF-for-Windows.1.0.0-rc1"
+          extract-dir: "${{ env.TEMP }}/packages/eBPF-for-Windows.1.1.0"
 
       - name: Build tcp_connect monitor ebpf program
         shell: pwsh
         working-directory: ${{ github.workspace }}\bpf\windows
         run: |
           & 'C:\Program Files\LLVM\bin\clang.exe' -g -O2 -Werror -target bpf `
-            -I${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\include `
+            -I${{ env.TEMP }}\packages\eBPF-for-Windows.1.1.0\build\native\include `
             -c .\tcp_connect.c `
             -o tcp_connect.o
 
@@ -168,9 +256,9 @@ jobs:
         shell: pwsh
         working-directory: ${{ github.workspace }}\bpf\windows
         run: |
-          ${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\bin\Convert-BpfToNative.ps1 `
+          ${{ env.TEMP }}\packages\eBPF-for-Windows.1.1.0\build\native\bin\Convert-BpfToNative.ps1 `
             -FileName tcp_connect `
-            -IncludeDir ${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\include `
+            -IncludeDir ${{ env.TEMP }}\packages\eBPF-for-Windows.1.1.0\build\native\include `
             -Platform x64 `
             -Configuration Release `
             -KernelMode $True `
@@ -204,7 +292,7 @@ jobs:
     name: Build, Unit Test and Upload Windows Tetragon and Tetra Binaries
     runs-on: windows-2025
     timeout-minutes: 15
-    needs: windows-ebpf-prog-build
+    needs: [windows-ebpf-prog-build, windows-ebpfsvc-build]
 
     steps:
       - name: Checkout
@@ -226,7 +314,7 @@ jobs:
         id: download-ebpf-nativeonly
         uses: ./.github/actions/download-file
         with:
-          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v1.0.0-rc1/Build-native-only.NativeOnlyRelease.x64.zip"
+          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v1.1.0/Build-native-only.NativeOnlyRelease.x64.zip"
           download-dir: "${{ env.TEMP }}"
 
       - name: "Extract eBPF NativeOnlyRelease ZIP"
@@ -302,8 +390,6 @@ jobs:
           $ntosebpfextDir = "${{ env.TEMP }}\test"
 
           if (Test-Path -Path $ntosebpfextDir) {
-            Get-ChildItem -Path $ntosebpfextDir
-
             New-Item -ItemType Directory -Path "${{ github.workspace }}\bpf\objs" -Force
 
             Copy-Item -Path "$ntosebpfextDir\Release\process_monitor_km\process_monitor.sys" -destination "${{ github.workspace }}\bpf\objs\" -Force
@@ -354,7 +440,6 @@ jobs:
           New-Item -ItemType Directory -Path ${{ env.TEMP }}\Tetragon-Windows
           Copy-Item *.exe -Destination ${{ env.TEMP }}\Tetragon-Windows
           Compress-Archive -Path ${{ env.TEMP }}\Tetragon-Windows\* -DestinationPath ${{ env.TEMP }}\Tetragon-Windows.zip
-          Get-ChildItem -Recurse ${{ env.TEMP }}
 
       - name: Upload Tetragon Windows binaries
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -373,24 +458,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: "Download Shawl ZIP"
-        id: download-shawl
-        uses: ./.github/actions/download-file
-        with:
-          file-url: "https://github.com/mtkennerly/shawl/releases/download/v1.7.0/shawl-v1.7.0-win64.zip"
-          download-dir: '${{ runner.temp }}\staging'
-
-      - name: "Extract Shawl ZIP"
-        uses: ./.github/actions/extract-zip
-        with:
-          zip-file: "${{ steps.download-shawl.outputs.downloaded-file }}"
-          extract-dir: '${{ runner.temp }}\staging\unpacked\shawl'
-
       - name: "Download eBPF MSI"
         id: download-ebpf
         uses: ./.github/actions/download-file
         with:
-          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v1.0.0-rc1/ebpf-for-windows.x64.1.0.0-rc1.msi"
+          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v1.1.0/ebpf-for-windows.x64.1.1.0.msi"
           download-dir: '${{ runner.temp }}\staging'
 
       - name: "Extract eBPF MSI"
@@ -413,6 +485,23 @@ jobs:
           zip-file: '${{ steps.download-ntosebpfext-build-output.outputs.artifact-path }}\build-x64.Release.zip'
           extract-dir: '${{ runner.temp }}\staging\unpacked'
 
+      - name: Download ebpfsvc-build-output
+        id: download-ebpfsvc-build-output
+        uses: ./.github/actions/download-artifact
+        with:
+          artifact-name: "ebpfsvc-build-output"
+          download-dir: '${{ runner.temp }}\staging'
+
+      - name: Copy ebpfsvc.exe to staging directory
+        shell: pwsh
+        run: |
+
+          Copy-Item `
+            -Path "${{ steps.download-ebpfsvc-build-output.outputs.artifact-path }}\ebpfsvc.exe" `
+            -Destination "${{ runner.temp }}\staging\unpacked\ebpf-for-windows\JIT\ebpfsvc.exe" `
+            -Force
+          Write-Output "✓ ebpfsvc.exe copied to staging directory"
+          
       - name: Download tetragon-windows-build-output
         id: download-tetragon-windows-build-output
         uses: ./.github/actions/download-artifact
@@ -548,7 +637,9 @@ jobs:
 
           # Start the process in the background and capture its PID
           $TetragonArgs = @(
+            '--debug', 
             '--enable-tcp', 
+            '--enable-udp', 
             '--enable-application-model',
             '--enable-cgidmap',
             '--network-policy ${{ github.workspace }}\examples\tetragonnetworkpolicy\example.yaml',
@@ -574,6 +665,17 @@ jobs:
           & "${{ github.workspace }}\tests\e2e\windows\test-script.ps1"
           if ($LASTEXITCODE -ne 0) {
               Write-Output "✗ Smoke tests failed with exit code $LASTEXITCODE"
+              Write-Host
               exit $LASTEXITCODE
           }
           Write-Output "✓ Smoke tests passed"
+
+      - name: Upload Tetragon logs on failure
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: tetragon-smoke-test-logs
+          path: |
+            C:\Program Files\Tetragon\tetragon.log
+            C:\Program Files\Tetragon\events.json
+          retention-days: 5
