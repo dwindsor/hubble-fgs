@@ -13,6 +13,7 @@
     "v1.16",
   ],
   "cloneSubmodules": true,
+  "prConcurrentLimit": 7,
   "packageRules": [
     {
       // no updates into stable branches (apart from security ones)
