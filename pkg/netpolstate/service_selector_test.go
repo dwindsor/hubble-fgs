@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-//go:build sudo_tests && !nok8s
+//go:build !nok8s
 
 package netpolstate
 
