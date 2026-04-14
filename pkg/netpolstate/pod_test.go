@@ -1266,3 +1266,75 @@ func TestObjectAddPodLabelsNotModified(t *testing.T) {
 		require.NotContains(t, k, "_tnp_", "namespace labels should not be added to original pod labels")
 	}
 }
+
+// TestConcurrentExportedPolicyStateCall tests concurrent access to PolicyState
+// using only the public API. Run with:
+//
+//	go test -race ./pkg/netpolstate -run TestConcurrentExportedPolicyStateCall
+func TestConcurrentExportedPolicyStateCall(t *testing.T) {
+	s := newTestPolicyState(t)
+
+	srcPodLabels := "A=a,B=b"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	numPolicies := 10
+	numPods := 10
+	numIterations := 50
+
+	policies := make([]*types.TetragonNetworkPolicy, numPolicies)
+	for i := 0; i < numPolicies; i++ {
+		policies[i] = testMatchDstLabelsDenyPolicy(
+			"netpol-"+string(rune('A'+i)),
+			srcPodLabels,
+			dstPodLabels,
+			"allow",
+		)
+	}
+
+	pods := make([]*v1alpha1.PodInfo, numPods)
+	for i := 0; i < numPods; i++ {
+		podName := "testPod-" + string(rune('0'+i))
+		pods[i] = newPodFromCluster(t, s, testNamespace, podName, testKind, srcPodLabels)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(4)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numIterations; i++ {
+			for _, policy := range policies {
+				s.AddPolicies([]*types.TetragonNetworkPolicy{policy})
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numIterations; i++ {
+			for _, policy := range policies {
+				s.RemovePolicies([]*types.TetragonNetworkPolicy{policy})
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numIterations; i++ {
+			for _, pod := range pods {
+				s.PodAdd(pod)
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numIterations; i++ {
+			for _, pod := range pods {
+				s.PodRemove(pod)
+			}
+		}
+	}()
+
+	wg.Wait()
+}
