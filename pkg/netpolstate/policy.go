@@ -33,8 +33,6 @@ import (
 )
 
 func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetworkPolicy) ([]record.DatapathRecord, []record.DatapathRecord, error) {
-	state.srcLock.Lock()
-	defer state.srcLock.Unlock()
 
 	subject := state.src[policy.PolicyUID]
 
@@ -107,13 +105,16 @@ func (state *PolicyState) diffExistingRecords(set []record.DatapathRecord) ([]re
 }
 
 func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) error {
+	state.mu.Lock()
 	zombieSet, updateSet, err := state.recordsFromPolicyRemoval(policy)
 	if err != nil {
+		state.mu.Unlock()
 		return err
 	}
 
 	// We should avoid trying to add records that are already programmed
 	updateSet, err = state.diffExistingRecords(updateSet)
+	state.mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to diff existing records: %w", err)
 	}
@@ -252,8 +253,6 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 
 // Create DstMatchLAbelsPolicy to add new Network Policy
 func (state *PolicyState) createDstMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
-	state.dstLock.Lock()
-	defer state.dstLock.Unlock()
 
 	if len(policy.Destination.Labels.Equal) < 1 {
 		return
@@ -270,8 +269,6 @@ func (state *PolicyState) createDstMatchLabelsPolicy(policy *types.TetragonNetwo
 
 // Create SrcMatchLAbelsPolicy to add new Network Policy
 func (state *PolicyState) createSrcMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
-	state.srcLock.Lock()
-	defer state.srcLock.Unlock()
 
 	ls := &matchLabels.LabelSet{
 		Labels: policy.Subject.Labels.Equal,
@@ -305,16 +302,12 @@ func (state *PolicyState) createMatchLabelsPolicy(policy *types.TetragonNetworkP
 
 // addServiceSelectorPolicy stores a policy with serviceSelector destination
 func (state *PolicyState) addServiceSelectorPolicy(policy *types.TetragonNetworkPolicy) {
-	state.serviceSelLock.Lock()
-	defer state.serviceSelLock.Unlock()
 
 	state.serviceSelPolicies[policy.PolicyUID] = policy
 }
 
 // getServiceSelectorPolicies returns policies matching the given pod labels
 func (state *PolicyState) getServiceSelectorPolicies(podLabels map[string]string) []*types.TetragonNetworkPolicy {
-	state.serviceSelLock.Lock()
-	defer state.serviceSelLock.Unlock()
 
 	var matching []*types.TetragonNetworkPolicy
 	for _, policy := range state.serviceSelPolicies {
@@ -337,8 +330,6 @@ func matchLabelsSubset(policyLabels, podLabels map[string]string) bool {
 
 // removeServiceSelectorPolicy removes a policy from the serviceSelPolicies map
 func (state *PolicyState) removeServiceSelectorPolicy(policyUID types.TetragonPolicyUniqueID) {
-	state.serviceSelLock.Lock()
-	defer state.serviceSelLock.Unlock()
 
 	delete(state.serviceSelPolicies, policyUID)
 }
@@ -535,13 +526,16 @@ func (state *PolicyState) recordsFromPoliciesAddition(policies []*types.Tetragon
 }
 
 func (state *PolicyState) AddPolicies(policies []*types.TetragonNetworkPolicy) error {
+	state.mu.Lock()
 	newState, addSet, removeSet, err := state.recordsFromPoliciesAddition(policies)
 	if err != nil {
+		state.mu.Unlock()
 		return err
 	}
 
 	// We should avoid trying to add records that are already programmed
 	addSet, err = state.diffExistingRecords(addSet)
+	state.mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to diff existing records: %w", err)
 	}
@@ -558,7 +552,9 @@ func (state *PolicyState) AddPolicies(policies []*types.TetragonNetworkPolicy) e
 	}
 
 	// Update state only after successful datapath programming
+	state.mu.Lock()
 	state.writeToState(newState)
+	state.mu.Unlock()
 	return nil
 }
 
@@ -581,7 +577,6 @@ func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name 
 	log := logger.GetLogger().With("service", name, "namespace", namespace)
 
 	// Find all serviceSelector policies targeting this service
-	state.serviceSelLock.Lock()
 	var affectedPolicies []*types.TetragonNetworkPolicy
 	for _, policy := range state.serviceSelPolicies {
 		if policy.Destination.ServiceRef == nil {
@@ -591,7 +586,6 @@ func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name 
 			affectedPolicies = append(affectedPolicies, policy)
 		}
 	}
-	state.serviceSelLock.Unlock()
 
 	if len(affectedPolicies) == 0 {
 		return
@@ -643,6 +637,9 @@ func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name 
 // HandleEndpointChange is called when service endpoints change. It regenerates
 // CIDR records for all serviceSelector policies targeting the affected service.
 func (state *PolicyState) HandleEndpointChange(namespace, name string, oldEndpoints, newEndpoints []servicemap.EndpointInfo) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
 	// Deduplicate endpoint IPs (endpoints list may have same IP multiple times for different ports)
 	oldIPs := make(map[netip.Addr]bool)
 	for _, ep := range oldEndpoints {
@@ -676,6 +673,9 @@ func (state *PolicyState) HandleEndpointChange(namespace, name string, oldEndpoi
 
 // HandleServiceDelete removes endpoint CIDR records when a service is deleted.
 func (state *PolicyState) HandleServiceDelete(namespace, name string, endpoints []servicemap.EndpointInfo) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
 	// Deduplicate endpoint IPs
 	ips := make(map[netip.Addr]bool)
 	for _, ep := range endpoints {

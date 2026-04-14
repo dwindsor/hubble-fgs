@@ -122,14 +122,15 @@ type PolicyState struct {
 	remoteObjects map[k8stypes.UID]metav1.Object
 
 	serviceSelPolicies map[types.TetragonPolicyUniqueID]*types.TetragonNetworkPolicy
-	serviceSelLock     sync.Mutex
 
 	serviceMap *servicemap.ServiceMap
 
-	dstLock sync.Mutex
-	srcLock sync.Mutex
-
-	reader sync.RWMutex
+	// mu naively protects all maps and lists above by locking at the
+	// exported methods PodAdd/PodRemove/RemovePolicy/etc. level, the only
+	// optimization for now is to release when programming the datapath. If
+	// more efficient concurrency is needed, more fine-grained locking could
+	// be done.
+	mu sync.RWMutex
 
 	deps externalDeps
 }
@@ -156,12 +157,6 @@ func NewPolicyState() *PolicyState {
 
 	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)
 	s.serviceSelPolicies = make(map[types.TetragonPolicyUniqueID]*types.TetragonNetworkPolicy)
-
-	s.dstLock = sync.Mutex{}
-	s.srcLock = sync.Mutex{}
-	s.serviceSelLock = sync.Mutex{}
-
-	s.reader = sync.RWMutex{}
 
 	s.deps = externalDeps{
 		workloadID: workloadid.GetState(),
@@ -445,7 +440,9 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 }
 
 func (state *PolicyState) PodRemove(pod *v1alpha1.PodInfo) error {
+	state.mu.Lock()
 	records, err := state.podRemove(pod)
+	state.mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -634,13 +631,16 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 
 // Top level handler to add pod and calculate tetragon network policy
 func (state *PolicyState) PodAdd(epPod *v1alpha1.PodInfo) error {
+	state.mu.Lock()
 	records, err := state.objectAdd(epPod)
 	if err != nil {
+		state.mu.Unlock()
 		return err
 	}
 
 	// Create serviceSelector records for this pod.
 	svcSelRecords, err := state.createServiceSelectorRecords(epPod)
+	state.mu.Unlock()
 	if err != nil {
 		logger.GetLogger().Warn("Failed to create serviceSelector records", logfields.Error, err)
 	}
