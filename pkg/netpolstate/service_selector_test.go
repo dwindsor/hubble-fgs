@@ -128,11 +128,11 @@ func TestServiceSelectorRecordGeneration(t *testing.T) {
 	policy := testServiceSelectorPolicy("deny-backend", srcPodLabels, "backend-svc", "default", "deny", []uint32{80})
 
 	// Add policy to state
-	err := s.CreateMatchLabelsPolicy(policy)
+	err := s.createMatchLabelsPolicy(policy)
 	require.NoError(t, err)
 
 	// Verify policy was stored as serviceSelector policy
-	policies := s.GetServiceSelectorPolicies(map[string]string{"app": "client"})
+	policies := s.getServiceSelectorPolicies(map[string]string{"app": "client"})
 	assert.Len(t, policies, 1, "should have one matching serviceSelector policy")
 
 	// Add subject pod
@@ -142,7 +142,7 @@ func TestServiceSelectorRecordGeneration(t *testing.T) {
 	})
 
 	// Create serviceSelector records for the pod
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 
 	// Count record types
@@ -198,7 +198,7 @@ func TestServiceSelectorWithPorts(t *testing.T) {
 	// Create policy that only blocks port 443
 	policy := testServiceSelectorPolicy("deny-https", srcPodLabels, "multi-port-svc", "default", "deny", []uint32{443})
 
-	err := s.CreateMatchLabelsPolicy(policy)
+	err := s.createMatchLabelsPolicy(policy)
 	require.NoError(t, err)
 
 	// Add subject pod
@@ -208,7 +208,7 @@ func TestServiceSelectorWithPorts(t *testing.T) {
 	})
 
 	// Create serviceSelector records
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 
 	// Count port 443 records
@@ -241,7 +241,7 @@ func TestServiceSelectorNoMatchingService(t *testing.T) {
 	// Create policy for non-existent service (not in servicemap)
 	policy := testServiceSelectorPolicy("deny-nonexistent", srcPodLabels, "nonexistent-svc", "default", "deny", nil)
 
-	err := s.CreateMatchLabelsPolicy(policy)
+	err := s.createMatchLabelsPolicy(policy)
 	require.NoError(t, err)
 
 	// Add subject pod
@@ -251,7 +251,7 @@ func TestServiceSelectorNoMatchingService(t *testing.T) {
 	})
 
 	// Create serviceSelector records - should not fail even if service doesn't exist
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 
 	// No records should be generated since service doesn't exist in servicemap
@@ -282,7 +282,7 @@ func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
 	// Create policy that applies to "app=client" pods
 	policy := testServiceSelectorPolicy("deny-test-svc", "app=client", "test-svc", "default", "deny", nil)
 
-	err := s.CreateMatchLabelsPolicy(policy)
+	err := s.createMatchLabelsPolicy(policy)
 	require.NoError(t, err)
 
 	// Add pod with different labels (app=other)
@@ -292,11 +292,11 @@ func TestServiceSelectorPodNotMatchingSubject(t *testing.T) {
 	})
 
 	// Get matching policies - should be empty
-	policies := s.GetServiceSelectorPolicies(map[string]string{"app": "other"})
+	policies := s.getServiceSelectorPolicies(map[string]string{"app": "other"})
 	assert.Len(t, policies, 0, "should have no matching policies for app=other")
 
 	// Create serviceSelector records - should be empty
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 	assert.Len(t, records, 0, "should have no records for non-matching pod")
 }
@@ -326,7 +326,7 @@ func TestServiceSelectorAllowAction(t *testing.T) {
 	// Create allow policy (with default deny)
 	policy := testServiceSelectorPolicy("allow-svc", srcPodLabels, "allowed-svc", "default", "allow", []uint32{80})
 
-	err := s.CreateMatchLabelsPolicy(policy)
+	err := s.createMatchLabelsPolicy(policy)
 	require.NoError(t, err)
 
 	// Add subject pod
@@ -335,7 +335,7 @@ func TestServiceSelectorAllowAction(t *testing.T) {
 		delPod(t)
 	})
 
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 
 	// Verify service records have allow action
@@ -382,13 +382,13 @@ func TestServiceSelectorMultiplePolicies(t *testing.T) {
 	policy1 := testServiceSelectorPolicy("deny-svc-1", srcPodLabels, "svc-1", "default", "deny", nil)
 	policy2 := testServiceSelectorPolicy("allow-svc-2", srcPodLabels, "svc-2", "default", "allow", nil)
 
-	err := s.CreateMatchLabelsPolicy(policy1)
+	err := s.createMatchLabelsPolicy(policy1)
 	require.NoError(t, err)
-	err = s.CreateMatchLabelsPolicy(policy2)
+	err = s.createMatchLabelsPolicy(policy2)
 	require.NoError(t, err)
 
 	// Verify both policies stored
-	policies := s.GetServiceSelectorPolicies(map[string]string{"app": "client"})
+	policies := s.getServiceSelectorPolicies(map[string]string{"app": "client"})
 	assert.Len(t, policies, 2, "should have two matching policies")
 
 	// Add subject pod
@@ -397,7 +397,7 @@ func TestServiceSelectorMultiplePolicies(t *testing.T) {
 		delPod(t)
 	})
 
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 
 	// Should have records from both policies
@@ -441,7 +441,7 @@ func TestServiceSelectorDefaultNamespace(t *testing.T) {
 	// Create policy
 	policy := testServiceSelectorPolicy("test-default-ns", srcPodLabels, "default-ns-svc", "default", "deny", nil)
 
-	err := s.CreateMatchLabelsPolicy(policy)
+	err := s.createMatchLabelsPolicy(policy)
 	require.NoError(t, err)
 
 	// Add subject pod
@@ -450,7 +450,7 @@ func TestServiceSelectorDefaultNamespace(t *testing.T) {
 		delPod(t)
 	})
 
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 
 	// Should have CIDR records for the ClusterIP
@@ -490,18 +490,18 @@ func TestServiceSelectorPolicyRemoval(t *testing.T) {
 	// Create policy
 	policy := testServiceSelectorPolicy("removable-policy", srcPodLabels, "removable-svc", "default", "deny", nil)
 
-	err := s.CreateMatchLabelsPolicy(policy)
+	err := s.createMatchLabelsPolicy(policy)
 	require.NoError(t, err)
 
 	// Verify policy exists
-	policies := s.GetServiceSelectorPolicies(map[string]string{"app": "client"})
+	policies := s.getServiceSelectorPolicies(map[string]string{"app": "client"})
 	assert.Len(t, policies, 1)
 
 	// Add subject pod
 	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
 
 	// Create records
-	records, err := s.CreateServiceSelectorRecords(srcPod)
+	records, err := s.createServiceSelectorRecords(srcPod)
 	require.NoError(t, err)
 	assert.Greater(t, len(records), 0)
 
@@ -510,7 +510,7 @@ func TestServiceSelectorPolicyRemoval(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify policy removed from serviceSelector list
-	policies = s.GetServiceSelectorPolicies(map[string]string{"app": "client"})
+	policies = s.getServiceSelectorPolicies(map[string]string{"app": "client"})
 	assert.Len(t, policies, 0, "should have no policies after removal")
 
 	// Cleanup

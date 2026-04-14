@@ -168,10 +168,10 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	dstPodNameKeep := "testNamePodDstKeep"
 
 	netpol := testMatchDstLabelsPolicy(name, srcPodLabels, dstPodLabels)
-	err := s.CreateMatchLabelsPolicy(netpol)
+	err := s.createMatchLabelsPolicy(netpol)
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(s.Src))
-	assert.Equal(t, 1, len(s.Dst))
+	assert.Equal(t, 1, len(s.src))
+	assert.Equal(t, 1, len(s.dst))
 
 	// srcPod matches subject labels so will be granted to records one for FQDN name.
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
@@ -203,13 +203,13 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, dstPodNameKeep, r3[0].Endpoint.EP.Name)
 
 	// Test matchLabels keys are tracking the subjects
-	src := s.Src[netpol.PolicyUID]
+	src := s.src[netpol.PolicyUID]
 	assert.NotNil(t, src)
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, r1[0].Src.WLID, src.Subjects[0].WLID)
 
 	// Test matchLAbelsDstPolicy is tracking endpoints
-	dst := s.Dst[netpol.PolicyUID]
+	dst := s.dst[netpol.PolicyUID]
 	assert.NotNil(t, dst)
 	assert.Equal(t, 2, len(dst.Endpoints))
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, dst.Endpoints[0].Type)
@@ -263,10 +263,10 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "deny")
-	err := s.CreateMatchLabelsPolicy(netpol)
+	err := s.createMatchLabelsPolicy(netpol)
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(s.Src))
-	assert.Equal(t, 1, len(s.Dst))
+	assert.Equal(t, 1, len(s.src))
+	assert.Equal(t, 1, len(s.dst))
 
 	// srcPod matches subject labels so will be granted to records one for default action
 	srcPod := newPodFromCluster(t, s, testNamespace, srcPodName, testKind, srcPodLabels)
@@ -312,10 +312,10 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
-	err := s.CreateMatchLabelsPolicy(netpol)
+	err := s.createMatchLabelsPolicy(netpol)
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(s.Src))
-	assert.Equal(t, 1, len(s.Dst))
+	assert.Equal(t, 1, len(s.src))
+	assert.Equal(t, 1, len(s.dst))
 
 	// add dst pod first which does not match a subject for any policy8
 	dstPod := newPodFromCluster(t, s, testNamespace, dstPodName, testKind, dstPodLabels)

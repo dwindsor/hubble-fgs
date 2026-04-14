@@ -114,8 +114,8 @@ type externalDeps struct {
 
 type PolicyState struct {
 	// Policy objects organized by qualifier
-	Dst matchLabels.PolicyList
-	Src matchLabels.PolicyList
+	dst matchLabels.PolicyList
+	src matchLabels.PolicyList
 
 	// Objects in the system, these are pods, nodes etc.
 	localObjects  map[k8stypes.UID]metav1.Object
@@ -126,18 +126,18 @@ type PolicyState struct {
 
 	serviceMap *servicemap.ServiceMap
 
-	DstLock sync.Mutex
-	SrcLock sync.Mutex
+	dstLock sync.Mutex
+	srcLock sync.Mutex
 
-	Reader sync.RWMutex
+	reader sync.RWMutex
 
 	deps externalDeps
 }
 
 func NewPolicyState() *PolicyState {
 	s := &PolicyState{}
-	s.Dst = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
-	s.Src = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
+	s.dst = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
+	s.src = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
 
 	s.localObjects = make(map[k8stypes.UID]metav1.Object)
 	// Initialize the new state with a local object representing the host
@@ -157,11 +157,11 @@ func NewPolicyState() *PolicyState {
 	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)
 	s.serviceSelPolicies = make(map[types.TetragonPolicyUniqueID]*types.TetragonNetworkPolicy)
 
-	s.DstLock = sync.Mutex{}
-	s.SrcLock = sync.Mutex{}
+	s.dstLock = sync.Mutex{}
+	s.srcLock = sync.Mutex{}
 	s.serviceSelLock = sync.Mutex{}
 
-	s.Reader = sync.RWMutex{}
+	s.reader = sync.RWMutex{}
 
 	s.deps = externalDeps{
 		workloadID: workloadid.GetState(),
@@ -171,10 +171,10 @@ func NewPolicyState() *PolicyState {
 	return s
 }
 
-// TemporaryEmptyState is a legacy compatibility layer function. We have some
+// temporaryEmptyState is a legacy compatibility layer function. We have some
 // functions that are operating on a new empty state instead of mutating the
 // state in place. This should be removed eventually.
-func (state *PolicyState) TemporaryEmptyState() *PolicyState {
+func (state *PolicyState) temporaryEmptyState() *PolicyState {
 	s := NewPolicyState()
 
 	// We pass the existing state deps: methods will need them when
@@ -184,14 +184,14 @@ func (state *PolicyState) TemporaryEmptyState() *PolicyState {
 	return s
 }
 
-// WriteToState is a legacy compatibility layer function. We have some functions
+// writeToState is a legacy compatibility layer function. We have some functions
 // that previously, instead of mutating the state in place, created a new fresh
 // state and replaced the old state with it. We now want to keep a singleton
 // instance of the state and write to it directly. This should be removed
 // eventually when the function will be capable of mutating the state directly.
-func (state *PolicyState) WriteToState(newState *PolicyState) {
-	state.Dst = newState.Dst
-	state.Src = newState.Src
+func (state *PolicyState) writeToState(newState *PolicyState) {
+	state.dst = newState.dst
+	state.src = newState.src
 	state.localObjects = newState.localObjects
 	state.remoteObjects = newState.remoteObjects
 	state.serviceSelPolicies = newState.serviceSelPolicies
@@ -232,11 +232,11 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 	// endpoint match labels with the pod as an endpoint. In this case we have
 	// singleton endpoint to a set of subjects, endpoint -> {collectionSubjects}.
 	// To clear datapath walk the collection of subjects and remove s_i -> endpoint.
-	dests := state.Dst.Collection(ml)
+	dests := state.dst.Collection(ml)
 	if dests != nil {
 		podEP := createObjectEndpoint(pod)
 		for _, d := range dests {
-			s := state.Src[d.Policy.PolicyUID]
+			s := state.src[d.Policy.PolicyUID]
 			action, err := calculateAction(&s.Policy.Action)
 			if err != nil {
 				logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
@@ -300,7 +300,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 	// collection of eps and remove the s->ep_i entry. We can remove the
 	// entire instances of the matchLabelSet because the subject is being
 	// removed.
-	coll := state.Src.Collection(ml)
+	coll := state.src.Collection(ml)
 	if coll == nil {
 		return records, nil
 	}
@@ -316,7 +316,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 			logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
 			continue
 		}
-		d := state.Dst[s.Policy.PolicyUID]
+		d := state.dst[s.Policy.PolicyUID]
 
 		// serviceSelector policies populate state.Src (for subject matching) but
 		// not state.Dst (since they use CIDR records from ServiceMap instead of
@@ -452,9 +452,9 @@ func (state *PolicyState) PodRemove(pod *v1alpha1.PodInfo) error {
 	return state.deps.prog.RemoveRecords(records)
 }
 
-func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet, newEP bool) []record.DatapathRecord {
+func (state *PolicyState) endpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet, newEP bool) []record.DatapathRecord {
 	records := []record.DatapathRecord{}
-	dests := state.Dst.Collection(ml)
+	dests := state.dst.Collection(ml)
 
 	for _, d := range dests {
 		// Add endpoint of pod to list of destinations for this label selector
@@ -465,7 +465,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		// For dest dest label selector we need to create src->dst binding
 		// to do this walk all subjects and add the new dst. Merge conflicts
 		// are resolved by BPF datapath.
-		policyList := state.Src[d.Policy.PolicyUID]
+		policyList := state.src[d.Policy.PolicyUID]
 		policy := policyList.Policy.PolicyUID
 		for _, subject := range policyList.Subjects {
 			action, err := calculateAction(&policyList.Policy.Action)
@@ -537,9 +537,9 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 	return records
 }
 
-func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet, newSrc bool) []record.DatapathRecord {
+func (state *PolicyState) srcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet, newSrc bool) []record.DatapathRecord {
 	records := []record.DatapathRecord{}
-	subjects := state.Src.Collection(ml)
+	subjects := state.src.Collection(ml)
 
 	for _, s := range subjects {
 		if newSrc {
@@ -614,7 +614,7 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 
 	ep := createObjectEndpoint(endpointObject)
 
-	epRecords := state.EndpointAdd(ep, ml, true)
+	epRecords := state.endpointAdd(ep, ml, true)
 
 	src, err := state.deps.createObjectSrcKey(endpointObject)
 	if err != nil {
@@ -627,7 +627,7 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.Data
 		return epRecords, nil
 	}
 
-	srcRecords := state.SrcAdd(src, ml, true)
+	srcRecords := state.srcAdd(src, ml, true)
 	state.localObjects[endpointObject.GetUID()] = endpointObject
 	return append(epRecords, srcRecords...), nil
 }
@@ -640,7 +640,7 @@ func (state *PolicyState) PodAdd(epPod *v1alpha1.PodInfo) error {
 	}
 
 	// Create serviceSelector records for this pod.
-	svcSelRecords, err := state.CreateServiceSelectorRecords(epPod)
+	svcSelRecords, err := state.createServiceSelectorRecords(epPod)
 	if err != nil {
 		logger.GetLogger().Warn("Failed to create serviceSelector records", logfields.Error, err)
 	}

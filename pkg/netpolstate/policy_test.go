@@ -123,14 +123,14 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 	name := "testName"
 
 	policy := testMatchSrcLabelsPolicy(name, "A=a,B=b")
-	s.CreateSrcMatchLabelsPolicy(policy)
+	s.createSrcMatchLabelsPolicy(policy)
 
-	assert.Equal(t, 1, len(s.Src))
+	assert.Equal(t, 1, len(s.src))
 
 	err := s.RemovePolicy(policy)
 	require.NoError(t, err)
 
-	assert.Equal(t, 0, len(s.Src))
+	assert.Equal(t, 0, len(s.src))
 }
 
 func TestCreateDstMatchLabelsPolicy(t *testing.T) {
@@ -138,14 +138,14 @@ func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 	name := "testName"
 
 	policy := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	s.CreateDstMatchLabelsPolicy(policy)
+	s.createDstMatchLabelsPolicy(policy)
 
-	assert.Equal(t, 1, len(s.Dst))
+	assert.Equal(t, 1, len(s.dst))
 
 	err := s.RemovePolicy(policy)
 	require.NoError(t, err)
 
-	assert.Equal(t, 0, len(s.Dst))
+	assert.Equal(t, 0, len(s.dst))
 }
 
 func TestCreateSrcKey(t *testing.T) {
@@ -196,16 +196,16 @@ func TestCreateSrcKey(t *testing.T) {
 		Action:      action,
 	}
 
-	s.CreateSrcMatchLabelsPolicy(netpol)
-	assert.Equal(t, 1, len(s.Src))
+	s.createSrcMatchLabelsPolicy(netpol)
+	assert.Equal(t, 1, len(s.src))
 }
 
 func CreateDstMatchLabels(t *testing.T) {
 	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	s.CreateDstMatchLabelsPolicy(netpol)
-	d := s.Dst[netpol.PolicyUID]
+	s.createDstMatchLabelsPolicy(netpol)
+	d := s.dst[netpol.PolicyUID]
 	assert.Equal(t, "d1", d.Labels["D1"])
 	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
@@ -215,8 +215,8 @@ func CreateSrcMatchLabels(t *testing.T) {
 	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	s.CreateSrcMatchLabelsPolicy(netpol)
-	src := s.Src[netpol.PolicyUID]
+	s.createSrcMatchLabelsPolicy(netpol)
+	src := s.src[netpol.PolicyUID]
 	assert.NotNil(t, src)
 	assert.Equal(t, "a", src.Labels["A"])
 	assert.Equal(t, "b", src.Labels["B"])
@@ -227,14 +227,14 @@ func TestAddNetworkPolicy(t *testing.T) {
 	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := s.CreateMatchLabelsPolicy(netpol)
+	err := s.createMatchLabelsPolicy(netpol)
 	require.NoError(t, err)
-	d := s.Dst[netpol.PolicyUID]
+	d := s.dst[netpol.PolicyUID]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Labels["D1"])
 	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
-	src := s.Src[netpol.PolicyUID]
+	src := s.src[netpol.PolicyUID]
 	assert.NotNil(t, src)
 	assert.Equal(t, "a", src.Labels["A"])
 	assert.Equal(t, "b", src.Labels["B"])
@@ -245,14 +245,14 @@ func testAddNetworkActionPolicy(t *testing.T, action string) {
 	s := newTestPolicyState(t)
 	name := "testPol"
 	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
-	err := s.CreateMatchLabelsPolicy(netpol)
+	err := s.createMatchLabelsPolicy(netpol)
 	require.NoError(t, err)
-	d := s.Dst[netpol.PolicyUID]
+	d := s.dst[netpol.PolicyUID]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Labels["D1"])
 	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
-	src := s.Src[netpol.PolicyUID]
+	src := s.src[netpol.PolicyUID]
 	assert.NotNil(t, src)
 	assert.Equal(t, "a", src.Labels["A"])
 	assert.Equal(t, "b", src.Labels["B"])
@@ -311,8 +311,8 @@ func testPolicyCalculator(t *testing.T, s *PolicyState, podML, policy, check []s
 
 		policyMap[x[0]] = parsedPolicy
 
-		s.CreateSrcMatchLabelsPolicy(parsedPolicy)
-		s.CreateDstMatchLabelsPolicy(parsedPolicy)
+		s.createSrcMatchLabelsPolicy(parsedPolicy)
+		s.createDstMatchLabelsPolicy(parsedPolicy)
 	}
 
 	for _, pod := range podML {
@@ -331,7 +331,7 @@ func testPolicyCalculator(t *testing.T, s *PolicyState, podML, policy, check []s
 			PolicyName: x[0],
 			RuleName:   "rule1",
 		}
-		policy := s.Src[policyUID]
+		policy := s.src[policyUID]
 		found := false
 		for _, s := range policy.Subjects {
 			if s.WLID == 0x1 {

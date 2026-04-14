@@ -33,10 +33,10 @@ import (
 )
 
 func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetworkPolicy) ([]record.DatapathRecord, []record.DatapathRecord, error) {
-	state.SrcLock.Lock()
-	defer state.SrcLock.Unlock()
+	state.srcLock.Lock()
+	defer state.srcLock.Unlock()
 
-	subject := state.Src[policy.PolicyUID]
+	subject := state.src[policy.PolicyUID]
 
 	var beforeSubjs []record.DatapathRecord
 	var afterSubjs []record.DatapathRecord
@@ -48,7 +48,7 @@ func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetwork
 
 	if subject != nil {
 		for _, s := range subject.Subjects {
-			records := state.SrcAdd(s, subjectLabels, false)
+			records := state.srcAdd(s, subjectLabels, false)
 			beforeSubjs = append(beforeSubjs, records...)
 		}
 	}
@@ -73,10 +73,10 @@ func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetwork
 		state.removeServiceSelectorPolicy(policy.PolicyUID)
 	}
 
-	state.Src.Remove(policy.PolicyUID)
-	state.Dst.Remove(policy.PolicyUID)
+	state.src.Remove(policy.PolicyUID)
+	state.dst.Remove(policy.PolicyUID)
 
-	for _, v := range state.Src {
+	for _, v := range state.src {
 		if v == nil {
 			continue
 		}
@@ -98,7 +98,7 @@ func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetwork
 }
 
 func (state *PolicyState) diffExistingRecords(set []record.DatapathRecord) ([]record.DatapathRecord, error) {
-	_, existingRecords, err := state.GetRecords(state.getAllExistingPolicy())
+	_, existingRecords, err := state.getRecords(state.getAllExistingPolicy())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing records: %w", err)
 	}
@@ -214,7 +214,7 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 		}
 	}
 
-	ls := state.Dst[policy.PolicyUID]
+	ls := state.dst[policy.PolicyUID]
 	if ls != nil {
 		for _, ep := range ls.Endpoints {
 			if len(ls.Policy.Destination.Ports) == 0 {
@@ -251,9 +251,9 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 }
 
 // Create DstMatchLAbelsPolicy to add new Network Policy
-func (state *PolicyState) CreateDstMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
-	state.DstLock.Lock()
-	defer state.DstLock.Unlock()
+func (state *PolicyState) createDstMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
+	state.dstLock.Lock()
+	defer state.dstLock.Unlock()
 
 	if len(policy.Destination.Labels.Equal) < 1 {
 		return
@@ -265,30 +265,30 @@ func (state *PolicyState) CreateDstMatchLabelsPolicy(policy *types.TetragonNetwo
 		Ports:  policy.Destination.Ports,
 	}
 
-	state.Dst.Add(ls)
+	state.dst.Add(ls)
 }
 
 // Create SrcMatchLAbelsPolicy to add new Network Policy
-func (state *PolicyState) CreateSrcMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
-	state.SrcLock.Lock()
-	defer state.SrcLock.Unlock()
+func (state *PolicyState) createSrcMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
+	state.srcLock.Lock()
+	defer state.srcLock.Unlock()
 
 	ls := &matchLabels.LabelSet{
 		Labels: policy.Subject.Labels.Equal,
 		Policy: policy,
 	}
 
-	state.Src.Add(ls)
+	state.src.Add(ls)
 }
 
-func (state *PolicyState) CreateMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) error {
+func (state *PolicyState) createMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) error {
 	if len(policy.Destination.Labels.Equal) > 0 {
-		state.CreateDstMatchLabelsPolicy(policy)
+		state.createDstMatchLabelsPolicy(policy)
 	}
 
 	// Store serviceSelector policies for deferred record creation
 	if policy.Destination.ServiceRef != nil {
-		state.AddServiceSelectorPolicy(policy)
+		state.addServiceSelectorPolicy(policy)
 	}
 
 	// There are a few possibilities for possible scope.
@@ -297,22 +297,22 @@ func (state *PolicyState) CreateMatchLabelsPolicy(policy *types.TetragonNetworkP
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if len(policy.Subject.Labels.Equal) > 0 {
-		state.CreateSrcMatchLabelsPolicy(policy)
+		state.createSrcMatchLabelsPolicy(policy)
 	}
 
 	return nil
 }
 
-// AddServiceSelectorPolicy stores a policy with serviceSelector destination
-func (state *PolicyState) AddServiceSelectorPolicy(policy *types.TetragonNetworkPolicy) {
+// addServiceSelectorPolicy stores a policy with serviceSelector destination
+func (state *PolicyState) addServiceSelectorPolicy(policy *types.TetragonNetworkPolicy) {
 	state.serviceSelLock.Lock()
 	defer state.serviceSelLock.Unlock()
 
 	state.serviceSelPolicies[policy.PolicyUID] = policy
 }
 
-// GetServiceSelectorPolicies returns policies matching the given pod labels
-func (state *PolicyState) GetServiceSelectorPolicies(podLabels map[string]string) []*types.TetragonNetworkPolicy {
+// getServiceSelectorPolicies returns policies matching the given pod labels
+func (state *PolicyState) getServiceSelectorPolicies(podLabels map[string]string) []*types.TetragonNetworkPolicy {
 	state.serviceSelLock.Lock()
 	defer state.serviceSelLock.Unlock()
 
@@ -432,13 +432,13 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 	uniquePolicyMap := make(map[types.TetragonPolicyUniqueID]*types.TetragonNetworkPolicy)
 	allPolicy := make([]*types.TetragonNetworkPolicy, 0)
 
-	for _, p := range state.Src {
+	for _, p := range state.src {
 		if _, ok := uniquePolicyMap[p.Policy.PolicyUID]; !ok {
 			uniquePolicyMap[p.Policy.PolicyUID] = p.Policy
 			allPolicy = append(allPolicy, p.Policy)
 		}
 	}
-	for _, p := range state.Dst {
+	for _, p := range state.dst {
 		if _, ok := uniquePolicyMap[p.Policy.PolicyUID]; !ok {
 			uniquePolicyMap[p.Policy.PolicyUID] = p.Policy
 			allPolicy = append(allPolicy, p.Policy)
@@ -454,14 +454,14 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 	return allPolicy
 }
 
-func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, error) {
+func (state *PolicyState) getRecords(currentPolicy []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, error) {
 	calculatorRecords := []record.DatapathRecord{}
-	calculatorState := state.TemporaryEmptyState()
+	calculatorState := state.temporaryEmptyState()
 	calculatorState.serviceMap = state.serviceMap
 
 	// Add Policy to calculator state
 	for _, p := range currentPolicy {
-		err := calculatorState.CreateMatchLabelsPolicy(p)
+		err := calculatorState.createMatchLabelsPolicy(p)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -487,7 +487,7 @@ func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolic
 	// Create serviceSelector records for existing local objects.
 	// This handles the case when a NEW policy is added with EXISTING pods.
 	for _, p := range state.localObjects {
-		r, err := calculatorState.CreateServiceSelectorRecords(p)
+		r, err := calculatorState.createServiceSelectorRecords(p)
 		if err != nil {
 			logger.GetLogger().Warn("GetRecords: failed to create serviceSelector records",
 				logfields.Error, err)
@@ -510,7 +510,7 @@ func (state *PolicyState) recordsFromPoliciesAddition(policies []*types.Tetragon
 	// Entry point to Policy state create collect records for current
 	// policy state.
 	currentPolicy := state.getAllExistingPolicy()
-	_, preRecords, err := state.GetRecords(currentPolicy)
+	_, preRecords, err := state.getRecords(currentPolicy)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -519,11 +519,11 @@ func (state *PolicyState) recordsFromPoliciesAddition(policies []*types.Tetragon
 	newPolicy := append(currentPolicy, policies...)
 
 	// Recalculate records using new state with new policy.
-	postState := state.TemporaryEmptyState()
+	postState := state.temporaryEmptyState()
 	postState.localObjects = maps.Clone(state.localObjects)
 	postState.remoteObjects = maps.Clone(state.remoteObjects)
 	postState.serviceMap = state.serviceMap
-	postState, postRecords, err := postState.GetRecords(newPolicy)
+	postState, postRecords, err := postState.getRecords(newPolicy)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -558,7 +558,7 @@ func (state *PolicyState) AddPolicies(policies []*types.TetragonNetworkPolicy) e
 	}
 
 	// Update state only after successful datapath programming
-	state.WriteToState(newState)
+	state.writeToState(newState)
 	return nil
 }
 
@@ -728,9 +728,9 @@ func generateEndpointCIDRRecords(policyUID types.TetragonPolicyUniqueID, src *ty
 	return records
 }
 
-// CreateServiceSelectorRecords creates datapath records for serviceSelector
+// createServiceSelectorRecords creates datapath records for serviceSelector
 // policies that match the given pod. Called from PodAdd and GetRecords.
-func (state *PolicyState) CreateServiceSelectorRecords(pod metav1.Object) ([]record.DatapathRecord, error) {
+func (state *PolicyState) createServiceSelectorRecords(pod metav1.Object) ([]record.DatapathRecord, error) {
 	var records []record.DatapathRecord
 
 	podLabels := pod.GetLabels()
@@ -738,7 +738,7 @@ func (state *PolicyState) CreateServiceSelectorRecords(pod metav1.Object) ([]rec
 		return records, nil
 	}
 
-	matchingPolicies := state.GetServiceSelectorPolicies(podLabels)
+	matchingPolicies := state.getServiceSelectorPolicies(podLabels)
 	if len(matchingPolicies) == 0 {
 		return records, nil
 	}
