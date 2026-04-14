@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import signal
+import subprocess
 import tarfile
 from pathlib import Path
 from typing import Optional
@@ -853,3 +854,39 @@ class CommandExecutor:
             container,
             DPCTL.DISABLE_INTER_VRF.value
         )
+
+    # Kubectl commands (run on test host, not inside a container)
+
+    KUBECONFIG_PATH = "/tmp/agw-test-kubeconfig"
+
+    def kubectl_apply(self, yaml_content: str) -> str:
+        """Apply a YAML manifest to the kind cluster via kubectl."""
+        logger.info("Applying YAML via kubectl:\n%s", yaml_content)
+        result = subprocess.run(
+            ["kubectl", "--kubeconfig", self.KUBECONFIG_PATH, "apply", "-f", "-"],
+            input=yaml_content,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            logger.error("kubectl apply failed: %s", result.stderr)
+            raise RuntimeError(f"kubectl apply failed: {result.stderr}")
+        logger.info("kubectl apply output: %s", result.stdout.strip())
+        return result.stdout.strip()
+
+    def kubectl_delete(self, yaml_content: str) -> str:
+        """Delete a K8s resource described by YAML from the kind cluster."""
+        logger.info("Deleting resource via kubectl")
+        result = subprocess.run(
+            ["kubectl", "--kubeconfig", self.KUBECONFIG_PATH, "delete", "-f", "-", "--ignore-not-found"],
+            input=yaml_content,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            logger.warning("kubectl delete failed: %s", result.stderr)
+        else:
+            logger.info("kubectl delete output: %s", result.stdout.strip())
+        return result.stdout.strip()

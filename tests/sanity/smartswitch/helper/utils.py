@@ -11,11 +11,20 @@
 import logging
 import time
 import json
+from pathlib import Path
 from typing import Callable, List
 
 from scapy.sendrecv import AsyncSniffer
 
 logger = logging.getLogger(__name__)
+
+TESTDATA_DIR = Path(__file__).resolve().parent.parent / "testdata" / "policies" / "agw"
+
+
+def load_policy_yaml(filename: str, name: str) -> str:
+    """Load a policy YAML template from testdata and substitute the name."""
+    template = (TESTDATA_DIR / filename).read_text()
+    return template.format(name=name)
 
 
 def retry_on_failure(func: Callable, max_retries: int = 3, delay: float = 1.0):

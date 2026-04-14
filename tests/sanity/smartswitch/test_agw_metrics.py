@@ -13,12 +13,13 @@ import pytest
 from helper.verification import (
     verify_metrics_baseline,
     verify_metrics_consistent_with_policies,
+    verify_metrics_error_counter_increased,
     verify_metrics_policy_counts,
     verify_metrics_no_errors,
     verify_policy_added_to_agw,
 )
 from helper.policy_generator import generate_policy_for_test, create_rule
-from helper.utils import wait_for_timeout
+from helper.utils import load_policy_yaml, wait_for_timeout
 
 
 @pytest.mark.agw
@@ -180,4 +181,140 @@ def test_metrics_consistency_with_policies(cmd):
         policies_json = cmd.agw_show_policies_json()
         verify_metrics_consistent_with_policies(metrics, policies_json)
         verify_metrics_no_errors(metrics)
+
+
+@pytest.mark.agw
+@pytest.mark.metrics
+@allure.feature("Metrics")
+@allure.story("Error Statistics")
+@allure.title("Verify delete error counter increments on orphaned CRD deletion")
+def test_error_counter_delete_orphaned_policy(cmd):
+    """Trigger a DPU delete error by deleting a CRD whose policy was already
+    cleared from AGW's internal store.
+
+    The K8s watcher calls DeletePolicy on a resource ID that no longer exists
+    in the repository, causing "policy with resource ID not found" error
+    and incrementing policy_dpu_delete_errors.
+
+    Steps:
+    1. Apply a valid policy via kubectl (watcher adds it to AGW)
+    2. Clear AGW's internal policy store via agwctl policies clear
+    3. Record baseline delete error count
+    4. Delete the CRD via kubectl (watcher tries to delete unknown policy)
+    5. Verify delete error counter increased
+    """
+    policy_name = "orphaned-delete-test"
+    valid_yaml = load_policy_yaml("valid_policy_simple.yaml", policy_name)
+
+    try:
+        with allure.step("Apply valid policy via kubectl"):
+            cmd.kubectl_apply(valid_yaml)
+            wait_for_timeout(5)
+
+        with allure.step("Clear AGW internal policy store"):
+            cmd.agw_clear_policies()
+            wait_for_timeout(2)
+
+        with allure.step("Record baseline delete error count"):
+            metrics_before = cmd.agw_metrics_show_json()
+
+        with allure.step("Delete CRD via kubectl (policy already cleared)"):
+            cmd.kubectl_delete(valid_yaml)
+            wait_for_timeout(5)
+
+        with allure.step("Verify delete error counter increased"):
+            metrics_after = cmd.agw_metrics_show_json()
+            verify_metrics_error_counter_increased(
+                metrics_before, metrics_after, "policy_dpu_delete_errors"
+            )
+    finally:
+        with allure.step("Cleanup: ensure CRD is deleted"):
+            cmd.kubectl_delete(valid_yaml)
+            wait_for_timeout(2)
+
+
+@pytest.mark.agw
+@pytest.mark.metrics
+@allure.feature("Metrics")
+@allure.story("Error Statistics")
+@allure.title("Verify insert error counter increments on invalid policy via K8s")
+def test_error_counter_insert_invalid_policy(cmd):
+    """Trigger a DPU insert error by applying a policy with a missing CIDR
+    field via kubectl to the kind cluster.
+
+    The CRD allows an ipBlock item without a cidr field, but the Go-side
+    ToSmartSwitchNetworkPolicies() fails when cidrIPFamily("") is called
+    with an empty string, incrementing policy_dpu_insert_errors.
+
+    Steps:
+    1. Record baseline insert error count
+    2. Apply an invalid SmartSwitchNetworkPolicy via kubectl
+    3. Wait for the K8s watcher to process
+    4. Verify insert error counter increased
+    5. Cleanup: delete the invalid CRD
+    """
+    policy_name = "invalid-insert-test"
+    invalid_yaml = load_policy_yaml("invalid_policy_missing_cidr.yaml", policy_name)
+
+    with allure.step("Record baseline insert error count"):
+        metrics_before = cmd.agw_metrics_show_json()
+
+    try:
+        with allure.step("Apply invalid policy via kubectl"):
+            cmd.kubectl_apply(invalid_yaml)
+            wait_for_timeout(5)
+
+        with allure.step("Verify insert error counter increased"):
+            metrics_after = cmd.agw_metrics_show_json()
+            verify_metrics_error_counter_increased(
+                metrics_before, metrics_after, "policy_dpu_insert_errors"
+            )
+    finally:
+        with allure.step("Cleanup: delete invalid CRD"):
+            cmd.kubectl_delete(invalid_yaml)
+            wait_for_timeout(2)
+
+
+@pytest.mark.agw
+@pytest.mark.metrics
+@allure.feature("Metrics")
+@allure.story("Error Statistics")
+@allure.title("Verify update error counter increments on invalid policy update via K8s")
+def test_error_counter_update_invalid_policy(cmd):
+    """Trigger a DPU update error by first applying a valid policy via kubectl,
+    then updating it to have a missing CIDR field.
+
+    Steps:
+    1. Apply a valid policy via kubectl
+    2. Wait for the K8s watcher to process it successfully
+    3. Record baseline update error count
+    4. Update the policy to have a missing CIDR (invalid for Go-side parsing)
+    5. Wait and verify update error counter increased
+    6. Cleanup
+    """
+    policy_name = "invalid-update-test"
+    valid_yaml = load_policy_yaml("valid_policy_simple.yaml", policy_name)
+    invalid_yaml = load_policy_yaml("invalid_policy_missing_cidr.yaml", policy_name)
+
+    try:
+        with allure.step("Apply valid policy via kubectl"):
+            cmd.kubectl_apply(valid_yaml)
+            wait_for_timeout(5)
+
+        with allure.step("Record baseline update error count"):
+            metrics_before = cmd.agw_metrics_show_json()
+
+        with allure.step("Update policy to have missing CIDR"):
+            cmd.kubectl_apply(invalid_yaml)
+            wait_for_timeout(5)
+
+        with allure.step("Verify update error counter increased"):
+            metrics_after = cmd.agw_metrics_show_json()
+            verify_metrics_error_counter_increased(
+                metrics_before, metrics_after, "policy_dpu_update_errors"
+            )
+    finally:
+        with allure.step("Cleanup: delete CRD"):
+            cmd.kubectl_delete(valid_yaml)
+            wait_for_timeout(2)
 

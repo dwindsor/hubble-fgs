@@ -1,0 +1,19 @@
+# Simple valid SmartSwitchNetworkPolicy for error injection tests.
+# Used as a baseline valid policy that can be applied via kubectl.
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: "{name}"
+  namespace: hypershield
+spec:
+  rules:
+    - action: allow
+      source:
+        ipBlock:
+          - cidr: "10.1.0.0/16"
+      destination:
+        ipBlock:
+          - cidr: "10.2.0.0/16"
+        protoPorts:
+          - protocol: TCP
+            port: 80

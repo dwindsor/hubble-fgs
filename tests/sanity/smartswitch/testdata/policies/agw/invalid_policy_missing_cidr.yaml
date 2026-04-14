@@ -1,0 +1,21 @@
+# SmartSwitchNetworkPolicy with a missing CIDR in ipBlock.
+# The CRD allows an ipBlock item without a cidr field (no 'required' constraint),
+# but the Go code calls cidrIPFamily("") which fails netip.ParsePrefix(""),
+# triggering RecordDPUInsertError/RecordDPUUpdateError in the K8s watcher.
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: "{name}"
+  namespace: hypershield
+spec:
+  rules:
+    - action: allow
+      source:
+        ipBlock:
+          - description: "missing-cidr-source"
+      destination:
+        ipBlock:
+          - cidr: "10.2.0.0/16"
+        protoPorts:
+          - protocol: TCP
+            port: 80
