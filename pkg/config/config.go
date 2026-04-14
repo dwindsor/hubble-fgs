@@ -85,6 +85,16 @@ func compareConfigObjects(a, b *v1alpha.ConfigObject) bool {
 		return cmp.Equal(a.GetConfigHa(), b.GetConfigHa(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_NETWORK:
 		return cmp.Equal(a.GetNetworkConfig(), b.GetNetworkConfig(), protocmp.Transform())
+	case v1alpha.ConfigType_CONFIG_TYPE_TIMESCAPE:
+		aTimescape := a.GetConfigTimescape()
+		bTimescape := b.GetConfigTimescape()
+		if aTimescape == nil && bTimescape == nil {
+			return true
+		}
+		if aTimescape == nil || bTimescape == nil {
+			return false
+		}
+		return cmp.Equal(aTimescape, bTimescape, protocmp.Transform())
 	default:
 		return false
 	}

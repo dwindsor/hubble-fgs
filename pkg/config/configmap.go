@@ -33,6 +33,9 @@ type IConnectionMonitor interface {
 	CreateEventHandlers(ctx context.Context) cache.ResourceEventHandlerFuncs
 }
 
+// configMapCache stores all processed ConfigMaps to maintain complete state
+var configMapCache = make(map[string]*v1.ConfigMap)
+
 func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, configmapNames []string, connMonitor IConnectionMonitor) error {
 	// This watches all ConfigMaps, not just the specific smartswitch
 	// TODO: Narrow down this watcher to only get updates on smartswitch configmap
@@ -111,13 +114,17 @@ func addConfigMap(obj any, name string) {
 
 	logger.GetLogger().Info("ConfigMap added", "name", cm.Name, "namespace", cm.Namespace)
 
-	// Parse configmap values and add them to config store
-	configObjMap := ParseConfigMap(cm)
-	for _, obj := range configObjMap {
-		err := library.GetRepository().AddConfig(obj)
-		if err != nil {
-			logger.GetLogger().Error("Failed to parse configmap into config object", "type", obj.Type, "json", obj.Config)
-		}
+	// Update the cache with the new ConfigMap
+	configMapCache[cm.Name] = cm
+
+	// Parse ALL ConfigMaps to get complete config state for proper reconciliation
+	configObjMap := ParseAllConfigMaps()
+	configsToAdd, configsToRemove := DiffConfigSetsBySource(library.GetRepository().GetConfigObjects(), configObjMap, v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP)
+	for _, obj := range configsToRemove {
+		library.GetRepository().DeleteConfig(obj.Type)
+	}
+	for _, obj := range configsToAdd {
+		library.GetRepository().AddConfig(obj)
 	}
 }
 
@@ -138,8 +145,11 @@ func updateConfigMap(oldObj any, newObj any, name string) {
 
 	logger.GetLogger().Info("ConfigMap updated", "name", newCm.Name, "namespace", newCm.Namespace)
 
-	// Parse configmap values and reconcile them with the current config library
-	configObjMap := ParseConfigMap(newCm)
+	// Update the cache with the new ConfigMap
+	configMapCache[newCm.Name] = newCm
+
+	// Parse ALL ConfigMaps to get complete config state, not just the changed one
+	configObjMap := ParseAllConfigMaps()
 	configsToAdd, configsToRemove := DiffConfigSetsBySource(library.GetRepository().GetConfigObjects(), configObjMap, v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP)
 	for _, obj := range configsToRemove {
 		library.GetRepository().DeleteConfig(obj.Type)
@@ -160,10 +170,17 @@ func deleteConfigMap(obj any, name string) {
 
 	logger.GetLogger().Info("ConfigMap deleted", "name", cm.Name, "namespace", cm.Namespace)
 
-	// Parse configmap values and remove them from config store
-	configObjMap := ParseConfigMap(cm)
-	for _, obj := range configObjMap {
+	// Remove from cache
+	delete(configMapCache, cm.Name)
+
+	// Parse ALL remaining ConfigMaps to get updated config state
+	configObjMap := ParseAllConfigMaps()
+	configsToAdd, configsToRemove := DiffConfigSetsBySource(library.GetRepository().GetConfigObjects(), configObjMap, v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP)
+	for _, obj := range configsToRemove {
 		library.GetRepository().DeleteConfig(obj.Type)
+	}
+	for _, obj := range configsToAdd {
+		library.GetRepository().AddConfig(obj)
 	}
 }
 
@@ -172,6 +189,7 @@ func ParseConfigMap(cm *v1.ConfigMap) map[v1alpha.ConfigType]*v1alpha.ConfigObje
 
 	// Iterate through all key-value pairs in the ConfigMap
 	for cType, jsonData := range cm.Data {
+		logger.GetLogger().Debug("Processing ConfigMap key", "key", cType, "configMapName", cm.Name)
 		configObj := &v1alpha.ConfigObject{Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP}
 		switch cType {
 		case "log_syslog":
@@ -227,6 +245,21 @@ func ParseConfigMap(cm *v1.ConfigMap) map[v1alpha.ConfigType]*v1alpha.ConfigObje
 		// Add the config object to the map
 		configObjMap[configObj.Type] = configObj
 		logger.GetLogger().Debug("Parsed config object", "type", configObj.Type, "config", configObj)
+	}
+
+	return configObjMap
+}
+
+// ParseAllConfigMaps retrieves complete configuration state from cached ConfigMaps
+func ParseAllConfigMaps() map[v1alpha.ConfigType]*v1alpha.ConfigObject {
+	configObjMap := make(map[v1alpha.ConfigType]*v1alpha.ConfigObject)
+
+	// Parse all cached ConfigMaps and merge results
+	for _, cm := range configMapCache {
+		cmConfigs := ParseConfigMap(cm)
+		for configType, configObj := range cmConfigs {
+			configObjMap[configType] = configObj
+		}
 	}
 
 	return configObjMap
