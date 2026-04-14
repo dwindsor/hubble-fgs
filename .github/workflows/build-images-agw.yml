@@ -296,6 +296,7 @@ jobs:
       version: ${{ needs.init.outputs.version }}
       date: ${{ needs.init.outputs.date }}
       sha: ${{ needs.init.outputs.sha }}
+      run_amex_tests: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-amex-sanity') }}
       upload_to_artifactory: ${{ github.ref == 'refs/heads/master' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
     secrets:
       HYPERSHIELD_GH_APP_PEM: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}

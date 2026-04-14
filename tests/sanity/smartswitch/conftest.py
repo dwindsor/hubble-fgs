@@ -9,6 +9,7 @@
 #  permission is obtained from Isovalent Inc.
 
 import os
+import time
 import signal
 import pytest
 import logging
@@ -60,6 +61,8 @@ def clean_policies_and_flows(request, cmd):
 
     Clears policies from AGW and SIM containers before each test to ensure
     a clean state. Flow clearing is skipped as it can hang in CI environments.
+    For AMEX tests, includes a longer wait after clearing to allow the DPU
+    to fully process the clear of large policy sets.
     Skipped for HA-marked tests which use separate fixtures.
     """
     if request.node.get_closest_marker("ha"):
@@ -67,10 +70,12 @@ def clean_policies_and_flows(request, cmd):
         return
 
     logger.info("Cleaning up policies and flows before test")
+    
+    is_amex = request.node.get_closest_marker("amex") is not None
 
     try:
         cmd.agw_clear_policies()
-        logger.info("AGW policies cleared")
+        logger.info("✅ AGW policies cleared")
     except Exception as e:
         logger.warning(f"Failed to clear AGW policies: {e}")
 
@@ -82,8 +87,13 @@ def clean_policies_and_flows(request, cmd):
         logger.warning(f"Failed to clear SIM policies: {e}")
 
     # Note: dpctl clear flow is intentionally skipped as it can hang in CI
-    logger.info("Skipping SIM flow clearing (dpctl clear flow can hang)")
-
+    logger.info("⏭️  Skipping SIM flow clearing (dpctl clear flow can hang)")
+    
+    # AMEX policies are large and need extra time for DPU to process the clear
+    if is_amex:
+        time.sleep(10)
+        logger.info("Waited 10s for DPU to process policy clear (amex test)")
+    
     yield
 
     logger.info("Test completed")

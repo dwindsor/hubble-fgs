@@ -9,7 +9,7 @@
 #  permission is obtained from Isovalent Inc.
 
 .PHONY: help \
-        install-test-dependencies run-all-tests run-nxos-tests run-ha-tests \
+        install-test-dependencies run-all-tests run-nxos-tests run-ha-tests run-amex-tests \
         run-tests-with-allure show-allure-report run-specific-test \
         clean-test-artifacts \
         build-agw-image pull-sim-image build-fwa-image \
@@ -135,6 +135,7 @@ help:
 	@echo "  run-all-tests           - All sanity tests"
 	@echo "  run-nxos-tests          - NX-OS mock store/trigger tests (single AGW)"
 	@echo "  run-ha-tests            - HA dual-AGW tests"
+	@echo "  run-amex-tests          - AMEX consolidated policy tests"
 	@echo "  run-specific-test       - Run specific test (TEST=test_file::test_name)"
 	@echo "  run-tests-with-allure   - Run all tests and generate Allure report"
 	@echo "  show-allure-report      - Open Allure report in browser"
@@ -1137,6 +1138,9 @@ run-specific-test:
 	else \
 		$(PYTEST) -v $(TEST); \
 	fi
+
+run-amex-tests:
+	$(PYTEST) -v -m amex --alluredir=allure-results --ignore=nxos/
 
 
 # ============================================================================

@@ -10,9 +10,15 @@
 
 import json
 import logging
-from typing import Optional
+from typing import List, Optional
 
-from .utils import wait_for_timeout
+from scapy.sendrecv import AsyncSniffer
+
+from .utils import wait_for_timeout, get_last_packet_from_sniffer
+from .packet_utils import send_packet_and_sniff, get_sniffer_iface, create_sniffers
+from .packet_verification import verify_packet_processed
+from .packet_builder import build_packet
+from .policy_models import vrf_name_to_id
 
 from .policy_models import (
     parse_agw_policies,
@@ -180,6 +186,76 @@ def verify_policy_add_error(result: str, expected_error_substring: str) -> bool:
     return True
 
 
+def send_and_verify_packets(
+    packets: list,
+    sniffers: List[AsyncSniffer],
+    send_iface: str,
+    max_retries: int = 2,
+    failure_tolerance: float = 0.0,
+    process_vrf: bool = False,
+) -> None:
+    """Send each generated packet and verify it was processed correctly."""
+    ifaces = [get_sniffer_iface(s) for s in sniffers]
+
+    passed = 0
+    failed = 0
+
+    for pkt_info in packets:
+        is_transmitted = pkt_info.action == "allow"
+        description = pkt_info.summary()
+
+        success = False
+        for attempt in range(1 + max_retries):
+            fresh_sniffers = create_sniffers(ifaces)
+
+            if attempt > 0:
+                logger.info(f"RETRY {attempt}/{max_retries}: {description}")
+
+            send_packet_and_sniff(pkt_info.packet, fresh_sniffers, send_iface, description)
+            if process_vrf:
+                dst_vrf_id = vrf_name_to_id(pkt_info.dst_vrf)
+                if dst_vrf_id and dst_vrf_id > 1:
+                    egress_pkt = get_last_packet_from_sniffer(fresh_sniffers)
+                    if not egress_pkt:
+                        logger.warning(
+                            f"No first-pass packet captured for VRF processing: {description}"
+                        )
+                        continue
+                    pkt_second_pass = build_packet()._update_dst_vrf(
+                        pkt_info.packet.copy(),
+                        egress_pkt,
+                        dst_vrf_id,
+                    )
+                    send_packet_and_sniff(
+                        pkt_second_pass,
+                        fresh_sniffers,
+                        send_iface,
+                        f"{description} second-pass dst-vrf={pkt_info.dst_vrf}",
+                    )
+
+            result = verify_packet_processed(fresh_sniffers, pkt_info.packet, is_transmitted)
+            if result:
+                success = True
+                break
+
+        if success:
+            passed += 1
+            logger.info(f"PASS: {description}")
+        else:
+            failed += 1
+            logger.error(f"FAIL (after {max_retries} retries): {description}")
+
+    total = len(packets)
+    max_allowed_failures = int(total * failure_tolerance)
+    logger.info(
+        f"Packet verification results: {passed} passed, {failed} failed "
+        f"out of {total} (tolerance: {failure_tolerance:.0%}, "
+        f"max allowed failures: {max_allowed_failures})"
+    )
+    assert failed <= max_allowed_failures, (
+        f"{failed} out of {total} packets failed verification "
+        f"(exceeds {failure_tolerance:.0%} tolerance of {max_allowed_failures} allowed failures)"
+    )
 # Metrics JSON field names matching CurrentMetrics in switchmetrics/metrics.go
 METRICS_FIELDS = [
     "total_physical_memory_kb_usage",

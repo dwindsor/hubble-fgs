@@ -15,6 +15,11 @@ on:
         description: 'Git SHA from caller workflow'
         required: false
         type: string
+      run_amex_tests:
+        description: 'Whether to run AMEX sanity tests (triggered by run-amex-sanity label)'
+        required: false
+        type: boolean
+        default: false
       upload_to_artifactory:
         description: 'Whether to upload the agw-test image to Artifactory'
         required: false
@@ -281,6 +286,12 @@ jobs:
         run: |
           cd tests/sanity/smartswitch
           sudo make run-tests-with-allure
+
+      - name: Run AMEX sanity tests
+        if: ${{ inputs.run_amex_tests }}
+        run: |
+          cd tests/sanity/smartswitch
+          sudo make run-amex-tests
       
       - name: Debug K8s infrastructure on failure
         if: failure()

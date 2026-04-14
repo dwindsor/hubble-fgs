@@ -753,6 +753,32 @@ def get_multi_cidr_policy_params():
     return ("multi-cidr-policy", rules, expected_rules)
 
 
+def get_amex_consolidated_policy_params():
+    """Return parameters for AMEX consolidated policy files.
+
+    Returns:
+        list of tuples: (filename, policy_name, expected_rules)
+    """
+    return [
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-001.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-001", 179551),  # 100 rules
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-002.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-002", 63159),  # 100 rules
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-003.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-003", 43732),  # 100 rules
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-004.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-004", 18063),  # 100 rules
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-005.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-005", 123034),  # 100 rules
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-006.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-006", 81680),  # 100 rules
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-007.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-007", 60509),  # 100 rules
+        ("cisco-egress_gso-dc1mid2pafw-tims2-vrf-database_consolidated_rules-008.yaml",
+         "egress-gso-dc1mid2pafw-tims2-vrf-database-consolidated-rules-008", 92051),  # 20 rules
+    ]
+
+
 def get_dual_policy_multi_cidr_params():
     """Return parameters for dual policies with multi-CIDR rules.
 
