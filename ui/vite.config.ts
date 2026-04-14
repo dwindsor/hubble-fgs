@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import * as path from "node:path";
 import react from "@vitejs/plugin-react";
 import postcssNesting from "postcss-nesting";
@@ -8,9 +9,34 @@ import { libInjectCss } from "vite-plugin-lib-inject-css";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
 const root = __dirname;
+const repoRoot = path.resolve(root, "..");
 const src = path.resolve(root, "src");
-const ipa = path.resolve(root, "..", "vendor", "github.com", "isovalent", "ipa");
+const ipa = path.resolve(repoRoot, "vendor", "github.com", "isovalent", "ipa");
 const appType = process.env.APP_TYPE ?? "app";
+
+// vite-plugin-dts uses @microsoft/api-extractor for rollupTypes, which requires
+// a package.json reachable from rootDir. With rootDir: ".." (needed for vendor
+// files outside ui/), it looks at the repo root. This plugin creates a temporary
+// package.json there during the build so we don't have to commit one.
+function tempRootPackageJson(): import("vite").Plugin {
+  const pkgPath = path.resolve(repoRoot, "package.json");
+  let created = false;
+  return {
+    name: "temp-root-package-json",
+    buildStart() {
+      if (!fs.existsSync(pkgPath)) {
+        fs.writeFileSync(pkgPath, '{"name":"hubble-fgs","private":true}\n');
+        created = true;
+      }
+    },
+    closeBundle() {
+      if (created) {
+        fs.unlinkSync(pkgPath);
+        created = false;
+      }
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
@@ -38,6 +64,14 @@ export default defineConfig(() => {
         },
         external:
           appType === "app" ? [] : ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+        output: {
+          globals: {
+            react: "React",
+            "react-dom": "ReactDOM",
+            "react-dom/client": "ReactDOM",
+            "react/jsx-runtime": "jsxRuntime",
+          },
+        },
       },
     },
     resolve: {
@@ -62,7 +96,8 @@ export default defineConfig(() => {
     },
     plugins: [
       react(),
-      libInjectCss(),
+      appType === "lib" && libInjectCss(),
+      appType === "lib" && tempRootPackageJson(),
       appType === "lib" &&
         dts({
           root: root,

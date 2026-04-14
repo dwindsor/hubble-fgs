@@ -1,5 +1,5 @@
 // biome-ignore lint/style/useNodejsImportProtocol: events it's the actual npm package
-import Emitter from "events";
+import { EventEmitter } from "events";
 import type TypedEmitter from "typed-emitter";
 import type { ApplicationProcessGroup } from "~/proto";
 import type { Endpoint, EndpointModeKind } from "~/utils/endpoints";
@@ -40,7 +40,7 @@ export class AppEmitter {
   public readonly emitter: TypedEmitter<EmitterHandlers>;
 
   constructor() {
-    this.emitter = new Emitter().setMaxListeners(16384) as TypedEmitter<EmitterHandlers>;
+    this.emitter = new EventEmitter().setMaxListeners(16384) as TypedEmitter<EmitterHandlers>;
   }
 
   createSubscriber = <K extends EmitterEventKind, H extends EmitterHandlers[K]>(kind: K) => {

@@ -1,8 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "."
+    "rootDir": ".."
   },
   "files": [],
-  "include": ["./src/**/*", "../vendor/github.com/isovalent/ipa/**/*"]
+  "include": [
+    "./src/**/*",
+    "../vendor/github.com/isovalent/ipa/application_model/**/*",
+    "../vendor/github.com/isovalent/ipa/common/k8s/**/*"
+  ]
 }

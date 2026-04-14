@@ -12,7 +12,7 @@ declare global {
 }
 
 const promise = new Promise<ApplicationModelEvent>((resolve, reject) => {
-  if (process.env.NODE_ENV === "development") {
+  if (import.meta.env.DEV) {
     import("./model.json")
       .then((m) => resolve(m as unknown as ApplicationModelEvent))
       .catch(reject);
