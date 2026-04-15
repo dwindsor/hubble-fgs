@@ -4,8 +4,6 @@ INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 DOCKER_IMAGE_TAG ?= latest
 TETRAGON_IMAGE_NAME ?= isovalent/tetragon
-AGW_IMAGE_NAME ?= isovalent/agw
-FWA_IMAGE_NAME ?= isovalent/fwa
 TETRAGON_SLIM_IMAGE_NAME ?= isovalent/tetragon-slim
 AGGREGATOR_IMAGE_NAME ?= isovalent/tetragon-aggregator
 OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
@@ -132,26 +130,6 @@ clean: tarball-clean
 	rm -fr ./release
 
 ##@ Build and install
-
-.PHONY: agw
-agw: ## Compile smartswitch agent
-	GOOS=linux $(GO_BUILD) -tags nxos,fwa ./cmd/agw
-
-.PHONY: agwctl
-agwctl: ## Compile smartswitch agent CLI
-	GOOS=linux $(GO_BUILD) ./cmd/agwctl
-
-.PHONY: fwa
-fwa:    # Cross compile FWA agent for arm64 (aarch64) architecture in DPU and Simulator VM
-	GOOS=linux $(GO_BUILD) ./cmd/fwa
-
-.PHONY: fwactl
-fwactl: ## Compile FWA agent CLI
-	GOOS=linux $(GO_BUILD) ./cmd/fwactl
-
-.PHONY: package-fwa
-package-fwa: ## Build FWA agent docker image for elba
-	$(MAKE) -C install/fwa docker-dist-elba
 
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
@@ -285,30 +263,6 @@ image-clang:
 	$(CONTAINER_ENGINE) build -f Dockerfile.clang -t "cilium/clang:${DOCKER_IMAGE_TAG}" .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push cilium/clang:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: image-agw
-image-agw:
-	$(CONTAINER_ENGINE) build -f Dockerfile.agw -t "${AGW_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=base-build .
-	@echo "Push like this when ready:"
-	@echo "${CONTAINER_ENGINE} push ${AGW_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: image-agw-test
-image-agw-test:
-	$(CONTAINER_ENGINE) build -f Dockerfile.agw -t "${AGW_IMAGE_NAME}-test:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=agw-test .
-	@echo "Push like this when ready:"
-	@echo "${CONTAINER_ENGINE} push ${AGW_IMAGE_NAME}-test:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: image-fwa
-image-fwa:
-	$(CONTAINER_ENGINE) build -f Dockerfile.fwa -t "${FWA_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=base-build .
-	@echo "Push like this when ready:"
-	@echo "${CONTAINER_ENGINE} push ${FWA_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
-
-.PHONY: image-fwa-test
-image-fwa-test:
-	$(CONTAINER_ENGINE) build -f Dockerfile.fwa -t "${FWA_IMAGE_NAME}-test:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=fwa-test .
-	@echo "Push like this when ready:"
-	@echo "${CONTAINER_ENGINE} push ${FWA_IMAGE_NAME}-test:$(DOCKER_IMAGE_TAG)"
 
 ##@ Packages
 
@@ -788,12 +742,6 @@ hs-version: ## Compute version/date/sha for build-images workflows; writes to $G
 			echo "date=$$DATE"; \
 			echo "sha=$$SHA"; \
 		fi'
-
-.PHONY: agw-version
-agw-version: hs-version ## Alias of hs-version for AGW build-images workflow.
-
-.PHONY: fwa-version
-fwa-version: hs-version ## Alias of hs-version for FWA build-images workflow.
 
 .PHONY: validate-release-metadata
 validate-release-metadata: ## Validate REL_VERSION, REL_DATE, REL_SHA inputs used by build-images workflows.

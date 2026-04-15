@@ -1,5 +1,0 @@
-#!/bin/bash
-
-set -e
-
-@DAF_PKG_ROOT@/bin/cleanup_@DAF_COMP_ID@.sh

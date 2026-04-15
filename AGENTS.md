@@ -35,7 +35,6 @@ sudo ./tetragon --bpf-lib bpf/objs  # Run locally
 | `api/` | Enterprise API extensions |
 | `cmd/tetragon/` | Main Tetragon agent entry point |
 | `cmd/tetra/` | Tetragon CLI |
-| `cmd/agw/`, `cmd/fwa/` | SmartSwitch AGW/FWA agents |
 | `operator/` | Kubernetes operator |
 | `vendor/` | Vendored dependencies (DO NOT EDIT) |
 
@@ -242,33 +241,6 @@ tetragon:
   enableApplicationModel: true          # Enable model server
   applicationModelExportInterval: 10s   # Export frequency
   telemetryExportFilename: "telemetry.log"
-```
-
-## SmartSwitch Components (AGW/FWA)
-
-```
-┌─────────────────┐     ┌─────────────────┐
-│   Kubernetes    │     │  Cisco Switch   │
-│  (SmartSwitch   │────▶│     (AGW)       │
-│   NetworkPolicy)│     └────────┬────────┘
-└─────────────────┘              │ gRPC
-                    ┌────────────┴────────────┐
-                    ▼                         ▼
-              ┌──────────┐              ┌──────────┐
-              │   DPU    │              │   DPU    │
-              │  (FWA)   │              │  (FWA)   │
-              └──────────┘              └──────────┘
-```
-
-**Build commands:**
-```bash
-GOOS=linux GOARCH=amd64 make agw              # Build AGW (switch agent)
-GOOS=linux GOARCH=arm64 make fwa              # Build FWA (DPU agent, cross-compiled for arm64)
-GOOS=linux GOARCH=amd64 make agwctl           # Build AGW CLI
-make image-agw        # Build AGW container image
-make image-agw-test   # Build AGW container test image
-make image-fwa        # Build FWA container image
-make image-fwa-test   # Build FWA container test image
 ```
 
 ## Kind Cluster Testing
