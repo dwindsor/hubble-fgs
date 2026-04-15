@@ -569,11 +569,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		}
 	}
 
-	if enterpriseOption.Config.ApplicationModelExportInterval != 0 {
-		if err = startApplicationModelExporter(ctx, modelServer); err != nil {
-			return fmt.Errorf("failed to start json application model exporter: %w", err)
-		}
-	}
 	if enterpriseOption.Config.EnableAlerts {
 		if err = alerter.Start(pm.Server); err != nil {
 			return fmt.Errorf("failed to start alerting: %w", err)
@@ -601,6 +596,15 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	}
 	if err = startLayer3Progs(ctx); err != nil {
 		return err
+	}
+
+	// Start the application model exporter after layer3 progs so that all BPF
+	// maps (including tg_cgid_wlid, pinned by the layer3 sensor) are available
+	// when the exporter first calls GetProcessModel.
+	if enterpriseOption.Config.ApplicationModelExportInterval != 0 {
+		if err = startApplicationModelExporter(ctx, modelServer); err != nil {
+			return fmt.Errorf("failed to start json application model exporter: %w", err)
+		}
 	}
 
 	// We need to the execve map to be pre-populated via procevents, so make

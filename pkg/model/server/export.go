@@ -208,10 +208,13 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	if err != nil {
 		if errors.Is(err, ErrApplicationModelNotEnabled) {
 			logger.GetLogger().Info("Application Model not enabled", logfields.Error, err)
-		} else {
-			logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
+			return
 		}
-		return
+		// Transient error (e.g. BPF maps not yet pinned): log and start with an
+		// empty baseline so the ticker loop can produce a full diff on its first
+		// successful tick.
+		logger.GetLogger().Warn("Failed to get initial process model, starting with empty baseline", logfields.Error, err)
+		res = nil
 	}
 	emptyFilter := make(map[string]bool)
 	lastModel, _ := model.ProcessModelToApplicationModelWithProcessData(res, emptyFilter)
