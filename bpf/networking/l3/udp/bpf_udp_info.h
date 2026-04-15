@@ -16,7 +16,7 @@
 #include "bpf_ktime.h"
 #include "bpf_cookie.h"
 #include "bpf_event_map.h"
-#include "process/process_endpoint.h"
+#include "process/endpoint_key.h"
 
 /* UDP Info maintains the statistics associated with a UDP "session".
  * Here we have the map and helper routines to setup keys and values.
@@ -121,6 +121,7 @@ struct udp_info_value {
 	struct destination_endpoint_key dst_key;
 }; // All fields aligned so no 'packed' attribute.
 
+#ifdef PROCESS_TREE
 struct udpsocketmap_value {
 	struct msg_execve_key key;
 	struct destination_endpoint_key dst_key;
@@ -132,6 +133,7 @@ struct {
 	__type(value, struct udpsocketmap_value);
 	__uint(max_entries, 1);
 } tg_h_udp_sockval SEC(".maps");
+#endif
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);

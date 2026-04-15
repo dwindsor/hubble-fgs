@@ -755,6 +755,7 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	return __process_socketmap_add(&v->key, &v->dst_key, tuple, cgid);
 }
 
+#ifdef PROCESS_TREE
 __attribute__((noinline)) int process_socketmap_add_udp(struct udpsocketmap_value *udp, struct msg_ip_tuple *tuple)
 {
 	__u64 cgid;
@@ -769,6 +770,7 @@ __attribute__((noinline)) int process_socketmap_add_udp(struct udpsocketmap_valu
 		return 0;
 	return __process_socketmap_add(&udp->key, &udp->dst_key, tuple, cgid);
 }
+#endif
 
 int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {

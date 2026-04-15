@@ -12,6 +12,7 @@
 #define __PROCESS_ENDPOINTS_H__
 
 #include "lib/process.h"
+#include "endpoint_key.h"
 
 struct endpoint_id_key {
 	uint64_t addr[2];
@@ -57,12 +58,6 @@ struct {
 	__type(key, uint32_t);
 	__type(value, struct process_tree_binary_uid_key);
 } tg_h_ps_buidkey SEC(".maps");
-
-struct tree_id {
-	uint32_t uid;
-	/* cpu stores full 32-bit value; highest bit (TREE_ID_IGNORE_ARGS_BIT) used as ignore_args flag */
-	uint32_t cpu;
-};
 
 #define TREE_ID_IGNORE_ARGS_BIT (1U << 31)
 #define TREE_ID_CPU_MASK	(0x7FFFFFFFU)
@@ -165,21 +160,6 @@ struct {
 #define TNP_POLICY_CACHED   0x08
 
 #define TNP_POLICY_REFRESH 0xC
-
-/* Somewhat counter-intuitively destinations are scoped by local
- * id and/or local ns_id. This ensures that if two processes in
- * the same network namespace sending to a destination will have
- * separate stats. Similarly if the same process in different
- * pods will have multiple stat records.
- */
-struct destination_endpoint_key {
-	struct tree_id local_id;
-	uint64_t local_nsid;
-	uint64_t destination_id; // unwrapped endpoint_id_value
-	uint64_t source;
-	uint64_t port;
-	uint64_t protocol;
-};
 
 // Flags for destination_endpoint_value
 #define DEST_FLAG_POLICY_TEMPLATE_ONLY 0x1 // Entry created by policy, no traffic observed yet
