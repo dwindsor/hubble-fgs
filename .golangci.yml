@@ -38,18 +38,6 @@ linters:
         linters:
           - staticcheck
         text: "QF1012"
-      - path: "pkg/agw/format.go"
-        linters:
-          - staticcheck
-        text: "QF1012"
-      - path: "pkg/commands/agwctl/metrics/show.go"
-        linters:
-          - staticcheck
-        text: "QF1012"
-      - path: "pkg/agw/agw.go"
-        linters:
-          - staticcheck
-        text: "QF1012"
       - path: "tests/compliance/testparser/testparser.go"
         linters:
           - staticcheck
