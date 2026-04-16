@@ -42,7 +42,8 @@ func newTpBuilder(
 	return &tpBuilder{
 		name: name,
 		tpSpec: v1alpha1.TracingPolicySpec{
-			PodSelector: podSelector,
+			PodSelector:       podSelector,
+			ContainerSelector: &slimv1.LabelSelector{},
 		},
 	}
 }

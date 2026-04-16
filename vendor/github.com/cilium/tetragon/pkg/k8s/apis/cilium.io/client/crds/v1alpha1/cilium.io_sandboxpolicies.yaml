@@ -43,7 +43,9 @@ spec:
             description: sandbox policy specification
             properties:
               podSelector:
+                default: {}
                 description: PodSelector selects pods that this policy applies to
+                nullable: true
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
