@@ -60,11 +60,11 @@
 #elif defined(__LARGE_BPF_PROG)
 #define MAX_FIM_SELECTORS 6
 #else
-#define MAX_FIM_SELECTORS 4
+#define MAX_FIM_SELECTORS 3
 #endif
 
 // should match PatternMapSize in client_file.go
-#define MAX_FILE_PATTERNS 32
+#define MAX_FILE_PATTERNS 24
 
 #define MINORBITS 20
 #define MINORMASK ((1U << MINORBITS) - 1)
@@ -1290,13 +1290,9 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 #endif
 #ifdef __LARGE_BPF_PROG
 	if (HAS_MATCH_BINARY_PROPERTIES) {
-#endif
 		if (!check_match_binary_properties(sel_idx, args.action, args.secureexec, args.uid, args.gid))
 			return 0;
-#ifdef __LARGE_BPF_PROG
 	}
-#endif
-#ifdef __LARGE_BPF_PROG
 #ifdef __FILE_DIGEST_LSM
 	if (HAS_MATCH_DIGESTS) {
 		if (!check_match_digests(sel_idx, digest, args.action))

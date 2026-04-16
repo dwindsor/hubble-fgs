@@ -13,7 +13,7 @@ package fileapi
 import "github.com/cilium/tetragon/pkg/api/processapi"
 
 // should match MAX_FILE_PATTERNS in bpf_file.h
-const PatternMapSize = 32
+const PatternMapSize = 24
 
 type PatternValue struct {
 	Prefix    [256]byte `align:"prefix"`
