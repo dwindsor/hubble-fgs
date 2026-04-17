@@ -218,6 +218,13 @@ app.kubernetes.io/component: aggregator
 - apiGroups:
     - cilium.io
   resources:
+    - podinfo
+  verbs:
+    - update
+    - patch
+- apiGroups:
+    - cilium.io
+  resources:
     - sandboxpolicies
     - sandboxpoliciesnamespaced
     - alertrules
