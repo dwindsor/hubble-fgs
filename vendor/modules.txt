@@ -79,7 +79,7 @@ github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/bindfilter
 github.com/Microsoft/go-winio/pkg/guid
 github.com/Microsoft/go-winio/vhd
-# github.com/Microsoft/hcsshim v0.14.0-rc.1
+# github.com/Microsoft/hcsshim v0.14.1
 ## explicit; go 1.23.0
 github.com/Microsoft/hcsshim
 github.com/Microsoft/hcsshim/computestorage
@@ -140,9 +140,10 @@ github.com/aws/aws-sdk-go-v2/internal/timeconv
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream/eventstreamapi
-# github.com/aws/aws-sdk-go-v2/config v1.32.14
+# github.com/aws/aws-sdk-go-v2/config v1.32.15
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/config
+github.com/aws/aws-sdk-go-v2/config/internal/ini
 # github.com/aws/aws-sdk-go-v2/credentials v1.19.14
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/credentials
@@ -163,9 +164,6 @@ github.com/aws/aws-sdk-go-v2/internal/configsources
 # github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.21
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
-# github.com/aws/aws-sdk-go-v2/internal/ini v1.8.6
-## explicit; go 1.24
-github.com/aws/aws-sdk-go-v2/internal/ini
 # github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.22
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/internal/v4a
@@ -255,7 +253,7 @@ github.com/breml/jsondiffprinter/internal/jsonpointer
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cilium/cilium v1.19.2
+# github.com/cilium/cilium v1.19.3
 ## explicit; go 1.25.0
 github.com/cilium/cilium/api/v1/client
 github.com/cilium/cilium/api/v1/client/bgp
@@ -678,7 +676,7 @@ github.com/containerd/containerd/api/types
 github.com/containerd/containerd/api/types/runc/options
 github.com/containerd/containerd/api/types/task
 github.com/containerd/containerd/api/types/transfer
-# github.com/containerd/containerd/v2 v2.2.2
+# github.com/containerd/containerd/v2 v2.2.3
 ## explicit; go 1.24.3
 github.com/containerd/containerd/v2/client
 github.com/containerd/containerd/v2/core/containers
@@ -1174,8 +1172,8 @@ github.com/json-iterator/go
 # github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 ## explicit
 github.com/kballard/go-shellquote
-# github.com/klauspost/compress v1.18.3
-## explicit; go 1.23
+# github.com/klauspost/compress v1.18.5
+## explicit; go 1.24
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
