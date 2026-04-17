@@ -142,7 +142,7 @@ jobs:
           gh pr create -B ${{ steps.tag.outputs.branch }} --title "chore: Update CSV images to ${{ steps.tag.outputs.tag }}" --body 'Created by GitHub action: Image CI Releases.'
 
       - name: Bundle build 
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         id: bundle_build
         with:
           context: ./install/olm

@@ -136,7 +136,7 @@ jobs:
       # - self_contained (tetragon): build with default Alpine base (no BASE_IMAGE override)
       # - thin wrapper (aggregator/operator): build with BASE_IMAGE=UBI
       - name: Build and Push stage image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         id: build-and-push-stage
         with:
           context: .
@@ -161,7 +161,7 @@ jobs:
       # - self_contained (tetragon): copies binaries from source into UBI base
       # - thin wrapper (aggregator/operator): layers labels and LICENSE on top
       - name: Build and Push UBI image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         id: build-and-push
         with:
           context: .
