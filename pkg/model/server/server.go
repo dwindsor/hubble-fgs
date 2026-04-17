@@ -356,6 +356,96 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	return resp, nil
 }
 
+// Remove the provided Process Tree Key from anything used by the Application Model, including:
+// - the process tree map
+// - the destination endpoint map
+// - the syscall map
+func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, endpt *ebpf.Map, sm *ebpf.Map) {
+
+	// Shouldn't really ever happen, but give up if any of the maps/key are nil
+	if key == nil || tree == nil || endpt == nil || sm == nil {
+		logger.GetLogger().Warn("nil argument provided to removeProcessTreeKeyFromModel", "key", key, "tree", tree, "endpt", endpt, "sm", sm)
+		return
+	}
+
+	logger.GetLogger().Debug("Removing ProcessTreeKey from app model state", "uid", key.Self, "wlid", key.WLID)
+
+	// Remove the process tree entry itself.
+	if err := tree.Delete(key); err != nil {
+		logger.GetLogger().Warn("Failed to delete stale process tree key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID)
+	}
+
+	// Remove per-process destination entries bound to this process tree key.
+	var (
+		dstKey types.DestinationEndpointKey
+		dstVal types.DestinationEndpointValue
+	)
+	keysToDelete := make([]types.DestinationEndpointKey, 0)
+	iter := endpt.Iterate()
+	for iter.Next(&dstKey, &dstVal) {
+		if dstKey.LocalId == key.Self && dstKey.LocalWLID == key.WLID {
+			keysToDelete = append(keysToDelete, dstKey)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		logger.GetLogger().Warn("Failed iterating destination endpoint map for stale process key cleanup", logfields.Error, err)
+	}
+	for _, k := range keysToDelete {
+		if err := endpt.Delete(&k); err != nil {
+			logger.GetLogger().Warn("Failed to delete stale destination endpoint key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID, "destinationID", k.DestinationId)
+		}
+	}
+
+	if option.Config.EnableSyscallTracking {
+		// Remove syscall tracking entry for this process tree key.
+		if err := sm.Delete(key.Self); err != nil {
+			logger.GetLogger().Warn("Failed to delete stale syscall key for process tree key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID)
+		}
+	}
+}
+
+// Remove the provided cgroup from anything used by the Application Model, including:
+// - the cgroup id to workload id map
+// - the cgtracker id cache
+// - the container id cache
+func removeCgroupFromModel(cgroupid uint64, cgTrackerIdCache *lru.Cache[uint64, uint64], containerIdCache *lru.Cache[uint64, string]) {
+	if cgroupid == 0 {
+		return
+	}
+
+	logger.GetLogger().Debug("Removing cgroup from app model state", "cgroupid", cgroupid)
+
+	if err := workloadid.GetState().DeleteCgroup(workloadid.CgroupID(cgroupid)); err != nil {
+		logger.GetLogger().Debug("Failed to delete cgroup from workload ID map", logfields.Error, err, "cgroupid", cgroupid)
+	}
+
+	// Remove cached cgroup -> tracker id entries. This cache has the cgroups
+	// used in the application model as values, so we need to iterate to find
+	// the keys for those values.
+	if ossoption.Config.EnableCgTrackerID {
+		if cgTrackerIdCache != nil {
+			for _, keycgroupid := range cgTrackerIdCache.Keys() {
+				valcgroupid, ok := cgTrackerIdCache.Get(keycgroupid)
+				if !ok {
+					logger.GetLogger().Warn("Failed to get value for cgTrackerIdCache key?", "keycgroupid", keycgroupid)
+				} else {
+					if valcgroupid == cgroupid {
+						cgTrackerIdCache.Remove(keycgroupid)
+					}
+				}
+			}
+		} else {
+			logger.GetLogger().Warn("cgTrackerIdCache is nil during cgroup cleanup", "cgroupid", cgroupid)
+		}
+	}
+
+	if containerIdCache != nil {
+		containerIdCache.Remove(cgroupid)
+	} else {
+		logger.GetLogger().Warn("containerIdCache is nil during cgroup cleanup", "cgroupid", cgroupid)
+	}
+}
+
 func getProcessModel(namespaces []string,
 	debug bool,
 	cgTrackerIdCache *lru.Cache[uint64, uint64],
@@ -758,6 +848,19 @@ func getProcessModel(namespaces []string,
 	// Pass 1: iterate the BPF map, collect per-entry state, and populate
 	// binaryByUID so that parent resolution in pass 2 never misses.
 	var procEntries []processEntry
+
+	// Keep track of "stale" process tree keys, where the ExecCount == ExitCount
+	// and KTimeLatestExec is older than now - the retention duration.
+	staleProcessTreeKeys := make(map[types.ProcessTreeKey]types.ProcessTreeValue)
+
+	// This tracks the set of process tree keys for each cgroup. When every
+	// process tree for a cgroup is present in staleProcessTreeKeys, we can also
+	// remove the cgroup.
+	cgroupCountsMap := make(map[uint64][]types.ProcessTreeKey)
+
+	retentionCutoff := start.Add(-option.Config.ApplicationModelRetentionDuration)
+	logger.GetLogger().Debug("Using threshold for stale process retention", "retentionCutoff", retentionCutoff, "duration", option.Config.ApplicationModelRetentionDuration)
+
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
@@ -766,22 +869,50 @@ func getProcessModel(namespaces []string,
 		// If EnableCgTrackerID is enabled, we need to find the cgroup tracker id for this cgroup id
 		var cgroupid uint64
 
-		if ossoption.Config.EnableCgTrackerID {
+		// Read binary path and args directly from the embedded fields in process_tree_value.
+		selfBin, selfArgs := decodeBinaryArgs(&val)
+		// Binary is embedded at insertion time, so this is not expected
+		// to be empty in practice. Guard defensively just in case.
+		if selfBin == "" {
+			logger.GetLogger().Debug("Empty binary in process tree entry", "uuid", key.Self)
+			skippedEntries++
+			continue
+		}
+
+		// Only look up cgroup tracker ids for non host (or possibly non-host) processes.
+		if ossoption.Config.EnableCgTrackerID &&
+			(key.WLID != 0 || (key.WLID == 0 && val.MaybeMissingWLID)) {
 			var ok bool
 
 			cgroupid, ok = cgTrackerIdCache.Get(val.CgroupID)
 			if !ok {
 				err = cgTrackerMap.Lookup(&val.CgroupID, &cgroupid)
 				if err != nil {
-					// This can happen for host processes that are not in any cgroup
-					logger.GetLogger().Debug("Failed to look up cgroup tracker id for process", logfields.Error, err, "cgroupid", val.CgroupID)
+					logger.GetLogger().Debug("Failed to look up cgroup tracker id for process", logfields.Error, err, "binary", selfBin, "args", selfArgs, "wlid", key.WLID, "missing", val.MaybeMissingWLID, "val.CgroupID", val.CgroupID)
 					appmodelmetrics.RecordLookupError(appmodelmetrics.LookupCgroup)
+					// Use the cgroupid from val
+					cgroupid = val.CgroupID
 				} else {
 					cgTrackerIdCache.Add(val.CgroupID, cgroupid)
 				}
 			}
 		} else {
 			cgroupid = val.CgroupID
+		}
+
+		// Track all process tree keys per cgroup and mark stale entries for GC.
+		if cgroupid != 0 {
+			cgroupCountsMap[cgroupid] = append(cgroupCountsMap[cgroupid], key)
+		}
+		if val.ExecCount > 0 && val.ExecCount == val.ExitCount && val.KtimeLatestExit > 0 {
+			if exitTime := ktimeToTime(val.KtimeLatestExit); exitTime != nil && exitTime.Before(retentionCutoff) {
+				logger.GetLogger().Debug("Marking process tree entry as stale", "binary", selfBin, "args", selfArgs, "wlid", key.WLID, "cgroupid", cgroupid, "ExecCount", val.ExecCount, "ExitCount", val.ExitCount, "exitTime", exitTime)
+				staleProcessTreeKeys[key] = val
+
+				// No need to do any of the other lookups, this process won't be
+				// added to procEntries anyway.
+				continue
+			}
 		}
 
 		if val.MaybeMissingWLID {
@@ -810,16 +941,6 @@ func getProcessModel(namespaces []string,
 			kind = model.HostKind
 		}
 		if len(namespaces) > 0 && !slices.Contains(namespaces, ns) {
-			continue
-		}
-
-		// Read binary path and args directly from the embedded fields in process_tree_value.
-		selfBin, selfArgs := decodeBinaryArgs(&val)
-		// Binary is embedded at insertion time, so this is not expected
-		// to be empty in practice. Guard defensively just in case.
-		if selfBin == "" {
-			logger.GetLogger().Debug("Empty binary in process tree entry", "uuid", key.Self)
-			skippedEntries++
 			continue
 		}
 
@@ -937,6 +1058,26 @@ func getProcessModel(namespaces []string,
 	if skippedEntries > 0 {
 		logger.GetLogger().Warn("Skipped process tree entries with missing binary info (LRU eviction)",
 			"count", skippedEntries)
+	}
+
+	// Garbage collect stale process tree keys.
+
+	for staleKey := range staleProcessTreeKeys {
+		removeProcessTreeKeyFromModel(&staleKey, m, endpt, sm)
+	}
+
+	// Garbage collect cgroups where all process tree entries are stale.
+	for cgroupid, keys := range cgroupCountsMap {
+		allStale := len(keys) > 0
+		for _, key := range keys {
+			if _, ok := staleProcessTreeKeys[key]; !ok {
+				allStale = false
+				break
+			}
+		}
+		if allStale {
+			removeCgroupFromModel(cgroupid, cgTrackerIdCache, containerIdCache)
+		}
 	}
 
 	// Do queued WorkloadID updates
