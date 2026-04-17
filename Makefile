@@ -462,6 +462,7 @@ endif
 		-tags e2e_tests                                                \
 		-timeout $(E2E_TIMEOUT) ${E2E_EXTRA_GOTEST_FLAGS}              \
 		${E2E_TESTS} ${E2E_EXTRA_TEST_FLAGS} $(E2E_BTF_FLAGS)          \
+		-tetragon.helm.set tetragon.grpc.address=localhost:54321      \
 		-tetragon.helm.set tetragon.image.override="$(E2E_AGENT)"      \
 		-tetragon.helm.set tetragonOperator.image.override="$(E2E_OPERATOR)"
 
