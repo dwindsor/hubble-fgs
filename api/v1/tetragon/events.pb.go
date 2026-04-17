@@ -79,7 +79,7 @@ const (
 	EventType_PROCESS_THROTTLE            EventType = 27
 	EventType_PROCESS_LSM                 EventType = 28
 	EventType_PROCESS_USDT                EventType = 29
-	EventType_POWERSHELL_SCRIPT_BLOCK     EventType = 30
+	EventType_POWERSHELL_SCRIPT_BLOCK     EventType = 129
 	EventType_PROCESS_IGMP_JOIN           EventType = 2001
 	EventType_PROCESS_IGMP_LEAVE          EventType = 2002
 	EventType_IGMP_MEMBERSHIP_REPORT      EventType = 2003
@@ -121,7 +121,7 @@ var (
 		27:    "PROCESS_THROTTLE",
 		28:    "PROCESS_LSM",
 		29:    "PROCESS_USDT",
-		30:    "POWERSHELL_SCRIPT_BLOCK",
+		129:   "POWERSHELL_SCRIPT_BLOCK",
 		2001:  "PROCESS_IGMP_JOIN",
 		2002:  "PROCESS_IGMP_LEAVE",
 		2003:  "IGMP_MEMBERSHIP_REPORT",
@@ -160,7 +160,7 @@ var (
 		"PROCESS_THROTTLE":            27,
 		"PROCESS_LSM":                 28,
 		"PROCESS_USDT":                29,
-		"POWERSHELL_SCRIPT_BLOCK":     30,
+		"POWERSHELL_SCRIPT_BLOCK":     129,
 		"PROCESS_IGMP_JOIN":           2001,
 		"PROCESS_IGMP_LEAVE":          2002,
 		"IGMP_MEMBERSHIP_REPORT":      2003,
@@ -1954,7 +1954,7 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\a\n" +
-	"\x05event*\xaa\x06\n" +
+	"\x05event*\xb2\x06\n" +
 	"\tEventType\x12\t\n" +
 	"\x05UNDEF\x10\x00\x12\x10\n" +
 	"\fPROCESS_EXEC\x10\x01\x12\x13\n" +
@@ -1987,14 +1987,14 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x17PROCESS_SANDBOX_SYSCALL\x10\x1a\x12\x14\n" +
 	"\x10PROCESS_THROTTLE\x10\x1b\x12\x0f\n" +
 	"\vPROCESS_LSM\x10\x1c\x12\x10\n" +
-	"\fPROCESS_USDT\x10\x1d\x12\x1b\n" +
-	"\x17POWERSHELL_SCRIPT_BLOCK\x10\x1e\x12\x16\n" +
+	"\fPROCESS_USDT\x10\x1d\x12\x1c\n" +
+	"\x17POWERSHELL_SCRIPT_BLOCK\x10\x81\x01\x12\x16\n" +
 	"\x11PROCESS_IGMP_JOIN\x10\xd1\x0f\x12\x17\n" +
 	"\x12PROCESS_IGMP_LEAVE\x10\xd2\x0f\x12\x1b\n" +
 	"\x16IGMP_MEMBERSHIP_REPORT\x10\xd3\x0f\x12\n" +
 	"\n" +
 	"\x04TEST\x10\xc0\xb8\x02\x12\x15\n" +
-	"\x0fRATE_LIMIT_INFO\x10\xc1\xb8\x02\x1a\x02\x10\x01*K\n" +
+	"\x0fRATE_LIMIT_INFO\x10\xc1\xb8\x02\x1a\x02\x10\x01\"\x05\b\x1f\x10\x80\x01*K\n" +
 	"\fThrottleType\x12\x14\n" +
 	"\x10THROTTLE_UNKNOWN\x10\x00\x12\x12\n" +
 	"\x0eTHROTTLE_START\x10\x01\x12\x11\n" +
