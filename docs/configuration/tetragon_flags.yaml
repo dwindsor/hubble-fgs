@@ -23,6 +23,10 @@ options:
     - name: application-model-export-interval
       default_value: 0s
       usage: Interval at which to export application model as JSON.
+    - name: application-model-retention-duration
+      default_value: 24h0m0s
+      usage: |
+        Retention period for exited processes in the application model.
     - name: application-model-split-max-host-processes
       default_value: "100"
       usage: |
