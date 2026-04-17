@@ -113,7 +113,8 @@ ifdef EXTRA_GO_BUILD_FLAGS
 	GO_BUILD_FLAGS += $(EXTRA_GO_BUILD_FLAGS)
 endif
 
-GO_BUILD = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) build $(GO_BUILD_FLAGS)
+GO_BUILD      = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) build $(GO_BUILD_FLAGS)
+GO_BUILD_SLIM := $(subst version.Name=tetragon-enterprise,version.Name=tetragon-slim,$(GO_BUILD))
 
 .PHONY: all
 all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
@@ -157,7 +158,7 @@ tetra-nok8s: ## Compile the Tetragon gRPC client (nok8s build)
 
 .PHONY: tetrabox
 tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
-	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetrabox
+	$(GO_BUILD_SLIM) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetrabox
 	# set up symlinks so that things work
 	rm -f tetra tetragon $(FS_SCANNER_BIN)
 	ln -s tetrabox tetra
