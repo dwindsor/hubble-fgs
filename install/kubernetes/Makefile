@@ -175,7 +175,7 @@ lint: ## Lint the Helm chart
 
 .PHONY: kubeconform
 ## To validate (using openapi2jsonschema.py) default rule set policies included in the Helm chart, we need to have the JSON schema of the TracingPolicy CRD.
-## Run kubeconform Helm chart validation checks to validate the templated Kubernetes (custom) resources against their spec.
+## Run kubeconform Helm chart validation checks to validate the templated Kubernetes (custom) resources against their spec.
 ## Skip validating the Tetragon CRDs themselves (circular dependency)
 kubeconform: ## Validate Helm chart using kubeconform
 	mkdir -p $(JSON_SCHEMAS)/
