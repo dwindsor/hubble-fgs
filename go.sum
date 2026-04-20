@@ -1,5 +1,5 @@
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 h1:PMmTMyvHScV9Mn8wc6ASge9uRcHy0jtqPd+fM35LmsQ=
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 h1:s6hzCXtND/ICdGPTMGk7C+/BFlr2Jg5GyH0NKf4XGXg=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 buf.build/go/protovalidate v1.1.3 h1:m2GVEgQWd7rk+vIoAZ+f0ygGjvQTuqPQapBBdcpWVPE=
 buf.build/go/protovalidate v1.1.3/go.mod h1:9XIuohWz+kj+9JVn3WQneHA5LZP50mjvneZMnbLkiIE=
 cel.dev/expr v0.25.1 h1:1KrZg61W6TWSxuNZ37Xy49ps13NUovb66QLprthtwi4=
@@ -343,10 +343,10 @@ github.com/iceber/iouring-go v0.0.0-20230403020409-002cfd2e2a90 h1:xrtfZokN++5ke
 github.com/iceber/iouring-go v0.0.0-20230403020409-002cfd2e2a90/go.mod h1:LEzdaZarZ5aqROlLIwJ4P7h3+4o71008fSy6wpaEB+s=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/isovalent/ipa v1.19.0-pre.13 h1:2qlXMqf3GLiqrkLShyUZlodfyrC8/aC79t3MLwYkQ2A=
-github.com/isovalent/ipa v1.19.0-pre.13/go.mod h1:kexScyW+nvsC/o13bJ/L+ppp9Yf/4NVnbon9z+D9i0Q=
-github.com/isovalent/ipa/k8s v1.19.0-pre.13 h1:A2PLY/btEh14QYfOO/jxFStoPYa96P0ZVrOwWprm+O0=
-github.com/isovalent/ipa/k8s v1.19.0-pre.13/go.mod h1:qfhVra9z2SzrEaJJuntQU0fUWn8OM5K1aq+CuzhSpOo=
+github.com/isovalent/ipa v1.19.0-pre.14 h1:DkYyUbvZYZeKgsa/xJwqfBZzq3zbH4hyRNUokFizApc=
+github.com/isovalent/ipa v1.19.0-pre.14/go.mod h1:vBSzcGQDLD5JgBpO5Uv1S27gMXbXXzNCJ8/JVu37mt4=
+github.com/isovalent/ipa/k8s v1.19.0-pre.14 h1:5eAzMTFBQgs70z3D1nYkzIGueGg+f/4osVLy4Vzs+xM=
+github.com/isovalent/ipa/k8s v1.19.0-pre.14/go.mod h1:as9ozJ9a90pPinjJv45kjSLE4CjyRsIoh177pArWXiw=
 github.com/isovalent/metricstool v0.1.4 h1:+73vMhYhB8uDWLV/nuvV81XA5smLvGefKRJ2KIDbXP0=
 github.com/isovalent/metricstool v0.1.4/go.mod h1:U29qioTLC+X+fOmlhIUecWs/dJkh3APyhwZuUDFXVc4=
 github.com/josharian/native v1.1.0 h1:uuaP0hAbW7Y4l0ZRQ6C9zfb7Mg1mbFKry/xzDAfmtLA=
