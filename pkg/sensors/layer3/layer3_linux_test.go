@@ -96,9 +96,9 @@ func TestMain(m *testing.M) {
 	if udpMulticastClient != "" {
 		switch udpMulticastClient {
 		case "conn":
-			runUdpMulticastClient(multicastTestLSEGConnID)
+			runUdpMulticastLSEGClient(multicastTestLSEGConnID)
 		case "seq":
-			runUdpMulticastClient(multicastTestLSEGSeq)
+			runUdpMulticastLSEGClient(multicastTestLSEGSeq)
 		}
 		os.Exit(0)
 	}

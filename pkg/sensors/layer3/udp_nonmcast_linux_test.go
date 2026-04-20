@@ -12,4 +12,4 @@
 
 package layer3_test
 
-func runUdpMulticastClient(_ multicastTest) {}
+func runUdpMulticastLSEGClient(_ multicastTest) {}
