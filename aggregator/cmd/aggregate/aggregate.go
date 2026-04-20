@@ -18,7 +18,6 @@ import (
 	"log"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
@@ -44,18 +43,11 @@ func getCurrentModelJSON() ([]byte, error) {
 }
 
 func squash() {
-	timer := time.NewTicker(10 * time.Second)
 	for {
-		select {
-		case <-timer.C:
-			if b, err := getCurrentModelJSON(); err == nil {
-				fmt.Println(string(b))
-			}
-		case m := <-queue:
-			mergedModelMutex.Lock()
-			mergedModel = model.Merge(mergedModel, m.GetApplicationModel())
-			mergedModelMutex.Unlock()
-		}
+		m := <-queue
+		mergedModelMutex.Lock()
+		mergedModel = model.Merge(mergedModel, m.GetApplicationModel())
+		mergedModelMutex.Unlock()
 	}
 }
 
