@@ -306,12 +306,6 @@
   
     - [FineGuidanceSensors](#tetragon-FineGuidanceSensors)
   
-- [tetragon/stack.proto](#tetragon_stack-proto)
-    - [StackAddress](#tetragon-StackAddress)
-    - [StackTrace](#tetragon-StackTrace)
-    - [StackTraceLabel](#tetragon-StackTraceLabel)
-    - [StackTraceNode](#tetragon-StackTraceNode)
-  
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -5273,87 +5267,6 @@ For now, we only want to support debug-related config flags to be configurable.
 | RuntimeHook | [RuntimeHookRequest](#tetragon-RuntimeHookRequest) | [RuntimeHookResponse](#tetragon-RuntimeHookResponse) |  |
 | GetDebug | [GetDebugRequest](#tetragon-GetDebugRequest) | [GetDebugResponse](#tetragon-GetDebugResponse) |  |
 | SetDebug | [SetDebugRequest](#tetragon-SetDebugRequest) | [SetDebugResponse](#tetragon-SetDebugResponse) |  |
-
- 
-
-
-
-<a name="tetragon_stack-proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## tetragon/stack.proto
-
-
-
-<a name="tetragon-StackAddress"></a>
-
-### StackAddress
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [uint64](#uint64) |  |  |
-| symbol | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon-StackTrace"></a>
-
-### StackTrace
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| addresses | [StackAddress](#tetragon-StackAddress) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon-StackTraceLabel"></a>
-
-### StackTraceLabel
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| count | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="tetragon-StackTraceNode"></a>
-
-### StackTraceNode
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [StackAddress](#tetragon-StackAddress) |  |  |
-| count | [uint64](#uint64) |  |  |
-| labels | [StackTraceLabel](#tetragon-StackTraceLabel) | repeated |  |
-| children | [StackTraceNode](#tetragon-StackTraceNode) | repeated |  |
-
-
-
-
-
- 
-
- 
-
- 
 
  
 

@@ -1,0 +1,120 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Cilium
+
+package v1
+
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	k8sconst "github.com/cilium/cilium/pkg/k8s/apis/isovalent.com"
+)
+
+const (
+	// CustomResourceDefinitionGroup is the name of the third party resource group
+	CustomResourceDefinitionGroup = k8sconst.CustomResourceDefinitionGroup
+
+	// CustomResourceDefinitionVersion is the current version of the resource
+	CustomResourceDefinitionVersion = "v1"
+
+	// IsovalentEgressGatewayPolicy (IEGP)
+	IEGPPluralName     = "isovalentegressgatewaypolicies"
+	IEGPKindDefinition = "IsovalentEgressGatewayPolicy"
+	IEGPName           = IEGPPluralName + "." + CustomResourceDefinitionGroup
+
+	// Isovalent BGPv2 CRDs
+	IsovalentBGPClusterConfigPluralName      = "isovalentbgpclusterconfigs"
+	IsovalentBGPPeerConfigPluralName         = "isovalentbgppeerconfigs"
+	IsovalentBGPAdvertisementPluralName      = "isovalentbgpadvertisements"
+	IsovalentBGPNodeConfigPluralName         = "isovalentbgpnodeconfigs"
+	IsovalentBGPNodeConfigOverridePluralName = "isovalentbgpnodeconfigoverrides"
+	IsovalentBGPPolicyPluralName             = "isovalentbgppolicies"
+
+	IsovalentBGPClusterConfigKindDefinition      = "IsovalentBGPClusterConfig"
+	IsovalentBGPPeerConfigKindDefinition         = "IsovalentBGPPeerConfig"
+	IsovalentBGPAdvertisementKindDefinition      = "IsovalentBGPAdvertisement"
+	IsovalentBGPNodeConfigKindDefinition         = "IsovalentBGPNodeConfig"
+	IsovalentBGPNodeConfigOverrideKindDefinition = "IsovalentBGPNodeConfigOverride"
+	IsovalentBGPPolicyKindDefinition             = "IsovalentBGPPolicy"
+
+	IsovalentBGPClusterConfigName      = IsovalentBGPClusterConfigPluralName + "." + CustomResourceDefinitionGroup
+	IsovalentBGPPeerConfigName         = IsovalentBGPPeerConfigPluralName + "." + CustomResourceDefinitionGroup
+	IsovalentBGPAdvertisementName      = IsovalentBGPAdvertisementPluralName + "." + CustomResourceDefinitionGroup
+	IsovalentBGPNodeConfigName         = IsovalentBGPNodeConfigPluralName + "." + CustomResourceDefinitionGroup
+	IsovalentBGPNodeConfigOverrideName = IsovalentBGPNodeConfigOverridePluralName + "." + CustomResourceDefinitionGroup
+	IsovalentBGPPolicyName             = IsovalentBGPPolicyPluralName + "." + CustomResourceDefinitionGroup
+
+	// Isovalent Network Policy (INP) and Isovalent Clusterwide Network Policy (ICNP)
+	IsovalentNetworkPolicyPluralName                = "isovalentnetworkpolicies"
+	IsovalentClusterwideNetworkPolicyPluralName     = "isovalentclusterwidenetworkpolicies"
+	IsovalentNetworkPolicyKindDefinition            = "IsovalentNetworkPolicy"
+	IsovalentClusterwideNetworkPolicyKindDefinition = "IsovalentClusterwideNetworkPolicy"
+	IsovalentNetworkPolicyName                      = IsovalentNetworkPolicyPluralName + "." + CustomResourceDefinitionGroup
+	IsovalentClusterwideNetworkPolicyName           = IsovalentClusterwideNetworkPolicyPluralName + "." + CustomResourceDefinitionGroup
+)
+
+// SchemeGroupVersion is group version used to register these objects
+var SchemeGroupVersion = schema.GroupVersion{
+	Group:   CustomResourceDefinitionGroup,
+	Version: CustomResourceDefinitionVersion,
+}
+
+// Resource takes an unqualified resource and returns a Group qualified GroupResource
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
+var (
+	// SchemeBuilder is needed by DeepCopy generator.
+	SchemeBuilder runtime.SchemeBuilder
+	// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
+	localSchemeBuilder = &SchemeBuilder
+
+	// AddToScheme adds all types of this clientset into the given scheme.
+	// This allows composition of clientsets, like in:
+	//
+	//   import (
+	//     "k8s.io/client-go/kubernetes"
+	//     clientsetscheme "k8s.io/client-go/kubernetes/scheme"
+	//     aggregatorclientsetscheme "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/scheme"
+	//   )
+	//
+	//   kclientset, _ := kubernetes.NewForConfig(c)
+	//   aggregatorclientsetscheme.AddToScheme(clientsetscheme.Scheme)
+	AddToScheme = localSchemeBuilder.AddToScheme
+)
+
+func init() {
+	// We only register manually written functions here. The registration of the
+	// generated functions takes place in the generated files. The separation
+	// makes the code compile even when the generated files are missing.
+	localSchemeBuilder.Register(addKnownTypes)
+}
+
+// Adds the list of known types to api.Scheme.
+func addKnownTypes(scheme *runtime.Scheme) error {
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&IsovalentEgressGatewayPolicy{},
+		&IsovalentEgressGatewayPolicyList{},
+		&IsovalentBGPClusterConfig{},
+		&IsovalentBGPClusterConfigList{},
+		&IsovalentBGPPeerConfig{},
+		&IsovalentBGPPeerConfigList{},
+		&IsovalentBGPAdvertisement{},
+		&IsovalentBGPAdvertisementList{},
+		&IsovalentBGPNodeConfig{},
+		&IsovalentBGPNodeConfigList{},
+		&IsovalentBGPNodeConfigOverride{},
+		&IsovalentBGPNodeConfigOverrideList{},
+		&IsovalentBGPPolicy{},
+		&IsovalentBGPPolicyList{},
+		&IsovalentNetworkPolicy{},
+		&IsovalentNetworkPolicyList{},
+		&IsovalentClusterwideNetworkPolicy{},
+		&IsovalentClusterwideNetworkPolicyList{},
+	)
+
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+	return nil
+}

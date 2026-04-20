@@ -12,8 +12,8 @@ package ebpfmap
 
 import (
 	"fmt"
+	"sync"
 
-	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/ebpf"
 )
 
@@ -22,8 +22,38 @@ type KVPair[K any, V any] struct {
 	b V
 }
 
+// syncMap is a minimal generic wrapper over sync.Map, providing just the
+// Load/Store/Delete surface Fake needs. It lets us avoid depending on
+// github.com/cilium/cilium/pkg/lock for a single in-memory test helper.
+type syncMap[K comparable, V any] struct {
+	m sync.Map
+}
+
+func (sm *syncMap[K, V]) Load(key K) (V, bool) {
+	v, ok := sm.m.Load(key)
+	if !ok {
+		var zero V
+		return zero, false
+	}
+	return v.(V), true
+}
+
+func (sm *syncMap[K, V]) Store(key K, value V) {
+	sm.m.Store(key, value)
+}
+
+func (sm *syncMap[K, V]) Delete(key K) {
+	sm.m.Delete(key)
+}
+
+func (sm *syncMap[K, V]) Range(f func(key K, value V) bool) {
+	sm.m.Range(func(k, v any) bool {
+		return f(k.(K), v.(V))
+	})
+}
+
 type Fake[K fmt.Stringer, V any] struct {
-	lock.Map[string, KVPair[K, V]]
+	syncMap[string, KVPair[K, V]]
 }
 
 func (fm *Fake[K, V]) Lookup(key K, result *V) error {
@@ -41,7 +71,7 @@ func (fm *Fake[K, V]) Update(key K, value V, _ ebpf.MapUpdateFlags) error {
 }
 
 func (fm *Fake[K, V]) Delete(key K) error {
-	fm.Map.Delete(key.String())
+	fm.syncMap.Delete(key.String())
 	return nil
 }
 

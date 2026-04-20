@@ -278,6 +278,8 @@ require (
 )
 
 replace (
+	github.com/cilium/cilium => github.com/isovalent/cilium v1.19.0-cee.pre.1
+
 	// use local submodule for OSS
 	github.com/cilium/tetragon => ./modules/tetragon-oss
 

@@ -14,10 +14,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/cilium/cilium/pkg/container/set"
 	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/util/set"
 )
 
 type datapathRuleID uint64

@@ -35,8 +35,6 @@ import (
 	ossoption "github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 
-	"github.com/cilium/cilium/pkg/container/set"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -53,6 +51,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/protoutils"
+	"github.com/isovalent/hubble-fgs/pkg/util/set"
 	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 

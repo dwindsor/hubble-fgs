@@ -751,9 +751,6 @@ const (
 	// EndpointRegenInterval is the interval of the periodic endpoint regeneration loop.
 	EndpointRegenInterval = "endpoint-regen-interval"
 
-	// EndpointPolicyUpdateTimeout is the timeout duration for Endpoint policy updates.
-	EndpointPolicyUpdateTimeout = "endpoint-policy-update-timeout"
-
 	// LocalRouterIPv4 is the link-local IPv4 address to use for Cilium router device
 	LocalRouterIPv4 = "local-router-ipv4"
 
@@ -1156,6 +1153,8 @@ func (c *HiveConfig) Populate(vp *viper.Viper) {
 
 // DaemonConfig is the configuration used by Daemon.
 type DaemonConfig struct {
+	EnterpriseDaemonConfig
+
 	// Private sum of the config written to file. Used to check that the config is not changed
 	// after.
 	shaSum [32]byte
@@ -2365,6 +2364,8 @@ func (c *DaemonConfig) Populate(logger *slog.Logger, vp *viper.Viper) {
 	var err error
 
 	c.HiveConfig.Populate(vp)
+
+	c.EnterpriseDaemonConfig.Populate(vp)
 
 	c.ClusterHealthPort = vp.GetInt(ClusterHealthPort)
 	c.AllowICMPFragNeeded = vp.GetBool(AllowICMPFragNeeded)

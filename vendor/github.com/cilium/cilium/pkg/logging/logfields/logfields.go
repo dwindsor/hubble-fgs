@@ -1859,8 +1859,4 @@ const (
 	ReloadCAError = "reloadCAError"
 
 	ExtendedMessage = "extendedMessage"
-
-	AttachType = "attachType"
-
-	WithFrags = "withFrags"
 )

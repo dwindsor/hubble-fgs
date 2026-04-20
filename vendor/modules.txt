@@ -253,7 +253,7 @@ github.com/breml/jsondiffprinter/internal/jsonpointer
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cilium/cilium v1.19.3
+# github.com/cilium/cilium v1.19.3 => github.com/isovalent/cilium v1.19.0-cee.pre.1
 ## explicit; go 1.25.0
 github.com/cilium/cilium/api/v1/client
 github.com/cilium/cilium/api/v1/client/bgp
@@ -272,6 +272,9 @@ github.com/cilium/cilium/api/v1/models
 github.com/cilium/cilium/api/v1/observer
 github.com/cilium/cilium/api/v1/relay
 github.com/cilium/cilium/api/v1/server/restapi/daemon
+github.com/cilium/cilium/enterprise/operator/pkg/bgpv2/config
+github.com/cilium/cilium/enterprise/pkg/bfd/types
+github.com/cilium/cilium/enterprise/pkg/privnet/config
 github.com/cilium/cilium/operator/option
 github.com/cilium/cilium/pkg/alibabacloud/eni/types
 github.com/cilium/cilium/pkg/allocator
@@ -320,11 +323,16 @@ github.com/cilium/cilium/pkg/k8s/apis/cilium.io
 github.com/cilium/cilium/pkg/k8s/apis/cilium.io/utils
 github.com/cilium/cilium/pkg/k8s/apis/cilium.io/v2
 github.com/cilium/cilium/pkg/k8s/apis/cilium.io/v2alpha1
+github.com/cilium/cilium/pkg/k8s/apis/isovalent.com
+github.com/cilium/cilium/pkg/k8s/apis/isovalent.com/v1
+github.com/cilium/cilium/pkg/k8s/apis/isovalent.com/v1alpha1
 github.com/cilium/cilium/pkg/k8s/client
 github.com/cilium/cilium/pkg/k8s/client/clientset/versioned
 github.com/cilium/cilium/pkg/k8s/client/clientset/versioned/scheme
 github.com/cilium/cilium/pkg/k8s/client/clientset/versioned/typed/cilium.io/v2
 github.com/cilium/cilium/pkg/k8s/client/clientset/versioned/typed/cilium.io/v2alpha1
+github.com/cilium/cilium/pkg/k8s/client/clientset/versioned/typed/isovalent.com/v1
+github.com/cilium/cilium/pkg/k8s/client/clientset/versioned/typed/isovalent.com/v1alpha1
 github.com/cilium/cilium/pkg/k8s/constants
 github.com/cilium/cilium/pkg/k8s/identitybackend
 github.com/cilium/cilium/pkg/k8s/informer
@@ -1574,7 +1582,6 @@ golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
 # golang.org/x/exp v0.0.0-20260112195511-716be5621a96
 ## explicit; go 1.24.0
-golang.org/x/exp/constraints
 golang.org/x/exp/maps
 golang.org/x/exp/slices
 # golang.org/x/mod v0.35.0
@@ -2533,6 +2540,7 @@ sigs.k8s.io/structured-merge-diff/v6/value
 # sigs.k8s.io/yaml v1.6.0
 ## explicit; go 1.22
 sigs.k8s.io/yaml
+# github.com/cilium/cilium => github.com/isovalent/cilium v1.19.0-cee.pre.1
 # github.com/cilium/tetragon => ./modules/tetragon-oss
 # github.com/cilium/tetragon-oss/pkg/k8s => ./modules/tetragon-oss/pkg/k8s
 # github.com/cilium/tetragon/api => ./api

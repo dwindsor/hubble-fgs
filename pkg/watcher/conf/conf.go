@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/golang-jwt/jwt/v5"
 	"k8s.io/client-go/rest"
