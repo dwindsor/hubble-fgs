@@ -164,6 +164,8 @@ var (
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
+	ParentBinariesMap = program.MapBuilder("tg_parents_bin", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, ExitV511)
+
 	/* Tetragon runtime configuration */
 	TetragonConfMap = program.MapBuilder("tg_conf_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
 
@@ -232,6 +234,19 @@ func setupSensor() {
 		ExecveV511.RewriteConstants["ENV_VARS_ENABLED"] = uint8(1)
 		ExecveV61.RewriteConstants["ENV_VARS_ENABLED"] = uint8(1)
 		ExecveV612.RewriteConstants["ENV_VARS_ENABLED"] = uint8(1)
+	}
+
+	if option.Config.ParentsMapEnabled {
+		Execve.RewriteConstants["PARENTS_MAP_ENABLED"] = uint8(1)
+		ExecveV53.RewriteConstants["PARENTS_MAP_ENABLED"] = uint8(1)
+		ExecveV511.RewriteConstants["PARENTS_MAP_ENABLED"] = uint8(1)
+		ExecveV61.RewriteConstants["PARENTS_MAP_ENABLED"] = uint8(1)
+		ExecveV612.RewriteConstants["PARENTS_MAP_ENABLED"] = uint8(1)
+
+		entries = ossbase.GetExecveEntries(option.Config.ParentsMapEntries, option.Config.ParentsMapSize)
+		ParentBinariesMap.SetMaxEntries(entries)
+		logger.GetLogger().Info(fmt.Sprintf("Set parents_map entries %d", entries),
+			"size", strutils.SizeWithSuffix(entries*int(unsafe.Sizeof(execvemap.ExecveValue{}))))
 	}
 }
 

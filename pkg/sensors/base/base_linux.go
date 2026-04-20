@@ -96,6 +96,10 @@ func GetDefaultMaps() []*program.Map {
 		maps = append(maps, RingBufEvents)
 	}
 
+	if option.Config.ParentsMapEnabled {
+		maps = append(maps, ParentBinariesMap)
+	}
+
 	ConfigureMapSizes()
 	return maps
 }
