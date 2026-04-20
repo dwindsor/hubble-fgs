@@ -3,7 +3,7 @@ kind: TracingPolicy
 metadata:
   name: "l3l4networking"
   labels:
-    app.kubernetes.io/version: 1.19.0-pre.7
+    app.kubernetes.io/version: 1.19.0-pre.8
 spec:
   parser:
     udp:
