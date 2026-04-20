@@ -43,4 +43,23 @@ message Emitter {
     ignore: IGNORE_IF_ZERO_VALUE
     string: {pattern: "^[0-9]"}
   }];
+  // source_identifier uniquely identifies the specific instance of the
+  // emitter that produced the data. While name and version describe the
+  // emitter software itself, source_identifier pinpoints where it ran, which
+  // makes it possible to distinguish between multiple emitters of the same
+  // kind -- for example, to deduplicate events from an HA pair of smart
+  // switches, or to attribute a connection log to a specific Cilium agent.
+  //
+  // Typical values are the Kubernetes node name or pod hostname of a Cilium
+  // agent, or the serial number of a smart switch. The field is optional and
+  // may be left unset by emitters that cannot meaningfully identify
+  // themselves (e.g. single-instance deployments).
+  //
+  // The upper bound of 253 matches the maximum length of a DNS name (RFC
+  // 1035), which also bounds Kubernetes object names and pod hostnames, and
+  // comfortably fits a typical hardware serial number.
+  string source_identifier = 3 [(buf.validate.field) = {
+    ignore: IGNORE_IF_ZERO_VALUE
+    string: {max_len: 253}
+  }];
 }

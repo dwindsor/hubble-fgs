@@ -86,7 +86,11 @@ between two Kubernetes pods with multiple edge types:
   "uuid": "550e8400-e29b-41d4-a716-446655440000",
   "emitter": {
     "name": "Hubble",
-    "version": "1.16.0"
+    "version": "1.16.0",
+    // source_identifier is optional; set it to distinguish between multiple
+    // instances of the same emitter (e.g., Cilium agents on different nodes,
+    // or a smart switch serial number).
+    "source_identifier": "node-us-west-1a"
   },
   "window_start": "2026-03-26T10:00:00Z",
   "window_end": "2026-03-26T10:00:10Z",
@@ -587,3 +591,7 @@ This section documents all the mandatory (MUST/MUST NOT) and recommended
 - Emitters SHOULD emit ConnectionLog events at regular intervals
 - Time windows SHOULD be aligned to regular boundaries (e.g., every 10 seconds
   starting at :00, :10, :20, etc.)
+- Emitters SHOULD populate `source_identifier` when multiple instances of the
+  same emitter can run concurrently (e.g., one Cilium agent per node, or an HA
+  pair of smart switches) to allow consumers to deduplicate or attribute events
+  to a specific instance
