@@ -210,7 +210,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	/* Only check sequence numbers on received packets. */
 	if (!send)
 		udp_seq_err_check(skb, ip, ipv6, cookie, payload_off,
-				  payload_sz, process, key);
+				  payload_sz, process, key, value);
 #endif
 
 	cookie_ver = process->version;

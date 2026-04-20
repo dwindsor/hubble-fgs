@@ -19,6 +19,7 @@
 #include "bpf_tracing.h"
 #include "config.h"
 #include "bpf_udp_lseg_mtp.h"
+#include "bpf_udp_rtp.h"
 
 // We include a string here that we don't expect to be found elsewhere in the code base,
 // so that we can grep for it and convince ourselves (in CI) that the string here was
@@ -103,6 +104,8 @@ udp_mcast_get_conn_id(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		return line_id;
 	}
 #endif
+	case MULTICAST_APP_RTP:
+		return get_rtp_ssrc(skb, ip, ipv6, cookie, payload_off, payload_sz);
 	}
 	return 0;
 }
@@ -110,7 +113,7 @@ udp_mcast_get_conn_id(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 static inline __attribute__((always_inline)) void
 udp_seq_err_check(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		  u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		  struct udp_info_key *k)
+		  struct udp_info_key *k, struct udp_info_value *v)
 {
 	struct cfg_value *l3cfg = getl3cfg();
 	struct udp_sensor_config *config;
@@ -132,6 +135,10 @@ udp_seq_err_check(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 				      payload_off, payload_sz, process, k);
 		return;
 #endif
+	case MULTICAST_APP_RTP:
+		udp_seq_err_check_rtp(skb, ip, ipv6, cookie,
+				      payload_off, payload_sz, process, k, v);
+		return;
 	}
 }
 
