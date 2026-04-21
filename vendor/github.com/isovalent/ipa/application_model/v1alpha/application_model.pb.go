@@ -196,25 +196,26 @@ type ProcessTelemetry struct {
 	ProcessName            string                 `protobuf:"bytes,9,opt,name=process_name,json=processName,proto3" json:"process_name,omitempty"`
 	ProcessArguments       string                 `protobuf:"bytes,10,opt,name=process_arguments,json=processArguments,proto3" json:"process_arguments,omitempty"`
 	ExecutionCount         uint64                 `protobuf:"varint,11,opt,name=execution_count,json=executionCount,proto3" json:"execution_count,omitempty"`
-	ParentHash             string                 `protobuf:"bytes,12,opt,name=parent_hash,json=parentHash,proto3" json:"parent_hash,omitempty"`
+	ExitCount              uint64                 `protobuf:"varint,12,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
+	ParentHash             string                 `protobuf:"bytes,13,opt,name=parent_hash,json=parentHash,proto3" json:"parent_hash,omitempty"`
 	// An opaque identifier that is unique to this telemetry data across all the
 	// telemetry types.
-	Id string `protobuf:"bytes,13,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,14,opt,name=id,proto3" json:"id,omitempty"`
 	// Labels of the node that transmitted this telemetry event. For nodes that
 	// belong to a Kubernetes cluster, this field contains Kubernetes node labels.
 	// For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
 	// Kubernetes cluster, this field may contain VM tags / labels.
-	NodeLabels map[string]string `protobuf:"bytes,14,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	NodeLabels map[string]string `protobuf:"bytes,15,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The ID of the application model from which this telemetry data got derived.
-	ApplicationModelId string `protobuf:"bytes,15,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
+	ApplicationModelId string `protobuf:"bytes,16,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
 	// The first time the process has been observed to run.
-	FirstStartTime *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=first_start_time,json=firstStartTime,proto3" json:"first_start_time,omitempty"`
+	FirstStartTime *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=first_start_time,json=firstStartTime,proto3" json:"first_start_time,omitempty"`
 	// The most recent time the process has been observed to run.
-	LatestStartTime *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=latest_start_time,json=latestStartTime,proto3" json:"latest_start_time,omitempty"`
+	LatestStartTime *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=latest_start_time,json=latestStartTime,proto3" json:"latest_start_time,omitempty"`
 	// Names of all processes that have been parents of this name/argument tuple.
-	ParentNames []string `protobuf:"bytes,18,rep,name=parent_names,json=parentNames,proto3" json:"parent_names,omitempty"`
+	ParentNames []string `protobuf:"bytes,19,rep,name=parent_names,json=parentNames,proto3" json:"parent_names,omitempty"`
 	// The container in which this process is running
-	Container     *ApplicationContainer `protobuf:"bytes,19,opt,name=container,proto3" json:"container,omitempty"`
+	Container     *ApplicationContainer `protobuf:"bytes,20,opt,name=container,proto3" json:"container,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -322,6 +323,13 @@ func (x *ProcessTelemetry) GetProcessArguments() string {
 func (x *ProcessTelemetry) GetExecutionCount() uint64 {
 	if x != nil {
 		return x.ExecutionCount
+	}
+	return 0
+}
+
+func (x *ProcessTelemetry) GetExitCount() uint64 {
+	if x != nil {
+		return x.ExitCount
 	}
 	return 0
 }
@@ -1210,8 +1218,10 @@ type ApplicationProcessGroup struct {
 	// The total number of times processes in this process group have been
 	// executed.
 	ExecutionCount uint64 `protobuf:"varint,12,opt,name=execution_count,json=executionCount,proto3" json:"execution_count,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The total number of times processes in this process group have exited.
+	ExitCount     uint64 `protobuf:"varint,13,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApplicationProcessGroup) Reset() {
@@ -1324,6 +1334,13 @@ func (x *ApplicationProcessGroup) GetFirstStartTime() *timestamppb.Timestamp {
 func (x *ApplicationProcessGroup) GetExecutionCount() uint64 {
 	if x != nil {
 		return x.ExecutionCount
+	}
+	return 0
+}
+
+func (x *ApplicationProcessGroup) GetExitCount() uint64 {
+	if x != nil {
+		return x.ExitCount
 	}
 	return 0
 }
@@ -1481,8 +1498,12 @@ type ConnectionStats struct {
 	NextQuotaReset    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=next_quota_reset,json=nextQuotaReset,proto3" json:"next_quota_reset,omitempty"`
 	DefaultDropBytes  uint64                 `protobuf:"varint,8,opt,name=default_drop_bytes,json=defaultDropBytes,proto3" json:"default_drop_bytes,omitempty"`
 	DefaultAllowBytes uint64                 `protobuf:"varint,9,opt,name=default_allow_bytes,json=defaultAllowBytes,proto3" json:"default_allow_bytes,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The cumulative number of TCP connections or UDP sessions observed for this
+	// connection over its entire lifespan. This value only increases; consumers
+	// can compute deltas by subtracting two consecutive values.
+	Sessions      uint64 `protobuf:"varint,10,opt,name=sessions,proto3" json:"sessions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConnectionStats) Reset() {
@@ -1574,6 +1595,13 @@ func (x *ConnectionStats) GetDefaultDropBytes() uint64 {
 func (x *ConnectionStats) GetDefaultAllowBytes() uint64 {
 	if x != nil {
 		return x.DefaultAllowBytes
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetSessions() uint64 {
+	if x != nil {
+		return x.Sessions
 	}
 	return 0
 }
@@ -2328,7 +2356,7 @@ var File_application_model_v1alpha_application_model_proto protoreflect.FileDesc
 
 const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\n" +
-	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xb5\b\n" +
+	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xd4\b\n" +
 	"\x10ProcessTelemetry\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12G\n" +
@@ -2342,17 +2370,19 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\fprocess_name\x18\t \x01(\tR\vprocessName\x12+\n" +
 	"\x11process_arguments\x18\n" +
 	" \x01(\tR\x10processArguments\x12'\n" +
-	"\x0fexecution_count\x18\v \x01(\x04R\x0eexecutionCount\x12\x1f\n" +
-	"\vparent_hash\x18\f \x01(\tR\n" +
+	"\x0fexecution_count\x18\v \x01(\x04R\x0eexecutionCount\x12\x1d\n" +
+	"\n" +
+	"exit_count\x18\f \x01(\x04R\texitCount\x12\x1f\n" +
+	"\vparent_hash\x18\r \x01(\tR\n" +
 	"parentHash\x12\x0e\n" +
-	"\x02id\x18\r \x01(\tR\x02id\x12\\\n" +
-	"\vnode_labels\x18\x0e \x03(\v2;.application_model.v1alpha.ProcessTelemetry.NodeLabelsEntryR\n" +
+	"\x02id\x18\x0e \x01(\tR\x02id\x12\\\n" +
+	"\vnode_labels\x18\x0f \x03(\v2;.application_model.v1alpha.ProcessTelemetry.NodeLabelsEntryR\n" +
 	"nodeLabels\x120\n" +
-	"\x14application_model_id\x18\x0f \x01(\tR\x12applicationModelId\x12D\n" +
-	"\x10first_start_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12F\n" +
-	"\x11latest_start_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestStartTime\x12!\n" +
-	"\fparent_names\x18\x12 \x03(\tR\vparentNames\x12M\n" +
-	"\tcontainer\x18\x13 \x01(\v2/.application_model.v1alpha.ApplicationContainerR\tcontainer\x1a=\n" +
+	"\x14application_model_id\x18\x10 \x01(\tR\x12applicationModelId\x12D\n" +
+	"\x10first_start_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12F\n" +
+	"\x11latest_start_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestStartTime\x12!\n" +
+	"\fparent_names\x18\x13 \x03(\tR\vparentNames\x12M\n" +
+	"\tcontainer\x18\x14 \x01(\v2/.application_model.v1alpha.ApplicationContainerR\tcontainer\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa0\x0e\n" +
@@ -2427,7 +2457,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x03 \x01(\tR\x05image\x12P\n" +
-	"\tprocesses\x18\x04 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\xb6\x05\n" +
+	"\tprocesses\x18\x04 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\xd5\x05\n" +
 	"\x17ApplicationProcessGroup\x12\x12\n" +
 	"\x04hash\x18\x01 \x01(\tR\x04hash\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
@@ -2442,7 +2472,9 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x10latest_exit_time\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\x0elatestExitTime\x12D\n" +
 	"\x10first_start_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12'\n" +
-	"\x0fexecution_count\x18\f \x01(\x04R\x0eexecutionCount\"\x91\x01\n" +
+	"\x0fexecution_count\x18\f \x01(\x04R\x0eexecutionCount\x12\x1d\n" +
+	"\n" +
+	"exit_count\x18\r \x01(\x04R\texitCount\"\x91\x01\n" +
 	"\rNetworkPolicy\x12B\n" +
 	"\averdict\x18\x14 \x01(\x0e2(.application_model.v1alpha.PolicyVerdictR\averdict\x12\x1f\n" +
 	"\vpolicy_name\x18\x15 \x01(\tR\n" +
@@ -2452,7 +2484,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\vdestination\x18\x01 \x01(\v2&.application_model.v1alpha.DestinationR\vdestination\x12@\n" +
 	"\x05stats\x18\x02 \x01(\v2*.application_model.v1alpha.ConnectionStatsR\x05stats\x12@\n" +
 	"\x06policy\x18\x03 \x01(\v2(.application_model.v1alpha.NetworkPolicyR\x06policy\x12:\n" +
-	"\bprotocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\bprotocol\"\x8d\x03\n" +
+	"\bprotocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\bprotocol\"\xa9\x03\n" +
 	"\x0fConnectionStats\x12\x19\n" +
 	"\btx_bytes\x18\x01 \x01(\x04R\atxBytes\x12\x19\n" +
 	"\brx_bytes\x18\x02 \x01(\x04R\arxBytes\x12\x19\n" +
@@ -2462,7 +2494,9 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x10last_quota_reset\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0elastQuotaReset\x12D\n" +
 	"\x10next_quota_reset\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0enextQuotaReset\x12,\n" +
 	"\x12default_drop_bytes\x18\b \x01(\x04R\x10defaultDropBytes\x12.\n" +
-	"\x13default_allow_bytes\x18\t \x01(\x04R\x11defaultAllowBytes\"\xf3\x01\n" +
+	"\x13default_allow_bytes\x18\t \x01(\x04R\x11defaultAllowBytes\x12\x1a\n" +
+	"\bsessions\x18\n" +
+	" \x01(\x04R\bsessions\"\xf3\x01\n" +
 	"\vDestination\x12=\n" +
 	"\x03dns\x18\x01 \x01(\v2).application_model.v1alpha.DestinationDnsH\x00R\x03dns\x12L\n" +
 	"\bworkload\x18\x02 \x01(\v2..application_model.v1alpha.DestinationWorkloadH\x00R\bworkload\x12:\n" +

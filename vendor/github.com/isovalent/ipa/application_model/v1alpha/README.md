@@ -717,6 +717,7 @@ the following criteria:
 | latest_exit_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The latest time at which a process in this process group was observed to exit. |
 | first_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The first time a process in this process group was observed to start. |
 | execution_count | [uint64](#uint64) |  | The total number of times processes in this process group have been executed. |
+| exit_count | [uint64](#uint64) |  | The total number of times processes in this process group have exited. |
 
 
 
@@ -773,6 +774,7 @@ the following criteria:
 | next_quota_reset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | default_drop_bytes | [uint64](#uint64) |  |  |
 | default_allow_bytes | [uint64](#uint64) |  |  |
+| sessions | [uint64](#uint64) |  | The cumulative number of TCP connections or UDP sessions observed for this connection over its entire lifespan. This value only increases; consumers can compute deltas by subtracting two consecutive values. |
 
 
 
@@ -972,6 +974,7 @@ the following criteria:
 | process_name | [string](#string) |  |  |
 | process_arguments | [string](#string) |  |  |
 | execution_count | [uint64](#uint64) |  |  |
+| exit_count | [uint64](#uint64) |  |  |
 | parent_hash | [string](#string) |  |  |
 | id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
 | node_labels | [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |

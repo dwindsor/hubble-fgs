@@ -32,25 +32,26 @@ message ProcessTelemetry {
   string process_name = 9;
   string process_arguments = 10;
   uint64 execution_count = 11;
-  string parent_hash = 12;
+  uint64 exit_count = 12;
+  string parent_hash = 13;
   // An opaque identifier that is unique to this telemetry data across all the
   // telemetry types.
-  string id = 13;
+  string id = 14;
   // Labels of the node that transmitted this telemetry event. For nodes that
   // belong to a Kubernetes cluster, this field contains Kubernetes node labels.
   // For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
   // Kubernetes cluster, this field may contain VM tags / labels.
-  map<string, string> node_labels = 14;
+  map<string, string> node_labels = 15;
   // The ID of the application model from which this telemetry data got derived.
-  string application_model_id = 15;
+  string application_model_id = 16;
   // The first time the process has been observed to run.
-  google.protobuf.Timestamp first_start_time = 16;
+  google.protobuf.Timestamp first_start_time = 17;
   // The most recent time the process has been observed to run.
-  google.protobuf.Timestamp latest_start_time = 17;
+  google.protobuf.Timestamp latest_start_time = 18;
   // Names of all processes that have been parents of this name/argument tuple.
-  repeated string parent_names = 18;
+  repeated string parent_names = 19;
   // The container in which this process is running
-  ApplicationContainer container = 19;
+  ApplicationContainer container = 20;
 }
 
 message NetworkConnectTelemetry {
@@ -264,6 +265,8 @@ message ApplicationProcessGroup {
   // The total number of times processes in this process group have been
   // executed.
   uint64 execution_count = 12;
+  // The total number of times processes in this process group have exited.
+  uint64 exit_count = 13;
 }
 
 message NetworkPolicy {
@@ -303,6 +306,10 @@ message ConnectionStats {
   google.protobuf.Timestamp next_quota_reset = 7;
   uint64 default_drop_bytes = 8;
   uint64 default_allow_bytes = 9;
+  // The cumulative number of TCP connections or UDP sessions observed for this
+  // connection over its entire lifespan. This value only increases; consumers
+  // can compute deltas by subtracting two consecutive values.
+  uint64 sessions = 10;
 }
 
 message Destination {
