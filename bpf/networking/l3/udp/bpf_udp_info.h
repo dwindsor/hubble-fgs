@@ -114,6 +114,7 @@ struct udp_info_value {
 	u64 latency_sum;
 	u64 create_time;
 	u64 ps_version; // pseudo-socket version
+	u64 mcast_seq_num; // the expected sequence number in multicast streams
 }; // All fields aligned so no 'packed' attribute.
 
 struct {
