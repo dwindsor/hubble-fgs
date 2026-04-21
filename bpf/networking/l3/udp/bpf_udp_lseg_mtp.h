@@ -21,7 +21,6 @@
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
 #include "config.h"
-#include "bpf_udp_seq_error_event.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -183,7 +182,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		return;
 
 	// Error – datagram is ahead of expected one. Create event.
-	e = (struct msg_udp_seq_error_event *)map_lookup_elem(&tg_h_udpseq_ev, &zero);
+	e = (struct msg_udp_seq_error_event *)map_lookup_elem(&tg_h_event, &zero);
 	if (!e)
 		return;
 
