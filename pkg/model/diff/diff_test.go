@@ -187,6 +187,8 @@ func psGroup() []*appModelV1.ApplicationProcessGroup {
 		SyscallInfo:     nil,
 		ProcessCount:    1,
 		LatestStartTime: nil,
+		ExecutionCount:  2,
+		ExitCount:       1,
 	}
 
 	a[1] = &appModelV1.ApplicationProcessGroup{
@@ -197,6 +199,8 @@ func psGroup() []*appModelV1.ApplicationProcessGroup {
 		SyscallInfo:     nil,
 		ProcessCount:    1,
 		LatestStartTime: nil,
+		ExecutionCount:  3,
+		ExitCount:       2,
 	}
 	return a
 }
@@ -1336,10 +1340,10 @@ func TestApplicationModelToProcessFlat_ExecutionCount(t *testing.T) {
 	}
 
 	telemetryMap := model.TelemetryMap{
-		"process1-arg1":              {ExecCount: 5},
-		"process2":                   {ExecCount: 10},
-		"process3-verbose":           {ExecCount: 1},
-		"app1--config=/etc/app.conf": {ExecCount: 42},
+		"process1-arg1":              {ExecCount: 5, ExitCount: 4},
+		"process2":                   {ExecCount: 10, ExitCount: 8},
+		"process3-verbose":           {ExecCount: 1, ExitCount: 0},
+		"app1--config=/etc/app.conf": {ExecCount: 42, ExitCount: 13},
 	}
 
 	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, telemetryMap)
@@ -1347,17 +1351,24 @@ func TestApplicationModelToProcessFlat_ExecutionCount(t *testing.T) {
 	require.Len(t, result, 4, "should have 4 process telemetry entries")
 
 	// Build a map of process key to execution count from results
-	resultCounts := make(map[string]uint64)
+	resultExecCounts := make(map[string]uint64)
+	resultExitCounts := make(map[string]uint64)
 	for _, telemetry := range result {
 		key := telemetry.ProcessName + telemetry.ProcessArguments
-		resultCounts[key] = telemetry.ExecutionCount
+		resultExecCounts[key] = telemetry.ExecutionCount
+		resultExitCounts[key] = telemetry.ExitCount
 	}
 
 	// Verify execution counts match
-	assert.Equal(t, uint64(5), resultCounts["process1-arg1"], "process1 execution count mismatch")
-	assert.Equal(t, uint64(10), resultCounts["process2"], "process2 execution count mismatch")
-	assert.Equal(t, uint64(1), resultCounts["process3-verbose"], "process3 execution count mismatch")
-	assert.Equal(t, uint64(42), resultCounts["app1--config=/etc/app.conf"], "app1 execution count mismatch")
+	assert.Equal(t, uint64(5), resultExecCounts["process1-arg1"], "process1 execution count mismatch")
+	assert.Equal(t, uint64(10), resultExecCounts["process2"], "process2 execution count mismatch")
+	assert.Equal(t, uint64(1), resultExecCounts["process3-verbose"], "process3 execution count mismatch")
+	assert.Equal(t, uint64(42), resultExecCounts["app1--config=/etc/app.conf"], "app1 execution count mismatch")
+
+	assert.Equal(t, uint64(4), resultExitCounts["process1-arg1"], "process1 exit count mismatch")
+	assert.Equal(t, uint64(8), resultExitCounts["process2"], "process2 exit count mismatch")
+	assert.Equal(t, uint64(0), resultExitCounts["process3-verbose"], "process3 exit count mismatch")
+	assert.Equal(t, uint64(13), resultExitCounts["app1--config=/etc/app.conf"], "app1 exit count mismatch")
 }
 
 func TestApplicationModelToProcessFlat_ExecutionCountNilMap(t *testing.T) {
@@ -1377,4 +1388,5 @@ func TestApplicationModelToProcessFlat_ExecutionCountNilMap(t *testing.T) {
 
 	// ExecutionCount should be 0 when no execCountMap is provided
 	assert.Equal(t, uint64(0), result[0].ExecutionCount, "execution count should be 0 when map is nil")
+	assert.Equal(t, uint64(0), result[0].ExitCount, "exit count should be 0 when map is nil")
 }
