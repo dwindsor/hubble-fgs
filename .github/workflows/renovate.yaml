@@ -77,4 +77,6 @@ jobs:
           configurationFile: .github/self-hosted-renovate.json5
           token: '${{ steps.get_token.outputs.app_token }}'
           mount-docker-socket: true
+          # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
+          renovate-version: 43.133.0
 

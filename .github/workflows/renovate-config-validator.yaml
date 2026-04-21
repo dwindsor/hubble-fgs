@@ -5,6 +5,10 @@ on:
     paths:
       - '.github/*renovate.json5'
 
+env:
+  # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
+  RENOVATE_VERSION: 43.133.0
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -20,4 +24,4 @@ jobs:
           docker run --rm --entrypoint "renovate-config-validator"
           -v "${{ github.workspace }}/.github/renovate.json5":"/renovate.json5"
           -v "${{ github.workspace }}/.github/self-hosted-renovate.json5":"/self-hosted-renovate.json5"
-          renovate/renovate:slim "/renovate.json5" "/self-hosted-renovate.json5"
+          ghcr.io/renovatebot/renovate:${RENOVATE_VERSION} "/renovate.json5" "/self-hosted-renovate.json5"

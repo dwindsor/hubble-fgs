@@ -91,6 +91,12 @@
         "commands": ["make -C install/kubernetes"],
         "executionMode": "branch",
       },
+    },
+    {
+      // Updates renovate version once a month
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/renovatebot/renovate"],
+      "schedule": ["* * 1 * *"],
     }
   ]
 }
