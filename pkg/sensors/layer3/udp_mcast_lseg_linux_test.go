@@ -100,7 +100,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient conn"))
+		WithArguments(sm.Full("-udpMulticastClient lsegconn"))
 
 	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
 		WithProcess(clientProcess).
@@ -192,7 +192,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	assert.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "conn")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegconn")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -261,7 +261,7 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient seq"))
+		WithArguments(sm.Full("-udpMulticastClient lsegseq"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("clientExec").
@@ -340,7 +340,7 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 	assert.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "seq")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegseq")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
