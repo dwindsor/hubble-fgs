@@ -122,12 +122,14 @@ type MulticastAppID int
 
 // Explicitly state the app IDs. These must match the same in the BPF code.
 const (
-	MulticastNoApp MulticastAppID = 0
+	MulticastNoApp  MulticastAppID = 0
+	MulticastAppRTP MulticastAppID = 2
 )
 
 var (
 	multicastAppID = map[string]MulticastAppID{
-		"": MulticastNoApp,
+		"":    MulticastNoApp,
+		"RTP": MulticastAppRTP,
 	}
 )
 
