@@ -230,6 +230,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		old->ktime_first_exec = old->ktime_last_exec;
 		old->cgid = cgid;
 		old->exec_count = 1;
+		old->exit_count = 0;
 		old->maybe_missing_nsid = 0;
 		if (k->wlid == 0 && old->in_container) {
 			// inform userspace that we might need to update the wlid mapping for this process when it becomes available

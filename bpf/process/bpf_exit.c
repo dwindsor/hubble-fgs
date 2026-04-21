@@ -19,9 +19,9 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 /*
- * Update process tree with exit timestamp
+ * Update process tree with exit timestamp and update count
  */
-FUNC_INLINE void update_process_tree_exit_time(__u32 tgid)
+FUNC_INLINE void update_process_tree_exit(__u32 tgid)
 {
 	struct process_tree_key *tree_key;
 	struct process_tree_value *tree_val;
@@ -33,8 +33,10 @@ FUNC_INLINE void update_process_tree_exit_time(__u32 tgid)
 
 	/* Update the process tree value with exit timestamp */
 	tree_val = map_lookup_elem(&process_tree_map, tree_key);
-	if (tree_val)
+	if (tree_val) {
 		tree_val->ktime_latest_exit = tg_get_ktime();
+		tree_val->exit_count++;
+	}
 }
 
 /*
@@ -77,8 +79,8 @@ event_exit_acct_process(struct pt_regs *ctx)
 {
 	__u32 tgid = get_current_pid_tgid() >> 32;
 
-	/* Update process tree exit timestamp */
-	update_process_tree_exit_time(tgid);
+	/* Update process tree exit timestamp/count */
+	update_process_tree_exit(tgid);
 
 	process_watermarks_map_delete(ctx, tgid);
 	event_exit_send((void *)ctx, tgid);
@@ -102,8 +104,8 @@ event_exit_disassociate_ctty(struct pt_regs *ctx)
 	if (on_exit) {
 		__u32 tgid = get_current_pid_tgid() >> 32;
 
-		/* Update process tree exit timestamp */
-		update_process_tree_exit_time(tgid);
+		/* Update process tree exit timestamp/count */
+		update_process_tree_exit(tgid);
 
 		process_watermarks_map_delete(ctx, tgid);
 		event_exit_send(ctx, tgid);
