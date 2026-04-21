@@ -23,7 +23,7 @@
   // repository configuration, this can lead to duplicate of some areas of the
   // config, for example the regex. See:
   // https://docs.renovatebot.com/self-hosted-configuration/#requireconfig
-  "allowedPostUpgradeCommands": [
+  "allowedCommands": [
     "^/tmp/install-buildx$",
     "^make protogen$",
     "^make crds$",

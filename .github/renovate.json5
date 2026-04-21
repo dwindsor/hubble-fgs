@@ -6,7 +6,7 @@
   "extends": [
     "github>cilium/tetragon//.github/renovate.json5",
   ],
-  "baseBranches": [
+  "baseBranchPatterns": [
     "master",
     "v1.18",
     "v1.17",
@@ -18,7 +18,7 @@
     {
       // no updates into stable branches (apart from security ones)
       "enabled": false,
-      "matchPackagePatterns": ["*"],
+      "matchPackageNames": ["*"],
       "matchBaseBranches": [
         "v1.18",
         "v1.17",
