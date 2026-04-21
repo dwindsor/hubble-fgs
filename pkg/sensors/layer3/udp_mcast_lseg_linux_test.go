@@ -221,7 +221,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUdpMulticastSeqCheck(t *testing.T) {
+func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -371,7 +371,7 @@ func TestUdpMulticastSeqCheck(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func sendSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqNumSize uint, seqNum uint) {
+func sendLSEGSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqNumSize uint, seqNum uint) {
 	if lineIdSize > 2 || seqNumSize < 2 || seqNumSize > 3 {
 		return
 	}
@@ -439,40 +439,40 @@ func runUdpMulticastLSEGClient(ty multicastTest) {
 
 	switch ty {
 	case multicastTestLSEGConnID:
-		sendSeqData(socket, buf, 2, 7, 2, 3)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 3)
 	case multicastTestLSEGSeq:
-		sendSeqData(socket, buf, 1, 5, 2, 0)
-		sendSeqData(socket, buf, 1, 6, 2, 0)
-		sendSeqData(socket, buf, 1, 6, 2, 1)
-		sendSeqData(socket, buf, 1, 6, 2, 2)
-		sendSeqData(socket, buf, 1, 5, 2, 1)
-		sendSeqData(socket, buf, 1, 5, 2, 2)
-		sendSeqData(socket, buf, 1, 5, 2, 4)
-		sendSeqData(socket, buf, 1, 5, 2, 3)
-		sendSeqData(socket, buf, 1, 5, 2, 5)
-		sendSeqData(socket, buf, 1, 6, 2, 3)
-		sendSeqData(socket, buf, 1, 6, 2, 5)
-		sendSeqData(socket, buf, 1, 6, 2, 6)
-		sendSeqData(socket, buf, 2, 7, 2, 0)
-		sendSeqData(socket, buf, 2, 8, 3, 0)
-		sendSeqData(socket, buf, 2, 7, 2, 1)
-		sendSeqData(socket, buf, 2, 8, 3, 1)
-		sendSeqData(socket, buf, 2, 7, 2, 2)
-		sendSeqData(socket, buf, 2, 8, 3, 2)
-		sendSeqData(socket, buf, 2, 7, 2, 3)
-		sendSeqData(socket, buf, 2, 8, 3, 4)
-		sendSeqData(socket, buf, 2, 7, 2, 4)
-		sendSeqData(socket, buf, 2, 8, 3, 3)
-		sendSeqData(socket, buf, 2, 7, 2, 5)
-		sendSeqData(socket, buf, 2, 8, 3, 5)
-		sendSeqData(socket, buf, 2, 7, 2, 6)
-		sendSeqData(socket, buf, 2, 8, 3, 6)
-		sendSeqData(socket, buf, 0, 0, 3, 5)
-		sendSeqData(socket, buf, 0, 0, 3, 6)
-		sendSeqData(socket, buf, 0, 0, 3, 7)
-		sendSeqData(socket, buf, 0, 0, 3, 9)
-		sendSeqData(socket, buf, 0, 0, 3, 10)
-		sendSeqData(socket, buf, 0, 0, 3, 11)
-		sendSeqData(socket, buf, 0, 0, 3, 12)
+		sendLSEGSeqData(socket, buf, 1, 5, 2, 0)
+		sendLSEGSeqData(socket, buf, 1, 6, 2, 0)
+		sendLSEGSeqData(socket, buf, 1, 6, 2, 1)
+		sendLSEGSeqData(socket, buf, 1, 6, 2, 2)
+		sendLSEGSeqData(socket, buf, 1, 5, 2, 1)
+		sendLSEGSeqData(socket, buf, 1, 5, 2, 2)
+		sendLSEGSeqData(socket, buf, 1, 5, 2, 4)
+		sendLSEGSeqData(socket, buf, 1, 5, 2, 3)
+		sendLSEGSeqData(socket, buf, 1, 5, 2, 5)
+		sendLSEGSeqData(socket, buf, 1, 6, 2, 3)
+		sendLSEGSeqData(socket, buf, 1, 6, 2, 5)
+		sendLSEGSeqData(socket, buf, 1, 6, 2, 6)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 0)
+		sendLSEGSeqData(socket, buf, 2, 8, 3, 0)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 1)
+		sendLSEGSeqData(socket, buf, 2, 8, 3, 1)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 2)
+		sendLSEGSeqData(socket, buf, 2, 8, 3, 2)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 3)
+		sendLSEGSeqData(socket, buf, 2, 8, 3, 4)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 4)
+		sendLSEGSeqData(socket, buf, 2, 8, 3, 3)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 5)
+		sendLSEGSeqData(socket, buf, 2, 8, 3, 5)
+		sendLSEGSeqData(socket, buf, 2, 7, 2, 6)
+		sendLSEGSeqData(socket, buf, 2, 8, 3, 6)
+		sendLSEGSeqData(socket, buf, 0, 0, 3, 5)
+		sendLSEGSeqData(socket, buf, 0, 0, 3, 6)
+		sendLSEGSeqData(socket, buf, 0, 0, 3, 7)
+		sendLSEGSeqData(socket, buf, 0, 0, 3, 9)
+		sendLSEGSeqData(socket, buf, 0, 0, 3, 10)
+		sendLSEGSeqData(socket, buf, 0, 0, 3, 11)
+		sendLSEGSeqData(socket, buf, 0, 0, 3, 12)
 	}
 }
