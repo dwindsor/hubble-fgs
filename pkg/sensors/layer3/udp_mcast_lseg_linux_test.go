@@ -91,8 +91,8 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
-	socatArg1 := "STDOUT"
-	socatArg2 := fmt.Sprintf("UDP4-LISTEN:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
+	socatArg1 := "-"
+	socatArg2 := fmt.Sprintf("UDP4-RECVFROM:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
 	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
 	socatSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -252,8 +252,8 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	ifAddr, err := getDefaultInterfaceAddress()
 	require.NoError(t, err)
 
-	socatArg1 := "STDOUT"
-	socatArg2 := fmt.Sprintf("UDP4-LISTEN:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
+	socatArg1 := "-"
+	socatArg2 := fmt.Sprintf("UDP4-RECVFROM:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
 	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
 	socatSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
