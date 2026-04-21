@@ -99,6 +99,10 @@ func TestMain(m *testing.M) {
 			runUdpMulticastLSEGClient(multicastTestLSEGConnID)
 		case "lsegseq":
 			runUdpMulticastLSEGClient(multicastTestLSEGSeq)
+		case "rtpconn":
+			runUdpMulticastRTPClient(multicastTestRTPConnID)
+		case "rtpseq":
+			runUdpMulticastRTPClient(multicastTestRTPSeq)
 		}
 		os.Exit(0)
 	}

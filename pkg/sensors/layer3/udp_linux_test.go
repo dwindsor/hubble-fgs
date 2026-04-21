@@ -268,6 +268,8 @@ type multicastTest int
 const (
 	multicastTestLSEGConnID = iota
 	multicastTestLSEGSeq
+	multicastTestRTPConnID
+	multicastTestRTPSeq
 )
 
 func runUdpServer() {
