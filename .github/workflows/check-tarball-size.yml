@@ -1,0 +1,43 @@
+name: Check Tetragon Slim Tarball Size
+on:
+  pull_request:
+
+env:
+  # Maximum size in MiB for tetragon-slim tarball
+  TETRAGON_SLIM_MAX_SIZE: 90
+
+jobs:
+  check-tarball-size:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          submodules: true
+
+      - name: Generate Tetragon Slim Tarball Release
+        run: |
+          make tarball-slim-extract
+
+      - name: Check Tetragon Slim Tarball Size
+        run: |
+          set -euo pipefail
+
+          max_bytes=$((TETRAGON_SLIM_MAX_SIZE * 1024 * 1024))
+
+          tetragon_slim_dir=$(find /tmp -maxdepth 1 -type d -name 'tetragon-slim.*')
+          if [ -z "${tetragon_slim_dir}" ]; then
+            echo "::error::no extracted tetragon-slim directory found in /tmp"
+            exit 1
+          fi
+
+          size=$(du -sb "${tetragon_slim_dir}" | cut -f1)
+          size_mib=$(awk "BEGIN {printf \"%.2f\", ${size} / 1024 / 1024}")
+
+          echo "Tetragon Slim Size: ${tetragon_slim_dir} (${size_mib} MiB)"
+
+          if [ "${size}" -gt "${max_bytes}" ]; then
+            echo "::error::tetragon-slim tarball exceeds ${TETRAGON_SLIM_MAX_SIZE} MiB (${size_mib} MiB)"
+            exit 1
+          fi
