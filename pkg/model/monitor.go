@@ -267,6 +267,7 @@ type ProcessValue struct {
 	LatestStartTime *time.Time
 	LatestExitTime  *time.Time
 	ExecCount       uint64
+	ExitCount       uint64
 }
 
 func (pk ProcessKey) String() string {
@@ -509,6 +510,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 	// Second pass: create ProcessValue entries with aggregated parents, execution counts, and times
 	processInfoMap := make(map[ProcessKey]*types.ProcessModel)
 	processExecCounts := make(map[ProcessKey]uint64)
+	processExitCounts := make(map[ProcessKey]uint64)
 	processFirstStartTimes := make(map[ProcessKey]*time.Time)
 	processLatestStartTimes := make(map[ProcessKey]*time.Time)
 	processLatestExitTimes := make(map[ProcessKey]*time.Time)
@@ -516,8 +518,9 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 	for _, process := range processModel {
 		processKey := getProcessMonitorKey(process)
 		processInfoMap[processKey] = process
-		// Sum execution counts across all entries with the same process key
+		// Sum execution/exit counts across all entries with the same process key
 		processExecCounts[processKey] += process.ExecCount
+		processExitCounts[processKey] += process.ExitCount
 
 		// Track the earliest first start time (minimum)
 		if process.FirstStartTime != nil {
@@ -565,6 +568,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 			LatestStartTime: processLatestStartTimes[processKey],
 			LatestExitTime:  processLatestExitTimes[processKey],
 			ExecCount:       processExecCounts[processKey],
+			ExitCount:       processExitCounts[processKey],
 		}
 	}
 

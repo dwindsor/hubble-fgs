@@ -71,6 +71,7 @@ type processValue struct {
 	latestStartTime *time.Time
 	latestExitTime  *time.Time
 	execCount       uint64
+	exitCount       uint64
 }
 
 type connectionMap map[connectionKey]*appModelV1.ApplicationConnection
@@ -169,6 +170,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 			latestStartTime: psval.LatestStartTime,
 			latestExitTime:  psval.LatestExitTime,
 			execCount:       psval.ExecCount,
+			exitCount:       psval.ExitCount,
 		}
 	} else {
 		// Merge process data into existing entry (preserving connections)
@@ -179,6 +181,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 		existing.latestStartTime = psval.LatestStartTime
 		existing.latestExitTime = psval.LatestExitTime
 		existing.execCount = psval.ExecCount
+		existing.exitCount = psval.ExitCount
 		nsMap[nsKey][wlkey][contKey][pskey] = existing
 	}
 }
@@ -223,6 +226,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 							InInitTree:      wrapperspb.Bool(psval.inInitTree),
 							SyscallInfo:     psval.syscalls,
 							ExecutionCount:  psval.execCount,
+							ExitCount:       psval.exitCount,
 							FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
 							LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
 							LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
@@ -255,6 +259,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 							InInitTree:      wrapperspb.Bool(psval.inInitTree),
 							SyscallInfo:     psval.syscalls,
 							ExecutionCount:  psval.execCount,
+							ExitCount:       psval.exitCount,
 							FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
 							LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
 							LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),

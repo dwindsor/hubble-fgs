@@ -110,8 +110,8 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			continue
 		}
 
-		// Check if process_count (execution count) changed
-		if p.ExecutionCount > b.ExecutionCount {
+		// Check if process_count (execution or exit count) changed
+		if (p.ExecutionCount > b.ExecutionCount) || (p.ExitCount > b.ExitCount) {
 			psDiff = append(psDiff, p)
 			if len(p.Connections) > 0 {
 				connDiff = append(connDiff, p)
@@ -130,6 +130,8 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			FirstStartTime:  p.FirstStartTime,  // propagate first start time
 			LatestStartTime: p.LatestStartTime, // propagate latest start time
 			LatestExitTime:  p.LatestExitTime,  // propagate latest exit time
+			ExecutionCount:  p.ExecutionCount,
+			ExitCount:       p.ExitCount,
 		}
 
 		// What we care about is new connections.
@@ -444,10 +446,12 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 
 					var parents []string
 					var execCount uint64
+					var exitCount uint64
 					var firstStartTime, latestStartTime *timestamppb.Timestamp
 					if info != nil {
 						parents = info.Parents
 						execCount = info.ExecCount
+						exitCount = info.ExitCount
 						firstStartTime = model.MaybeTimeToTimestamp(info.FirstStartTime)
 						latestStartTime = model.MaybeTimeToTimestamp(info.LatestStartTime)
 					}
@@ -475,6 +479,7 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 						LatestStartTime:        latestStartTime,
 						ParentNames:            parents,
 						ExecutionCount:         execCount,
+						ExitCount:              exitCount,
 					}
 					t = append(t, entry)
 				}
@@ -489,10 +494,12 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 
 			var parents []string
 			var execCount uint64
+			var exitCount uint64
 			var firstStartTime, latestStartTime *timestamppb.Timestamp
 			if info != nil {
 				parents = info.Parents
 				execCount = info.ExecCount
+				exitCount = info.ExitCount
 				firstStartTime = model.MaybeTimeToTimestamp(info.FirstStartTime)
 				latestStartTime = model.MaybeTimeToTimestamp(info.LatestStartTime)
 			}
@@ -512,6 +519,7 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 				LatestStartTime:    latestStartTime,
 				ParentNames:        parents,
 				ExecutionCount:     execCount,
+				ExitCount:          exitCount,
 			}
 			t = append(t, entry)
 		}
