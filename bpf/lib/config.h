@@ -65,6 +65,8 @@ struct udp_sensor_config {
 	u64 multicast_app_id;
 	u16 multicast_ports[8];
 	u64 idle_timeout; // idle socket expiry duration in ns
+	u32 multicast_sample_threshold;
+	u32 pad2;
 };
 
 struct cgroup_dispatch_cfg {

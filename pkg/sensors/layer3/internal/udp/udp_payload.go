@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"math"
 	"net"
 	"syscall"
 	"unsafe"
@@ -293,7 +294,12 @@ func ParseMulticastOptions(config *networkapi.UdpConfigValue) {
 		if option.Config.MulticastSeqCheck {
 			config.EnableMulticastSeqCheck = 1
 		}
-		logger.GetLogger().Info("Enable UDP multicast observability", "Application", option.Config.MulticastApp, "Ports", option.Config.MulticastPorts, "Sequence Checking", option.Config.MulticastSeqCheck)
+		if option.Config.MulticastSamplePercent > 0 {
+			config.MulticastSampleThreshold = uint32(math.Round(option.Config.MulticastSamplePercent * 0xFFFFFFFF / 100))
+		}
+		logger.GetLogger().Info("Enable UDP multicast observability", "Application", option.Config.MulticastApp,
+			"Ports", option.Config.MulticastPorts, "Sequence Checking", option.Config.MulticastSeqCheck,
+			"Sample threshold", config.MulticastSampleThreshold)
 	} else {
 		config.MulticastAppId = 0
 		config.EnableMulticastSeqCheck = 0

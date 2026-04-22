@@ -450,6 +450,8 @@ type UdpConfigValue struct {
 	MulticastAppId                uint64                       `align:"multicast_app_id"`
 	MulticastPorts                [UdpMaxMulticastPorts]uint16 `align:"multicast_ports"`
 	IdleTimeout                   uint64                       `align:"idle_timeout"`
+	MulticastSampleThreshold      uint32                       `align:"multicast_sample_threshold"`
+	Pad2                          uint32                       `align:"pad2"`
 }
 
 func (v *UdpConfigValue) String() string {
