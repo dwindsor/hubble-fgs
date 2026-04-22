@@ -113,22 +113,9 @@ udp_mcast_get_conn_id(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 static inline __attribute__((always_inline)) void
 udp_seq_err_check(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		  u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		  struct udp_info_key *k, struct udp_info_value *v)
+		  struct udp_info_key *k, struct udp_info_value *v, u64 multicast_app_id)
 {
-	struct cfg_value *l3cfg = getl3cfg();
-	struct udp_sensor_config *config;
-
-	if (!l3cfg)
-		return;
-	config = &l3cfg->udp;
-
-	if (!config->enable_multicast_seq_check)
-		return;
-
-	if (!is_udp_mcast_obs(config, k))
-		return;
-
-	switch (config->multicast_app_id) {
+	switch (multicast_app_id) {
 #ifdef LSEG
 	case MULTICAST_APP_LSEGMTP:
 		udp_seq_err_check_mtp(skb, ip, ipv6, cookie,
@@ -140,6 +127,28 @@ udp_seq_err_check(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 				      payload_off, payload_sz, process, k, v);
 		return;
 	}
+}
+
+static inline __attribute__((always_inline)) void
+udp_check_multicast(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
+		    u64 *cookie, int payload_off, int payload_sz, u64 send,
+		    struct socketmap_value *process,
+		    struct udp_info_key *k, struct udp_info_value *v)
+{
+	struct cfg_value *l3cfg = getl3cfg();
+	struct udp_sensor_config *config;
+
+	if (!l3cfg)
+		return;
+	config = &l3cfg->udp;
+
+	if (!is_udp_mcast_obs(config, k))
+		return;
+
+	/* Only check sequence numbers on received packets. */
+	if (!send && config->enable_multicast_seq_check)
+		udp_seq_err_check(skb, ip, ipv6, cookie, payload_off,
+				  payload_sz, process, k, v, config->multicast_app_id);
 }
 
 #endif // __BPF_UDP_MCAST_H__
