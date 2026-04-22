@@ -169,6 +169,10 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.udp.enabled | bool | `false` |  |
 | tetragon.layer3.udp.idleSocketTimeout | string | `"2m"` |  |
 | tetragon.layer3.udp.inKernelManaged | bool | `false` |  |
+| tetragon.layer3.udp.multicast.app | string | `""` |  |
+| tetragon.layer3.udp.multicast.ports | list | `[]` |  |
+| tetragon.layer3.udp.multicast.samplePercent | int | `0` |  |
+| tetragon.layer3.udp.multicast.seqCheck | bool | `false` |  |
 | tetragon.livenessProbe | object | `{}` | Overrides the default livenessProbe for the tetragon container. |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |

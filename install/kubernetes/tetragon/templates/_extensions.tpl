@@ -53,6 +53,10 @@ enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
 udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
 enable-network-events: {{ .Values.tetragon.enableEvents.network | quote }}
+multicast-app: {{ .Values.tetragon.layer3.udp.multicast.app | quote }}
+multicast-ports: {{ .Values.tetragon.layer3.udp.multicast.ports | quote }}
+enable-multicast-seq-check: {{ .Values.tetragon.layer3.udp.multicast.seqCheck | quote }}
+multicast-sample-percent: {{ .Values.tetragon.layer3.udp.multicast.samplePercent | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}

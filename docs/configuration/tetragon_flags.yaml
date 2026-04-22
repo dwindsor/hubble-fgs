@@ -386,6 +386,10 @@ options:
       default_value: '[]'
       usage: |
         UDP ports on which to observe the multicast app specified with --multicast-app.
+    - name: multicast-sample-percent
+      default_value: "0"
+      usage: |
+        Specify percentage of multicast app packets to report timestamps for the multicast app specified with --multicast-app and --multicast-ports.
     - name: net-ns-cache-size
       default_value: "256"
       usage: |

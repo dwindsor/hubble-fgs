@@ -96,6 +96,7 @@ const (
 	keyMulticastApp                      = "multicast-app"
 	keyMulticastPorts                    = "multicast-ports"
 	keyEnableMulticastSeqCheck           = "enable-multicast-seq-check"
+	keyMulticastSamplePercent            = "multicast-sample-percent"
 	keyEnableNetworkEvents               = "enable-network-events"
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
@@ -232,6 +233,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.String(keyMulticastApp, "", fmt.Sprintf("Specify the multicast app to observe on the ports specified with --%s.", keyMulticastPorts))
 	flags.IntSlice(keyMulticastPorts, []int{}, fmt.Sprintf("UDP ports on which to observe the multicast app specified with --%s.", keyMulticastApp))
 	flags.Bool(keyEnableMulticastSeqCheck, false, fmt.Sprintf("Enable sequence checking for the multicast app specified with --%s and --%s.", keyMulticastApp, keyMulticastPorts))
+	flags.Float64(keyMulticastSamplePercent, 0, fmt.Sprintf("Specify percentage of multicast app packets to report timestamps for the multicast app specified with --%s and --%s.", keyMulticastApp, keyMulticastPorts))
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
@@ -325,6 +327,7 @@ func readAndSetEnterpriseFlags() {
 	Config.MulticastAppID = multicastAppID[Config.MulticastApp]
 	Config.MulticastPorts = viper.GetIntSlice(keyMulticastPorts)
 	Config.MulticastSeqCheck = viper.GetBool(keyEnableMulticastSeqCheck)
+	Config.MulticastSamplePercent = viper.GetFloat64(keyMulticastSamplePercent)
 	Config.EnableNetworkEvents = viper.GetBool(keyEnableNetworkEvents)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
@@ -389,6 +392,9 @@ func validateConfig(config config) error {
 	if config.MulticastApp != "" && config.MulticastAppID == MulticastNoApp {
 		return fmt.Errorf("invalid multicast app: %s", config.MulticastApp)
 	}
+	if config.MulticastSamplePercent < 0 || config.MulticastSamplePercent > 100 {
+		return fmt.Errorf("invalid multicast sample percent: %f", config.MulticastSamplePercent)
+	}
 	// if an app was specified, but no ports, OR
 	// if an app wasn't specified, but ports were
 	// (using != as XOR)
@@ -397,6 +403,10 @@ func validateConfig(config config) error {
 	}
 	// if multicast sequence checking is enabled, but the app or ports weren't specified
 	if config.MulticastSeqCheck && (config.MulticastAppID == MulticastNoApp || len(config.MulticastPorts) == 0) {
+		return fmt.Errorf("multicast observability requires the app to be specified with --%s and the ports to be specified with --%s", keyMulticastApp, keyMulticastPorts)
+	}
+	// if multicast sample percent is specified, but the app or ports weren't specified
+	if config.MulticastSamplePercent > 0 && (config.MulticastAppID == MulticastNoApp || len(config.MulticastPorts) == 0) {
 		return fmt.Errorf("multicast observability requires the app to be specified with --%s and the ports to be specified with --%s", keyMulticastApp, keyMulticastPorts)
 	}
 

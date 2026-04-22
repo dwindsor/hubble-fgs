@@ -81,6 +81,11 @@ tetragon:
       enabled: false
       idleSocketTimeout: 2m
       inKernelManaged: false
+      multicast:
+        app: ""
+        ports: []
+        seqCheck: false
+        samplePercent: 0
     icmp:
       enabled: false
     igmp:

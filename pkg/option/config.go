@@ -115,10 +115,11 @@ type config struct {
 	UDPInKernelManaged   bool
 
 	// MulticastAppID is derived from the MulticastApp string.
-	MulticastApp      string
-	MulticastAppID    MulticastAppID
-	MulticastPorts    []int // see comment above for DNSPorts
-	MulticastSeqCheck bool
+	MulticastApp           string
+	MulticastAppID         MulticastAppID
+	MulticastPorts         []int // see comment above for DNSPorts
+	MulticastSeqCheck      bool
+	MulticastSamplePercent float64
 
 	EnableNetworkEvents bool
 
