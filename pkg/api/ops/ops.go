@@ -143,6 +143,8 @@ const (
 	MSG_OP_IGMP_JOIN   = 146
 	MSG_OP_IGMP_LEAVE  = 147
 	MSG_OP_IGMP_REPORT = 148
+
+	MSG_OP_MULTICAST_SAMPLE = 149
 )
 
 var OpCodeStrings = map[OpCode]string{
@@ -191,6 +193,7 @@ var OpCodeStrings = map[OpCode]string{
 	MSG_OP_IGMP_JOIN:                 "IGMPJoin",
 	MSG_OP_IGMP_LEAVE:                "IGMPLeave",
 	MSG_OP_IGMP_REPORT:               "IGMPMembershipReport",
+	MSG_OP_MULTICAST_SAMPLE:          "UDPMulticastSample",
 }
 
 func (op OpCode) String() string {

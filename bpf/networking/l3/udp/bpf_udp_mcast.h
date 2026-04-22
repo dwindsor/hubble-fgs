@@ -130,6 +130,24 @@ udp_seq_err_check(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
+udp_sample_multicast(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
+		     u64 *cookie, int payload_off, int payload_sz, u64 send,
+		     struct socketmap_value *process,
+		     struct udp_info_key *k, struct udp_info_value *v,
+		     u64 multicast_app_id, u32 sample_threshold)
+{
+	switch (multicast_app_id) {
+#ifdef LSEG
+	case MULTICAST_APP_LSEGMTP:
+		udp_sample_lseg(skb, ip, ipv6, cookie,
+				payload_off, payload_sz, send, process, k, v,
+				sample_threshold);
+		return;
+#endif
+	}
+}
+
+static inline __attribute__((always_inline)) void
 udp_check_multicast(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		    u64 *cookie, int payload_off, int payload_sz, u64 send,
 		    struct socketmap_value *process,
@@ -149,6 +167,10 @@ udp_check_multicast(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 	if (!send && config->enable_multicast_seq_check)
 		udp_seq_err_check(skb, ip, ipv6, cookie, payload_off,
 				  payload_sz, process, k, v, config->multicast_app_id);
+	if (config->multicast_sample_threshold)
+		udp_sample_multicast(skb, ip, ipv6, cookie, payload_off,
+				     payload_sz, send, process, k, v, config->multicast_app_id,
+				     config->multicast_sample_threshold);
 }
 
 #endif // __BPF_UDP_MCAST_H__

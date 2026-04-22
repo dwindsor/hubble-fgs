@@ -79,6 +79,10 @@ const (
 	TcpRttCannotReadRxOpt
 	TcpRttNoTimestamp
 	TcpRttDeltaTooBig
+	InetReadTcp
+	IgmpJoinMissingProcess
+	IgmpLeaveMissingProcess
+	UdpSampleReadPayloadData
 )
 
 type Protocol int
@@ -89,6 +93,7 @@ const (
 	Udp
 	Ipv6
 	SocketDiscovery
+	Igmp
 )
 
 var ProtocolToString = map[Protocol]string{
@@ -97,6 +102,7 @@ var ProtocolToString = map[Protocol]string{
 	Udp:             "udp",
 	Ipv6:            "ipv6",
 	SocketDiscovery: "socketdiscovery",
+	Igmp:            "igmp",
 }
 
 type Config struct {
@@ -163,6 +169,10 @@ var IpErrorToString = map[IpError]Config{
 	TcpRttCannotReadRxOpt:            {Msg: "TCP RTT cannot read rx_opt", Protocol: Tcp},
 	TcpRttNoTimestamp:                {Msg: "TCP RTT no timestamp", Protocol: Tcp},
 	TcpRttDeltaTooBig:                {Msg: "TCP RTT delta too big", Protocol: Tcp},
+	InetReadTcp:                      {Msg: "Failed to read TCP flags", Protocol: Tcp},
+	IgmpJoinMissingProcess:           {Msg: "IGMP join missing process", Protocol: Igmp},
+	IgmpLeaveMissingProcess:          {Msg: "IGMP leave missing process", Protocol: Igmp},
+	UdpSampleReadPayloadData:         {Msg: "UDP sample failed to read payload data", Protocol: Udp},
 }
 
 var (

@@ -79,6 +79,7 @@
 #define IP_ERROR_INET_READ_TCP		       58
 #define IP_ERROR_IGMP_JOIN_MISSING_PROCESS     59
 #define IP_ERROR_IGMP_LEAVE_MISSING_PROCESS    60
+#define IP_ERROR_UDP_SAMPLE_READ_PAYLOAD_DATA  61
 
 struct handler_vars {
 	struct iphdr ip;
