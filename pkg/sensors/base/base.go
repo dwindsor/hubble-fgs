@@ -231,6 +231,7 @@ func setupSensor() {
 		ExecveV53.RewriteConstants["ENV_VARS_ENABLED"] = uint8(1)
 		ExecveV511.RewriteConstants["ENV_VARS_ENABLED"] = uint8(1)
 		ExecveV61.RewriteConstants["ENV_VARS_ENABLED"] = uint8(1)
+		ExecveV612.RewriteConstants["ENV_VARS_ENABLED"] = uint8(1)
 	}
 }
 
