@@ -22,13 +22,6 @@
 #include "bpf_tracing.h"
 #include "config.h"
 
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, __u32[65537]);
-	__uint(max_entries, 1);
-} tg_l3_udp_lsegm SEC(".maps");
-
 // We include a string here that we don't expect to be found elsewhere in the code base,
 // so that we can grep for it and check if this code is included in the objects.
 static char lseg_build_canary[] __attribute__((used)) = "canary:lseg_build";
@@ -107,18 +100,17 @@ get_lseg_mtp_line_id(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 static inline __attribute__((always_inline)) void
 udp_seq_err_check_mtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		      struct udp_info_key *k)
+		      struct udp_info_key *k, struct udp_info_value *v)
 {
+	u32 expected_seq_num = v->mcast_seq_num;
 	struct msg_udp_seq_error_event *e;
 	u32 max_seq_num = (1 << 16) - 1;
-	u32 expected_seq_num = 0;
 	u32 temp_seq_num = 0;
 	u32 next_seq_num = 0;
 	u32 line_id = 0;
 	u32 seq_num = 0;
 	u8 line_id_sz;
 	u8 seq_num_sz;
-	u32 *seq_nums;
 	int zero = 0;
 
 	if (payload_sz < 6)
@@ -150,15 +142,6 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		max_seq_num = (1 << 24) - 1;
 	}
 
-	seq_nums = (u32 *)map_lookup_elem(&tg_l3_udp_lsegm, &zero);
-	if (!seq_nums)
-		return;
-
-	if (line_id == 0x10000)
-		expected_seq_num = seq_nums[0x10000];
-	else
-		expected_seq_num = seq_nums[line_id & 0xffff];
-
 	// Calculate next expected seq_num.
 	next_seq_num = seq_num + 1;
 	// Check for overflow (as the storage is not the same size as the value).
@@ -166,11 +149,8 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		next_seq_num = 0;
 
 	if (seq_num == expected_seq_num) {
-		// Success. This is what we were expecting.
-		if (line_id == 0x10000)
-			seq_nums[0x10000] = next_seq_num;
-		else
-			seq_nums[line_id & 0xffff] = next_seq_num;
+		// Success. This is what we were expecting. Update to next sequence number.
+		v->mcast_seq_num = next_seq_num;
 		return;
 	} else if (old_seq_num(seq_num, expected_seq_num, max_seq_num))
 		/* The datagram is behind the expected one. We don't report these as per
@@ -181,7 +161,11 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		 */
 		return;
 
-	// Error – datagram is ahead of expected one. Create event.
+	// Error – datagram is ahead of expected one.
+	// Update the expected sequence number to the next one.
+	v->mcast_seq_num = next_seq_num;
+
+	// Create event.
 	e = (struct msg_udp_seq_error_event *)map_lookup_elem(&tg_h_event, &zero);
 	if (!e)
 		return;
@@ -196,28 +180,13 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		e->key.pid = 0;
 		e->key.ktime = 0;
 	}
-	e->tuple.ipv6 = ipv6;
-	e->tuple.saddr[0] = k->tuple.saddr[0];
-	e->tuple.saddr[1] = k->tuple.saddr[1];
-	/* FGS expects host byte-order */
-	e->tuple.sport = k->tuple.sport;
-	e->tuple.daddr[0] = k->tuple.daddr[0];
-	e->tuple.daddr[1] = k->tuple.daddr[1];
-	e->tuple.dport = k->tuple.dport;
-	e->tuple.proto = IPPROTO_UDP;
-	e->tuple.conn_id = 0;
-	e->socket_cookie = *cookie;
+	e->tuple = k->tuple;
+	e->socket_cookie = k->cookie;
 	e->application_id = MULTICAST_APP_LSEGMTP;
 	e->app_specific_id = line_id;
 	e->seq_num_expected = expected_seq_num;
 	e->seq_num_received = seq_num;
 	perf_event_output_metric(skb, ISO_MSG_OP_UDP_SEQ_ERROR, &tcpmon_map, BPF_F_CURRENT_CPU, e, sizeof(struct msg_udp_seq_error_event));
-
-	// Update the expected sequence number to the next one.
-	if (line_id == 0x10000)
-		seq_nums[0x10000] = next_seq_num;
-	else
-		seq_nums[line_id & 0xffff] = next_seq_num;
 }
 #endif
 
