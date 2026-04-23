@@ -974,7 +974,6 @@ the following criteria:
 | process_name | [string](#string) |  |  |
 | process_arguments | [string](#string) |  |  |
 | execution_count | [uint64](#uint64) |  |  |
-| exit_count | [uint64](#uint64) |  |  |
 | parent_hash | [string](#string) |  |  |
 | id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
 | node_labels | [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
@@ -983,6 +982,7 @@ the following criteria:
 | latest_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The most recent time the process has been observed to run. |
 | parent_names | [string](#string) | repeated | Names of all processes that have been parents of this name/argument tuple. |
 | container | [ApplicationContainer](#application_model-v1alpha-ApplicationContainer) |  | The container in which this process is running |
+| exit_count | [uint64](#uint64) |  | The total number of times processes in this process group have exited. |
 
 
 

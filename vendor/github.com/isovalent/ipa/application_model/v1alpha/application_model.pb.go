@@ -196,26 +196,27 @@ type ProcessTelemetry struct {
 	ProcessName            string                 `protobuf:"bytes,9,opt,name=process_name,json=processName,proto3" json:"process_name,omitempty"`
 	ProcessArguments       string                 `protobuf:"bytes,10,opt,name=process_arguments,json=processArguments,proto3" json:"process_arguments,omitempty"`
 	ExecutionCount         uint64                 `protobuf:"varint,11,opt,name=execution_count,json=executionCount,proto3" json:"execution_count,omitempty"`
-	ExitCount              uint64                 `protobuf:"varint,12,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
-	ParentHash             string                 `protobuf:"bytes,13,opt,name=parent_hash,json=parentHash,proto3" json:"parent_hash,omitempty"`
+	ParentHash             string                 `protobuf:"bytes,12,opt,name=parent_hash,json=parentHash,proto3" json:"parent_hash,omitempty"`
 	// An opaque identifier that is unique to this telemetry data across all the
 	// telemetry types.
-	Id string `protobuf:"bytes,14,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,13,opt,name=id,proto3" json:"id,omitempty"`
 	// Labels of the node that transmitted this telemetry event. For nodes that
 	// belong to a Kubernetes cluster, this field contains Kubernetes node labels.
 	// For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
 	// Kubernetes cluster, this field may contain VM tags / labels.
-	NodeLabels map[string]string `protobuf:"bytes,15,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	NodeLabels map[string]string `protobuf:"bytes,14,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The ID of the application model from which this telemetry data got derived.
-	ApplicationModelId string `protobuf:"bytes,16,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
+	ApplicationModelId string `protobuf:"bytes,15,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
 	// The first time the process has been observed to run.
-	FirstStartTime *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=first_start_time,json=firstStartTime,proto3" json:"first_start_time,omitempty"`
+	FirstStartTime *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=first_start_time,json=firstStartTime,proto3" json:"first_start_time,omitempty"`
 	// The most recent time the process has been observed to run.
-	LatestStartTime *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=latest_start_time,json=latestStartTime,proto3" json:"latest_start_time,omitempty"`
+	LatestStartTime *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=latest_start_time,json=latestStartTime,proto3" json:"latest_start_time,omitempty"`
 	// Names of all processes that have been parents of this name/argument tuple.
-	ParentNames []string `protobuf:"bytes,19,rep,name=parent_names,json=parentNames,proto3" json:"parent_names,omitempty"`
+	ParentNames []string `protobuf:"bytes,18,rep,name=parent_names,json=parentNames,proto3" json:"parent_names,omitempty"`
 	// The container in which this process is running
-	Container     *ApplicationContainer `protobuf:"bytes,20,opt,name=container,proto3" json:"container,omitempty"`
+	Container *ApplicationContainer `protobuf:"bytes,19,opt,name=container,proto3" json:"container,omitempty"`
+	// The total number of times processes in this process group have exited.
+	ExitCount     uint64 `protobuf:"varint,20,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -327,13 +328,6 @@ func (x *ProcessTelemetry) GetExecutionCount() uint64 {
 	return 0
 }
 
-func (x *ProcessTelemetry) GetExitCount() uint64 {
-	if x != nil {
-		return x.ExitCount
-	}
-	return 0
-}
-
 func (x *ProcessTelemetry) GetParentHash() string {
 	if x != nil {
 		return x.ParentHash
@@ -388,6 +382,13 @@ func (x *ProcessTelemetry) GetContainer() *ApplicationContainer {
 		return x.Container
 	}
 	return nil
+}
+
+func (x *ProcessTelemetry) GetExitCount() uint64 {
+	if x != nil {
+		return x.ExitCount
+	}
+	return 0
 }
 
 type NetworkConnectTelemetry struct {
@@ -2370,19 +2371,19 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\fprocess_name\x18\t \x01(\tR\vprocessName\x12+\n" +
 	"\x11process_arguments\x18\n" +
 	" \x01(\tR\x10processArguments\x12'\n" +
-	"\x0fexecution_count\x18\v \x01(\x04R\x0eexecutionCount\x12\x1d\n" +
-	"\n" +
-	"exit_count\x18\f \x01(\x04R\texitCount\x12\x1f\n" +
-	"\vparent_hash\x18\r \x01(\tR\n" +
+	"\x0fexecution_count\x18\v \x01(\x04R\x0eexecutionCount\x12\x1f\n" +
+	"\vparent_hash\x18\f \x01(\tR\n" +
 	"parentHash\x12\x0e\n" +
-	"\x02id\x18\x0e \x01(\tR\x02id\x12\\\n" +
-	"\vnode_labels\x18\x0f \x03(\v2;.application_model.v1alpha.ProcessTelemetry.NodeLabelsEntryR\n" +
+	"\x02id\x18\r \x01(\tR\x02id\x12\\\n" +
+	"\vnode_labels\x18\x0e \x03(\v2;.application_model.v1alpha.ProcessTelemetry.NodeLabelsEntryR\n" +
 	"nodeLabels\x120\n" +
-	"\x14application_model_id\x18\x10 \x01(\tR\x12applicationModelId\x12D\n" +
-	"\x10first_start_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12F\n" +
-	"\x11latest_start_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestStartTime\x12!\n" +
-	"\fparent_names\x18\x13 \x03(\tR\vparentNames\x12M\n" +
-	"\tcontainer\x18\x14 \x01(\v2/.application_model.v1alpha.ApplicationContainerR\tcontainer\x1a=\n" +
+	"\x14application_model_id\x18\x0f \x01(\tR\x12applicationModelId\x12D\n" +
+	"\x10first_start_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12F\n" +
+	"\x11latest_start_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestStartTime\x12!\n" +
+	"\fparent_names\x18\x12 \x03(\tR\vparentNames\x12M\n" +
+	"\tcontainer\x18\x13 \x01(\v2/.application_model.v1alpha.ApplicationContainerR\tcontainer\x12\x1d\n" +
+	"\n" +
+	"exit_count\x18\x14 \x01(\x04R\texitCount\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa0\x0e\n" +

@@ -32,26 +32,27 @@ message ProcessTelemetry {
   string process_name = 9;
   string process_arguments = 10;
   uint64 execution_count = 11;
-  uint64 exit_count = 12;
-  string parent_hash = 13;
+  string parent_hash = 12;
   // An opaque identifier that is unique to this telemetry data across all the
   // telemetry types.
-  string id = 14;
+  string id = 13;
   // Labels of the node that transmitted this telemetry event. For nodes that
   // belong to a Kubernetes cluster, this field contains Kubernetes node labels.
   // For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
   // Kubernetes cluster, this field may contain VM tags / labels.
-  map<string, string> node_labels = 15;
+  map<string, string> node_labels = 14;
   // The ID of the application model from which this telemetry data got derived.
-  string application_model_id = 16;
+  string application_model_id = 15;
   // The first time the process has been observed to run.
-  google.protobuf.Timestamp first_start_time = 17;
+  google.protobuf.Timestamp first_start_time = 16;
   // The most recent time the process has been observed to run.
-  google.protobuf.Timestamp latest_start_time = 18;
+  google.protobuf.Timestamp latest_start_time = 17;
   // Names of all processes that have been parents of this name/argument tuple.
-  repeated string parent_names = 19;
+  repeated string parent_names = 18;
   // The container in which this process is running
-  ApplicationContainer container = 20;
+  ApplicationContainer container = 19;
+  // The total number of times processes in this process group have exited.
+  uint64 exit_count = 20;
 }
 
 message NetworkConnectTelemetry {

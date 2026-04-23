@@ -84,12 +84,7 @@ export declare type ProcessTelemetry = Message<"application_model.v1alpha.Proces
   executionCount: bigint;
 
   /**
-   * @generated from field: uint64 exit_count = 12;
-   */
-  exitCount: bigint;
-
-  /**
-   * @generated from field: string parent_hash = 13;
+   * @generated from field: string parent_hash = 12;
    */
   parentHash: string;
 
@@ -97,7 +92,7 @@ export declare type ProcessTelemetry = Message<"application_model.v1alpha.Proces
    * An opaque identifier that is unique to this telemetry data across all the
    * telemetry types.
    *
-   * @generated from field: string id = 14;
+   * @generated from field: string id = 13;
    */
   id: string;
 
@@ -107,44 +102,51 @@ export declare type ProcessTelemetry = Message<"application_model.v1alpha.Proces
    * For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
    * Kubernetes cluster, this field may contain VM tags / labels.
    *
-   * @generated from field: map<string, string> node_labels = 15;
+   * @generated from field: map<string, string> node_labels = 14;
    */
   nodeLabels: { [key: string]: string };
 
   /**
    * The ID of the application model from which this telemetry data got derived.
    *
-   * @generated from field: string application_model_id = 16;
+   * @generated from field: string application_model_id = 15;
    */
   applicationModelId: string;
 
   /**
    * The first time the process has been observed to run.
    *
-   * @generated from field: google.protobuf.Timestamp first_start_time = 17;
+   * @generated from field: google.protobuf.Timestamp first_start_time = 16;
    */
   firstStartTime?: Timestamp;
 
   /**
    * The most recent time the process has been observed to run.
    *
-   * @generated from field: google.protobuf.Timestamp latest_start_time = 18;
+   * @generated from field: google.protobuf.Timestamp latest_start_time = 17;
    */
   latestStartTime?: Timestamp;
 
   /**
    * Names of all processes that have been parents of this name/argument tuple.
    *
-   * @generated from field: repeated string parent_names = 19;
+   * @generated from field: repeated string parent_names = 18;
    */
   parentNames: string[];
 
   /**
    * The container in which this process is running
    *
-   * @generated from field: application_model.v1alpha.ApplicationContainer container = 20;
+   * @generated from field: application_model.v1alpha.ApplicationContainer container = 19;
    */
   container?: ApplicationContainer;
+
+  /**
+   * The total number of times processes in this process group have exited.
+   *
+   * @generated from field: uint64 exit_count = 20;
+   */
+  exitCount: bigint;
 };
 
 /**
