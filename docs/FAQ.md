@@ -26,6 +26,54 @@ developers to do a test OSS sync PR (#vertical-tetragon is a good place for thes
 described above. For PRs submitted by non-isovalent developers, reviewers are encouraged to notify
 owners of the code that may be affected.
 
+### What to do if LVH dep update fails?
+
+When the LVH dependency updates, the `kvm-gotests` workflow may start
+failing for newer kernel updates. Here's how to handle these failures:
+
+**1. Find the failing test**
+
+Open the failed job logs and look at the "Provision LVH VM and run tests" step.
+The output will contain lines like:
+
+```
+--- FAIL: TestSomeTestName (300.29s)
+```
+
+Note the test name.
+
+**2. Find who wrote the test**
+
+You can use `git blame` in your IDE or the GitHub UI to find the author.
+From the command line, `git grep` + `git annotate` also works:
+
+```
+$ git grep -n TestSomeTestName 
+pkg/sensors/some_file_test.go:100:func TestSomeTestName(t *testing.T) {
+
+$ git annotate -L 100,+10 pkg/sensors/some_file_test.go
+```
+
+**3. Notify and discuss**
+
+Create a thread in `#vertical-tetragon` mentioning the failing test, and
+CC the test author. Ask them whether they want to investigate or if 
+the test should be temporarily disabled.
+
+**4. Disable the test if needed**
+
+If the test is broken and a fix is not immediately available, disable it
+with a version check and a `t.Skip`. For example:
+
+```go
+func TestSomeTestName(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
+	// ...
+}
+```
+
 ## Alerts
 
 ### Can I use CEL to filter all events based on process information?
