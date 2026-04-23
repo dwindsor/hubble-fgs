@@ -235,6 +235,7 @@ udp_info_init(struct udp_info_value *v)
 	}
 	v->latency_sum = 0;
 	v->ps_version = pseudo_socket_inc_version();
+	v->mcast_seq_num = 0;
 }
 
 static inline __attribute__((always_inline)) void
