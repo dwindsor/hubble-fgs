@@ -124,7 +124,7 @@ func invalidPolicy() policy {
 func newTracingPolicy(url string, tp tracingpolicy.TracingPolicy, mode string) policy {
 	ret := policy{
 		url:       url,
-		namespace: tpNs(tp),
+		namespace: tp.TpNamespace(),
 		name:      tp.TpName(),
 		ty:        tracingPolTy,
 		mode:      mode,

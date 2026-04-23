@@ -169,6 +169,10 @@ func (tp *TracingPolicy) TpName() string {
 	return tp.ObjectMeta.Name
 }
 
+func (tp *TracingPolicy) TpNamespace() string {
+	return ""
+}
+
 // OperationSelectorValue represents the value for MatchOperations.
 //
 // +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR;FILE_CHATTR;FILE_EXEC;FILE_LINK;FILE_OPEN;FILE_SYMLINK;FILE_OPENRAW;FILE_UNIX_SOCKET_CONNECT;FILE_UNIX_SOCKET_CREATE;FILE_UNIX_SOCKET_DELETE

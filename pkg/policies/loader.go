@@ -75,14 +75,9 @@ func (p *defaultLoader) OnTracingPolicy(ctx context.Context, fname string, _ []b
 		return fmt.Errorf("failed to get sensors from (%s) parser policy: %w", fname, err)
 	}
 
-	namespace := ""
-	if tpNs, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
-		namespace = tpNs.TpNamespace()
-	}
-
 	logger.GetLogger().Info("Added TracingPolicy with success",
 		"TracingPolicy", fname,
-		"metadata.namespace", namespace,
+		"metadata.namespace", tp.TpNamespace(),
 		"metadata.name", tp.TpName())
 
 	return nil

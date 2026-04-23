@@ -20,13 +20,6 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
-func tpNs(tp tracingpolicy.TracingPolicy) string {
-	if tpns, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
-		return tpns.TpNamespace()
-	}
-	return ""
-}
-
 //revive:disable:exported
 type MandatePolicy struct {
 	tp   tracingpolicy.TracingPolicy
@@ -68,7 +61,7 @@ func (m *manager) NewMandatePolicy(tp tracingpolicy.TracingPolicy) tracingpolicy
 		name: mandatePolName(tp.TpName(), m.polNextID),
 	}
 	m.polNextID++
-	if _, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
+	if tp.TpNamespace() != "" {
 		logger.GetLogger().Warn("mandate does not currently support namespaced policies")
 	}
 
@@ -85,4 +78,8 @@ func (mp *MandatePolicy) TpSpec() *v1alpha1.TracingPolicySpec {
 
 func (mp *MandatePolicy) TpInfo() string {
 	return mp.tp.TpInfo()
+}
+
+func (mp *MandatePolicy) TpNamespace() string {
+	return mp.tp.TpNamespace()
 }

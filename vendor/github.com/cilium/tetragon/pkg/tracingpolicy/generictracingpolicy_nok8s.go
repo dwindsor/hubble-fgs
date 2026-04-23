@@ -19,6 +19,7 @@ type TypeMeta struct {
 type ObjectMeta struct {
 	Name        string            `json:"name,omitempty"`
 	Annotations map[string]string `json:"annotations,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
 }
 
 // GenericTracingPolicy represents TracingPolicy CRD.
@@ -27,6 +28,10 @@ type GenericTracingPolicy struct {
 	TypeMeta
 	Metadata ObjectMeta                 `json:"metadata"`
 	Spec     v1alpha1.TracingPolicySpec `json:"spec"`
+}
+
+func (gtp *GenericTracingPolicy) TpNamespace() string {
+	return ""
 }
 
 func (gtp *GenericTracingPolicy) TpName() string {
