@@ -503,6 +503,32 @@ func (event *IgmpMembershipReport) Encapsulate() IsGetEventsResponse_Event {
 
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
+func (event *ProcessMulticastSample) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_ProcessMulticastSample{
+		ProcessMulticastSample: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *ProcessMulticastSample) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessMulticastSample) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// SetAncestors implements the AncestorEvent interface.
+// Sets the Ancestor field of an event.
+func (event *ProcessMulticastSample) SetAncestors(ps []*Process) {
+	event.Ancestors = ps
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessIpError) Encapsulate() IsGetEventsResponse_Event {
 	return &GetEventsResponse_ProcessIpError{
 		ProcessIpError: event,
@@ -870,6 +896,8 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessIgmpLeave
 	case *GetEventsResponse_IgmpMembershipReport:
 		return ev.IgmpMembershipReport
+	case *GetEventsResponse_ProcessMulticastSample:
+		return ev.ProcessMulticastSample
 	case *GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError
 	case *GetEventsResponse_ProcessFile:

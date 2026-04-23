@@ -83,6 +83,7 @@ const (
 	EventType_PROCESS_IGMP_JOIN           EventType = 2001
 	EventType_PROCESS_IGMP_LEAVE          EventType = 2002
 	EventType_IGMP_MEMBERSHIP_REPORT      EventType = 2003
+	EventType_PROCESS_MULTICAST_SAMPLE    EventType = 2004
 	EventType_TEST                        EventType = 40000
 	EventType_RATE_LIMIT_INFO             EventType = 40001
 )
@@ -125,6 +126,7 @@ var (
 		2001:  "PROCESS_IGMP_JOIN",
 		2002:  "PROCESS_IGMP_LEAVE",
 		2003:  "IGMP_MEMBERSHIP_REPORT",
+		2004:  "PROCESS_MULTICAST_SAMPLE",
 		40000: "TEST",
 		40001: "RATE_LIMIT_INFO",
 	}
@@ -164,6 +166,7 @@ var (
 		"PROCESS_IGMP_JOIN":           2001,
 		"PROCESS_IGMP_LEAVE":          2002,
 		"IGMP_MEMBERSHIP_REPORT":      2003,
+		"PROCESS_MULTICAST_SAMPLE":    2004,
 		"TEST":                        40000,
 		"RATE_LIMIT_INFO":             40001,
 	}
@@ -1224,6 +1227,7 @@ type GetEventsResponse struct {
 	//	*GetEventsResponse_ProcessIgmpJoin
 	//	*GetEventsResponse_ProcessIgmpLeave
 	//	*GetEventsResponse_IgmpMembershipReport
+	//	*GetEventsResponse_ProcessMulticastSample
 	//	*GetEventsResponse_Test
 	//	*GetEventsResponse_RateLimitInfo
 	Event isGetEventsResponse_Event `protobuf_oneof:"event"`
@@ -1571,6 +1575,15 @@ func (x *GetEventsResponse) GetIgmpMembershipReport() *IgmpMembershipReport {
 	return nil
 }
 
+func (x *GetEventsResponse) GetProcessMulticastSample() *ProcessMulticastSample {
+	if x != nil {
+		if x, ok := x.Event.(*GetEventsResponse_ProcessMulticastSample); ok {
+			return x.ProcessMulticastSample
+		}
+	}
+	return nil
+}
+
 func (x *GetEventsResponse) GetTest() *Test {
 	if x != nil {
 		if x, ok := x.Event.(*GetEventsResponse_Test); ok {
@@ -1757,6 +1770,10 @@ type GetEventsResponse_IgmpMembershipReport struct {
 	IgmpMembershipReport *IgmpMembershipReport `protobuf:"bytes,2003,opt,name=igmp_membership_report,json=igmpMembershipReport,proto3,oneof"`
 }
 
+type GetEventsResponse_ProcessMulticastSample struct {
+	ProcessMulticastSample *ProcessMulticastSample `protobuf:"bytes,2004,opt,name=process_multicast_sample,json=processMulticastSample,proto3,oneof"`
+}
+
 type GetEventsResponse_Test struct {
 	Test *Test `protobuf:"bytes,40000,opt,name=test,proto3,oneof"`
 }
@@ -1828,6 +1845,8 @@ func (*GetEventsResponse_ProcessIgmpJoin) isGetEventsResponse_Event() {}
 func (*GetEventsResponse_ProcessIgmpLeave) isGetEventsResponse_Event() {}
 
 func (*GetEventsResponse_IgmpMembershipReport) isGetEventsResponse_Event() {}
+
+func (*GetEventsResponse_ProcessMulticastSample) isGetEventsResponse_Event() {}
 
 func (*GetEventsResponse_Test) isGetEventsResponse_Event() {}
 
@@ -1906,7 +1925,7 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x13aggregation_options\x18\x03 \x01(\v2\x1c.tetragon.AggregationOptionsR\x12aggregationOptions\x12:\n" +
 	"\rfield_filters\x18\x04 \x03(\v2\x15.tetragon.FieldFilterR\ffieldFilters\"'\n" +
 	"\x0fAggregationInfo\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x04R\x05count\"\xc2\x15\n" +
+	"\x05count\x18\x01 \x01(\x04R\x05count\"\xa1\x16\n" +
 	"\x11GetEventsResponse\x12:\n" +
 	"\fprocess_exec\x18\x01 \x01(\v2\x15.tetragon.ProcessExecH\x00R\vprocessExec\x12C\n" +
 	"\x0fprocess_connect\x18\x02 \x01(\v2\x18.tetragon.ProcessConnectH\x00R\x0eprocessConnect\x12@\n" +
@@ -1942,7 +1961,8 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x17powershell_script_block\x18\x1e \x01(\v2\x1f.tetragon.PowershellScriptBlockH\x00R\x15powershellScriptBlock\x12H\n" +
 	"\x11process_igmp_join\x18\xd1\x0f \x01(\v2\x19.tetragon.ProcessIgmpJoinH\x00R\x0fprocessIgmpJoin\x12K\n" +
 	"\x12process_igmp_leave\x18\xd2\x0f \x01(\v2\x1a.tetragon.ProcessIgmpLeaveH\x00R\x10processIgmpLeave\x12W\n" +
-	"\x16igmp_membership_report\x18\xd3\x0f \x01(\v2\x1e.tetragon.IgmpMembershipReportH\x00R\x14igmpMembershipReport\x12&\n" +
+	"\x16igmp_membership_report\x18\xd3\x0f \x01(\v2\x1e.tetragon.IgmpMembershipReportH\x00R\x14igmpMembershipReport\x12]\n" +
+	"\x18process_multicast_sample\x18\xd4\x0f \x01(\v2 .tetragon.ProcessMulticastSampleH\x00R\x16processMulticastSample\x12&\n" +
 	"\x04test\x18\xc0\xb8\x02 \x01(\v2\x0e.tetragon.TestH\x00R\x04test\x12C\n" +
 	"\x0frate_limit_info\x18\xc1\xb8\x02 \x01(\v2\x17.tetragon.RateLimitInfoH\x00R\rrateLimitInfo\x12\x1c\n" +
 	"\tnode_name\x18\xe8\a \x01(\tR\bnodeName\x12/\n" +
@@ -1954,7 +1974,7 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\a\n" +
-	"\x05event*\xb2\x06\n" +
+	"\x05event*\xd1\x06\n" +
 	"\tEventType\x12\t\n" +
 	"\x05UNDEF\x10\x00\x12\x10\n" +
 	"\fPROCESS_EXEC\x10\x01\x12\x13\n" +
@@ -1991,7 +2011,8 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x17POWERSHELL_SCRIPT_BLOCK\x10\x81\x01\x12\x16\n" +
 	"\x11PROCESS_IGMP_JOIN\x10\xd1\x0f\x12\x17\n" +
 	"\x12PROCESS_IGMP_LEAVE\x10\xd2\x0f\x12\x1b\n" +
-	"\x16IGMP_MEMBERSHIP_REPORT\x10\xd3\x0f\x12\n" +
+	"\x16IGMP_MEMBERSHIP_REPORT\x10\xd3\x0f\x12\x1d\n" +
+	"\x18PROCESS_MULTICAST_SAMPLE\x10\xd4\x0f\x12\n" +
 	"\n" +
 	"\x04TEST\x10\xc0\xb8\x02\x12\x15\n" +
 	"\x0fRATE_LIMIT_INFO\x10\xc1\xb8\x02\x1a\x02\x10\x01\"\x05\b\x1f\x10\x80\x01*K\n" +
@@ -2069,8 +2090,9 @@ var file_tetragon_events_proto_goTypes = []any{
 	(*ProcessIgmpJoin)(nil),         // 48: tetragon.ProcessIgmpJoin
 	(*ProcessIgmpLeave)(nil),        // 49: tetragon.ProcessIgmpLeave
 	(*IgmpMembershipReport)(nil),    // 50: tetragon.IgmpMembershipReport
-	(*Test)(nil),                    // 51: tetragon.Test
-	(*timestamppb.Timestamp)(nil),   // 52: google.protobuf.Timestamp
+	(*ProcessMulticastSample)(nil),  // 51: tetragon.ProcessMulticastSample
+	(*Test)(nil),                    // 52: tetragon.Test
+	(*timestamppb.Timestamp)(nil),   // 53: google.protobuf.Timestamp
 }
 var file_tetragon_events_proto_depIdxs = []int32{
 	15, // 0: tetragon.Filter.health_check:type_name -> google.protobuf.BoolValue
@@ -2128,16 +2150,17 @@ var file_tetragon_events_proto_depIdxs = []int32{
 	48, // 52: tetragon.GetEventsResponse.process_igmp_join:type_name -> tetragon.ProcessIgmpJoin
 	49, // 53: tetragon.GetEventsResponse.process_igmp_leave:type_name -> tetragon.ProcessIgmpLeave
 	50, // 54: tetragon.GetEventsResponse.igmp_membership_report:type_name -> tetragon.IgmpMembershipReport
-	51, // 55: tetragon.GetEventsResponse.test:type_name -> tetragon.Test
-	7,  // 56: tetragon.GetEventsResponse.rate_limit_info:type_name -> tetragon.RateLimitInfo
-	52, // 57: tetragon.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
-	12, // 58: tetragon.GetEventsResponse.aggregation_info:type_name -> tetragon.AggregationInfo
-	14, // 59: tetragon.GetEventsResponse.node_labels:type_name -> tetragon.GetEventsResponse.NodeLabelsEntry
-	60, // [60:60] is the sub-list for method output_type
-	60, // [60:60] is the sub-list for method input_type
-	60, // [60:60] is the sub-list for extension type_name
-	60, // [60:60] is the sub-list for extension extendee
-	0,  // [0:60] is the sub-list for field type_name
+	51, // 55: tetragon.GetEventsResponse.process_multicast_sample:type_name -> tetragon.ProcessMulticastSample
+	52, // 56: tetragon.GetEventsResponse.test:type_name -> tetragon.Test
+	7,  // 57: tetragon.GetEventsResponse.rate_limit_info:type_name -> tetragon.RateLimitInfo
+	53, // 58: tetragon.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
+	12, // 59: tetragon.GetEventsResponse.aggregation_info:type_name -> tetragon.AggregationInfo
+	14, // 60: tetragon.GetEventsResponse.node_labels:type_name -> tetragon.GetEventsResponse.NodeLabelsEntry
+	61, // [61:61] is the sub-list for method output_type
+	61, // [61:61] is the sub-list for method input_type
+	61, // [61:61] is the sub-list for extension type_name
+	61, // [61:61] is the sub-list for extension extendee
+	0,  // [0:61] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_events_proto_init() }
@@ -2183,6 +2206,7 @@ func file_tetragon_events_proto_init() {
 		(*GetEventsResponse_ProcessIgmpJoin)(nil),
 		(*GetEventsResponse_ProcessIgmpLeave)(nil),
 		(*GetEventsResponse_IgmpMembershipReport)(nil),
+		(*GetEventsResponse_ProcessMulticastSample)(nil),
 		(*GetEventsResponse_Test)(nil),
 		(*GetEventsResponse_RateLimitInfo)(nil),
 	}

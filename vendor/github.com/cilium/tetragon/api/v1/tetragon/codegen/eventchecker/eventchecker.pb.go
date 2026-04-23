@@ -305,6 +305,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessIgmpLeaveChecker("").FromProcessIgmpLeave(ev), nil
 	case *tetragon.IgmpMembershipReport:
 		return NewIgmpMembershipReportChecker("").FromIgmpMembershipReport(ev), nil
+	case *tetragon.ProcessMulticastSample:
+		return NewProcessMulticastSampleChecker("").FromProcessMulticastSample(ev), nil
 	case *tetragon.ProcessIpError:
 		return NewProcessIpErrorChecker("").FromProcessIpError(ev), nil
 	case *tetragon.ProcessFile:
@@ -417,6 +419,8 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessIgmpLeave, nil
 	case *tetragon.GetEventsResponse_IgmpMembershipReport:
 		return ev.IgmpMembershipReport, nil
+	case *tetragon.GetEventsResponse_ProcessMulticastSample:
+		return ev.ProcessMulticastSample, nil
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError, nil
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -5351,6 +5355,247 @@ nextCheck:
 	}
 
 	return nil
+}
+
+// ProcessMulticastSampleChecker implements a checker struct to check a ProcessMulticastSample event
+type ProcessMulticastSampleChecker struct {
+	CheckerName     string                       `json:"checkerName"`
+	Process         *ProcessChecker              `json:"process,omitempty"`
+	Parent          *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp        *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	SourcePort      *uint32                      `json:"sourcePort,omitempty"`
+	DestinationIp   *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
+	DestinationPort *uint32                      `json:"destinationPort,omitempty"`
+	SockCookie      *uint64                      `json:"sockCookie,omitempty"`
+	ConnectionId    *uint64                      `json:"connectionId,omitempty"`
+	Data            *uint64                      `json:"data,omitempty"`
+	Direction       *DirectionChecker            `json:"direction,omitempty"`
+	Ancestors       *ProcessListMatcher          `json:"ancestors,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessMulticastSampleChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessMulticastSample); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessMulticastSample event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessMulticastSampleChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessMulticastSampleChecker creates a new ProcessMulticastSampleChecker
+func NewProcessMulticastSampleChecker(name string) *ProcessMulticastSampleChecker {
+	return &ProcessMulticastSampleChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessMulticastSampleChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessMulticastSampleChecker) GetCheckerType() string {
+	return "ProcessMulticastSampleChecker"
+}
+
+// Check checks a ProcessMulticastSample event
+func (checker *ProcessMulticastSampleChecker) Check(event *tetragon.ProcessMulticastSample) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessMulticastSample event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.SourcePort != nil {
+			if event.SourcePort == nil {
+				return fmt.Errorf("SourcePort is nil and does not match expected value %v", *checker.SourcePort)
+			}
+			if *checker.SourcePort != event.SourcePort.Value {
+				return fmt.Errorf("SourcePort has value %v which does not match expected value %v", event.SourcePort.Value, *checker.SourcePort)
+			}
+		}
+		if checker.DestinationIp != nil {
+			if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+				return fmt.Errorf("DestinationIp check failed: %w", err)
+			}
+		}
+		if checker.DestinationPort != nil {
+			if event.DestinationPort == nil {
+				return fmt.Errorf("DestinationPort is nil and does not match expected value %v", *checker.DestinationPort)
+			}
+			if *checker.DestinationPort != event.DestinationPort.Value {
+				return fmt.Errorf("DestinationPort has value %v which does not match expected value %v", event.DestinationPort.Value, *checker.DestinationPort)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.ConnectionId != nil {
+			if *checker.ConnectionId != event.ConnectionId {
+				return fmt.Errorf("ConnectionId has value %d which does not match expected value %d", event.ConnectionId, *checker.ConnectionId)
+			}
+		}
+		if checker.Data != nil {
+			if *checker.Data != event.Data {
+				return fmt.Errorf("Data has value %d which does not match expected value %d", event.Data, *checker.Data)
+			}
+		}
+		if checker.Direction != nil {
+			if err := checker.Direction.Check(&event.Direction); err != nil {
+				return fmt.Errorf("Direction check failed: %w", err)
+			}
+		}
+		if checker.Ancestors != nil {
+			if err := checker.Ancestors.Check(event.Ancestors); err != nil {
+				return fmt.Errorf("Ancestors check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithProcess(check *ProcessChecker) *ProcessMulticastSampleChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithParent(check *ProcessChecker) *ProcessMulticastSampleChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSourceIp adds a SourceIp check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithSourceIp(check *stringmatcher.StringMatcher) *ProcessMulticastSampleChecker {
+	checker.SourceIp = check
+	return checker
+}
+
+// WithSourcePort adds a SourcePort check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithSourcePort(check uint32) *ProcessMulticastSampleChecker {
+	checker.SourcePort = &check
+	return checker
+}
+
+// WithDestinationIp adds a DestinationIp check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithDestinationIp(check *stringmatcher.StringMatcher) *ProcessMulticastSampleChecker {
+	checker.DestinationIp = check
+	return checker
+}
+
+// WithDestinationPort adds a DestinationPort check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithDestinationPort(check uint32) *ProcessMulticastSampleChecker {
+	checker.DestinationPort = &check
+	return checker
+}
+
+// WithSockCookie adds a SockCookie check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithSockCookie(check uint64) *ProcessMulticastSampleChecker {
+	checker.SockCookie = &check
+	return checker
+}
+
+// WithConnectionId adds a ConnectionId check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithConnectionId(check uint64) *ProcessMulticastSampleChecker {
+	checker.ConnectionId = &check
+	return checker
+}
+
+// WithData adds a Data check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithData(check uint64) *ProcessMulticastSampleChecker {
+	checker.Data = &check
+	return checker
+}
+
+// WithDirection adds a Direction check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithDirection(check tetragon.Direction) *ProcessMulticastSampleChecker {
+	wrappedCheck := DirectionChecker(check)
+	checker.Direction = &wrappedCheck
+	return checker
+}
+
+// WithAncestors adds a Ancestors check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) WithAncestors(check *ProcessListMatcher) *ProcessMulticastSampleChecker {
+	checker.Ancestors = check
+	return checker
+}
+
+//FromProcessMulticastSample populates the ProcessMulticastSampleChecker using data from a ProcessMulticastSample event
+func (checker *ProcessMulticastSampleChecker) FromProcessMulticastSample(event *tetragon.ProcessMulticastSample) *ProcessMulticastSampleChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.SourceIp = stringmatcher.Full(event.SourceIp)
+	if event.SourcePort != nil {
+		val := event.SourcePort.Value
+		checker.SourcePort = &val
+	}
+	checker.DestinationIp = stringmatcher.Full(event.DestinationIp)
+	if event.DestinationPort != nil {
+		val := event.DestinationPort.Value
+		checker.DestinationPort = &val
+	}
+	{
+		val := event.SockCookie
+		checker.SockCookie = &val
+	}
+	{
+		val := event.ConnectionId
+		checker.ConnectionId = &val
+	}
+	{
+		val := event.Data
+		checker.Data = &val
+	}
+	checker.Direction = NewDirectionChecker(event.Direction)
+	{
+		var checks []*ProcessChecker
+		for _, check := range event.Ancestors {
+			var convertedCheck *ProcessChecker
+			if check != nil {
+				convertedCheck = NewProcessChecker().FromProcess(check)
+			}
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Ancestors = lm
+	}
+	return checker
 }
 
 // ProcessIpErrorChecker implements a checker struct to check a ProcessIpError event
@@ -17578,6 +17823,58 @@ func (enum *IgmpMembershipReportTypeChecker) Check(val *tetragon.IgmpMembershipR
 	}
 	if *enum != IgmpMembershipReportTypeChecker(*val) {
 		return fmt.Errorf("IgmpMembershipReportTypeChecker: IgmpMembershipReportType has value %s which does not match expected value %s", (*val), tetragon.IgmpMembershipReportType(*enum))
+	}
+	return nil
+}
+
+// DirectionChecker checks a tetragon.Direction
+type DirectionChecker tetragon.Direction
+
+// MarshalJSON implements json.Marshaler interface
+func (enum DirectionChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.Direction_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown Direction %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *DirectionChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.Direction_value[str]; ok {
+		*enum = DirectionChecker(n)
+	} else if n, ok := tetragon.Direction_value[""+str]; ok {
+		*enum = DirectionChecker(n)
+	} else {
+		return fmt.Errorf("Unknown Direction %s", str)
+	}
+
+	return nil
+}
+
+// NewDirectionChecker creates a new DirectionChecker
+func NewDirectionChecker(val tetragon.Direction) *DirectionChecker {
+	enum := DirectionChecker(val)
+	return &enum
+}
+
+// Check checks a Direction against the checker
+func (enum *DirectionChecker) Check(val *tetragon.Direction) error {
+	if val == nil {
+		return fmt.Errorf("DirectionChecker: Direction is nil and does not match expected value %s", tetragon.Direction(*enum))
+	}
+	if *enum != DirectionChecker(*val) {
+		return fmt.Errorf("DirectionChecker: Direction has value %s which does not match expected value %s", (*val), tetragon.Direction(*enum))
 	}
 	return nil
 }

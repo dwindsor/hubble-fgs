@@ -276,6 +276,25 @@ message IgmpMembershipReport {
   repeated IgmpGroupRecord groups = 6;
 }
 
+enum Direction {
+  RECEIVE = 0;
+  SEND = 1;
+}
+
+message ProcessMulticastSample {
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  google.protobuf.UInt32Value source_port = 4;
+  string destination_ip = 5;
+  google.protobuf.UInt32Value destination_port = 6;
+  uint64 sock_cookie = 7;
+  uint64 connection_id = 8;
+  uint64 data = 9;
+  Direction direction = 10;
+  repeated Process ancestors = 11; // Not in use for now. Please rely on ancestors in ProcessExec.
+}
+
 message ProcessIpError {
   tetragon.Process process = 1;
   tetragon.Process parent = 2;

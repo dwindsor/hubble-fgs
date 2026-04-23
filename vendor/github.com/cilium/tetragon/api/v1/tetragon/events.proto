@@ -76,6 +76,7 @@ enum EventType {
   PROCESS_IGMP_JOIN = 2001;
   PROCESS_IGMP_LEAVE = 2002;
   IGMP_MEMBERSHIP_REPORT = 2003;
+  PROCESS_MULTICAST_SAMPLE = 2004;
 
   TEST = 40000;
   RATE_LIMIT_INFO = 40001;
@@ -312,6 +313,7 @@ message GetEventsResponse {
     ProcessIgmpJoin process_igmp_join = 2001;
     ProcessIgmpLeave process_igmp_leave = 2002;
     IgmpMembershipReport igmp_membership_report = 2003;
+    ProcessMulticastSample process_multicast_sample = 2004;
 
     Test test = 40000;
     RateLimitInfo rate_limit_info = 40001;

@@ -87,6 +87,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_IGMP_LEAVE.String(), nil
 	case *tetragon.GetEventsResponse_IgmpMembershipReport:
 		return tetragon.EventType_IGMP_MEMBERSHIP_REPORT.String(), nil
+	case *tetragon.GetEventsResponse_ProcessMulticastSample:
+		return tetragon.EventType_PROCESS_MULTICAST_SAMPLE.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -147,6 +149,8 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessIgmpJoin.Process
 	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
 		return ev.ProcessIgmpLeave.Process
+	case *tetragon.GetEventsResponse_ProcessMulticastSample:
+		return ev.ProcessMulticastSample.Process
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Process
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -236,6 +240,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessIgmpJoin.Parent
 	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
 		return ev.ProcessIgmpLeave.Parent
+	case *tetragon.GetEventsResponse_ProcessMulticastSample:
+		return ev.ProcessMulticastSample.Parent
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Parent
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -316,6 +322,8 @@ func ResponseInnerGetAncestors(event tetragon.IsGetEventsResponse_Event) []*tetr
 		return ev.ProcessIgmpJoin.Ancestors
 	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
 		return ev.ProcessIgmpLeave.Ancestors
+	case *tetragon.GetEventsResponse_ProcessMulticastSample:
+		return ev.ProcessMulticastSample.Ancestors
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Ancestors
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -379,6 +387,7 @@ func ResponseTypeMap() map[string]proto.Message {
 		"process_igmp_join":           &tetragon.ProcessIgmpJoin{},
 		"process_igmp_leave":          &tetragon.ProcessIgmpLeave{},
 		"igmp_membership_report":      &tetragon.IgmpMembershipReport{},
+		"process_multicast_sample":    &tetragon.ProcessMulticastSample{},
 		"test":                        &tetragon.Test{},
 		"rate_limit_info":             &tetragon.RateLimitInfo{},
 	}
@@ -452,6 +461,8 @@ func ProcessEventMapTuple(response *tetragon.GetEventsResponse) (string, any, an
 		return "process_igmp_leave", response.GetProcessIgmpLeave(), (*tetragon.ProcessIgmpLeave)(nil)
 	case *tetragon.GetEventsResponse_IgmpMembershipReport:
 		return "igmp_membership_report", response.GetIgmpMembershipReport(), (*tetragon.IgmpMembershipReport)(nil)
+	case *tetragon.GetEventsResponse_ProcessMulticastSample:
+		return "process_multicast_sample", response.GetProcessMulticastSample(), (*tetragon.ProcessMulticastSample)(nil)
 	case *tetragon.GetEventsResponse_Test:
 		return "test", response.GetTest(), (*tetragon.Test)(nil)
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -496,6 +507,7 @@ func ProcessEventMapEmpty() map[string]any {
 		"process_igmp_join":           (*tetragon.ProcessIgmpJoin)(nil),
 		"process_igmp_leave":          (*tetragon.ProcessIgmpLeave)(nil),
 		"igmp_membership_report":      (*tetragon.IgmpMembershipReport)(nil),
+		"process_multicast_sample":    (*tetragon.ProcessMulticastSample)(nil),
 		"test":                        (*tetragon.Test)(nil),
 		"rate_limit_info":             (*tetragon.RateLimitInfo)(nil),
 	}

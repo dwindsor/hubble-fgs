@@ -160,6 +160,7 @@ type eventCheckerHelper struct {
 	ProcessIgmpJoin         *eventchecker.ProcessIgmpJoinChecker         `json:"igmpJoin,omitempty"`
 	ProcessIgmpLeave        *eventchecker.ProcessIgmpLeaveChecker        `json:"igmpLeave,omitempty"`
 	IgmpMembershipReport    *eventchecker.IgmpMembershipReportChecker    `json:"igmpMembershipReport,omitempty"`
+	ProcessMulticastSample  *eventchecker.ProcessMulticastSampleChecker  `json:"multicastSample,omitempty"`
 	ProcessIpError          *eventchecker.ProcessIpErrorChecker          `json:"ipError,omitempty"`
 	ProcessFile             *eventchecker.ProcessFileChecker             `json:"file,omitempty"`
 	ProcessFileExec         *eventchecker.ProcessFileExecChecker         `json:"fileExec,omitempty"`
@@ -308,6 +309,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 		}
 		eventChecker = helper.IgmpMembershipReport
 	}
+	if helper.ProcessMulticastSample != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessMulticastSample, eventChecker)
+		}
+		eventChecker = helper.ProcessMulticastSample
+	}
 	if helper.ProcessIpError != nil {
 		if eventChecker != nil {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessIpError, eventChecker)
@@ -440,6 +447,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessIgmpLeave = c
 	case *eventchecker.IgmpMembershipReportChecker:
 		helper.IgmpMembershipReport = c
+	case *eventchecker.ProcessMulticastSampleChecker:
+		helper.ProcessMulticastSample = c
 	case *eventchecker.ProcessIpErrorChecker:
 		helper.ProcessIpError = c
 	case *eventchecker.ProcessFileChecker:

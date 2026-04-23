@@ -110,6 +110,7 @@
     - [ProcessIgmpLeave](#tetragon-ProcessIgmpLeave)
     - [ProcessIpError](#tetragon-ProcessIpError)
     - [ProcessListen](#tetragon-ProcessListen)
+    - [ProcessMulticastSample](#tetragon-ProcessMulticastSample)
     - [ProcessNetworkBurst](#tetragon-ProcessNetworkBurst)
     - [ProcessNetworkWatermark](#tetragon-ProcessNetworkWatermark)
     - [ProcessRawsockClose](#tetragon-ProcessRawsockClose)
@@ -127,6 +128,7 @@
     - [Tls](#tetragon-Tls)
   
     - [DigestAlgo](#tetragon-DigestAlgo)
+    - [Direction](#tetragon-Direction)
     - [FileAction](#tetragon-FileAction)
     - [FileOperation](#tetragon-FileOperation)
     - [FileScope](#tetragon-FileScope)
@@ -2409,6 +2411,31 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 
 
 
+<a name="tetragon-ProcessMulticastSample"></a>
+
+### ProcessMulticastSample
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| source_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_ip | [string](#string) |  |  |
+| destination_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| connection_id | [uint64](#uint64) |  |  |
+| data | [uint64](#uint64) |  |  |
+| direction | [Direction](#tetragon-Direction) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
+
+
+
+
+
+
 <a name="tetragon-ProcessNetworkBurst"></a>
 
 ### ProcessNetworkBurst
@@ -2763,6 +2790,18 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | HASH_ALGO_STREEBOG_256 | 18 |  |
 | HASH_ALGO_STREEBOG_512 | 19 |  |
 | HASH_ALGO__LAST | 20 |  |
+
+
+
+<a name="tetragon-Direction"></a>
+
+### Direction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| RECEIVE | 0 |  |
+| SEND | 1 |  |
 
 
 
@@ -3307,6 +3346,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_igmp_join | [ProcessIgmpJoin](#tetragon-ProcessIgmpJoin) |  |  |
 | process_igmp_leave | [ProcessIgmpLeave](#tetragon-ProcessIgmpLeave) |  |  |
 | igmp_membership_report | [IgmpMembershipReport](#tetragon-IgmpMembershipReport) |  |  |
+| process_multicast_sample | [ProcessMulticastSample](#tetragon-ProcessMulticastSample) |  |  |
 | test | [Test](#tetragon-Test) |  |  |
 | rate_limit_info | [RateLimitInfo](#tetragon-RateLimitInfo) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
@@ -3433,6 +3473,7 @@ GetEventsResponse event oneof.
 | PROCESS_IGMP_JOIN | 2001 |  |
 | PROCESS_IGMP_LEAVE | 2002 |  |
 | IGMP_MEMBERSHIP_REPORT | 2003 |  |
+| PROCESS_MULTICAST_SAMPLE | 2004 |  |
 | TEST | 40000 |  |
 | RATE_LIMIT_INFO | 40001 |  |
 
