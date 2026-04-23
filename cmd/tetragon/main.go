@@ -66,7 +66,6 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/server"
-	"github.com/cilium/tetragon/pkg/tgsyscall"
 	"github.com/cilium/tetragon/pkg/unixlisten"
 	"github.com/cilium/tetragon/pkg/version"
 
@@ -237,8 +236,7 @@ func loadInitialSensor(ctx context.Context) error {
 
 func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready func()) error {
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, tgsyscall.SIGRTMIN_20,
-		tgsyscall.SIGRTMIN_21, tgsyscall.SIGRTMIN_22)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	// Logging should always be bootstrapped first. Do not add any code above this!
 	if err := logger.SetupLogging(option.Config.LogOpts, option.Config.Debug); err != nil {

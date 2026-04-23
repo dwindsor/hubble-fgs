@@ -611,7 +611,6 @@ github.com/cilium/tetragon/pkg/testutils/policyfilter
 github.com/cilium/tetragon/pkg/testutils/policytest
 github.com/cilium/tetragon/pkg/testutils/sensors
 github.com/cilium/tetragon/pkg/tetragoninfo
-github.com/cilium/tetragon/pkg/tgsyscall
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint
 github.com/cilium/tetragon/pkg/tracingpolicy
