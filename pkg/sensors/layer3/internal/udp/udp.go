@@ -532,6 +532,17 @@ func handleUdpSeqError(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
+func handleMulticastSample(r *bytes.Reader) ([]observer.Event, error) {
+	m := networkapi.MsgIPEvent{}
+	err := binary.Read(r, native_endian.NativeEndian(), &m)
+	if err != nil {
+		return nil, err
+	}
+	msgUnix := ip.MsgToIPUnix(&m)
+
+	return []observer.Event{msgUnix}, nil
+}
+
 func Init() error {
 	var err error
 
@@ -546,5 +557,6 @@ func Init() error {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCLOSE, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDP_SEQ_ERROR, handleUdpSeqError)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_MULTICAST_SAMPLE, handleMulticastSample)
 	return nil
 }

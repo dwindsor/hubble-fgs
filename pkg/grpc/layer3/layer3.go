@@ -576,6 +576,60 @@ func GetProcessSockStats(event *MsgIPWithStatsEventUnix) *tetragon.ProcessSockSt
 	return CreateProcessSockStats(event, true)
 }
 
+// GetProcessMulticastSample converts KprobeEvent from hubble-fgs to protobuf message.
+func GetProcessMulticastSample(event *MsgIPEventUnix) *tetragon.ProcessMulticastSample {
+	var fgsParent, fgsProcess *tetragon.Process
+	var sourcePort, destinationPort *wrapperspb.UInt32Value
+
+	process, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
+	if process == nil {
+		fgsProcess = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
+		}
+	} else {
+		fgsProcess = process.UnsafeGetProcess()
+	}
+	if parent != nil {
+		fgsParent = parent.UnsafeGetProcess()
+	}
+
+	sourceIP := networkapi.GetIP(event.Msg.Tuple.SAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0)
+	destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0)
+
+	if event.Msg.Tuple.SPort != 0 {
+		sourcePort = &wrapperspb.UInt32Value{
+			Value: uint32(networkapi.GetSport(event.Msg.Tuple.SPort)),
+		}
+	}
+	if event.Msg.Tuple.DPort != 0 {
+		destinationPort = &wrapperspb.UInt32Value{
+			Value: uint32(networkapi.GetDport(event.Msg.Tuple.DPort, event.Msg.Common.Op)),
+		}
+	}
+
+	fgsEvent := &tetragon.ProcessMulticastSample{
+		Process:         fgsProcess,
+		Parent:          fgsParent,
+		SourceIp:        sourceIP.String(),
+		SourcePort:      sourcePort,
+		DestinationIp:   destinationIP.String(),
+		DestinationPort: destinationPort,
+		SockCookie:      event.Msg.SockCookie,
+		ConnectionId:    event.Msg.Tuple.ConnId,
+		Data:            uint64(event.Msg.Return),
+		Direction:       tetragon.Direction(event.Msg.SocketFlags),
+	}
+
+	ec := eventcache.Get()
+	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
+		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
+		return nil
+	}
+
+	return fgsEvent
+}
+
 func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
 	process, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
@@ -743,6 +797,14 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		if r != nil {
 			res = &tetragon.GetEventsResponse{
 				Event: &tetragon.GetEventsResponse_ProcessRawsockClose{ProcessRawsockClose: r},
+				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
+			}
+		}
+	case ops.MSG_OP_MULTICAST_SAMPLE:
+		s := GetProcessMulticastSample(msg)
+		if s != nil {
+			res = &tetragon.GetEventsResponse{
+				Event: &tetragon.GetEventsResponse_ProcessMulticastSample{ProcessMulticastSample: s},
 				Time:  ktime.ToProto(msg.Msg.Common.Ktime),
 			}
 		}
