@@ -1,4 +1,4 @@
-FROM ubuntu:noble@sha256:80dd3c3b9c6cecb9f1667e9290b3bc61b78c2678c02cbdae5f0fea92cc6734ab
+FROM ubuntu:resolute@sha256:5e275723f82c67e387ba9e3c24baa0abdcb268917f276a0561c97bef9450d0b4
 
 RUN apt-get -y update && apt-get -y install clang-format-18
 RUN ln -s /bin/clang-format-18 /bin/clang-format
