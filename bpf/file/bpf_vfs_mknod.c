@@ -30,6 +30,18 @@ static inline __attribute__((always_inline)) __u32 vfs_mknod(void *ctx, struct i
 	return kprobe_vfs_mk(ctx, dir, dentry, action, hook_vfs_mknod, md);
 }
 
+SEC("kprobe/vfs_mknod/70")
+int BPF_KPROBE(vfs_mknod_v70, struct mnt_idmap *idmap, struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev, struct delegated_inode *delegated_inode)
+{
+	int err;
+
+	err = vfs_mknod(ctx, dir, dentry, mode, dev);
+	if (err < 0)
+		inc_error(hook_vfs_mknod, -err);
+
+	return 0;
+}
+
 SEC("kprobe/vfs_mknod/63")
 int BPF_KPROBE(vfs_mknod_v63, struct mnt_idmap *idmap, struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 {

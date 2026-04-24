@@ -3,6 +3,19 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
+SEC("kprobe/vfs_mkdir/70")
+int BPF_KPROBE(vfs_mkdir_v70, struct mnt_idmap *idmap, struct inode *dir,
+	       struct dentry *dentry, umode_t mode, struct delegated_inode *delegated_inode)
+{
+	int err;
+
+	err = kprobe_vfs_mk(ctx, dir, dentry, action_mkdir, hook_vfs_mkdir, HASH_MAP_FILE_MODE_DIRECTORY);
+	if (err < 0)
+		inc_error(hook_vfs_mkdir, -err);
+
+	return 0;
+}
+
 SEC("kprobe/vfs_mkdir/63")
 int BPF_KPROBE(vfs_mkdir_v63, struct mnt_idmap *idmap, struct inode *dir,
 	       struct dentry *dentry, umode_t mode)

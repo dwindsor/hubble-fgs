@@ -82,13 +82,15 @@ var (
 		"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)": "60",
 		"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)":      "63",
 		// vfs_unlink
-		"vfs_unlink(struct inode*, struct dentry*, struct inode**)":                         "419",
-		"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)": "512",
-		"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)":      "63",
+		"vfs_unlink(struct inode*, struct dentry*, struct inode**)":                             "419",
+		"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)":     "512",
+		"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)":          "63",
+		"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct delegated_inode*)": "70",
 		// vfs_mkdir
-		"vfs_mkdir(struct inode*, struct dentry*, umode_t)":                         "419",
-		"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)": "512",
-		"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)":      "63",
+		"vfs_mkdir(struct inode*, struct dentry*, umode_t)":                                             "419",
+		"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)":                     "512",
+		"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)":                          "63",
+		"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)": "70",
 		// io_read
 		"io_read(struct io_kiocb*, int)":                            "510",
 		"io_read(struct io_kiocb*, bool, struct io_comp_state*)":    "59",
@@ -96,14 +98,16 @@ var (
 		"io_read(struct io_kiocb*, struct io_kiocb**, bool)":        "55",
 		"io_read(struct io_kiocb*, const struct sqe_submit*, bool)": "51",
 		// vfs_mkdir retprobe
-		"int vfs_mkdir(struct inode*, struct dentry*, umode_t)":                               "vfs_mkdir_exit",
-		"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)":       "vfs_mkdir_exit",
-		"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)":            "vfs_mkdir_exit",
-		"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)": "vfs_mkdir_exit_v614",
+		"int vfs_mkdir(struct inode*, struct dentry*, umode_t)":                                                        "vfs_mkdir_exit",
+		"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)":                                "vfs_mkdir_exit",
+		"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)":                                     "vfs_mkdir_exit",
+		"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)":                          "vfs_mkdir_exit_v614",
+		"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)": "vfs_mkdir_exit_v614",
 		// vfs_mknod
-		"vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)":                         "419",
-		"vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)": "512",
-		"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)":      "63",
+		"vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)":                                             "419",
+		"vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)":                     "512",
+		"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)":                          "63",
+		"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)": "70",
 	}
 )
 

@@ -238,21 +238,113 @@ int BPF_PROG(sys_creat, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE2(
 	return 0;
 }
 
+struct filename___new {
+	const char *name;
+	int refcnt;
+	struct audit_names *aname;
+	const char iname[168];
+} __attribute__((preserve_access_index));
+
+struct delayed_filename {
+	struct filename___new *__incomplete_filename;
+} __attribute__((preserve_access_index));
+
+struct io_open___new {
+	struct file *file;
+	int dfd;
+	u32 file_slot;
+	struct delayed_filename filename;
+	struct open_how how;
+	unsigned long nofile;
+} __attribute__((preserve_access_index));
+
+struct io_openat2_key {
+	__u64 file_ptr;
+	__u64 pid_tgid;
+};
+
+struct io_openat2_val {
+	char name[MAX_FILEPATH_SIZE];
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct io_openat2_key);
+	__type(value, struct io_openat2_val);
+	__uint(max_entries, 1024);
+} io_openat2_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct io_openat2_val);
+	__uint(max_entries, 1);
+} io_openat2_heap SEC(".maps");
+
+SEC("fentry/io_openat2")
+int BPF_PROG(io_openat2_entry, struct io_kiocb *req, unsigned int issue_flags) // for io_uring
+{
+	const char *name = 0;
+	struct io_openat2_key k = {
+		.file_ptr = (__u64)BPF_CORE_READ(req, file),
+		.pid_tgid = get_current_pid_tgid(),
+	};
+	struct io_openat2_val *v = 0;
+	int zero = 0;
+
+	v = map_lookup_elem(&io_openat2_heap, &zero);
+	if (!v)
+		return 0;
+
+	if (bpf_core_type_exists(struct delayed_filename)) {
+		struct io_open___new *open_new = (struct io_open___new *)req;
+
+		name = BPF_CORE_READ(open_new, filename.__incomplete_filename, name);
+	} else {
+		struct io_open *open = (struct io_open *)req;
+
+		name = BPF_CORE_READ(open, filename, name);
+	}
+
+	probe_read_kernel(v->name, MAX_FILEPATH_SIZE, name);
+
+	map_update_elem(&io_openat2_map, &k, v, 0);
+
+	return 0;
+}
+
 SEC("fexit/io_openat2")
 int BPF_PROG(io_openat2, struct io_kiocb *req, unsigned int issue_flags, int ret) // for io_uring
 {
-	struct io_open *open = (struct io_open *)req;
-	struct filename *filename = BPF_CORE_READ(open, filename);
-	int flags = BPF_CORE_READ(open, how.flags);
-	int dfd = BPF_CORE_READ(open, dfd);
 	int retval = BPF_CORE_READ(req, cqe.res);
-	int err = 0;
+	int flags = 0, dfd = 0, err = 0;
+	struct io_openat2_val *v = 0;
+	struct io_openat2_key k = {
+		.file_ptr = (__u64)BPF_CORE_READ(req, file),
+		.pid_tgid = get_current_pid_tgid(),
+	};
 
 	// this is a failure related to io_uring and will be retried automatically
 	if (ret == -EAGAIN)
 		return 0;
 
-	err = handle_open_raw(ctx, getname_from_filename, BPF_CORE_READ(filename, name), flags, hook_io_openat2, dfd, retval);
+	v = map_lookup_elem(&io_openat2_map, &k);
+	if (!v)
+		return 0;
+
+	if (bpf_core_type_exists(struct delayed_filename)) {
+		struct io_open___new *open_new = (struct io_open___new *)req;
+
+		flags = BPF_CORE_READ(open_new, how.flags);
+		dfd = BPF_CORE_READ(open_new, dfd);
+	} else {
+		struct io_open *open = (struct io_open *)req;
+
+		flags = BPF_CORE_READ(open, how.flags);
+		dfd = BPF_CORE_READ(open, dfd);
+	}
+
+	err = handle_open_raw(ctx, getname_from_filename, v->name, flags, hook_io_openat2, dfd, retval);
 	if (err < 0) {
 		inc_error(hook_io_openat2, -err);
 		return 0;

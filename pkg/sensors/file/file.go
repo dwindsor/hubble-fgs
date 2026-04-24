@@ -218,6 +218,8 @@ var mapTypes = map[string]MapType{
 	"policy_conf":                PinnedMap,
 	"policy_stats":               PinnedMap,
 	"exec_cred_map":              PinnedMap,
+	"io_openat2_heap":            PinnedMap,
+	"io_openat2_map":             PinnedMap,
 }
 
 // this is used for inode-based programs that modify the inode map and thus do not using them will result in corrupted inode map contents
@@ -253,6 +255,7 @@ var (
 		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...)}}},
 		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...)}}},
 		{"lsm", "security_path_mknod", []FimFunc{{"security_path_mknod(const struct path*, struct dentry*, umode_t, int)", "lsm_security_path_mknod.o", "path_mknod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CREATE}...)}}},
+		{"fentry", "io_openat2", []FimFunc{{"io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}},
 		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}},
 	}
 
@@ -309,18 +312,21 @@ var (
 			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/63", fm.NewSet(FileAction_REQUIRED)},
+			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct delegated_inode*)", "bpf_vfs_unlink.o", "vfs_unlink/70", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kprobe", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir", fm.NewSet(FileAction_REQUIRED)}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet(FileAction_REQUIRED)},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)", "bpf_vfs_mkdir.o", "vfs_mkdir/70", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
 			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet(FileAction_REQUIRED)},
+			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet(FileAction_REQUIRED)}}},
 		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet(FileAction_REQUIRED)}}},
@@ -345,11 +351,13 @@ var (
 			{"vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/512", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/63", fm.NewSet(FileAction_REQUIRED)},
+			{"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)", "bpf_vfs_mknod.o", "vfs_mknod/70", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kretprobe", "vfs_mknod", []FimFunc{
 			{"int vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
+			{"int vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 		}},
 	}
 
@@ -371,12 +379,14 @@ var (
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet(FileAction_REQUIRED)},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)", "bpf_vfs_mkdir.o", "vfs_mkdir/70", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
 			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet(FileAction_REQUIRED)},
+			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"fmod_ret", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_fmod.o", "security_inode_mkdir", fm.NewSet(tetragon.FileAction_FILE_MKDIR)}}},
 		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet(FileAction_REQUIRED)}}},
@@ -403,11 +413,13 @@ var (
 			{"vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/512", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/63", fm.NewSet(FileAction_REQUIRED)},
+			{"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)", "bpf_vfs_mknod.o", "vfs_mknod/70", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kretprobe", "vfs_mknod", []FimFunc{
 			{"int vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
+			{"int vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"fmod_ret", "security_inode_mknod", []FimFunc{{"security_inode_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod_enforce_fmod.o", "security_inode_mknod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CREATE, tetragon.FileAction_FILE_UNIX_SOCKET_CREATE}...)}}},
 	}
@@ -424,12 +436,14 @@ var (
 			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet(FileAction_REQUIRED)},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)", "bpf_vfs_mkdir.o", "vfs_mkdir/70", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
 			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet(FileAction_REQUIRED)},
 			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet(FileAction_REQUIRED)},
+			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, struct delegated_inode*)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"lsm", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_lsm.o", "inode_mkdir", fm.NewSet(tetragon.FileAction_FILE_MKDIR)}}},
 		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet(FileAction_REQUIRED)}}},
@@ -456,11 +470,13 @@ var (
 			{"vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/512", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod/63", fm.NewSet(FileAction_REQUIRED)},
+			{"vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)", "bpf_vfs_mknod.o", "vfs_mknod/70", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"kretprobe", "vfs_mknod", []FimFunc{
 			{"int vfs_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mknod(struct user_namespace*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 			{"int vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
+			{"int vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 		}},
 		{"lsm", "security_inode_mknod", []FimFunc{{"security_inode_mknod(struct inode*, struct dentry*, umode_t, dev_t)", "bpf_vfs_mknod_enforce_lsm.o", "inode_mknod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CREATE, tetragon.FileAction_FILE_UNIX_SOCKET_CREATE}...)}}},
 	}

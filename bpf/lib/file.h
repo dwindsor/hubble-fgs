@@ -473,6 +473,10 @@ struct glob_state {
 	u8 pad[3];
 };
 
+struct delegated_inode {
+	struct inode *di_inode;
+};
+
 #define FILE_ERR_NO_ERROR		     0 // success
 #define FILE_ERR_UNKNOWN		     1 // unknown error
 #define FILE_ERR_GET_MSG_HEAP		     2 // map_lookup_elem(&file_heap_map, &zero) == 0
