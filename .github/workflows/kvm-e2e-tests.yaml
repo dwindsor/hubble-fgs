@@ -203,7 +203,6 @@ jobs:
             # FIXME: TestHTTP e2e test fails bpf-next kernels
             if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
               export FLAKY_HTTP=1
-              export FLAKY_FIM=1
             fi
             if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
               export RUN_FIM_DISPATCHER=1
