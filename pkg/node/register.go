@@ -18,7 +18,9 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -43,9 +45,11 @@ func NewNodeRegisterer(metadata local.MetadataService) (Register, error) {
 		// This allows registration for all environments (AWS, Azure, GCloud,
 		// vSphere, bare-metal, etc.) as long as metadata can be retrieved.
 		if _, isNoop := metadata.(*local.NoopMetadataService); !isNoop {
+			controllerManager := manager.Get().GetControllerManager().Manager
 			return &registerer{
 				metadata: metadata,
-				client:   manager.Get().GetControllerManager().Manager.GetClient(),
+				client:   controllerManager.GetClient(),
+				scheme:   controllerManager.GetScheme(),
 			}, nil
 		}
 	}
@@ -55,6 +59,11 @@ func NewNodeRegisterer(metadata local.MetadataService) (Register, error) {
 type registerer struct {
 	metadata local.MetadataService
 	client   client.Client
+	scheme   *runtime.Scheme
+}
+
+type kubernetesNodeProvider interface {
+	GetKubernetesNode(ctx context.Context) (*corev1.Node, error)
 }
 
 func (r *registerer) Register(ctx context.Context) error {
@@ -62,9 +71,16 @@ func (r *registerer) Register(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	ownerNode, err := getKubernetesOwnerNode(ctx, r.metadata)
+	if err != nil {
+		return err
+	}
 	temp := desired.DeepCopy()
 	res, err := controllerutil.CreateOrPatch(ctx, r.client, temp, func() error {
 		temp.Labels = desired.Labels
+		if ownerNode != nil {
+			return controllerutil.SetOwnerReference(ownerNode, temp, r.scheme)
+		}
 		return nil
 	})
 	if err != nil {
@@ -77,6 +93,14 @@ func (r *registerer) Register(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func getKubernetesOwnerNode(ctx context.Context, metadata local.MetadataService) (*corev1.Node, error) {
+	provider, ok := metadata.(kubernetesNodeProvider)
+	if !ok {
+		return nil, nil
+	}
+	return provider.GetKubernetesNode(ctx)
 }
 
 func desiredNode(ctx context.Context, metadata local.MetadataService) (*v1alpha1.TetragonNode, error) {

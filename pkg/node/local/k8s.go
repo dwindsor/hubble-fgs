@@ -68,6 +68,10 @@ func (m *KubernetesMetadataService) GetExternalDNS(_ context.Context) (string, e
 	return "", nil
 }
 
+func (m *KubernetesMetadataService) GetKubernetesNode(_ context.Context) (*corev1.Node, error) {
+	return m.node, nil
+}
+
 func NewKubernetesMetadataService(manager manager.KubernetesManager) (*KubernetesMetadataService, error) {
 	node, err := manager.GetControllerManager().GetNode()
 	if err != nil {

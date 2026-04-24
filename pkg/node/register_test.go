@@ -21,7 +21,12 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/isovalent/hubble-fgs/pkg/node/local"
 )
@@ -62,6 +67,15 @@ func (f fakeMetadataService) GetInternalDNS(_ context.Context) (string, error) {
 
 func (f fakeMetadataService) GetExternalDNS(_ context.Context) (string, error) {
 	return f.externalDNS, nil
+}
+
+type fakeKubernetesMetadataService struct {
+	fakeMetadataService
+	node *corev1.Node
+}
+
+func (f fakeKubernetesMetadataService) GetKubernetesNode(_ context.Context) (*corev1.Node, error) {
+	return f.node, nil
 }
 
 var defaultFakeMetadata = fakeMetadataService{
@@ -144,12 +158,93 @@ func Test_desiredNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := desiredNode(context.Background(), tt.args.metadata)
+			got, err := desiredNode(t.Context(), tt.args.metadata)
 			require.True(t, (err != nil) == tt.wantErr)
 			diff := cmp.Diff(tt.want, got, cmpIgnoreFields...)
 			require.Empty(t, diff)
 		})
 	}
+}
+
+func TestRegisterAddsKubernetesNodeOwnerReference(t *testing.T) {
+	ownerNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-node",
+			UID:  types.UID("test-node-uid"),
+		},
+	}
+	metadata := fakeKubernetesMetadataService{
+		fakeMetadataService: fakeMetadataService{
+			hostName:   ownerNode.Name,
+			labels:     map[string]string{"foo": "bar"},
+			instanceID: ownerNode.Name,
+			internalIP: "10.0.0.1",
+		},
+		node: ownerNode,
+	}
+	scheme, client := newRegisterTestClient(t)
+	registerer := &registerer{
+		metadata: metadata,
+		client:   client,
+		scheme:   scheme,
+	}
+
+	require.NoError(t, registerer.Register(t.Context()))
+
+	got := requireTetragonNode(t, client, "default", ownerNode.Name)
+	requireNodeOwnerReference(t, got, ownerNode)
+}
+
+func TestRegisterAddsMissingKubernetesNodeOwnerReference(t *testing.T) {
+	ownerNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-node",
+			UID:  types.UID("test-node-uid"),
+		},
+	}
+	existing := &v1alpha1.TetragonNode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ownerNode.Name,
+			Namespace: "default",
+			Labels:    map[string]string{"old": "label"},
+		},
+	}
+	metadata := fakeKubernetesMetadataService{
+		fakeMetadataService: fakeMetadataService{
+			hostName:   ownerNode.Name,
+			labels:     map[string]string{"foo": "bar"},
+			instanceID: ownerNode.Name,
+			internalIP: "10.0.0.1",
+		},
+		node: ownerNode,
+	}
+	scheme, client := newRegisterTestClient(t, existing)
+	registerer := &registerer{
+		metadata: metadata,
+		client:   client,
+		scheme:   scheme,
+	}
+
+	require.NoError(t, registerer.Register(t.Context()))
+
+	got := requireTetragonNode(t, client, "default", ownerNode.Name)
+	requireNodeOwnerReference(t, got, ownerNode)
+	require.Equal(t, map[string]string{"foo": "bar"}, got.Labels)
+}
+
+func TestRegisterDoesNotAddOwnerReferenceForNonKubernetesMetadata(t *testing.T) {
+	ctx := t.Context()
+	scheme, client := newRegisterTestClient(t)
+	registerer := &registerer{
+		metadata: defaultFakeMetadata,
+		client:   client,
+		scheme:   scheme,
+	}
+
+	require.NoError(t, registerer.Register(ctx))
+
+	got := requireTetragonNode(t, client, "default", defaultFakeMetadata.hostName)
+	require.Empty(t, got.OwnerReferences)
 }
 
 func Test_sanitizeLabels(t *testing.T) {
@@ -220,4 +315,42 @@ func Test_sanitizeLabels(t *testing.T) {
 			require.Equal(t, tt.invalid, invalid)
 		})
 	}
+}
+
+func newRegisterTestClient(t *testing.T, initObjs ...k8sclient.Object) (*runtime.Scheme, k8sclient.Client) {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, v1alpha1.AddToScheme(scheme))
+	client := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(&v1alpha1.TetragonNode{}).
+		WithObjects(initObjs...).
+		Build()
+	return scheme, client
+}
+
+func requireTetragonNode(t *testing.T, client k8sclient.Client, namespace, name string) *v1alpha1.TetragonNode {
+	t.Helper()
+
+	node := &v1alpha1.TetragonNode{}
+	require.NoError(t, client.Get(t.Context(), k8sclient.ObjectKey{
+		Namespace: namespace,
+		Name:      name,
+	}, node))
+	return node
+}
+
+func requireNodeOwnerReference(t *testing.T, tetragonNode *v1alpha1.TetragonNode, ownerNode *corev1.Node) {
+	t.Helper()
+
+	require.Len(t, tetragonNode.OwnerReferences, 1)
+	ref := tetragonNode.OwnerReferences[0]
+	require.Equal(t, "v1", ref.APIVersion)
+	require.Equal(t, "Node", ref.Kind)
+	require.Equal(t, ownerNode.Name, ref.Name)
+	require.Equal(t, ownerNode.UID, ref.UID)
+	require.Nil(t, ref.Controller)
+	require.Nil(t, ref.BlockOwnerDeletion)
 }
