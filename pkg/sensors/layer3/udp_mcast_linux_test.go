@@ -56,7 +56,7 @@ const (
 	udpMulticastRTPSeqPort  = 9858
 )
 
-func storeMSB(buf []byte, index uint, size uint, value uint) {
+func storeMSB(buf []byte, index uint, size uint, value uint64) {
 	if size == 0 {
 		return
 	}
@@ -369,8 +369,8 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 }
 
 func sendRTPSeqData(socket net.Conn, buf []byte, ssrc uint, seqNum uint) {
-	storeMSB(buf, 2, 2, seqNum)
-	storeMSB(buf, 8, 4, ssrc)
+	storeMSB(buf, 2, 2, uint64(seqNum))
+	storeMSB(buf, 8, 4, uint64(ssrc))
 	_, err := socket.Write(buf)
 	if err != nil {
 		fmt.Printf("ERROR writing to socket\n")

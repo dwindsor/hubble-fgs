@@ -378,8 +378,8 @@ func sendLSEGSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, 
 
 	flags := byte(0) | (byte(lineIdSize&0x3) << 2) | (byte(seqNumSize-2) << 1)
 	buf[0] = flags
-	storeMSB(buf, 1, lineIdSize, lineId)
-	storeMSB(buf, 1+lineIdSize, seqNumSize, seqNum)
+	storeMSB(buf, 1, lineIdSize, uint64(lineId))
+	storeMSB(buf, 1+lineIdSize, seqNumSize, uint64(seqNum))
 	_, err := socket.Write(buf)
 	if err != nil {
 		fmt.Printf("ERROR writing to socket\n")
