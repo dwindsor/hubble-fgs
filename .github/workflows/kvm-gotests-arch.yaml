@@ -100,25 +100,25 @@ jobs:
           - ${{ inputs.arch }}
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "bpf-next-20260310.122539"
+          - "bpf-next-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "rhel8.10-20260310.122539"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.18-20260310.122539"
+          - "6.18-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.12-20260310.122539"
+          - "6.12-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20260310.122539"
+          - "6.6-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20260310.122539"
+          - "6.1-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20260310.122539"
+          - "5.15-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20260310.122539"
+          - "5.10-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.4-20260310.122539"
+          - "5.4-20260427.035409"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20260310.122539"
+          - "4.19-20260427.035409"
         exclude:
           - arch: arm64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
