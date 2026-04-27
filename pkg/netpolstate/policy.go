@@ -381,27 +381,18 @@ func (state *PolicyState) generateServiceSelectorRecords(src *types.ProcessTreeK
 				prefixBits = 128
 			}
 			cidr := netip.PrefixFrom(svcInfo.ClusterIP, prefixBits)
-			svcDestWildcard := &types.TetragonNetworkDestination{
+			// Use the policy's port specification directly:
+			// - nil/empty Ports → wildcard record (Port=0, matches all ports)
+			// - specific Ports → port-specific records only
+			svcDest := &types.TetragonNetworkDestination{
 				CIDR:  cidr,
-				Ports: nil,
+				Ports: policy.Destination.Ports,
 			}
-			r, err := addDestSrcCIDRRecords(policy.PolicyUID, svcDestWildcard, src, action, true)
+			r, err := addDestSrcCIDRRecords(policy.PolicyUID, svcDest, src, action, true)
 			if err != nil {
 				logger.GetLogger().Warn("CIDR record error", logfields.Error, err)
 			}
 			records = append(records, r...)
-
-			if len(policy.Destination.Ports) > 0 {
-				svcDest := &types.TetragonNetworkDestination{
-					CIDR:  cidr,
-					Ports: policy.Destination.Ports,
-				}
-				r, err = addDestSrcCIDRRecords(policy.PolicyUID, svcDest, src, action, true)
-				if err != nil {
-					logger.GetLogger().Warn("CIDR record error", logfields.Error, err)
-				}
-				records = append(records, r...)
-			}
 		}
 
 		// Block backend pod IPs (endpoints) to prevent bypass via direct pod access
@@ -691,38 +682,23 @@ func (state *PolicyState) HandleServiceDelete(namespace, name string, endpoints 
 	state.applyServiceSelectorEndpointCIDRDelta(namespace, name, nil, ips)
 }
 
-// generateEndpointCIDRRecords creates CIDR records for a single endpoint IP
+// generateEndpointCIDRRecords creates CIDR records for a single endpoint IP.
+// When ports is nil/empty, a wildcard record (Port=0) is created matching all ports.
+// When ports has values, only port-specific records are created.
 func generateEndpointCIDRRecords(policyUID types.TetragonPolicyUniqueID, src *types.ProcessTreeKey, ip netip.Addr, ports []uint32, action *record.DatapathAction) []record.DatapathRecord {
-	var records []record.DatapathRecord
-
 	prefixBits := 32
 	if ip.Is6() {
 		prefixBits = 128
 	}
 	cidr := netip.PrefixFrom(ip, prefixBits)
 
-	// Wildcard (all ports)
-	epDestWildcard := &types.TetragonNetworkDestination{
+	epDest := &types.TetragonNetworkDestination{
 		CIDR:  cidr,
-		Ports: nil,
+		Ports: ports,
 	}
-	r, err := addDestSrcCIDRRecords(policyUID, epDestWildcard, src, action, true)
+	records, err := addDestSrcCIDRRecords(policyUID, epDest, src, action, true)
 	if err != nil {
 		logger.GetLogger().Warn("CIDR record error for endpoint", logfields.Error, err)
-	}
-	records = append(records, r...)
-
-	// Specific ports
-	if len(ports) > 0 {
-		epDest := &types.TetragonNetworkDestination{
-			CIDR:  cidr,
-			Ports: ports,
-		}
-		r, err = addDestSrcCIDRRecords(policyUID, epDest, src, action, true)
-		if err != nil {
-			logger.GetLogger().Warn("CIDR record error for endpoint", logfields.Error, err)
-		}
-		records = append(records, r...)
 	}
 
 	return records
