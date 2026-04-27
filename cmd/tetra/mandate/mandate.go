@@ -154,10 +154,9 @@ func setURLCmd() *cobra.Command {
 			}
 			defer conn.Close()
 
-			url := args[0]
 			client := tetragon.NewMandateServiceClient(conn)
 			res, err := client.MandateConfigure(ctx, &tetragon.MandateConfigureReq{
-				Url:     &url,
+				Url:     new(args[0]),
 				Refresh: refresh,
 			})
 			if err != nil || res == nil {

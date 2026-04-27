@@ -132,8 +132,7 @@ func s3GetLastKey(ctx context.Context, s3Client *s3.Client, bucket, lastKey stri
 	for objectPaginator.HasMorePages() {
 		output, err = objectPaginator.NextPage(ctx)
 		if err != nil {
-			var noBucket *types.NoSuchBucket
-			if errors.As(err, &noBucket) {
+			if noBucket, ok := errors.AsType[*types.NoSuchBucket](err); ok {
 				return "", error(noBucket)
 			}
 			break

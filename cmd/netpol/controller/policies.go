@@ -7,6 +7,7 @@ import (
 	"github.com/cilium/statedb"
 	"github.com/cilium/statedb/index"
 	"github.com/cilium/statedb/reconciler"
+
 	"github.com/isovalent/hubble-fgs/cmd/netpol/model"
 	"github.com/isovalent/hubble-fgs/cmd/netpol/types"
 )
@@ -84,8 +85,7 @@ type Policy struct {
 }
 
 func (p *Policy) Clone() *Policy {
-	p2 := *p
-	return &p2
+	return new(*p)
 }
 
 // TableHeader implements statedb.TableWritable.
