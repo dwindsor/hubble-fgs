@@ -17,8 +17,11 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stype "k8s.io/apimachinery/pkg/types"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -643,4 +646,173 @@ func TestGenerateEndpointCIDRRecordsPortSpecific(t *testing.T) {
 		assert.Equal(t, uint32(443), records[0].Endpoint.Port, "should target port 443")
 		assert.Equal(t, "fd00::1/128", records[0].Endpoint.EP.CIDR.String(), "should be /128 prefix for IPv6")
 	})
+}
+
+// TestServiceSelectorWithNamespaceSelector verifies that serviceSelector policies
+// with a namespaceSelector are correctly matched against pods. The namespaceSelector
+// is encoded as _tnp_ prefixed labels in the policy subject. The serviceSelector
+// code must augment pod labels with namespace labels before matching.
+func TestServiceSelectorWithNamespaceSelector(t *testing.T) {
+	s := NewFakePolicyState(t)
+
+	srcPodName := "client-pod"
+	srcPodLabels := "app=client"
+
+	// Setup service
+	sm := servicemap.NewServiceMap(s)
+	s.SetServiceMap(sm)
+	clusterIP := netip.MustParseAddr("10.96.0.210")
+	sm.AddOrUpdate(&servicemap.ServiceInfo{
+		Name:       "target-svc",
+		Namespace:  "default",
+		ClusterIP:  clusterIP,
+		ClusterIPs: []netip.Addr{clusterIP},
+		Endpoints: []servicemap.EndpointInfo{
+			{IP: netip.MustParseAddr("10.0.8.1"), Port: 80, Protocol: "TCP", PodName: "target-1"},
+		},
+	})
+
+	// Create policy with namespaceSelector — the _tnp_ prefix is how xlate.go
+	// encodes namespace labels into the subject. The fake k8sReader returns
+	// kubernetes.io/metadata.name=<namespace> for any namespace lookup.
+	// Pod is in "testNamespace", so namespace label is _tnp_kubernetes.io/metadata.name=testNamespace
+	policy := testServiceSelectorPolicy(
+		"deny-with-ns",
+		"app=client,_tnp_kubernetes.io/metadata.name=testNamespace",
+		"target-svc", "default", "deny", []uint32{80},
+	)
+
+	err := s.createMatchLabelsPolicy(policy)
+	require.NoError(t, err)
+
+	// Add subject pod in "testNamespace" — pod labels are {app:client} only
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
+
+	// createServiceSelectorRecords should match despite namespace label in policy,
+	// because the function now augments pod labels with namespace labels.
+	records, err := s.createServiceSelectorRecords(srcPod)
+	require.NoError(t, err)
+
+	// Should have 2 records: ClusterIP + 1 endpoint, port 80
+	assert.Equal(t, 2, len(records), "should have 2 records (ClusterIP + endpoint)")
+	for _, r := range records {
+		assert.Equal(t, uint32(80), r.Endpoint.Port, "all records should target port 80")
+	}
+}
+
+// TestServiceSelectorNamespaceMismatch verifies that pods in a non-matching namespace
+// are NOT matched by a policy with a namespaceSelector.
+func TestServiceSelectorNamespaceMismatch(t *testing.T) {
+	s := NewFakePolicyState(t)
+
+	srcPodName := "client-pod"
+	srcPodLabels := "app=client"
+
+	// Setup service
+	sm := servicemap.NewServiceMap(s)
+	s.SetServiceMap(sm)
+	sm.AddOrUpdate(&servicemap.ServiceInfo{
+		Name:      "target-svc",
+		Namespace: "default",
+		ClusterIP: netip.MustParseAddr("10.96.0.211"),
+	})
+
+	// Policy requires namespace "production", but pod is in "testNamespace"
+	policy := testServiceSelectorPolicy(
+		"deny-wrong-ns",
+		"app=client,_tnp_kubernetes.io/metadata.name=production",
+		"target-svc", "default", "deny", nil,
+	)
+
+	err := s.createMatchLabelsPolicy(policy)
+	require.NoError(t, err)
+
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
+
+	// Should NOT match — pod is in "testNamespace", policy requires "production"
+	records, err := s.createServiceSelectorRecords(srcPod)
+	require.NoError(t, err)
+	assert.Len(t, records, 0, "should have no records — namespace mismatch")
+}
+
+// TestServiceSelectorNilLabelsMatchesNamespaceOnly verifies that a pod with
+// nil metadata.labels still matches a serviceSelector policy whose subject is
+// satisfied entirely by namespaceSelector labels. The prior implementation
+// returned early on nil labels, silently skipping namespace-only matches.
+func TestServiceSelectorNilLabelsMatchesNamespaceOnly(t *testing.T) {
+	s := NewFakePolicyState(t)
+
+	srcPodName := "client-pod"
+	srcNamespace := "testNamespace"
+
+	sm := servicemap.NewServiceMap(s)
+	s.SetServiceMap(sm)
+	clusterIP := netip.MustParseAddr("10.96.0.220")
+	sm.AddOrUpdate(&servicemap.ServiceInfo{
+		Name:       "ns-only-svc",
+		Namespace:  "default",
+		ClusterIP:  clusterIP,
+		ClusterIPs: []netip.Addr{clusterIP},
+	})
+
+	// Policy subject is satisfied by namespace label alone — no pod-label requirement.
+	policy := testServiceSelectorPolicy(
+		"deny-ns-only",
+		"_tnp_kubernetes.io/metadata.name=testNamespace",
+		"ns-only-svc", "default", "deny", []uint32{80},
+	)
+	err := s.createMatchLabelsPolicy(policy)
+	require.NoError(t, err)
+
+	// Build a pod with Labels:nil directly (newPod always creates a non-nil map).
+	registerWorkloadID(t, s, srcNamespace, srcPodName, "Deployment")
+	srcPod := &v1alpha1.PodInfo{
+		WorkloadType:   metav1.TypeMeta{Kind: "Deployment"},
+		WorkloadObject: v1alpha1.WorkloadObjectMeta{Name: srcPodName, Namespace: srcNamespace},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      srcPodName,
+			Namespace: srcNamespace,
+			UID:       k8stype.UID(srcPodName),
+			Labels:    nil,
+		},
+	}
+
+	records, err := s.createServiceSelectorRecords(srcPod)
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(records), "nil-label pod must still match namespace-only policy")
+	assert.Equal(t, uint32(80), records[0].Endpoint.Port, "record should target port 80")
+}
+
+// TestServiceSelectorTnpPodLabelSpoof verifies that a pod cannot satisfy a
+// namespaceSelector by setting _tnp_-prefixed labels on itself.
+func TestServiceSelectorTnpPodLabelSpoof(t *testing.T) {
+	s := NewFakePolicyState(t)
+
+	srcPodName := "malicious-pod"
+	// Pod tries to self-label into the "production" namespace.
+	srcPodLabels := "app=client,_tnp_kubernetes.io/metadata.name=production"
+
+	sm := servicemap.NewServiceMap(s)
+	s.SetServiceMap(sm)
+	sm.AddOrUpdate(&servicemap.ServiceInfo{
+		Name:      "prod-svc",
+		Namespace: "default",
+		ClusterIP: netip.MustParseAddr("10.96.0.221"),
+	})
+
+	// Policy subject requires production namespace.
+	policy := testServiceSelectorPolicy(
+		"allow-prod-only",
+		"app=client,_tnp_kubernetes.io/metadata.name=production",
+		"prod-svc", "default", "allow", nil,
+	)
+	err := s.createMatchLabelsPolicy(policy)
+	require.NoError(t, err)
+
+	// Pod lives in testNamespace, not production. Self-supplied _tnp_ must be ignored.
+	srcPod := newPodFromCluster(t, s, "testNamespace", srcPodName, "Deployment", srcPodLabels)
+
+	records, err := s.createServiceSelectorRecords(srcPod)
+	require.NoError(t, err)
+	assert.Len(t, records, 0, "pod must not spoof namespaceSelector via _tnp_ self-labels")
 }

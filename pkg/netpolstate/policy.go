@@ -340,7 +340,7 @@ func (state *PolicyState) createServiceSelectorRecordsForPolicy(podInfo *v1alpha
 	var records []record.DatapathRecord
 
 	// Check if pod matches policy subject labels
-	if !matchLabelsSubset(policy.Subject.Labels.Equal, podInfo.Labels) {
+	if !matchLabelsSubset(policy.Subject.Labels.Equal, state.deps.mergeNamespaceLabels(podInfo)) {
 		return records, nil
 	}
 
@@ -597,7 +597,7 @@ func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name 
 			if !ok {
 				continue
 			}
-			if !matchLabelsSubset(policy.Subject.Labels.Equal, podInfo.Labels) {
+			if !matchLabelsSubset(policy.Subject.Labels.Equal, state.deps.mergeNamespaceLabels(podInfo)) {
 				continue
 			}
 
@@ -709,12 +709,7 @@ func generateEndpointCIDRRecords(policyUID types.TetragonPolicyUniqueID, src *ty
 func (state *PolicyState) createServiceSelectorRecords(pod metav1.Object) ([]record.DatapathRecord, error) {
 	var records []record.DatapathRecord
 
-	podLabels := pod.GetLabels()
-	if podLabels == nil {
-		return records, nil
-	}
-
-	matchingPolicies := state.getServiceSelectorPolicies(podLabels)
+	matchingPolicies := state.getServiceSelectorPolicies(state.deps.mergeNamespaceLabels(pod))
 	if len(matchingPolicies) == 0 {
 		return records, nil
 	}
