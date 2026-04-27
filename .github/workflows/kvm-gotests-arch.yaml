@@ -127,25 +127,32 @@ jobs:
             arch: arm64 # LSEG are not running on ARM
           - variation: LSEG
             arch: amd64
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
             kernel: "rhel8.10-20260310.122539" # LSEG only need kernels >=v6.12
           - variation: LSEG
             arch: amd64
-            kernel: "6.6-20260310.122539" # LSEG only need kernels >=v6.12
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "6.6-20260427.035409" # LSEG only need kernels >=v6.12
           - variation: LSEG
             arch: amd64
-            kernel: "6.1-20260310.122539" # LSEG only need kernels >=v6.12
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "6.1-20260427.035409" # LSEG only need kernels >=v6.12
           - variation: LSEG
             arch: amd64
-            kernel: "5.15-20260310.122539" # LSEG only need kernels >=v6.12
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "5.15-20260427.035409" # LSEG only need kernels >=v6.12
           - variation: LSEG
             arch: amd64
-            kernel: "5.10-20260310.122539" # LSEG only need kernels >=v6.12
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "5.10-20260427.035409" # LSEG only need kernels >=v6.12
           - variation: LSEG
             arch: amd64
-            kernel: "5.4-20260310.122539" # LSEG only need kernels >=v6.12
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "5.4-20260427.035409" # LSEG only need kernels >=v6.12
           - variation: LSEG
             arch: amd64
-            kernel: "4.19-20260310.122539" # LSEG only need kernels >=v6.12
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "4.19-20260427.035409" # LSEG only need kernels >=v6.12
     runs-on: ${{ inputs.runner_label }}
     needs: [build]
     timeout-minutes: 120
