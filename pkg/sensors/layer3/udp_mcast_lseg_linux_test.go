@@ -15,6 +15,7 @@ package layer3_test
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -55,6 +56,16 @@ const (
 	udpMulticastLSEGConnPort = 6858
 	udpMulticastLSEGSeqIP4   = "225.2.2.2"
 	udpMulticastLSEGSeqPort  = 7858
+
+	numLSEGSamplePackets       = 5
+	udpMulticastLSEGSampleIP4  = "225.5.5.5"
+	udpMulticastLSEGSamplePort = 7958
+)
+
+var (
+	// The following values come from sample data. The second should hash to a value under our .01 threshold.
+	// These are to be stored in MSB in the packets.
+	LSEGSampleData = []uint64{0x4ae42904b1251302, 0x4aa42915e5c60100, 0x4a4422c867541503, 0x0a4422c867550000, 0x4aa42915dc1a0501}
 )
 
 func TestUdpMulticastLSEGConnID(t *testing.T) {
@@ -371,6 +382,149 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUdpMulticastLSEGSampling(t *testing.T) {
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	if !kernels.MinKernelVersion("5.15.0") {
+		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
+	}
+
+	udpMulticastIP4 := udpMulticastLSEGSampleIP4
+	udpMulticastPort := udpMulticastLSEGSamplePort
+
+	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
+	enterpriseOption.Config.EnableNetworkEvents = true
+	oldMulticastAppID := enterpriseOption.Config.MulticastAppID
+	enterpriseOption.Config.MulticastAppID = enterpriseOption.MulticastAppLSEGMTP
+	oldMulticastPorts := enterpriseOption.Config.MulticastPorts
+	enterpriseOption.Config.MulticastPorts = []int{udpMulticastPort}
+	oldMulticastSamplePercent := enterpriseOption.Config.MulticastSamplePercent
+	enterpriseOption.Config.MulticastSamplePercent = .01
+	t.Cleanup(func() {
+		enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
+		enterpriseOption.Config.MulticastAppID = oldMulticastAppID
+		enterpriseOption.Config.MulticastPorts = oldMulticastPorts
+		enterpriseOption.Config.MulticastSamplePercent = oldMulticastSamplePercent
+	})
+
+	server := getSocatCommand(t, "socat")
+	ifAddr, err := getDefaultInterfaceAddress()
+	require.NoError(t, err)
+
+	socatArg1 := "-"
+	socatArg2 := fmt.Sprintf("UDP4-RECVFROM:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
+	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
+	socatSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full(socatArgs))
+
+	clientProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
+		WithArguments(sm.Full("-udpMulticastClient lsegsample"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(clientProcess),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(socatSrvChecker),
+		ec.NewProcessMulticastSampleChecker("clientSample").
+			WithProcess(clientProcess).
+			WithDestinationPort(uint32(udpMulticastPort)).
+			WithData(htonll(LSEGSampleData[1])).
+			WithDirection(tetragon.Direction_SEND),
+		ec.NewProcessMulticastSampleChecker("serverSample").
+			WithProcess(socatSrvChecker).
+			WithSourcePort(uint32(udpMulticastPort)).
+			WithData(htonll(LSEGSampleData[1])).
+			WithDirection(tetragon.Direction_RECEIVE),
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(socatSrvChecker).
+			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0 * time.Second)},
+				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
+		ec.NewProcessExitChecker("serverExit").
+			WithProcess(socatSrvChecker),
+	)
+
+	unexpectedSamplesCheckers := []*ec.UnorderedEventChecker{
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample0").
+				WithData(htonll(LSEGSampleData[0]))),
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample2").
+				WithData(htonll(LSEGSampleData[2]))),
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample3").
+				WithData(htonll(LSEGSampleData[3]))),
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample4").
+				WithData(htonll(LSEGSampleData[4]))),
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfigBasic); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	base := base.GetInitialSensorTest(t)
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	layer3.StartLayer3Progs(ctx, nil)
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	cmdServer := exec.Command(server, socatArg1, socatArg2)
+	serverStdout, err := cmdServer.StdoutPipe()
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(udpMulticastPort), syscall.IPPROTO_UDP, syscall.AF_INET)
+	require.NoError(t, err)
+
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegsample")
+	clientCmd.Stdout = os.Stderr
+	clientCmd.Stderr = os.Stderr
+	err = clientCmd.Run()
+	require.NoError(t, err, "cannot start client")
+
+	// Wait for the data to arrive.
+	serverData := make([]byte, UDPBUFSIZE+UDPBUFVAR)
+	packetsReceived := 0
+	for packetsReceived < numLSEGSamplePackets {
+		numBytesRead, err := serverStdout.Read(serverData)
+		require.NoError(t, err, "cannot read from server stdout")
+		if numBytesRead > 0 {
+			packetsReceived++
+		}
+	}
+
+	killAndWaitCommand(t, cmdServer)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	require.NoError(t, err)
+
+	// Check we didn't receive samples for the other packets.
+	for _, c := range unexpectedSamplesCheckers {
+		err = jsonchecker.JsonTestCheckExpect(t, c, true)
+		require.NoError(t, err)
+	}
+}
+
+func htonll(v uint64) uint64 {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, v)
+	return binary.LittleEndian.Uint64(b)
+}
+
 func sendLSEGSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqNumSize uint, seqNum uint) {
 	if lineIdSize > 2 || seqNumSize < 2 || seqNumSize > 3 {
 		return
@@ -380,6 +534,16 @@ func sendLSEGSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, 
 	buf[0] = flags
 	storeMSB(buf, 1, lineIdSize, uint64(lineId))
 	storeMSB(buf, 1+lineIdSize, seqNumSize, uint64(seqNum))
+	_, err := socket.Write(buf)
+	if err != nil {
+		fmt.Printf("ERROR writing to socket\n")
+		panic(err)
+	}
+	time.Sleep(10 * time.Millisecond)
+}
+
+func sendLSEGSampleData(socket net.Conn, buf []byte, data uint64) {
+	storeMSB(buf, 0, 8, data)
 	_, err := socket.Write(buf)
 	if err != nil {
 		fmt.Printf("ERROR writing to socket\n")
@@ -398,6 +562,9 @@ func runUdpMulticastLSEGClient(ty multicastTest) {
 	case multicastTestLSEGSeq:
 		udpMulticastIP4 = udpMulticastLSEGSeqIP4
 		udpMulticastPort = udpMulticastLSEGSeqPort
+	case multicastTestLSEGSample:
+		udpMulticastIP4 = udpMulticastLSEGSampleIP4
+		udpMulticastPort = udpMulticastLSEGSamplePort
 	}
 
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -474,5 +641,9 @@ func runUdpMulticastLSEGClient(ty multicastTest) {
 		sendLSEGSeqData(socket, buf, 0, 0, 3, 10)
 		sendLSEGSeqData(socket, buf, 0, 0, 3, 11)
 		sendLSEGSeqData(socket, buf, 0, 0, 3, 12)
+	case multicastTestLSEGSample:
+		for _, d := range LSEGSampleData {
+			sendLSEGSampleData(socket, buf, d)
+		}
 	}
 }

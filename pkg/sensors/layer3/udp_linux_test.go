@@ -268,6 +268,7 @@ type multicastTest int
 const (
 	multicastTestLSEGConnID = iota
 	multicastTestLSEGSeq
+	multicastTestLSEGSample
 	multicastTestRTPConnID
 	multicastTestRTPSeq
 )
