@@ -55,8 +55,7 @@ func (s *State) processIPCacheEvent(an monitorAPI.AgentNotify) bool {
 		newID := identity.NumericIdentity(n.Identity)
 		var oldID *identity.NumericIdentity
 		if n.OldIdentity != nil {
-			id := identity.NumericIdentity(*n.OldIdentity)
-			oldID = &id
+			oldID = new(identity.NumericIdentity(*n.OldIdentity))
 		}
 
 		return s.ipcache.UpsertChecked(n.CIDR, newID, oldID, n.HostIP, n.OldHostIP,

@@ -26,19 +26,13 @@ import (
 )
 
 func processToOCSF(p *tetragon.Process) *v1alpha.Process {
-	pid := int32(p.Pid.GetValue())
-	auid := int32(p.Auid.GetValue())
-
-	createdTimeString := p.StartTime.AsTime().Format(time.RFC3339Nano)
-	createdTime := p.StartTime.AsTime().UnixMilli()
-
 	return &v1alpha.Process{
-		Auid:             &auid,
+		Auid:             new(int32(p.Auid.GetValue())),
 		CmdLine:          &p.Arguments,
-		CreatedTime:      &createdTime,
-		CreatedTimeDt:    &createdTimeString,
+		CreatedTime:      new(p.StartTime.AsTime().UnixMilli()),
+		CreatedTimeDt:    new(p.StartTime.AsTime().Format(time.RFC3339Nano)),
 		Path:             &p.Binary,
-		Pid:              &pid,
+		Pid:              new(int32(p.Pid.GetValue())),
 		WorkingDirectory: &p.Cwd,
 	}
 }
@@ -53,23 +47,18 @@ func processConnectToOCSFActor(pc *tetragon.ProcessConnect) *v1alpha.Actor {
 
 func processConnectToOCSFConnectInformation(pc *tetragon.ProcessConnect) *v1alpha.NetworkConnectionInformation {
 	dirId := v1alpha.NetworkConnectionInformationDirectionID_NETWORK_CONNECTION_INFORMATION_DIRECTION_ID_OUTBOUND
-	dir := v1alpha.NetworkConnectionInformationDirectionID_name[int32(dirId)]
 	protoId := int32(pc.Protocol)
-	protoName := tetragon.SocketProtocol_name[protoId]
 	protoVerId := v1alpha.NetworkConnectionInformationProtocolVersionID_NETWORK_CONNECTION_INFORMATION_PROTOCOL_VERSION_ID_INTERNET_PROTOCOL_VERSION_4
-	protoVerName := v1alpha.NetworkConnectionInformationProtocolVersionID_name[int32(protoVerId)]
-
 	return &v1alpha.NetworkConnectionInformation{
-		Direction:    &dir,
+		Direction:    new(v1alpha.NetworkConnectionInformationDirectionID_name[int32(dirId)]),
 		DirectionId:  dirId,
-		ProtocolName: &protoName,
+		ProtocolName: new(tetragon.SocketProtocol_name[protoId]),
 		ProtocolNum:  &protoId,
-		ProtocolVer:  &protoVerName,
+		ProtocolVer:  new(v1alpha.NetworkConnectionInformationProtocolVersionID_name[int32(protoVerId)]),
 	}
 }
 
 func processConnectToOCSFDestination(pc *tetragon.ProcessConnect) *v1alpha.NetworkEndpoint {
-	port := int32(pc.DestinationPort.GetValue())
 	names := ""
 	// For OCSF just pick the first name
 	if len(pc.DestinationNames) > 0 {
@@ -78,32 +67,25 @@ func processConnectToOCSFDestination(pc *tetragon.ProcessConnect) *v1alpha.Netwo
 	return &v1alpha.NetworkEndpoint{
 		Hostname: &names,
 		Ip:       &pc.DestinationIp,
-		Port:     &port,
+		Port:     new(int32(pc.DestinationPort.GetValue())),
 	}
 }
 
 func processConnectToOCSFSource(pc *tetragon.ProcessConnect) *v1alpha.NetworkEndpoint {
-	srcPort := int32(pc.SourcePort.GetValue())
 	return &v1alpha.NetworkEndpoint{
 		Ip:   &pc.SourceIp,
-		Port: &srcPort,
+		Port: new(int32(pc.SourcePort.GetValue())),
 	}
 }
 
 func getAgent() *v1alpha.Agent {
-	tetragonName := "Isovalent Tetragon"
-	tetragonVendor := "Isovalent Cisco"
-	tetragonVersion := version.Version
-
 	agentTypeId := v1alpha.AgentTypeID_AGENT_TYPE_ID_OTHER
-	agentType := v1alpha.AgentTypeID_name[int32(agentTypeId)]
-
 	return &v1alpha.Agent{
-		Name:       &tetragonName,
-		Type:       &agentType,
+		Name:       new("Isovalent Tetragon"),
+		Type:       new(v1alpha.AgentTypeID_name[int32(agentTypeId)]),
 		TypeId:     &agentTypeId,
-		Uid:        &tetragonVersion,
-		VendorName: &tetragonVendor,
+		Uid:        new(version.Version),
+		VendorName: new("Isovalent Cisco"),
 	}
 }
 
@@ -117,32 +99,28 @@ func getOS() *v1alpha.OperatingSystemOS {
 }
 
 func getHwInfo() *v1alpha.DeviceHardwareInfo {
-	arch := runtime.GOARCH
 	id := v1alpha.DeviceHardwareInfoCPUArchitectureID_DEVICE_HARDWARE_INFO_CPUARCHITECTURE_ID_UNKNOWN
 	if runtime.GOARCH == "amd64" || runtime.GOARCH != "x86_64" {
 		id = v1alpha.DeviceHardwareInfoCPUArchitectureID_DEVICE_HARDWARE_INFO_CPUARCHITECTURE_ID_X86
 	} else {
 		id = v1alpha.DeviceHardwareInfoCPUArchitectureID_DEVICE_HARDWARE_INFO_CPUARCHITECTURE_ID_ARM
 	}
-	bits := int32(64)
-
 	return &v1alpha.DeviceHardwareInfo{
-		CpuArchitecture:   &arch,
+		CpuArchitecture:   new(runtime.GOARCH),
 		CpuArchitectureId: &id,
-		CpuBits:           &bits,
+		CpuBits:           new(int32(64)),
 	}
 }
 
 func getDevice() *v1alpha.Device {
 	agent := getAgent()
 	agents := []*v1alpha.Agent{agent}
-	hostname := node.GetNodeNameForExport()
 	os := getOS()
 	hw := getHwInfo()
 
 	return &v1alpha.Device{
 		AgentList: agents,
-		Hostname:  &hostname,
+		Hostname:  new(node.GetNodeNameForExport()),
 		HwInfo:    hw,
 		Os:        os,
 	}
@@ -159,14 +137,10 @@ func linuxExtension() []*v1alpha.SchemaExtension {
 }
 
 func tetragonProduct() *v1alpha.Product {
-	name := "Tetragon"
-	vendor := "Isovalent"
-	version := version.Version
-
 	return &v1alpha.Product{
-		Name:       &name,
-		VendorName: &vendor,
-		Version:    &version,
+		Name:       new("Tetragon"),
+		VendorName: new("Isovalent"),
+		Version:    new(version.Version),
 	}
 }
 
@@ -176,8 +150,6 @@ func linuxProfile() []string {
 
 func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp) *v1alpha.EndpointEvent_NetworkActivityDetail {
 	categoryId := v1alpha.CategoryID_CATEGORY_ID_NETWORK_ACTIVITY
-	categoryName := v1alpha.CategoryID_name[int32(categoryId)]
-
 	classId := v1alpha.ClassID_CLASS_ID_NETWORK_ACTIVITY
 	className := v1alpha.ClassID_name[int32(classId)]
 
@@ -192,17 +164,9 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 	device := getDevice()
 
 	statusId := v1alpha.BaseEventStatusID_BASE_EVENT_STATUS_ID_SUCCESS
-	status := v1alpha.BaseEventStatusID_name[int32(statusId)]
-
-	typeName := activityString + className
 	typeId := int64(classId) + int64(activityId)
 
-	timestamp := t.AsTime().Format(time.RFC3339Nano)
-
 	id, _ := uuid.NewV7()
-	uid := id.String()
-	now := timestamppb.Now().AsTime().Format(time.RFC3339Nano)
-
 	ext := linuxExtension()
 	prod := tetragonProduct()
 	profile := linuxProfile()
@@ -211,18 +175,17 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 		Extensions:   ext,
 		Product:      prod,
 		Profiles:     profile,
-		Uid:          &uid,
-		LoggedTimeDt: &now,
+		Uid:          new(id.String()),
+		LoggedTimeDt: new(timestamppb.Now().AsTime().Format(time.RFC3339Nano)),
 	}
 
-	networkActivitySeverity := "Informational"
 	networkActivitySeverityId := v1alpha.BaseEventSeverityID_BASE_EVENT_SEVERITY_ID_INFORMATIONAL
 
 	na := &v1alpha.NetworkActivity{
 		ActivityId:     &activityId,
 		ActivityName:   &activityString,
 		Actor:          actor,
-		CategoryName:   &categoryName,
+		CategoryName:   new(v1alpha.CategoryID_name[int32(categoryId)]),
 		CategoryUid:    categoryId,
 		ClassName:      &className,
 		ClassUid:       classId,
@@ -230,14 +193,14 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 		Device:         device,
 		DstEndpoint:    destination,
 		Metadata:       metadata,
-		Severity:       &networkActivitySeverity,
+		Severity:       new("Informational"),
 		SeverityId:     networkActivitySeverityId,
 		SrcEndpoint:    source,
-		Status:         &status,
+		Status:         new(v1alpha.BaseEventStatusID_name[int32(statusId)]),
 		StatusId:       &statusId,
-		TypeName:       &typeName,
+		TypeName:       new(activityString + className),
 		TypeUid:        typeId,
-		TimeDt:         &timestamp,
+		TimeDt:         new(t.AsTime().Format(time.RFC3339Nano)),
 	}
 
 	return &v1alpha.EndpointEvent_NetworkActivityDetail{

@@ -1784,8 +1784,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 								if !ok {
 									return fmt.Errorf("file system name %s is not a valid option", fsName)
 								}
-								idx := uint32(i)
-								if err := m.Update(&key, &idx, ebpf.UpdateAny); err != nil {
+								if err := m.Update(&key, new(uint32(i)), ebpf.UpdateAny); err != nil {
 									return fmt.Errorf("failed to add FileSystemType in file_system_type_map: %w", err)
 								}
 							}
@@ -1803,8 +1802,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 								if !ok {
 									return fmt.Errorf("inode type %s is not a valid option", inodeType)
 								}
-								idx := uint32(i)
-								if err := m.Update(&key, &idx, ebpf.UpdateAny); err != nil {
+								if err := m.Update(&key, new(uint32(i)), ebpf.UpdateAny); err != nil {
 									return fmt.Errorf("failed to add InodeType in inode_type_map: %w", err)
 								}
 							}
@@ -1928,7 +1926,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for i, p := range kprobes.PathsPatterns {
 						if p.Type == "FilePrefixSuffix" {
-							key := uint32(i)
 							val := fileapi.PatternValue{
 								PrefixLen: uint32(len(p.FilePrefixSuffix.Prefix)),
 								SuffixLen: uint32(len(p.FilePrefixSuffix.Suffix)),
@@ -1943,7 +1940,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 							copy(val.Prefix[:], []byte(p.FilePrefixSuffix.Prefix))
 							copy(val.Suffix[:], []byte(p.FilePrefixSuffix.Suffix))
 
-							if err := m.Update(&key, &val, ebpf.UpdateAny); err != nil {
+							if err := m.Update(new(uint32(i)), &val, ebpf.UpdateAny); err != nil {
 								return fmt.Errorf("failed to add PathPattern in patterns_map_alloc: %w", err)
 							}
 						}

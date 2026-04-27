@@ -128,12 +128,11 @@ func TestPodInfoReconcile_Update(t *testing.T) {
 }
 
 func TestPodInfoReconcile_Remove(t *testing.T) {
-	now := metav1.Now()
 	podInfo := &v1alpha1.PodInfo{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "test-pod",
 			Namespace:         "default",
-			DeletionTimestamp: &now,
+			DeletionTimestamp: new(metav1.Now()),
 			Finalizers:        []string{finalizer},
 			Labels: map[string]string{
 				"app": "test",

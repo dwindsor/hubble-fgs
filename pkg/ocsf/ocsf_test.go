@@ -76,39 +76,27 @@ func TestActor(t *testing.T) {
 func TestConnectInfo(t *testing.T) {
 	ocsfConnInfo := processConnectToOCSFConnectInformation(processConnect)
 
-	direction := "NETWORK_CONNECTION_INFORMATION_DIRECTION_ID_OUTBOUND"
-	tcp := "TCP"
 	dirID := v1alpha.NetworkConnectionInformationDirectionID(2)
-	protoNum := int32(6)
-	protoVer := "NETWORK_CONNECTION_INFORMATION_PROTOCOL_VERSION_ID_INTERNET_PROTOCOL_VERSION_4"
-
-	assert.Equal(t, ocsfConnInfo.Direction, &direction)
+	assert.Equal(t, ocsfConnInfo.Direction, new("NETWORK_CONNECTION_INFORMATION_DIRECTION_ID_OUTBOUND"))
 	assert.Equal(t, ocsfConnInfo.DirectionId, dirID)
-	assert.Equal(t, ocsfConnInfo.ProtocolName, &tcp)
-	assert.Equal(t, ocsfConnInfo.ProtocolNum, &protoNum)
-	assert.Equal(t, ocsfConnInfo.ProtocolVer, &protoVer)
+	assert.Equal(t, ocsfConnInfo.ProtocolName, new("TCP"))
+	assert.Equal(t, ocsfConnInfo.ProtocolNum, new(int32(6)))
+	assert.Equal(t, ocsfConnInfo.ProtocolVer, new("NETWORK_CONNECTION_INFORMATION_PROTOCOL_VERSION_ID_INTERNET_PROTOCOL_VERSION_4"))
 }
 
 func TestDestination(t *testing.T) {
 	destination := processConnectToOCSFDestination(processConnect)
 
-	dstIp := "2.2.2.2"
-	port := int32(33)
-	host := "testing.io"
-
-	assert.Equal(t, destination.Ip, &dstIp)
-	assert.Equal(t, destination.Port, &port)
-	assert.Equal(t, destination.Hostname, &host)
+	assert.Equal(t, destination.Ip, new("2.2.2.2"))
+	assert.Equal(t, destination.Port, new(int32(33)))
+	assert.Equal(t, destination.Hostname, new("testing.io"))
 }
 
 func TestSource(t *testing.T) {
 	source := processConnectToOCSFSource(processConnect)
 
-	srcIp := "1.1.1.1"
-	port := int32(22)
-
-	assert.Equal(t, source.Ip, &srcIp)
-	assert.Equal(t, source.Port, &port)
+	assert.Equal(t, source.Ip, new("1.1.1.1"))
+	assert.Equal(t, source.Port, new(int32(22)))
 }
 
 func TestConnect(t *testing.T) {

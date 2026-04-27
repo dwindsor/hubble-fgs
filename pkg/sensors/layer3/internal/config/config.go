@@ -54,8 +54,7 @@ func UpdateMap(value networkapi.Layer3ConfigValue) error {
 	}
 	defer m.Close()
 
-	zero := uint32(0)
-	err = m.Put(&zero, &value)
+	err = m.Put(new(uint32(0)), &value)
 	if err != nil {
 		return fmt.Errorf("failed to put value into the layer3 config map: %w", err)
 	}

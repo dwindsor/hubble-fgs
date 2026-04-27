@@ -75,9 +75,8 @@ func TestBadTypedChunkIterator(t *testing.T) {
 
 	// Test faulty size
 	typ := uint32(1)
-	size := uint32(8)
 	binary.Write(buf, native_endian.NativeEndian(), &typ)
-	binary.Write(buf, native_endian.NativeEndian(), &size)
+	binary.Write(buf, native_endian.NativeEndian(), new(uint32(8)))
 	buf.WriteString("abcd")
 
 	iter := NewTypedChunkIterator(buf.Bytes())

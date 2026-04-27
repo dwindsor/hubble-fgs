@@ -54,8 +54,7 @@ func (as *Attempts) LastEntry() *Attempt {
 		return nil
 	}
 
-	ret := as.Entries[len(as.Entries)-1]
-	return &ret
+	return new(as.Entries[len(as.Entries)-1])
 }
 
 type Logger interface {

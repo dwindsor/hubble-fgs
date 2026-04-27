@@ -277,8 +277,7 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats) (networkapi.MsgSocketS
 
 func copyMsgIpWithStatsEvent(tcp *grpc.MsgIPWithStatsEventUnix) grpc.MsgIPWithStatsEventUnix {
 	newTcp := *tcp
-	newMsg := *tcp.Msg
-	newTcp.Msg = &newMsg
+	newTcp.Msg = new(*tcp.Msg)
 	return newTcp
 }
 

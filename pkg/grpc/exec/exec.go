@@ -287,8 +287,7 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 }
 
 func (msg *MsgExecveEventUnix) Cast(o interface{}) notify.Message {
-	t := o.(processapi.MsgExecveEventUnix)
-	return &MsgExecveEventUnix{Unix: &t}
+	return &MsgExecveEventUnix{Unix: new(o.(processapi.MsgExecveEventUnix))}
 }
 
 type MsgCloneEventUnix struct {

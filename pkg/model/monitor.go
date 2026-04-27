@@ -222,13 +222,11 @@ func (nqv NetworkQuotaValue) GetTxUsage() uint64 {
 }
 
 func (nqv NetworkQuotaValue) GetLastReset() *time.Time {
-	x := nqv.LastReset
-	return &x
+	return new(nqv.LastReset)
 }
 
 func (nqv NetworkQuotaValue) GetNextReset() *time.Time {
-	x := nqv.NextReset
-	return &x
+	return new(nqv.NextReset)
 }
 
 func (nqv NetworkQuotaValue) String() string {

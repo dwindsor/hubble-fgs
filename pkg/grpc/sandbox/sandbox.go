@@ -65,8 +65,7 @@ func (msg *MsgRawSyscall) Notify() bool {
 }
 
 func (msg *MsgRawSyscall) Cast(o interface{}) notify.Message {
-	t := o.(MsgRawSyscall)
-	return &t
+	return new(o.(MsgRawSyscall))
 }
 
 func (msg *MsgRawSyscall) HandleMessage() *tetragon.GetEventsResponse {

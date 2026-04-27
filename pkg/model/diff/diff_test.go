@@ -72,11 +72,6 @@ func connStatsEqual(t *testing.T, a, b *appModelV1.ConnectionStats) {
 	assert.Equal(t, a.DefaultAllowBytes, b.DefaultAllowBytes)
 }
 
-// ptrTime is a helper function that returns a pointer to a time.Time value
-func ptrTime(t time.Time) *time.Time {
-	return &t
-}
-
 func TestStatsDiff(t *testing.T) {
 	a := connStatsA()
 	b := connStatsB()
@@ -1243,8 +1238,8 @@ func TestApplicationModelToProcessFlat_WithTimeFields(t *testing.T) {
 	// Create telemetry map for the process with time fields
 	telemetryMap := model.TelemetryMap{
 		"timestamped-process": {
-			FirstStartTime:  ptrTime(time.Unix(1000, 0)),
-			LatestStartTime: ptrTime(time.Unix(2000, 0)),
+			FirstStartTime:  new(time.Unix(1000, 0)),
+			LatestStartTime: new(time.Unix(2000, 0)),
 		},
 	}
 

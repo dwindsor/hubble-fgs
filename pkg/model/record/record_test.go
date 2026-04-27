@@ -196,8 +196,6 @@ func BenchmarkDiffRecord(b *testing.B) {
 		ep := *epName
 		ep.Name = fmt.Sprintf("testPod%d", id)
 
-		a := *action
-
 		if id%10000 == 0 {
 			epName.Namespace = fmt.Sprintf("testNamespace%d", id)
 		}
@@ -210,7 +208,7 @@ func BenchmarkDiffRecord(b *testing.B) {
 		r := DatapathRecord{
 			Src:      &s,
 			Endpoint: endpoint,
-			Action:   &a,
+			Action:   new(*action),
 			Init:     false,
 		}
 		record = append(record, r)
@@ -253,8 +251,6 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 		ep := *epName
 		ep.Name = fmt.Sprintf("testPod%d", id)
 
-		a := *action
-
 		if id%10000 == 0 {
 			epName.Namespace = fmt.Sprintf("testNamespace%d", id)
 		}
@@ -266,7 +262,7 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 		r := DatapathRecord{
 			Src:      &s,
 			Endpoint: endpoint,
-			Action:   &a,
+			Action:   new(*action),
 			Init:     false,
 		}
 		record = append(record, r)

@@ -90,12 +90,8 @@ func newReplicaSetOwnerRef(name string) metav1.OwnerReference {
 		APIVersion: "apps/v1",
 		Kind:       "ReplicaSet",
 		Name:       name,
-		Controller: boolPtr(true),
+		Controller: new(true),
 	}
-}
-
-func boolPtr(b bool) *bool {
-	return &b
 }
 
 func TestCreateContainerHookMapNotInitialized(t *testing.T) {
@@ -294,7 +290,7 @@ func TestReconcileMultiplePods(t *testing.T) {
 			APIVersion: "apps/v1",
 			Kind:       "StatefulSet",
 			Name:       "redis",
-			Controller: boolPtr(true),
+			Controller: new(true),
 		},
 	})
 
@@ -391,7 +387,7 @@ func TestReconcileWithDifferentOwnerTypes(t *testing.T) {
 				APIVersion: "apps/v1",
 				Kind:       "ReplicaSet",
 				Name:       "nginx-7d8b9c",
-				Controller: boolPtr(true),
+				Controller: new(true),
 			},
 			expectedKind: "Deployment",
 			expectedName: "nginx",
@@ -402,7 +398,7 @@ func TestReconcileWithDifferentOwnerTypes(t *testing.T) {
 				APIVersion: "apps/v1",
 				Kind:       "StatefulSet",
 				Name:       "redis",
-				Controller: boolPtr(true),
+				Controller: new(true),
 			},
 			expectedKind: "StatefulSet",
 			expectedName: "redis",
@@ -413,7 +409,7 @@ func TestReconcileWithDifferentOwnerTypes(t *testing.T) {
 				APIVersion: "apps/v1",
 				Kind:       "DaemonSet",
 				Name:       "fluentd",
-				Controller: boolPtr(true),
+				Controller: new(true),
 			},
 			expectedKind: "DaemonSet",
 			expectedName: "fluentd",

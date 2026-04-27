@@ -71,8 +71,7 @@ func (s *Server) MandateConfigure(_ context.Context, cfg *api.MandateConfigureRe
 
 	var duration *time.Duration
 	if cfg.RefreshPeriod != nil {
-		v := cfg.RefreshPeriod.AsDuration()
-		duration = &v
+		duration = new(cfg.RefreshPeriod.AsDuration())
 	}
 
 	err := s.mgr.Configure(mandate.ConfArg{

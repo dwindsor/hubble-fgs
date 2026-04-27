@@ -497,9 +497,8 @@ func (m IPToIDMaps) Lookup(mapID uint32, ip netip.Addr) (DNSID, error) {
 	}
 	defer dnsIPToIDMap.Close()
 
-	key := dnsapi.NewIPAddr(ip)
 	var value DNSID
-	err = dnsIPToIDMap.Lookup(&key, &value)
+	err = dnsIPToIDMap.Lookup(new(dnsapi.NewIPAddr(ip)), &value)
 	if err != nil {
 		return DNSID{}, err
 	}
