@@ -123,6 +123,66 @@ func TestSrcKeyLookup(t *testing.T) {
 	delPod(t)
 }
 
+// TestMergeNamespaceLabels verifies that mergeNamespaceLabels (a) returns a
+// fresh map without mutating the pod's own label map, (b) prefixes namespace
+// labels with _tnp_, and (c) drops self-supplied _tnp_ keys so a pod cannot
+// spoof a namespaceSelector by adding such labels to itself.
+func TestMergeNamespaceLabels(t *testing.T) {
+	s := NewFakePolicyState(t)
+
+	t.Run("nil_pod_labels", func(t *testing.T) {
+		pod := &v1alpha1.PodInfo{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "p",
+				Namespace: testNamespace,
+				Labels:    nil,
+			},
+		}
+		got := s.deps.mergeNamespaceLabels(pod)
+		assert.Equal(t, testNamespace, got["_tnp_kubernetes.io/metadata.name"])
+		assert.Len(t, got, 1, "only the namespace label should be present")
+	})
+
+	t.Run("pod_labels_preserved_and_namespace_prefixed", func(t *testing.T) {
+		original := map[string]string{"app": "client", "tier": "frontend"}
+		pod := &v1alpha1.PodInfo{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "p",
+				Namespace: testNamespace,
+				Labels:    original,
+			},
+		}
+		got := s.deps.mergeNamespaceLabels(pod)
+		assert.Equal(t, "client", got["app"])
+		assert.Equal(t, "frontend", got["tier"])
+		assert.Equal(t, testNamespace, got["_tnp_kubernetes.io/metadata.name"])
+
+		// Ensure the source map was not mutated.
+		assert.Len(t, original, 2)
+		assert.NotContains(t, original, "_tnp_kubernetes.io/metadata.name")
+	})
+
+	t.Run("self_supplied_tnp_keys_are_dropped", func(t *testing.T) {
+		pod := &v1alpha1.PodInfo{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "p",
+				Namespace: testNamespace,
+				Labels: map[string]string{
+					"app":                              "client",
+					"_tnp_kubernetes.io/metadata.name": "production", // attempt to spoof namespace
+					"_tnp_attacker":                    "spoofed",    // unrelated _tnp_ key
+				},
+			},
+		}
+		got := s.deps.mergeNamespaceLabels(pod)
+		assert.Equal(t, "client", got["app"])
+		assert.Equal(t, testNamespace, got["_tnp_kubernetes.io/metadata.name"],
+			"namespace label must win over self-supplied _tnp_ key")
+		assert.NotContains(t, got, "_tnp_attacker",
+			"unrelated self-supplied _tnp_ keys must be dropped")
+	})
+}
+
 func TestCheckMatchLabelsPolicy(t *testing.T) {
 	s := NewFakePolicyState(t)
 	name := "netpol"

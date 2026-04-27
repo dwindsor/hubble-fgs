@@ -15,6 +15,7 @@ package netpolstate
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -585,29 +586,38 @@ func (deps externalDeps) getNamespaceLabels(ns string) map[string]string {
 	return l
 }
 
-func (deps externalDeps) addNamespaceLabels(endpointObject metav1.Object, labels map[string]string) {
-	ns := endpointObject.GetNamespace()
-	nsLabels := deps.getNamespaceLabels(ns)
-	for k, v := range nsLabels {
-		labels["_tnp_"+k] = v
+// mergeNamespaceLabels returns a fresh map containing the pod's own labels
+// merged with namespace labels prefixed with _tnp_. The result is the label
+// set used for matchLabelsSubset against serviceSelector policy subjects that
+// may include namespaceSelector constraints. A nil-labels pod is treated as
+// an empty label set so that a policy whose subject is satisfied by namespace
+// labels alone still matches.
+func (deps externalDeps) mergeNamespaceLabels(obj metav1.Object) map[string]string {
+	nsLabels := deps.getNamespaceLabels(obj.GetNamespace())
+	src := obj.GetLabels()
+	// Allocate a fresh map: the pod label map returned by obj.GetLabels() is
+	// shared within the controller-runtime cache, so we must never mutate it.
+	// Reads under another goroutine swapping the cached object are also safe
+	// because we only iterate the snapshot returned above.
+	dst := make(map[string]string, len(src)+len(nsLabels))
+	for k, v := range src {
+		// Drop any _tnp_-prefixed keys supplied by the pod itself: only
+		// namespace labels are allowed to contribute under that prefix,
+		// otherwise a pod could spoof a namespaceSelector by self-labeling
+		// (similar class of bug we hit in cilium previously).
+		if strings.HasPrefix(k, "_tnp_") {
+			continue
+		}
+		dst[k] = v
 	}
+	for k, v := range nsLabels {
+		dst["_tnp_"+k] = v
+	}
+	return dst
 }
 
 func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.DatapathRecord, error) {
-	ml := &matchLabels.LabelSet{}
-	if endpointObject.GetLabels() == nil {
-		ml.Labels = make(map[string]string, 1)
-	} else {
-		// Copy labels to avoid modifying the original Pod object's map
-		// which is shared within the controller-runtime cache. This
-		// might provoke concurrent map iteration and map write.
-		ml.Labels = make(map[string]string, len(endpointObject.GetLabels())+1)
-		for k, v := range endpointObject.GetLabels() {
-			ml.Labels[k] = v
-		}
-	}
-
-	state.deps.addNamespaceLabels(endpointObject, ml.Labels)
+	ml := &matchLabels.LabelSet{Labels: state.deps.mergeNamespaceLabels(endpointObject)}
 
 	ep := createObjectEndpoint(endpointObject)
 
