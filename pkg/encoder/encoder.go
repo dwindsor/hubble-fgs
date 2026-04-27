@@ -319,6 +319,22 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		details := p.colorer.Cyan.Sprint(event.Socket.SourceIp, "->", event.Socket.DestinationIp, fmt.Sprintf(" %d(expected)", event.SeqNumExpected), fmt.Sprintf(" %d(received)", event.SeqNumReceived))
 
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", eventName, processInfo, details), caps), nil
+	case *tetragon.GetEventsResponse_ProcessMulticastSample:
+		event := response.GetProcessMulticastSample()
+		if event.Process == nil {
+			return "", ErrMissingProcessInfo
+		}
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, event.Process)
+
+		arrow := "->"
+		if event.Direction == tetragon.Direction_RECEIVE {
+			arrow = "<-"
+		}
+		eventName := p.colorer.Blue.Sprintf("⏱️ %-7s", "multicast-sample")
+		details := p.colorer.Cyan.Sprint(event.SourceIp, arrow, event.DestinationIp, fmt.Sprintf(" connID:%d", event.ConnectionId),
+			fmt.Sprintf(" data:0x%016x", event.Data))
+
+		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", eventName, processInfo, details), caps), nil
 	case *tetragon.GetEventsResponse_ProcessFileExec:
 		return "", nil // leave this empty to make fuzz tests in encoder_test.go happy
 	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
