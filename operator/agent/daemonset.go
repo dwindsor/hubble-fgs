@@ -26,8 +26,6 @@ import (
 
 // DaemonSet instantiates a Tetragon DaemonSet configuration.
 func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
-	dsTerminationGracePeriodSec := int64(1)
-
 	// TODO: Unmarshalling of the CM should be done once: before calling DaemonSet and RTDaemonSet
 	// Separating the code in 3 files could be considered
 	// - common
@@ -41,8 +39,7 @@ func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 	}
 	// RT hooks fail namespaces need to be passed to the agent
 	rtConfigYaml := cm.Data[OperatorConfigMapRTHooksDaemonSetKey]
-	rtCMfields := make(map[string]interface{})
-	if err := yaml.Unmarshal([]byte(rtConfigYaml), &rtCMfields); err != nil {
+	if err := yaml.Unmarshal([]byte(rtConfigYaml), new(make(map[string]interface{}))); err != nil {
 		log.WithValues("value", rtConfigYaml).Error(err, "could not unmarshal the runtime hooks DaemonSet configuration")
 		return nil, err
 	}
@@ -124,7 +121,7 @@ func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 					Tolerations:                   tolerations,
 					HostNetwork:                   configValue(log, cmFields, "hostNetwork", false),
 					DNSPolicy:                     dnsPolicy(log, cmFields),
-					TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
+					TerminationGracePeriodSeconds: new(int64(1)),
 					Volumes:                       volumes(log, cmFields),
 					// This is required to avoid diff with actual K8S object
 					DeprecatedServiceAccount: configValue(log, cmFields, "serviceAccountName", ""),
@@ -193,7 +190,6 @@ func RTDaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Conf
 		}
 	}
 
-	boolFalse := false
 	ds := &appv1.DaemonSet{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "DaemonSet",
@@ -218,7 +214,7 @@ func RTDaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Conf
 					PriorityClassName:            configValue(log, rtCMFields, "priorityClassName", ""),
 					ImagePullSecrets:             imagePullSecrets,
 					ServiceAccountName:           configValue(log, rtCMFields, "serviceAccountName", ""),
-					AutomountServiceAccountToken: &boolFalse,
+					AutomountServiceAccountToken: new(false),
 					SecurityContext:              &podSecurityContext,
 					Containers:                   rtDaemonSetContainers(log, rtCMFields, cmFields, namespace),
 					NodeSelector:                 configMapOfString(log, cmFields, "nodeSelector"),
@@ -323,7 +319,6 @@ func daemonSetInitContainers(log logr.Logger, namespace string, cmFields map[str
 }
 
 func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Container {
-	bidirectionalMount := corev1.MountPropagationBidirectional
 	containers := make([]corev1.Container, 0)
 
 	if configValue(log, cmFields, "exportMode", "") == "stdout" {
@@ -424,7 +419,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			{
 				Name:             "bpf-maps",
 				MountPath:        "/sys/fs/bpf",
-				MountPropagation: &bidirectionalMount,
+				MountPropagation: new(corev1.MountPropagationBidirectional),
 			},
 			{
 				Name:      "cilium-run",
@@ -475,13 +470,12 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			}
 		} else if configValue(log, cmFields, "tetragonHealthGrpcEnabled", false) {
 			healthGrpcPort := configValueInt(log, cmFields, "tetragonHealthGrpcPort", 32, 6789)
-			livenessProbeService := "liveness"
 			livenessProbe = &corev1.Probe{
 				TimeoutSeconds: int32(60),
 				ProbeHandler: corev1.ProbeHandler{
 					GRPC: &corev1.GRPCAction{
 						Port:    int32(healthGrpcPort),
-						Service: &livenessProbeService,
+						Service: new("liveness"),
 					},
 				},
 			}
@@ -590,7 +584,6 @@ func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
 func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 	hostPathDirectoryVolumeType := corev1.HostPathDirectory
 	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
-	dsVolumeDefaultMode := int32(420)
 	volumes := []corev1.Volume{
 		{
 			Name: "cilium-run",
@@ -620,7 +613,7 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "tetragon-config",
 						},
-						DefaultMode: &dsVolumeDefaultMode,
+						DefaultMode: new(int32(420)),
 					},
 				},
 			},
@@ -680,16 +673,13 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 }
 
 func rtVolumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
-	hostPathDirectoryVolumeType := corev1.HostPathDirectory
-	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
-	hostPathSocket := corev1.HostPathSocket
 	volumes := []corev1.Volume{
 		{
 			Name: "oci-hooks-install-path",
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: configValue(log, cmFields, "installDir", ""),
-					Type: &hostPathDirectoryOrCreateVolumeType,
+					Type: new(corev1.HostPathDirectoryOrCreate),
 				},
 			},
 		},
@@ -701,7 +691,7 @@ func rtVolumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: configValue(log, cmFields, "ociHooksPath", ""),
-					Type: &hostPathDirectoryVolumeType,
+					Type: new(corev1.HostPathDirectory),
 				},
 			},
 		})
@@ -711,7 +701,7 @@ func rtVolumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: configValue(log, cmFields, "nriHookSocket", ""),
-					Type: &hostPathSocket,
+					Type: new(corev1.HostPathSocket),
 				},
 			},
 		})

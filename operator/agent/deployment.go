@@ -85,9 +85,6 @@ func AggregatorDeployment(log logr.Logger, namespace string, name string, config
 		}
 	}
 
-	replicas := int32(1)
-	boolFalse := false
-	terminationGracePeriodSeconds := int64(10)
 	deployment := &appv1.Deployment{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "Deployment",
@@ -103,7 +100,7 @@ func AggregatorDeployment(log logr.Logger, namespace string, name string, config
 			Selector: &k8sv1.LabelSelector{
 				MatchLabels: labelsForManaged(name),
 			},
-			Replicas: &replicas,
+			Replicas: new(int32(1)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: k8sv1.ObjectMeta{
 					Labels:      podLabels,
@@ -112,14 +109,14 @@ func AggregatorDeployment(log logr.Logger, namespace string, name string, config
 				Spec: corev1.PodSpec{
 					PriorityClassName:             configValue(log, config, "priorityClassName", ""),
 					ImagePullSecrets:              imagePullSecrets,
-					AutomountServiceAccountToken:  &boolFalse,
+					AutomountServiceAccountToken:  new(false),
 					SecurityContext:               &podSecurityContext,
 					Containers:                    aggregatorDeploymentContainers(log, name, config),
 					NodeSelector:                  configMapOfString(log, config, "nodeSelector"),
 					Affinity:                      &affinity,
 					Tolerations:                   tolerations,
 					Volumes:                       volumesFromConfigMap(log, config, "extraVolumes"),
-					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+					TerminationGracePeriodSeconds: new(int64(10)),
 					Resources:                     &resources,
 				},
 			},

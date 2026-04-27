@@ -221,14 +221,12 @@ func TestConfigArray(t *testing.T) {
 }
 
 func TestDaemonSet(t *testing.T) {
-	runAsUser := int64(123)
 	dsTerminationGracePeriodSec := int64(1)
 	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
 	hostPathDirectoryVolumeType := corev1.HostPathDirectory
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	dsVolumeDefaultMode := int32(420)
 	privileged := true
-	unprivileged := false
 	livenessProbeService := "liveness"
 
 	testCases := []struct {
@@ -572,7 +570,7 @@ agentServiceMonitorPrometheusPort: "1234"`,
 							DeprecatedServiceAccount:      "tetragon-test",
 							TerminationGracePeriodSeconds: &dsTerminationGracePeriodSec,
 							HostNetwork:                   false,
-							SecurityContext:               &corev1.PodSecurityContext{RunAsUser: &runAsUser},
+							SecurityContext:               &corev1.PodSecurityContext{RunAsUser: new(int64(123))},
 							Affinity: &corev1.Affinity{
 								PodAffinity: &corev1.PodAffinity{
 									RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
@@ -851,7 +849,7 @@ agentServiceMonitorPrometheusPort: "1234"`,
 											},
 										},
 									},
-									SecurityContext: &corev1.SecurityContext{Privileged: &unprivileged},
+									SecurityContext: &corev1.SecurityContext{Privileged: new(false)},
 									Resources: corev1.ResourceRequirements{
 										Requests: map[corev1.ResourceName]resource.Quantity{
 											corev1.ResourceCPU:    resource.MustParse("2500m"),
@@ -879,8 +877,6 @@ agentServiceMonitorPrometheusPort: "1234"`,
 
 func TestDaemonSetInitContainers(t *testing.T) {
 	privileged := true
-	unprivileged := false
-
 	testCases := []struct {
 		name            string
 		agentYAMLString string
@@ -1061,7 +1057,7 @@ metadataImagePullPolicy: Always
 						},
 					},
 					TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-					SecurityContext:          &corev1.SecurityContext{Privileged: &unprivileged},
+					SecurityContext:          &corev1.SecurityContext{Privileged: new(false)},
 					Resources: corev1.ResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceCPU:    resource.MustParse("1500m"),
@@ -1094,8 +1090,7 @@ metadataImagePullPolicy: Always
 		t.Run(tt.name, func(t *testing.T) {
 			agentConfigMap := make(map[string]any)
 			require.NoError(t, yaml.Unmarshal([]byte(tt.agentYAMLString), &agentConfigMap))
-			rtConfigMap := make(map[string]any)
-			require.NoError(t, yaml.Unmarshal([]byte(tt.rtYAMLString), &rtConfigMap))
+			require.NoError(t, yaml.Unmarshal([]byte(tt.rtYAMLString), new(make(map[string]any))))
 			// function to test
 			actual := daemonSetInitContainers(logr.Log, "kube-system", agentConfigMap)
 			require.Equal(t, tt.expected, actual)
@@ -1105,7 +1100,6 @@ metadataImagePullPolicy: Always
 
 func TestDaemonSetContainers(t *testing.T) {
 	privileged := true
-	unprivileged := false
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	livenessProbeService := "liveness"
 
@@ -1388,7 +1382,7 @@ commandOverride: |
 							MountPath: "/var/lib/tetragon/metadata",
 						},
 					},
-					SecurityContext: &corev1.SecurityContext{Privileged: &unprivileged},
+					SecurityContext: &corev1.SecurityContext{Privileged: new(false)},
 					Resources: corev1.ResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceCPU:    resource.MustParse("2500m"),
@@ -1856,11 +1850,7 @@ func TestConfigValueInt(t *testing.T) {
 }
 
 func TestRTDaemonSet(t *testing.T) {
-	runAsUser := int64(123)
 	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
-	hostPathDirectoryVolumeType := corev1.HostPathDirectory
-	hostPathSocketVolumeType := corev1.HostPathSocket
-	boolTrue := true
 	boolFalse := false
 
 	testCases := []struct {
@@ -1989,7 +1979,7 @@ podSecurityContext: |
 									VolumeSource: corev1.VolumeSource{
 										HostPath: &corev1.HostPathVolumeSource{
 											Path: "/usr/share/containers/oci/hooks.d",
-											Type: &hostPathDirectoryVolumeType,
+											Type: new(corev1.HostPathDirectory),
 										},
 									},
 								},
@@ -2091,7 +2081,7 @@ failAllowNamespaces: fail-allow-ns
 								{Name: "test-secret1"},
 								{Name: "test-secret2"},
 							},
-							SecurityContext: &corev1.PodSecurityContext{RunAsUser: &runAsUser},
+							SecurityContext: &corev1.PodSecurityContext{RunAsUser: new(int64(123))},
 							NodeSelector: map[string]string{
 								"test-selector-key1": "test-selector-value1",
 								"test-selector-key2": "test-selector-value2",
@@ -2131,7 +2121,7 @@ failAllowNamespaces: fail-allow-ns
 									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 									ImagePullPolicy:          corev1.PullIfNotPresent,
 									SecurityContext: &corev1.SecurityContext{
-										Privileged: &boolTrue,
+										Privileged: new(true),
 									},
 									VolumeMounts: []corev1.VolumeMount{
 										{
@@ -2160,7 +2150,7 @@ failAllowNamespaces: fail-allow-ns
 									VolumeSource: corev1.VolumeSource{
 										HostPath: &corev1.HostPathVolumeSource{
 											Path: "/var/run/nri/nri-custom.sock",
-											Type: &hostPathSocketVolumeType,
+											Type: new(corev1.HostPathSocket),
 										},
 									},
 								},

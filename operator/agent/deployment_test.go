@@ -26,8 +26,6 @@ import (
 func TestAggregatorDeployment(t *testing.T) {
 	replicas := int32(1)
 	automountServiceAccount := false
-	runAsUser := int64(123)
-	allowPriviledgeEscalation := true
 	terminationGracePeriodSec := int64(10)
 
 	testCases := []struct {
@@ -227,7 +225,7 @@ extraVolumeMounts: |
 							TerminationGracePeriodSeconds: &terminationGracePeriodSec,
 							HostNetwork:                   false,
 							SecurityContext: &corev1.PodSecurityContext{
-								RunAsUser: &runAsUser,
+								RunAsUser: new(int64(123)),
 							},
 							Affinity: &corev1.Affinity{
 								PodAffinity: &corev1.PodAffinity{
@@ -272,7 +270,7 @@ extraVolumeMounts: |
 										},
 									},
 									SecurityContext: &corev1.SecurityContext{
-										AllowPrivilegeEscalation: &allowPriviledgeEscalation,
+										AllowPrivilegeEscalation: new(true),
 										Capabilities: &corev1.Capabilities{
 											Drop: []corev1.Capability{
 												"ALL",
