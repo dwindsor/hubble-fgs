@@ -84,8 +84,12 @@ func GetState() *State {
 
 // SetMap needs to be called on loading the BPF maps and program to init the
 // workloadid component.
-func (s *State) SetMap(workloadIDMap *ebpf.Map) {
+func (s *State) SetMap(workloadIDMap *ebpf.Map) error {
+	if workloadIDMap == nil {
+		return fmt.Errorf("workload ID map is nil")
+	}
 	s.cgroupIDToWorkloadIDMap = ebpfmap.NewTyped[CgroupID, WorkloadID](workloadIDMap)
+	return nil
 }
 
 func (s *State) Update(workload WorkloadMeta, cgroupID CgroupID) error {

@@ -61,7 +61,10 @@ func setupWorkloadID() error {
 	// used even without a K8s control plane (e.g. in tests). We
 	// have already registered the hook for the container creation
 	// at init, we need to enable the hook by wiring the BPF map.
-	workloadid.GetState().SetMap(CgroupIDToWorkloadIDMap.MapHandle)
+	err := workloadid.GetState().SetMap(ip.CgroupIDToWorkloadIDMap.MapHandle)
+	if err != nil {
+		return fmt.Errorf("failed to set workload ID map with %s: %w", ip.CgroupIDToWorkloadIDMap.Name, err)
+	}
 
 	// Start the reconciler only if there is a k8s control plane
 	controllerManager := manager.Get().GetControllerManager()
