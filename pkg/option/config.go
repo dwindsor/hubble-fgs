@@ -112,6 +112,10 @@ type config struct {
 	EnableDNS       bool
 	Layer3CLIEnable bool
 
+	RawsockReportClose        bool
+	EnableRawsockMetrics      bool
+	RawsockMetricsLabelFilter []string
+
 	UDPIdleSocketTimeout time.Duration
 	UDPInKernelManaged   bool
 

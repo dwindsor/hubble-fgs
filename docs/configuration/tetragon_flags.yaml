@@ -209,6 +209,9 @@ options:
     - name: enable-rawsock
       default_value: "false"
       usage: Enable raw socket observability
+    - name: enable-rawsock-metrics
+      default_value: "true"
+      usage: Enable raw socket metrics (requires --enable-rawsock)
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
@@ -451,6 +454,13 @@ options:
     - name: procfs
       default_value: /proc/
       usage: Location of procfs to consume existing PIDs
+    - name: rawsock-metrics-label-filter
+      default_value: '[]'
+      usage: |
+        Raw socket metrics label filter (requires --enable-rawsock and --enable-rawsock-metrics)
+    - name: rawsock-report-close
+      default_value: "false"
+      usage: Report raw sockets closing (requires --enable-rawsock)
     - name: rb-queue-size
       default_value: "65535"
       usage: |

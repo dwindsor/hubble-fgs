@@ -384,6 +384,10 @@ tetragon:
       enabled: false
     rawsock:
       enabled: false
+      reportClose: false
+      metrics:
+        enabled: true
+        labelFilter: []
   # DNS
   dns:
     enabled: false

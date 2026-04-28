@@ -91,6 +91,9 @@ const (
 	keyICMPV6Info                        = "icmpv6-info"
 	keyEnableIGMP                        = "enable-igmp"
 	keyEnableRawsock                     = "enable-rawsock"
+	keyRawsockReportClose                = "rawsock-report-close"
+	keyEnableRawsockMetrics              = "enable-rawsock-metrics"
+	keyRawsockMetricsLabelFilter         = "rawsock-metrics-label-filter"
 	keyEnableDNS                         = "enable-dns"
 	keyUDPIdleSocketTimeout              = "udp-idle-socket-timeout"
 	keyUDPInKernelManaged                = "udp-in-kernel-managed"
@@ -230,6 +233,9 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyICMPV6Info, false, fmt.Sprintf("Enable ICMPV6 information (requires --%s)", keyEnableICMP))
 	flags.Bool(keyEnableIGMP, false, "Enable IGMP observability")
 	flags.Bool(keyEnableRawsock, false, "Enable raw socket observability")
+	flags.Bool(keyRawsockReportClose, false, fmt.Sprintf("Report raw sockets closing (requires --%s)", keyEnableRawsock))
+	flags.Bool(keyEnableRawsockMetrics, true, fmt.Sprintf("Enable raw socket metrics (requires --%s)", keyEnableRawsock))
+	flags.StringSlice(keyRawsockMetricsLabelFilter, []string{}, fmt.Sprintf("Raw socket metrics label filter (requires --%s and --%s)", keyEnableRawsock, keyEnableRawsockMetrics))
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
 	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
 	flags.Bool(keyUDPInKernelManaged, false, "Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.")
@@ -323,6 +329,9 @@ func readAndSetEnterpriseFlags() {
 	Config.ICMPV6Info = viper.GetBool(keyICMPV6Info)
 	Config.EnableIGMP = viper.GetBool(keyEnableIGMP)
 	Config.EnableRawsock = viper.GetBool(keyEnableRawsock)
+	Config.RawsockReportClose = viper.GetBool(keyRawsockReportClose)
+	Config.EnableRawsockMetrics = viper.GetBool(keyEnableRawsockMetrics)
+	Config.RawsockMetricsLabelFilter = viper.GetStringSlice(keyRawsockMetricsLabelFilter)
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
 	Config.UDPIdleSocketTimeout = viper.GetDuration(keyUDPIdleSocketTimeout)
 	Config.UDPInKernelManaged = viper.GetBool(keyUDPInKernelManaged)
@@ -420,6 +429,12 @@ func validateConfig(config config) error {
 
 	if (config.EnableIcmpTracking || config.ICMPV6Info) && !config.EnableICMP {
 		return fmt.Errorf("ICMP observability requires --%s", keyEnableICMP)
+	}
+
+	if !config.EnableRawsock {
+		if config.RawsockReportClose {
+			return fmt.Errorf("rawsock close reports require --%s", keyEnableRawsock)
+		}
 	}
 
 	// Network policies can be loaded via the k8s resource watcher as well

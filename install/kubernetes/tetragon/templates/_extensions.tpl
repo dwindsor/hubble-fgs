@@ -53,6 +53,9 @@ enable-icmp-tracking: {{ .Values.tetragon.layer3.icmp.socketTracking | quote }}
 icmpv6-info: {{ .Values.tetragon.layer3.icmp.v6info | quote }}
 enable-igmp: {{ .Values.tetragon.layer3.igmp.enabled | quote }}
 enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
+rawsock-report-close: {{ .Values.tetragon.layer3.rawsock.reportClose | quote }}
+enable-rawsock-metrics: {{ .Values.tetragon.layer3.rawsock.metrics.enabled | quote }}
+rawsock-metrics-label-filter: {{ .Values.tetragon.layer3.rawsock.metrics.labelFilter | quote }}
 enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
 udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}

@@ -201,6 +201,9 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.icmp.v6info | bool | `false` |  |
 | tetragon.layer3.igmp.enabled | bool | `false` |  |
 | tetragon.layer3.rawsock.enabled | bool | `false` |  |
+| tetragon.layer3.rawsock.metrics.enabled | bool | `true` |  |
+| tetragon.layer3.rawsock.metrics.labelFilter | list | `[]` |  |
+| tetragon.layer3.rawsock.reportClose | bool | `false` |  |
 | tetragon.layer3.tcp.enabled | bool | `false` |  |
 | tetragon.layer3.tcp.rtt.enabled | bool | `false` |  |
 | tetragon.layer3.udp.enabled | bool | `false` |  |
