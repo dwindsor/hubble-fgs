@@ -143,6 +143,12 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 }
 
 func SetConfig(cfg *networkapi.Layer3ConfigValue) {
+	if enterpriseOption.Config.EnableIcmpTracking {
+		cfg.EnableIcmpTracking = 1
+	}
+	if utils.SupportCGroupSKBProbeRead() {
+		cfg.IcmpNetMatch = 1
+	}
 	if v6info || enterpriseOption.Config.ICMPV6Info {
 		cfg.ICMPV6Info = 1
 	}
