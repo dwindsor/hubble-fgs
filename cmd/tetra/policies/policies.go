@@ -12,6 +12,7 @@ package policies
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -22,6 +23,8 @@ import (
 	tetragonv1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	ipav1alpha1 "github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 	"github.com/spf13/cobra"
+	grpcCodes "google.golang.org/grpc/codes"
+	grpcStatus "google.golang.org/grpc/status"
 
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
 	common2 "github.com/isovalent/hubble-fgs/cmd/tetra/common"
@@ -74,6 +77,16 @@ func addCmd() *cobra.Command {
 	return ret
 }
 
+func isUnimplemented(err error) bool {
+	for err != nil {
+		if grpcStatus.Code(err) == grpcCodes.Unimplemented {
+			return true
+		}
+		err = errors.Unwrap(err)
+	}
+	return false
+}
+
 func listCmd() *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "list",
@@ -88,7 +101,9 @@ func listCmd() *cobra.Command {
 				return err
 			}
 			networkPolicies, err := network.ListNetworkPolicies()
-			if err != nil {
+			// if get an Unimplemented gRPC error, don't fail.
+			// This allows tetra policies to work in the nok8s build.
+			if err != nil && !isUnimplemented(err) {
 				return err
 			}
 
