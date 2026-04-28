@@ -26,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -142,8 +143,7 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 }
 
 func SetConfig(cfg *networkapi.Layer3ConfigValue) {
-	cfg.ICMPV6Info = 0
-	if v6info {
+	if v6info || enterpriseOption.Config.ICMPV6Info {
 		cfg.ICMPV6Info = 1
 	}
 }
@@ -154,6 +154,7 @@ func ConfigureSensor() error {
 }
 
 func UnloadSensor() error {
+	v6info = false
 	return nil
 }
 

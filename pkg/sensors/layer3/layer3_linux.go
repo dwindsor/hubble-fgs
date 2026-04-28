@@ -576,7 +576,13 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 			ipToIDMapsRaw.Close()
 		}
 	}
-	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
+	// ICMP options can now be fully specified by CLI switches, so if any of layer3 was enabled with these
+	// switches, then ICMP is either enabled or disabled from its CLI switch, and therefore we no longer
+	// parse the ICMP part of the spec. We therefore report an error if this part exists.
+	if enterpriseOption.Config.Layer3CLIEnable && spec != nil && spec.Parser.Icmp != nil {
+		return fmt.Errorf("all ICMP options should be configured with CLI switches; please remove the spec.Parser.Icmp section from the policy and use the appropriate switch instead")
+	}
+	if icmpEnabled {
 		icmp.SetConfig(&config)
 		config.Proto.ICMP4Enabled = 1
 		config.Proto.ICMP6Enabled = 1
