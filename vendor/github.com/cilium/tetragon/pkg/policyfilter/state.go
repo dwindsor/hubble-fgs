@@ -8,6 +8,7 @@ package policyfilter
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"sync"
 
 	slimv1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
@@ -196,6 +197,8 @@ func (pol *policy) podMatches(podNs string, podLabels labels.Labels) bool {
 	}
 
 	if _, ok := podLabels1[labels.K8sPodNamespace]; !ok {
+		// Writing to the labels is safe since the Pod's labels have
+		// been copied at the handler level, later calling this function.
 		podLabels1[labels.K8sPodNamespace] = podNs
 	}
 
@@ -291,7 +294,7 @@ func (m *state) updatePodHandler(pod *v1.Pod) error {
 	}
 
 	namespace := pod.Namespace
-	err = m.UpdatePod(PodID(podID), namespace, pod.Labels, containerIDs, containerInfo)
+	err = m.UpdatePod(PodID(podID), namespace, maps.Clone(pod.Labels), containerIDs, containerInfo)
 	if err != nil {
 		m.log.Warn("policyfilter, UpdatePod failed",
 			logfields.Error, err,
@@ -482,7 +485,7 @@ func (m *state) DelPolicy(polID PolicyID) error {
 		m.log.Warn("DelPolicy: policy internal map not found", "policy-id", polID)
 	}
 
-	if err := m.pfMap.policyMap.Delete(polID); err != nil {
+	if err := m.pfMap.policyMapHandle().Delete(polID); err != nil {
 		m.log.Warn("DelPolicy: failed to remove policy from external map", "policy-id", polID)
 	}
 

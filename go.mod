@@ -10,9 +10,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.1
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.19.3
-	github.com/cilium/ebpf v0.21.0
+	github.com/cilium/ebpf v0.21.1-0.20260427123516-6bf8ddfd0f0f
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.7.0-pre.0.0.20260424091616-6751c444ac81
+	github.com/cilium/tetragon v1.7.0-pre.0.0.20260428103404-5d835944a6c6
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.2.3
@@ -36,8 +36,8 @@ require (
 	github.com/mennanov/fieldmask-utils v1.1.4
 	github.com/miekg/dns v1.1.72
 	github.com/moby/go-archive v0.2.0
-	github.com/operator-framework/api v0.42.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.90.1
+	github.com/operator-framework/api v0.38.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.89.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/rivo/tview v0.42.0
@@ -58,16 +58,16 @@ require (
 	golang.org/x/time v0.15.0
 	google.golang.org/api v0.276.0
 	google.golang.org/grpc v1.80.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.35.4
-	k8s.io/apimachinery v0.35.4
-	k8s.io/apiserver v0.35.4
-	k8s.io/client-go v0.35.4
-	k8s.io/code-generator v0.35.4
+	k8s.io/api v0.36.0
+	k8s.io/apimachinery v0.36.0
+	k8s.io/apiserver v0.36.0
+	k8s.io/client-go v0.36.0
+	k8s.io/code-generator v0.36.0
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
-	sigs.k8s.io/controller-runtime v0.23.3
+	sigs.k8s.io/controller-runtime v0.23.1-0.20260424122448-c8b4b9d61fbd
 	sigs.k8s.io/controller-tools v0.20.1
 	sigs.k8s.io/e2e-framework v0.6.0
 	sigs.k8s.io/yaml v1.6.0
@@ -117,9 +117,9 @@ require (
 	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
-	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
+	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
-	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.9.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -138,7 +138,6 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/pprof v0.0.0-20260202012954-cb029daf43ef // indirect
 	github.com/google/renameio/v2 v2.0.2 // indirect
@@ -166,7 +165,6 @@ require (
 	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/morikuni/aec v1.1.0 // indirect
-	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/opencontainers/selinux v1.13.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -178,9 +176,9 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	go.etcd.io/etcd/api/v3 v3.6.7 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.6.7 // indirect
-	go.etcd.io/etcd/client/v3 v3.6.7 // indirect
+	go.etcd.io/etcd/api/v3 v3.6.8 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.6.8 // indirect
+	go.etcd.io/etcd/client/v3 v3.6.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
@@ -201,11 +199,12 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.35.4 // indirect
-	k8s.io/component-base v0.35.4 // indirect
-	k8s.io/cri-api v0.35.4 // indirect
+	k8s.io/apiextensions-apiserver v0.36.0 // indirect
+	k8s.io/component-base v0.36.0 // indirect
+	k8s.io/cri-api v0.36.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
+	k8s.io/streaming v0.36.0 // indirect
 	sigs.k8s.io/mcs-api v0.3.1-0.20260224125735-0f775a3eff97 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
@@ -262,7 +261,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/vladimirvivien/gexe v0.4.1 // indirect
+	github.com/vladimirvivien/gexe v0.5.0 // indirect
 	go.mongodb.org/mongo-driver v1.17.6 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
