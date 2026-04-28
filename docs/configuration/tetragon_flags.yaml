@@ -347,6 +347,9 @@ options:
       shorthand: h
       default_value: "false"
       usage: help for tetragon
+    - name: icmpv6-info
+      default_value: "false"
+      usage: Enable ICMPV6 information (requires --enable-icmp)
     - name: k8s-controlplane-retry
       default_value: "1"
       usage: |

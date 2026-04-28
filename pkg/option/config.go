@@ -106,6 +106,7 @@ type config struct {
 	EnableTCPRTT    bool
 	EnableUDP       bool
 	EnableICMP      bool
+	ICMPV6Info      bool
 	EnableIGMP      bool
 	EnableRawsock   bool
 	EnableDNS       bool

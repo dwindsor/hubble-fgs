@@ -88,6 +88,7 @@ const (
 	keyEnableTCPRTT                      = "enable-tcp-rtt"
 	keyEnableUDP                         = "enable-udp"
 	keyEnableICMP                        = "enable-icmp"
+	keyICMPV6Info                        = "icmpv6-info"
 	keyEnableIGMP                        = "enable-igmp"
 	keyEnableRawsock                     = "enable-rawsock"
 	keyEnableDNS                         = "enable-dns"
@@ -226,6 +227,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableTCPRTT, false, "Enable TCP RTT observability")
 	flags.Bool(keyEnableUDP, false, "Enable UDP observability")
 	flags.Bool(keyEnableICMP, false, "Enable ICMP observability")
+	flags.Bool(keyICMPV6Info, false, fmt.Sprintf("Enable ICMPV6 information (requires --%s)", keyEnableICMP))
 	flags.Bool(keyEnableIGMP, false, "Enable IGMP observability")
 	flags.Bool(keyEnableRawsock, false, "Enable raw socket observability")
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
@@ -318,6 +320,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableTCPRTT = viper.GetBool(keyEnableTCPRTT)
 	Config.EnableUDP = viper.GetBool(keyEnableUDP)
 	Config.EnableICMP = viper.GetBool(keyEnableICMP)
+	Config.ICMPV6Info = viper.GetBool(keyICMPV6Info)
 	Config.EnableIGMP = viper.GetBool(keyEnableIGMP)
 	Config.EnableRawsock = viper.GetBool(keyEnableRawsock)
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
@@ -413,6 +416,10 @@ func validateConfig(config config) error {
 	// multicast inspection (sequence checking and packet sampling) only available from kernel >=v6.12
 	if (config.MulticastSeqCheck || config.MulticastSamplePercent > 0) && !kernels.MinKernelVersion("6.12") {
 		return fmt.Errorf("multicast sequence checking and packet sampling require kernel >=v6.12")
+	}
+
+	if (config.EnableIcmpTracking || config.ICMPV6Info) && !config.EnableICMP {
+		return fmt.Errorf("ICMP observability requires --%s", keyEnableICMP)
 	}
 
 	// Network policies can be loaded via the k8s resource watcher as well

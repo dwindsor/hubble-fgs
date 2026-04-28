@@ -378,6 +378,8 @@ tetragon:
         samplePercent: 0
     icmp:
       enabled: false
+      v6info: false
+      socketTracking: false
     igmp:
       enabled: false
     rawsock:
