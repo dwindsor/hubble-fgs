@@ -377,7 +377,7 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 }
 
 func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, cgroup bool,
-	udpInterval time.Duration) *sensors.Sensor {
+	udpInterval time.Duration) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
 
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
@@ -395,6 +395,7 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, cgroup bool
 		err := l3.configureMaps(spec)
 		if err != nil {
 			logger.GetLogger().Warn("failed to configure layer3 maps", logfields.Error, err)
+			return nil, fmt.Errorf("failed to configure layer3 maps: %w", err)
 		}
 	}
 
@@ -405,7 +406,7 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, cgroup bool
 		unloadLayer3Sensor(option.Config.KeepSensorsOnExit)
 		return nil
 	}
-	return l3Sensor
+	return l3Sensor, nil
 }
 
 type l3Sensor struct {
@@ -504,7 +505,7 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	return l3.enableLayer3(policy, udpCgroup, udpInterval), nil
+	return l3.enableLayer3(policy, udpCgroup, udpInterval)
 }
 
 func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
