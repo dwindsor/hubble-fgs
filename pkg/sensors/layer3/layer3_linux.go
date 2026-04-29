@@ -46,6 +46,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
@@ -68,7 +69,6 @@ var (
 	icmpEnabled             = false
 	igmpEnabled             = false
 	rawEnabled              = false
-	reportRawClose          = false
 	udpCGroup               = false
 
 	BaseLoaded = false
@@ -80,7 +80,7 @@ var (
 func unloadLayer3Sensor(pin bool) error {
 	// We want to make sure we stand configuration up when loading/unloading the programs.
 	config := networkapi.Layer3ConfigValue{}
-	layer3cfg.SetConfig(&config, false, false, false)
+	layer3cfg.SetConfig(&config, false)
 
 	cgrp_ingress_configured = false
 	cgrp_egress_configured = false
@@ -499,7 +499,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	}
 
 	if spec.Parser.Rawsock != nil && rawEnabled {
-		reportRawClose, err = rawsock.PolicyHandler(spec)
+		err = rawsock.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("rawsock.PolicyHandler error: %w", err)
 		}
@@ -511,7 +511,7 @@ func (l3 *l3Sensor) PolicyHandler(
 func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	// If UDP is enabled then we need close events reported to maintain our maps.
 	config := networkapi.Layer3ConfigValue{}
-	layer3cfg.SetConfig(&config, rawEnabled, reportRawClose, udpEnabled)
+	layer3cfg.SetConfig(&config, udpEnabled)
 
 	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
 		if err := tcp.SetConfig(&config); err != nil {
@@ -589,7 +589,9 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		config.Proto.ICMP6Enabled = 1
 	}
 	// IGMP has no config maps.
-	// Rawsock has no config maps.
+	if rawEnabled {
+		rawsock.SetConfig(&config)
+	}
 
 	err := layer3cfg.UpdateMap(config)
 	if err != nil {
@@ -792,6 +794,8 @@ func EnableLayer3Progs() error {
 			return fmt.Errorf("raw sockets enabled but kernel support missing")
 		}
 		rawEnabled = true
+		rawsockconfig.MetricsEnabled = enterpriseOption.Config.EnableRawsockMetrics
+		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter().WithEnabledLabels(enterpriseOption.Config.RawsockMetricsLabelFilter)
 	}
 	if enterpriseOption.Config.EnableDNS {
 		dnsEnabled = true

@@ -29,10 +29,15 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+)
+
+var (
+	rawReportClose = false
 )
 
 var (
@@ -79,7 +84,7 @@ var (
 	SocketVersionMap = program.MapUserFrom(base.SocketVersionMap)
 )
 
-func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	if spec.Parser.Rawsock != nil && spec.Parser.Rawsock.Metrics != nil {
 		rawsockconfig.MetricsEnabled = spec.Parser.Rawsock.Metrics.Enable
 		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Rawsock.Metrics.LabelFilter)
@@ -88,11 +93,11 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter()
 	}
 
-	rawReportClose := false
+	rawReportClose = false
 	if spec.Parser.Rawsock != nil {
 		rawReportClose = spec.Parser.Rawsock.ReportClose
 	}
-	return rawReportClose, nil
+	return nil
 }
 
 func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
@@ -124,12 +129,20 @@ func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
 	return progsInitSock, nil, maps
 }
 
+func SetConfig(cfg *networkapi.Layer3ConfigValue) {
+	cfg.RawEnabled = 1
+	if rawReportClose || enterpriseOption.Config.RawsockReportClose {
+		cfg.RawReportClose = 1
+	}
+}
+
 func ConfigureSensor() error {
 	ip.LoadSockets(fdCallback, constants.IPPROTO_RAW, 0)
 	return nil
 }
 
 func UnloadSensor() error {
+	rawReportClose = false
 	return nil
 }
 

@@ -23,21 +23,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
-func SetConfig(config *networkapi.Layer3ConfigValue, enableRaw, enableRawReportClose, enableUdpReportClose bool) {
+func SetConfig(config *networkapi.Layer3ConfigValue, enableUdpReportClose bool) {
 	if enterpriseOption.Config.EnableIcmpTracking {
 		config.EnableIcmpTracking = 1
 	}
 
 	if utils.SupportCGroupSKBProbeRead() {
 		config.IcmpNetMatch = 1
-	}
-
-	if enableRaw || enterpriseOption.Config.EnableRawsock {
-		config.RawEnabled = 1
-	}
-
-	if enableRawReportClose {
-		config.RawReportClose = 1
 	}
 
 	if enableUdpReportClose {
