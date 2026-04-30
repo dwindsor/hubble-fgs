@@ -41,6 +41,7 @@
     - [KprobeSkb](#tetragon-KprobeSkb)
     - [KprobeSock](#tetragon-KprobeSock)
     - [KprobeSockaddr](#tetragon-KprobeSockaddr)
+    - [KprobeSockaddrUn](#tetragon-KprobeSockaddrUn)
     - [KprobeTruncatedBytes](#tetragon-KprobeTruncatedBytes)
     - [KprobeUserNamespace](#tetragon-KprobeUserNamespace)
     - [Mount](#tetragon-Mount)
@@ -793,6 +794,7 @@ Environment variable
 | sockaddr_arg | [KprobeSockaddr](#tetragon-KprobeSockaddr) |  |  |
 | bpf_prog_arg | [KprobeBpfProg](#tetragon-KprobeBpfProg) |  |  |
 | error_arg | [KprobeError](#tetragon-KprobeError) |  |  |
+| sockaddrun_arg | [KprobeSockaddrUn](#tetragon-KprobeSockaddrUn) |  |  |
 | label | [string](#string) |  |  |
 
 
@@ -1050,6 +1052,22 @@ Environment variable
 | family | [string](#string) |  |  |
 | addr | [string](#string) |  |  |
 | port | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeSockaddrUn"></a>
+
+### KprobeSockaddrUn
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| family | [string](#string) |  |  |
+| path | [string](#string) |  |  |
 
 
 

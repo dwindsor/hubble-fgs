@@ -88,8 +88,6 @@ type SandboxAction struct {
 
 type SandboxSpec struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default={}
-	// +nullable
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 
