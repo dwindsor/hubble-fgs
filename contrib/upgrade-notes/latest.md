@@ -19,13 +19,11 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Kubernetes CRDs
 
-* `spec.file.file_paths` is removed in favor of `spec.file.file_paths_patterns`.
-  `spec.file.file_paths` has been deprecated since v1.13.
+* TBD
 
 ### Events (protobuf API)
 
-* `tracing_policy` field in ProcessFile events is deprecated and will be removed in the next release.
-  This is replaced by `policy_name` field in order to be considtent with other events.
+* TBD
 
 ### Metrics
 
