@@ -849,7 +849,7 @@ func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	if err != nil {
 		return err
 	}
-	udp.StartIdleSocketGC()
+	udp.StartSocketGC()
 	return nil
 }
 

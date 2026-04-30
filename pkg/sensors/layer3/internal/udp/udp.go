@@ -229,7 +229,7 @@ func ConfigureSensor() error {
 	return nil
 }
 
-func StartIdleSocketGC() {
+func StartSocketGC() {
 	if enterpriseOption.Config.EnableUDP && enterpriseOption.Config.UDPIdleSocketTimeout > 0 && !enterpriseOption.Config.UDPInKernelManaged {
 		UdpDeleteInterval = enterpriseOption.Config.UDPIdleSocketTimeout
 		gcTimer.Start(UdpDeleteInterval)
@@ -245,7 +245,7 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 	udpStatsEnable = false
 	// If we enabled via CLI switches, run the GC so it can reap idle
 	// pseudo-sockets.
-	StartIdleSocketGC()
+	StartSocketGC()
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_UDP)
 		WatermarksEnabled = false
