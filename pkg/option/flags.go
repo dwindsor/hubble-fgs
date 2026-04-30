@@ -87,6 +87,17 @@ const (
 	KeyEnableTCP                         = "enable-tcp"
 	keyEnableTCPRTT                      = "enable-tcp-rtt"
 	keyEnableUDP                         = "enable-udp"
+	keyEnableUDPCgroup                   = "enable-udp-cgroup"
+	keyUDPStatsInterval                  = "udp-stats-interval"
+	keyUDPIdleSocketTimeout              = "udp-idle-socket-timeout"
+	keyUDPInKernelManaged                = "udp-in-kernel-managed"
+	keyEnableUDPWatermarks               = "enable-udp-watermarks"
+	keyUDPWatermarksWindowSizeMs         = "udp-watermarks-window-size-ms"
+	keyUDPWatermarksBurstTriggerPercent  = "udp-watermarks-burst-trigger-percent"
+	keyUDPWatermarksDipTriggerPercent    = "udp-watermarks-dip-trigger-percent"
+	keyEnableUDPMetrics                  = "enable-udp-metrics"
+	keyUDPMetricsLabelFilter             = "udp-metrics-label-filter"
+	keyUDPDisableEvents                  = "udp-disable-events"
 	keyEnableICMP                        = "enable-icmp"
 	keyICMPV6Info                        = "icmpv6-info"
 	keyEnableIGMP                        = "enable-igmp"
@@ -95,12 +106,12 @@ const (
 	keyEnableRawsockMetrics              = "enable-rawsock-metrics"
 	keyRawsockMetricsLabelFilter         = "rawsock-metrics-label-filter"
 	keyEnableDNS                         = "enable-dns"
-	keyUDPIdleSocketTimeout              = "udp-idle-socket-timeout"
-	keyUDPInKernelManaged                = "udp-in-kernel-managed"
 	keyMulticastApp                      = "multicast-app"
 	keyMulticastPorts                    = "multicast-ports"
 	keyEnableMulticastSeqCheck           = "enable-multicast-seq-check"
 	keyMulticastSamplePercent            = "multicast-sample-percent"
+	keyEnableNetworkWatermarksExitGen    = "enable-network-watermarks-exit-gen"
+	keyNetworkWatermarksExitGenInterval  = "network-watermarks-exit-gen-interval"
 	keyEnableNetworkEvents               = "enable-network-events"
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
@@ -229,6 +240,17 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableTCP, false, "Enable TCP observability")
 	flags.Bool(keyEnableTCPRTT, false, "Enable TCP RTT observability")
 	flags.Bool(keyEnableUDP, false, "Enable UDP observability")
+	flags.Bool(keyEnableUDPCgroup, true, fmt.Sprintf("Use Cgroups for UDP (requires --%s)", keyEnableUDP))
+	flags.Duration(keyUDPStatsInterval, 0, fmt.Sprintf("Enable and specify interval for UDP statistics (requires --%s)", keyEnableUDP))
+	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
+	flags.Bool(keyUDPInKernelManaged, false, "Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.")
+	flags.Bool(keyEnableUDPWatermarks, false, fmt.Sprintf("Enable UDP watermarks detection (requires --%s)", keyEnableUDP))
+	flags.Uint32(keyUDPWatermarksWindowSizeMs, 0, fmt.Sprintf("UDP watermarks window size in milliseconds (requires --%s and --%s)", keyEnableUDP, keyEnableUDPWatermarks))
+	flags.Uint32(keyUDPWatermarksBurstTriggerPercent, 0, fmt.Sprintf("UDP watermarks burst trigger percent (requires --%s and --%s)", keyEnableUDP, keyEnableUDPWatermarks))
+	flags.Uint32(keyUDPWatermarksDipTriggerPercent, 0, fmt.Sprintf("UDP watermarks dip trigger percent (requires --%s and --%s)", keyEnableUDP, keyEnableUDPWatermarks))
+	flags.Bool(keyEnableUDPMetrics, true, fmt.Sprintf("Enable UDP metrics (requires --%s)", keyEnableUDP))
+	flags.StringSlice(keyUDPMetricsLabelFilter, []string{}, fmt.Sprintf("UDP metrics label filter (requires --%s and --%s)", keyEnableUDP, keyEnableUDPMetrics))
+	flags.StringSlice(keyUDPDisableEvents, []string{}, fmt.Sprintf("specify UDP events to disable, from listen, connect, stats, and close (requires --%s)", keyEnableUDP))
 	flags.Bool(keyEnableICMP, false, "Enable ICMP observability")
 	flags.Bool(keyICMPV6Info, false, fmt.Sprintf("Enable ICMPV6 information (requires --%s)", keyEnableICMP))
 	flags.Bool(keyEnableIGMP, false, "Enable IGMP observability")
@@ -237,12 +259,12 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableRawsockMetrics, true, fmt.Sprintf("Enable raw socket metrics (requires --%s)", keyEnableRawsock))
 	flags.StringSlice(keyRawsockMetricsLabelFilter, []string{}, fmt.Sprintf("Raw socket metrics label filter (requires --%s and --%s)", keyEnableRawsock, keyEnableRawsockMetrics))
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
-	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
-	flags.Bool(keyUDPInKernelManaged, false, "Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.")
 	flags.String(keyMulticastApp, "", fmt.Sprintf("Specify the multicast app to observe on the ports specified with --%s.", keyMulticastPorts))
 	flags.IntSlice(keyMulticastPorts, []int{}, fmt.Sprintf("UDP ports on which to observe the multicast app specified with --%s.", keyMulticastApp))
 	flags.Bool(keyEnableMulticastSeqCheck, false, fmt.Sprintf("Enable sequence checking for the multicast app specified with --%s and --%s.", keyMulticastApp, keyMulticastPorts))
 	flags.Float64(keyMulticastSamplePercent, 0, fmt.Sprintf("Specify percentage of multicast app packets to report timestamps for the multicast app specified with --%s and --%s.", keyMulticastApp, keyMulticastPorts))
+	flags.Bool(keyEnableNetworkWatermarksExitGen, true, fmt.Sprintf("Enable generation of network watermarks exit events from user space when required (requires --%s)", keyNetworkWatermarksExitGenInterval))
+	flags.Duration(keyNetworkWatermarksExitGenInterval, 1*time.Second, fmt.Sprintf("Specify the network watermarks exit event generation interval (requires --%s)", keyEnableNetworkWatermarksExitGen))
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
@@ -325,6 +347,29 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableTCP = viper.GetBool(KeyEnableTCP)
 	Config.EnableTCPRTT = viper.GetBool(keyEnableTCPRTT)
 	Config.EnableUDP = viper.GetBool(keyEnableUDP)
+	Config.EnableUDPCGroup = viper.GetBool(keyEnableUDPCgroup)
+	Config.UDPStatsInterval = viper.GetDuration(keyUDPStatsInterval)
+	Config.UDPIdleSocketTimeout = viper.GetDuration(keyUDPIdleSocketTimeout)
+	Config.UDPInKernelManaged = viper.GetBool(keyUDPInKernelManaged)
+	Config.EnableUDPWatermarks = viper.GetBool(keyEnableUDPWatermarks)
+	Config.UDPWatermarksWindowSizeMs = viper.GetUint32(keyUDPWatermarksWindowSizeMs)
+	Config.UDPWatermarksBurstTriggerPercent = viper.GetUint32(keyUDPWatermarksBurstTriggerPercent)
+	Config.UDPWatermarksDipTriggerPercent = viper.GetUint32(keyUDPWatermarksDipTriggerPercent)
+	Config.EnableUDPMetrics = viper.GetBool(keyEnableUDPMetrics)
+	Config.UDPMetricsLabelFilter = viper.GetStringSlice(keyUDPMetricsLabelFilter)
+	Config.UDPDisableEvents = viper.GetStringSlice(keyUDPDisableEvents)
+	for _, e := range Config.UDPDisableEvents {
+		switch e {
+		case "listen":
+			Config.UDPDisableListenEvents = true
+		case "connect":
+			Config.UDPDisableConnectEvents = true
+		case "stats":
+			Config.UDPDisableStatsEvents = true
+		case "close":
+			Config.UDPDisableCloseEvents = true
+		}
+	}
 	Config.EnableICMP = viper.GetBool(keyEnableICMP)
 	Config.ICMPV6Info = viper.GetBool(keyICMPV6Info)
 	Config.EnableIGMP = viper.GetBool(keyEnableIGMP)
@@ -333,14 +378,14 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableRawsockMetrics = viper.GetBool(keyEnableRawsockMetrics)
 	Config.RawsockMetricsLabelFilter = viper.GetStringSlice(keyRawsockMetricsLabelFilter)
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
-	Config.UDPIdleSocketTimeout = viper.GetDuration(keyUDPIdleSocketTimeout)
-	Config.UDPInKernelManaged = viper.GetBool(keyUDPInKernelManaged)
 	Config.MulticastApp = viper.GetString(keyMulticastApp)
 	// Set the AppID from the app string. If not found, this will default to 0 (MulticastNoApp)
 	Config.MulticastAppID = multicastAppID[Config.MulticastApp]
 	Config.MulticastPorts = viper.GetIntSlice(keyMulticastPorts)
 	Config.MulticastSeqCheck = viper.GetBool(keyEnableMulticastSeqCheck)
 	Config.MulticastSamplePercent = viper.GetFloat64(keyMulticastSamplePercent)
+	Config.EnableNetworkWatermarksExitGen = viper.GetBool(keyEnableNetworkWatermarksExitGen)
+	Config.NetworkWatermarksExitGenInterval = viper.GetDuration(keyNetworkWatermarksExitGenInterval)
 	Config.EnableNetworkEvents = viper.GetBool(keyEnableNetworkEvents)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
@@ -357,6 +402,12 @@ func validateConfig(config config) error {
 
 	if err := platformValidateConfig(config); err != nil {
 		return err
+	}
+
+	if !config.EnableUDP {
+		if config.EnableUDPWatermarks {
+			return fmt.Errorf("UDP observability requires --%s", keyEnableUDP)
+		}
 	}
 
 	if config.EnableBPFDNSParser {
@@ -391,6 +442,18 @@ func validateConfig(config config) error {
 	for _, port := range config.DNSPorts {
 		if port < 0 || port > math.MaxUint16 {
 			return fmt.Errorf("invalid DNS port %d, must be included between 0 and 65535", port)
+		}
+	}
+
+	if !config.EnableUDP && len(config.UDPDisableEvents) > 0 {
+		return fmt.Errorf("UDP events disabled but UDP observability not enabled")
+	}
+
+	for _, e := range config.UDPDisableEvents {
+		switch e {
+		case "listen", "connect", "stats", "close":
+		default:
+			return fmt.Errorf("invalid UDP disabled event %s; valid events are listen, connect, stats, and close", e)
 		}
 	}
 
@@ -435,6 +498,10 @@ func validateConfig(config config) error {
 		if config.RawsockReportClose {
 			return fmt.Errorf("rawsock close reports require --%s", keyEnableRawsock)
 		}
+	}
+
+	if config.EnableNetworkWatermarksExitGen && config.NetworkWatermarksExitGenInterval == 0 {
+		return fmt.Errorf("network watermarks exit event generation requires an interval > 0, specified with --%s", keyNetworkWatermarksExitGenInterval)
 	}
 
 	// Network policies can be loaded via the k8s resource watcher as well

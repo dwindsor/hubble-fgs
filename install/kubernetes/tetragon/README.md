@@ -206,13 +206,24 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.rawsock.reportClose | bool | `false` |  |
 | tetragon.layer3.tcp.enabled | bool | `false` |  |
 | tetragon.layer3.tcp.rtt.enabled | bool | `false` |  |
+| tetragon.layer3.udp.cgroup | bool | `true` |  |
+| tetragon.layer3.udp.disableEvents | list | `[]` |  |
 | tetragon.layer3.udp.enabled | bool | `false` |  |
 | tetragon.layer3.udp.idleSocketTimeout | string | `"2m"` |  |
 | tetragon.layer3.udp.inKernelManaged | bool | `false` |  |
+| tetragon.layer3.udp.metrics.enabled | bool | `true` |  |
+| tetragon.layer3.udp.metrics.labelFilter | list | `[]` |  |
 | tetragon.layer3.udp.multicast.app | string | `""` |  |
 | tetragon.layer3.udp.multicast.ports | list | `[]` |  |
 | tetragon.layer3.udp.multicast.samplePercent | int | `0` |  |
 | tetragon.layer3.udp.multicast.seqCheck | bool | `false` |  |
+| tetragon.layer3.udp.statsInterval | string | `"0s"` |  |
+| tetragon.layer3.udp.watermarks.burstTriggerPercent | int | `0` |  |
+| tetragon.layer3.udp.watermarks.dipTriggerPercent | int | `0` |  |
+| tetragon.layer3.udp.watermarks.enabled | bool | `false` |  |
+| tetragon.layer3.udp.watermarks.windowSizeMs | int | `0` |  |
+| tetragon.layer3.watermarksExitGen.enabled | bool | `true` |  |
+| tetragon.layer3.watermarksExitGen.interval | string | `"1s"` |  |
 | tetragon.livenessProbe | object | `{}` | Overrides the default livenessProbe for the tetragon container. |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |

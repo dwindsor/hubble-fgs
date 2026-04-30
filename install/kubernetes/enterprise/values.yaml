@@ -79,6 +79,8 @@ tetragon:
         enabled: false
     udp:
       enabled: false
+      cgroup: true
+      statsInterval: 0s
       idleSocketTimeout: 2m
       inKernelManaged: false
       multicast:
@@ -86,6 +88,15 @@ tetragon:
         ports: []
         seqCheck: false
         samplePercent: 0
+      watermarks:
+        enabled: false
+        windowSizeMs: 0
+        burstTriggerPercent: 0
+        dipTriggerPercent: 0
+      metrics:
+        enabled: true
+        labelFilter: []
+      disableEvents: []
     icmp:
       enabled: false
       v6info: false
@@ -98,6 +109,9 @@ tetragon:
       metrics:
         enabled: true
         labelFilter: []
+    watermarksExitGen:
+      enabled: true
+      interval: 1s
   # DNS
   dns:
     enabled: false

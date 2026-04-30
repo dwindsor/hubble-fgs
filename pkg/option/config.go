@@ -116,8 +116,24 @@ type config struct {
 	EnableRawsockMetrics      bool
 	RawsockMetricsLabelFilter []string
 
+	EnableUDPCGroup      bool
+	UDPStatsInterval     time.Duration
 	UDPIdleSocketTimeout time.Duration
 	UDPInKernelManaged   bool
+
+	EnableUDPWatermarks              bool
+	UDPWatermarksWindowSizeMs        uint32
+	UDPWatermarksBurstTriggerPercent uint32
+	UDPWatermarksDipTriggerPercent   uint32
+
+	EnableUDPMetrics      bool
+	UDPMetricsLabelFilter []string
+
+	UDPDisableEvents        []string
+	UDPDisableListenEvents  bool
+	UDPDisableConnectEvents bool
+	UDPDisableStatsEvents   bool
+	UDPDisableCloseEvents   bool
 
 	// MulticastAppID is derived from the MulticastApp string.
 	MulticastApp           string
@@ -125,6 +141,9 @@ type config struct {
 	MulticastPorts         []int // see comment above for DNSPorts
 	MulticastSeqCheck      bool
 	MulticastSamplePercent float64
+
+	EnableNetworkWatermarksExitGen   bool
+	NetworkWatermarksExitGenInterval time.Duration
 
 	EnableNetworkEvents bool
 
@@ -169,5 +188,11 @@ var (
 		EnableNetworkEvents:               true,
 		UDPInKernelManaged:                false,
 		ApplicationModelSplitMaxHostProcs: 100,
+		EnableUDPCGroup:                   true,
+		EnableUDPMetrics:                  true,
+		EnableNetworkWatermarksExitGen:    true,
+		NetworkWatermarksExitGenInterval:  time.Duration(1) * time.Second,
+		UDPIdleSocketTimeout:              time.Duration(2) * time.Minute,
+		EnableRawsockMetrics:              true,
 	}
 )

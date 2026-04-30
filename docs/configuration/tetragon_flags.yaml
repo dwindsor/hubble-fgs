@@ -172,6 +172,10 @@ options:
     - name: enable-network-events
       default_value: "true"
       usage: Enable Network Events from BPF to userspace
+    - name: enable-network-watermarks-exit-gen
+      default_value: "true"
+      usage: |
+        Enable generation of network watermarks exit events from user space when required (requires --network-watermarks-exit-gen-interval)
     - name: enable-pid-set-filter
       default_value: "false"
       usage: |
@@ -232,6 +236,15 @@ options:
     - name: enable-udp
       default_value: "false"
       usage: Enable UDP observability
+    - name: enable-udp-cgroup
+      default_value: "true"
+      usage: Use Cgroups for UDP (requires --enable-udp)
+    - name: enable-udp-metrics
+      default_value: "true"
+      usage: Enable UDP metrics (requires --enable-udp)
+    - name: enable-udp-watermarks
+      default_value: "false"
+      usage: Enable UDP watermarks detection (requires --enable-udp)
     - name: endpoint-cache-size
       default_value: "65536"
       usage: |
@@ -412,6 +425,10 @@ options:
       usage: Network policy file to load at startup
     - name: network-policy-dir
       usage: Directory for network policies to load at startup
+    - name: network-watermarks-exit-gen-interval
+      default_value: 1s
+      usage: |
+        Specify the network watermarks exit event generation interval (requires --enable-network-watermarks-exit-gen)
     - name: node-namespace
       usage: The namespace to register tetragon node if required
     - name: ocsf-export-file-compress
@@ -523,6 +540,10 @@ options:
     - name: tracing-policy-dir
       default_value: /etc/tetragon/tetragon.tp.d
       usage: Directory from where to load Tracing Policies
+    - name: udp-disable-events
+      default_value: '[]'
+      usage: |
+        specify UDP events to disable, from listen, connect, stats, and close (requires --enable-udp)
     - name: udp-idle-socket-timeout
       default_value: 2m0s
       usage: How long a UDP socket should be idle to be considered closed
@@ -530,6 +551,26 @@ options:
       default_value: "false"
       usage: |
         Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.
+    - name: udp-metrics-label-filter
+      default_value: '[]'
+      usage: |
+        UDP metrics label filter (requires --enable-udp and --enable-udp-metrics)
+    - name: udp-stats-interval
+      default_value: 0s
+      usage: |
+        Enable and specify interval for UDP statistics (requires --enable-udp)
+    - name: udp-watermarks-burst-trigger-percent
+      default_value: "0"
+      usage: |
+        UDP watermarks burst trigger percent (requires --enable-udp and --enable-udp-watermarks)
+    - name: udp-watermarks-dip-trigger-percent
+      default_value: "0"
+      usage: |
+        UDP watermarks dip trigger percent (requires --enable-udp and --enable-udp-watermarks)
+    - name: udp-watermarks-window-size-ms
+      default_value: "0"
+      usage: |
+        UDP watermarks window size in milliseconds (requires --enable-udp and --enable-udp-watermarks)
     - name: use-perf-ring-buffer
       default_value: "false"
       usage: Use the perf ring buffer instead of the bpf ring buffer

@@ -48,6 +48,17 @@ enable-syscall-tracking: "false"
 enable-tcp: {{ .Values.tetragon.layer3.tcp.enabled | quote }}
 enable-tcp-rtt: {{ .Values.tetragon.layer3.tcp.rtt.enabled | quote }}
 enable-udp: {{ .Values.tetragon.layer3.udp.enabled | quote }}
+enable-udp-cgroup: {{ .Values.tetragon.layer3.udp.cgroup | quote }}
+udp-stats-interval: {{ .Values.tetragon.layer3.udp.statsInterval | quote }}
+udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
+udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
+enable-udp-watermarks: {{ .Values.tetragon.layer3.udp.watermarks.enabled | quote }}
+udp-watermarks-window-size-ms: {{ .Values.tetragon.layer3.udp.watermarks.windowSizeMs | quote }}
+udp-watermarks-burst-trigger-percent: {{ .Values.tetragon.layer3.udp.watermarks.burstTriggerPercent | quote }}
+udp-watermarks-dip-trigger-percent: {{ .Values.tetragon.layer3.udp.watermarks.dipTriggerPercent | quote }}
+enable-udp-metrics: {{ .Values.tetragon.layer3.udp.metrics.enabled | quote }}
+udp-metrics-label-filter: {{ .Values.tetragon.layer3.udp.metrics.labelFilter | quote }}
+udp-disable-events: {{ .Values.tetragon.layer3.udp.disableEvents | quote }}
 enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
 enable-icmp-tracking: {{ .Values.tetragon.layer3.icmp.socketTracking | quote }}
 icmpv6-info: {{ .Values.tetragon.layer3.icmp.v6info | quote }}
@@ -57,13 +68,13 @@ rawsock-report-close: {{ .Values.tetragon.layer3.rawsock.reportClose | quote }}
 enable-rawsock-metrics: {{ .Values.tetragon.layer3.rawsock.metrics.enabled | quote }}
 rawsock-metrics-label-filter: {{ .Values.tetragon.layer3.rawsock.metrics.labelFilter | quote }}
 enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
-udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
-udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
 enable-network-events: {{ .Values.tetragon.enableEvents.network | quote }}
 multicast-app: {{ .Values.tetragon.layer3.udp.multicast.app | quote }}
 multicast-ports: {{ .Values.tetragon.layer3.udp.multicast.ports | quote }}
 enable-multicast-seq-check: {{ .Values.tetragon.layer3.udp.multicast.seqCheck | quote }}
 multicast-sample-percent: {{ .Values.tetragon.layer3.udp.multicast.samplePercent | quote }}
+enable-network-watermarks-exit-gen: {{ .Values.tetragon.layer3.watermarksExitGen.enabled | quote }}
+network-watermarks-exit-gen-interval: {{ .Values.tetragon.layer3.watermarksExitGen.interval | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}
