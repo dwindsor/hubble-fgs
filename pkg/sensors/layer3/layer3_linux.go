@@ -261,7 +261,9 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 		progsInitSock = append(progsInitSock, udpProgsInit...)
 		progsCollectStats = append(progsCollectStats, udpProgsStats...)
 		maps = append(maps, udpMaps...)
-		needDispatcher = true
+		if cgroup {
+			needDispatcher = true
+		}
 
 		// For now, the DNS parser is loaded alongside the UDP sensor
 		if enterpriseOption.Config.EnableBPFDNSParser {
@@ -801,12 +803,12 @@ func EnableLayer3Progs() error {
 		dnsEnabled = true
 		udp.InitDNS()
 	}
-	udpCGroup = true
-	if !hasCgroup() {
-		udpCGroup = false
-		if dnsEnabled {
-			return fmt.Errorf("enabling DNS requires CGroup support")
-		}
+	udpCGroup = enterpriseOption.Config.EnableUDPCGroup
+	if udpEnabled && udpCGroup && !hasCgroup() {
+		return fmt.Errorf("support for UDP CGroup is not available; restart with %s=false or reconfigure/upgrade your kernel", enterpriseOption.KeyEnableUDPCgroup)
+	}
+	if !udpCGroup && dnsEnabled {
+		return fmt.Errorf("enabling DNS requires CGroup support")
 	}
 	return nil
 }

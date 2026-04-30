@@ -87,7 +87,7 @@ const (
 	KeyEnableTCP                         = "enable-tcp"
 	keyEnableTCPRTT                      = "enable-tcp-rtt"
 	keyEnableUDP                         = "enable-udp"
-	keyEnableUDPCgroup                   = "enable-udp-cgroup"
+	KeyEnableUDPCgroup                   = "enable-udp-cgroup"
 	keyUDPStatsInterval                  = "udp-stats-interval"
 	keyUDPIdleSocketTimeout              = "udp-idle-socket-timeout"
 	keyUDPInKernelManaged                = "udp-in-kernel-managed"
@@ -240,7 +240,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableTCP, false, "Enable TCP observability")
 	flags.Bool(keyEnableTCPRTT, false, "Enable TCP RTT observability")
 	flags.Bool(keyEnableUDP, false, "Enable UDP observability")
-	flags.Bool(keyEnableUDPCgroup, true, fmt.Sprintf("Use Cgroups for UDP (requires --%s)", keyEnableUDP))
+	flags.Bool(KeyEnableUDPCgroup, true, fmt.Sprintf("Use Cgroups for UDP (requires --%s)", keyEnableUDP))
 	flags.Duration(keyUDPStatsInterval, 0, fmt.Sprintf("Enable and specify interval for UDP statistics (requires --%s)", keyEnableUDP))
 	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
 	flags.Bool(keyUDPInKernelManaged, false, "Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.")
@@ -347,7 +347,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableTCP = viper.GetBool(KeyEnableTCP)
 	Config.EnableTCPRTT = viper.GetBool(keyEnableTCPRTT)
 	Config.EnableUDP = viper.GetBool(keyEnableUDP)
-	Config.EnableUDPCGroup = viper.GetBool(keyEnableUDPCgroup)
+	Config.EnableUDPCGroup = viper.GetBool(KeyEnableUDPCgroup)
 	Config.UDPStatsInterval = viper.GetDuration(keyUDPStatsInterval)
 	Config.UDPIdleSocketTimeout = viper.GetDuration(keyUDPIdleSocketTimeout)
 	Config.UDPInKernelManaged = viper.GetBool(keyUDPInKernelManaged)
