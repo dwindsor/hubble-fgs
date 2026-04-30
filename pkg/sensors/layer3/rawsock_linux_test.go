@@ -32,6 +32,7 @@ import (
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
@@ -43,6 +44,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -195,14 +197,10 @@ func TestRawsockCLISwitch(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	oldEnableRawsockValue := enterpriseOption.Config.EnableRawsock
-	enterpriseOption.Config.EnableRawsock = true
-	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
-	enterpriseOption.Config.Layer3CLIEnable = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableRawsock = oldEnableRawsockValue
-		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
-	})
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.EnableRawsock, Value: true},
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+	}))
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -220,7 +218,7 @@ func TestRawsockCLISwitch(t *testing.T) {
 	)
 
 	obs := getNoConfigObserver(t, ctx, true)
-	layer3.StartLayer3Progs(ctx, nil)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	tp, err := tracingpolicy.FromYAML(rawsockConfigWithCloseEventsWithoutEnable)
 	if err != nil {
 		t.Fatalf("failed to parse tracingpolicy: %s", err)
@@ -229,6 +227,58 @@ func TestRawsockCLISwitch(t *testing.T) {
 	if err := observer.GetSensorManager().AddTracingPolicy(ctx, tp); err != nil {
 		t.Fatalf("SensorManager.AddTracingPolicy error: %s\n", err)
 	}
+
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+
+	// syscall.Socket needs a ForkLock. See https://go.dev/src/syscall/exec_unix.go
+	syscall.ForkLock.Lock()
+
+	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_LOOP)
+	assert.NoError(t, err)
+
+	syscall.Close(fd)
+	syscall.ForkLock.Unlock()
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestRawsockCLISwitch2(t *testing.T) {
+	if !utils.RawHooksAvailable() {
+		t.Skipf("This test requires raw socket support, skipping")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.EnableRawsock, Value: true},
+		{KeyPtr: &enterpriseOption.Config.RawsockReportClose, Value: true},
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+	}))
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessRawsockCreateChecker("rawsockCreate").
+			WithProcess(selfChecker),
+		ec.NewProcessRawsockCloseChecker("rawsockClose").
+			WithProcess(selfChecker).
+			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0)},
+				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
+	)
+
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
