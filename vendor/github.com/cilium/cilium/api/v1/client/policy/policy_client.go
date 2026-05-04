@@ -61,6 +61,8 @@ type ClientOption func(*runtime.ClientOperation)
 type ClientService interface {
 	DeleteFqdnCache(params *DeleteFqdnCacheParams, opts ...ClientOption) (*DeleteFqdnCacheOK, error)
 
+	DeletePolicy(params *DeletePolicyParams, opts ...ClientOption) (*DeletePolicyOK, error)
+
 	GetFqdnCache(params *GetFqdnCacheParams, opts ...ClientOption) (*GetFqdnCacheOK, error)
 
 	GetFqdnCacheID(params *GetFqdnCacheIDParams, opts ...ClientOption) (*GetFqdnCacheIDOK, error)
@@ -79,7 +81,7 @@ type ClientService interface {
 
 	GetPolicySelectors(params *GetPolicySelectorsParams, opts ...ClientOption) (*GetPolicySelectorsOK, error)
 
-	GetPolicySubjectSelectors(params *GetPolicySubjectSelectorsParams, opts ...ClientOption) (*GetPolicySubjectSelectorsOK, error)
+	PutPolicy(params *PutPolicyParams, opts ...ClientOption) (*PutPolicyOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -129,6 +131,51 @@ func (a *Client) DeleteFqdnCache(params *DeleteFqdnCacheParams, opts ...ClientOp
 	//
 	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for DeleteFqdnCache: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+DeletePolicy deletes a policy sub tree
+
+Deprecated: will be removed in v1.19
+*/
+func (a *Client) DeletePolicy(params *DeletePolicyParams, opts ...ClientOption) (*DeletePolicyOK, error) {
+	// NOTE: parameters are not validated before sending
+	if params == nil {
+		params = NewDeletePolicyParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "DeletePolicy",
+		Method:             "DELETE",
+		PathPattern:        "/policy",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &DeletePolicyReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+
+	// only one success response has to be checked
+	success, ok := result.(*DeletePolicyOK)
+	if ok {
+		return success, nil
+	}
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for DeletePolicy: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -543,22 +590,24 @@ func (a *Client) GetPolicySelectors(params *GetPolicySelectorsParams, opts ...Cl
 }
 
 /*
-GetPolicySubjectSelectors sees what subject selectors match which identities on the local node
+PutPolicy creates or update a policy sub tree
+
+Deprecated: will be removed in v1.19
 */
-func (a *Client) GetPolicySubjectSelectors(params *GetPolicySubjectSelectorsParams, opts ...ClientOption) (*GetPolicySubjectSelectorsOK, error) {
+func (a *Client) PutPolicy(params *PutPolicyParams, opts ...ClientOption) (*PutPolicyOK, error) {
 	// NOTE: parameters are not validated before sending
 	if params == nil {
-		params = NewGetPolicySubjectSelectorsParams()
+		params = NewPutPolicyParams()
 	}
 	op := &runtime.ClientOperation{
-		ID:                 "GetPolicySubjectSelectors",
-		Method:             "GET",
-		PathPattern:        "/policy/subject-selectors",
+		ID:                 "PutPolicy",
+		Method:             "PUT",
+		PathPattern:        "/policy",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
 		Params:             params,
-		Reader:             &GetPolicySubjectSelectorsReader{formats: a.formats},
+		Reader:             &PutPolicyReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
@@ -571,7 +620,7 @@ func (a *Client) GetPolicySubjectSelectors(params *GetPolicySubjectSelectorsPara
 	}
 
 	// only one success response has to be checked
-	success, ok := result.(*GetPolicySubjectSelectorsOK)
+	success, ok := result.(*PutPolicyOK)
 	if ok {
 		return success, nil
 	}
@@ -581,7 +630,7 @@ func (a *Client) GetPolicySubjectSelectors(params *GetPolicySubjectSelectorsPara
 	// no default response is defined.
 	//
 	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for GetPolicySubjectSelectors: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	msg := fmt.Sprintf("unexpected success response for PutPolicy: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

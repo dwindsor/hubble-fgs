@@ -5,18 +5,15 @@ package utils
 
 import (
 	"log/slog"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/cilium/cilium/api/v1/flow"
 	cmtypes "github.com/cilium/cilium/pkg/clustermesh/types"
 	k8sConst "github.com/cilium/cilium/pkg/k8s/apis/cilium.io"
 	slim_metav1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
 	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/cilium/pkg/policy/api"
-	"github.com/cilium/cilium/pkg/source"
 )
 
 const (
@@ -72,37 +69,6 @@ func GetPolicyLabels(ns, name string, uid types.UID, derivedFrom string) labels.
 	return append(labelsArr, srcLabel)
 }
 
-// GetPolicyFromLabels derives and sets fields in the flow policy from the label set array.
-//
-// This function supports namespaced and cluster-scoped resources.
-func GetPolicyFromLabels(policyLabels []string, revision uint64) *flow.Policy {
-	f := &flow.Policy{
-		Labels:   policyLabels,
-		Revision: revision,
-	}
-
-	for _, lbl := range policyLabels {
-		if lbl, isK8sLabel := strings.CutPrefix(lbl, string(source.Kubernetes)+":"); isK8sLabel {
-			if key, value, found := strings.Cut(lbl, "="); found {
-				switch key {
-				case k8sConst.PolicyLabelName:
-					f.Name = value
-				case k8sConst.PolicyLabelNamespace:
-					f.Namespace = value
-				case k8sConst.PolicyLabelDerivedFrom:
-					f.Kind = value
-				default:
-					if f.Kind != "" && f.Name != "" && f.Namespace != "" {
-						return f
-					}
-				}
-			}
-		}
-	}
-
-	return f
-}
-
 // addClusterFilterByDefault attempt to add a cluster filter if the cluster name
 // is defined and that the EndpointSelector doesn't already have a cluster selector
 func addClusterFilterByDefault(es *api.EndpointSelector, clusterName string) {
@@ -117,11 +83,11 @@ func addClusterFilterByDefault(es *api.EndpointSelector, clusterName string) {
 // this is when translating selectors for CiliumClusterwideNetworkPolicy.
 // If a clusterName is provided then is is assumed that the selector is scoped to the local
 // cluster by default in a ClusterMesh environment.
-func getEndpointSelector(clusterName, namespace string, labelSelector *slim_metav1.LabelSelector, matchesInit bool) api.EndpointSelector {
+func getEndpointSelector(clusterName, namespace string, labelSelector *slim_metav1.LabelSelector, addK8sPrefix, matchesInit bool) api.EndpointSelector {
 	es := api.NewESFromK8sLabelSelector("", labelSelector)
 
 	// The k8s prefix must not be added to reserved labels.
-	if es.HasKeyPrefix(labels.LabelSourceReservedKeyPrefix) {
+	if addK8sPrefix && es.HasKeyPrefix(labels.LabelSourceReservedKeyPrefix) {
 		return es
 	}
 
@@ -163,7 +129,7 @@ func parseToCiliumIngressCommonRule(clusterName, namespace string, es api.Endpoi
 	if ing.FromEndpoints != nil {
 		retRule.FromEndpoints = make([]api.EndpointSelector, len(ing.FromEndpoints))
 		for j, ep := range ing.FromEndpoints {
-			retRule.FromEndpoints[j] = getEndpointSelector(clusterName, namespace, ep.LabelSelector, matchesInit)
+			retRule.FromEndpoints[j] = getEndpointSelector(clusterName, namespace, ep.LabelSelector, true, matchesInit)
 		}
 	}
 
@@ -185,6 +151,13 @@ func parseToCiliumIngressCommonRule(clusterName, namespace string, es api.Endpoi
 	if ing.FromCIDRSet != nil {
 		retRule.FromCIDRSet = make([]api.CIDRRule, len(ing.FromCIDRSet))
 		copy(retRule.FromCIDRSet, ing.FromCIDRSet)
+	}
+
+	if ing.FromRequires != nil {
+		retRule.FromRequires = make([]api.EndpointSelector, len(ing.FromRequires))
+		for j, ep := range ing.FromRequires {
+			retRule.FromRequires[j] = getEndpointSelector(clusterName, namespace, ep.LabelSelector, false, matchesInit)
+		}
 	}
 
 	if ing.FromEntities != nil {
@@ -247,7 +220,7 @@ func parseToCiliumEgressCommonRule(clusterName, namespace string, es api.Endpoin
 	if egr.ToEndpoints != nil {
 		retRule.ToEndpoints = make([]api.EndpointSelector, len(egr.ToEndpoints))
 		for j, ep := range egr.ToEndpoints {
-			endpointSelector := getEndpointSelector(clusterName, namespace, ep.LabelSelector, matchesInit)
+			endpointSelector := getEndpointSelector(clusterName, namespace, ep.LabelSelector, true, matchesInit)
 			endpointSelector.Generated = ep.Generated
 			retRule.ToEndpoints[j] = endpointSelector
 		}
@@ -261,6 +234,13 @@ func parseToCiliumEgressCommonRule(clusterName, namespace string, es api.Endpoin
 	if egr.ToCIDRSet != nil {
 		retRule.ToCIDRSet = make(api.CIDRRuleSlice, len(egr.ToCIDRSet))
 		copy(retRule.ToCIDRSet, egr.ToCIDRSet)
+	}
+
+	if egr.ToRequires != nil {
+		retRule.ToRequires = make([]api.EndpointSelector, len(egr.ToRequires))
+		for j, ep := range egr.ToRequires {
+			retRule.ToRequires[j] = getEndpointSelector(clusterName, namespace, ep.LabelSelector, false, matchesInit)
+		}
 	}
 
 	if egr.ToServices != nil {
@@ -415,17 +395,5 @@ func ParseToCiliumLabels(namespace, name string, uid types.UID, ruleLbs labels.L
 	}
 
 	policyLbls := GetPolicyLabels(namespace, name, uid, resourceType)
-
-	// Ensure user-defined labels have consistent source
-	userLbls := make(labels.LabelArray, len(ruleLbs))
-	for i, lbl := range ruleLbs {
-		if lbl.Source == "" {
-			// If source is empty, set it to unspec
-			userLbls[i] = labels.NewLabel(lbl.Key, lbl.Value, labels.LabelSourceUnspec)
-		} else {
-			userLbls[i] = lbl
-		}
-	}
-
-	return append(policyLbls, userLbls...).Sort()
+	return append(policyLbls, ruleLbs...).Sort()
 }

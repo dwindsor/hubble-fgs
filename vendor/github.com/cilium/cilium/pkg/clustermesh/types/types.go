@@ -100,8 +100,6 @@ type CiliumClusterConfig struct {
 }
 
 type CiliumClusterConfigCapabilities struct {
-	EnterpriseCiliumClusterConfigCapabilities
-
 	// Supports per-prefix "synced" canaries
 	SyncedCanaries bool `json:"syncedCanaries,omitempty"`
 

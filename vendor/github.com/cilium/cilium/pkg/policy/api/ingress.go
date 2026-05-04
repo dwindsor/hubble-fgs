@@ -23,18 +23,20 @@ type IngressCommonRule struct {
 	// Any endpoint with the label "role=backend" can be consumed by any
 	// endpoint carrying the label "role=frontend".
 	//
-	// Note that while an empty non-nil FromEndpoints does not select anything,
-	// nil FromEndpoints is implicitly treated as a wildcard selector if ToPorts
-	// are also specified.
-	// To select everything, use one EndpointSelector without any match requirements.
-	//
 	// +kubebuilder:validation:Optional
 	FromEndpoints []EndpointSelector `json:"fromEndpoints,omitempty"`
 
-	// Deprecated.
+	// FromRequires is a list of additional constraints which must be met
+	// in order for the selected endpoints to be reachable. These
+	// additional constraints do no by itself grant access privileges and
+	// must always be accompanied with at least one matching FromEndpoints.
 	//
-	// +kubebuilder:validation:MaxItems=0
-	FromRequires []string `json:"fromRequires,omitempty"`
+	// Example:
+	// Any Endpoint with the label "team=A" requires consuming endpoint
+	// to also carry the label "team=A".
+	//
+	// +kubebuilder:validation:Optional
+	FromRequires []EndpointSelector `json:"fromRequires,omitempty"`
 
 	// FromCIDR is a list of IP blocks which the endpoint subject to the
 	// rule is allowed to receive connections from. Only connections which
@@ -65,7 +67,7 @@ type IngressCommonRule struct {
 	// connections from 10.0.0.0/8 except from IPs in subnet 10.96.0.0/12.
 	//
 	// +kubebuilder:validation:Optional
-	FromCIDRSet CIDRRuleSlice `json:"fromCIDRSet,omitzero"`
+	FromCIDRSet CIDRRuleSlice `json:"fromCIDRSet,omitempty"`
 
 	// FromEntities is a list of special entities which the endpoint subject
 	// to the rule is allowed to receive connections from. Supported entities are
@@ -125,7 +127,9 @@ func (in *IngressCommonRule) DeepEqual(other *IngressCommonRule) bool {
 //     member will have no effect on the rule.
 //
 //   - If multiple members are set, all of them need to match in order for
-//     the rule to take effect.
+//     the rule to take effect. The exception to this rule is FromRequires field;
+//     the effects of any Requires field in any rule will apply to all other
+//     rules as well.
 //
 //   - FromEndpoints, FromCIDR, FromCIDRSet and FromEntities are mutually
 //     exclusive. Only one of these members may be present within an individual
@@ -169,7 +173,9 @@ type IngressRule struct {
 //     member will have no effect on the rule.
 //
 //   - If multiple members are set, all of them need to match in order for
-//     the rule to take effect.
+//     the rule to take effect. The exception to this rule is FromRequires field;
+//     the effects of any Requires field in any rule will apply to all other
+//     rules as well.
 //
 //   - FromEndpoints, FromCIDR, FromCIDRSet, FromGroups and FromEntities are mutually
 //     exclusive. Only one of these members may be present within an individual
@@ -200,6 +206,12 @@ type IngressDenyRule struct {
 	ICMPs ICMPRules `json:"icmps,omitempty"`
 }
 
+// AllowsWildcarding returns true if wildcarding should be performed upon
+// policy evaluation for the given rule.
+func (i *IngressCommonRule) AllowsWildcarding() bool {
+	return len(i.FromRequires) == 0
+}
+
 // RequiresDerivative returns true when the EgressCommonRule contains sections
 // that need a derivative policy created in order to be enforced
 // (e.g. FromGroups).
@@ -214,6 +226,7 @@ func (in *IngressCommonRule) IsL3() bool {
 		return false
 	}
 	return len(in.FromEndpoints) > 0 ||
+		len(in.FromRequires) > 0 ||
 		len(in.FromCIDR) > 0 ||
 		len(in.FromCIDRSet) > 0 ||
 		len(in.FromEntities) > 0 ||
@@ -235,7 +248,7 @@ func (e *IngressRule) CreateDerivative(ctx context.Context) (*IngressRule, error
 	if err != nil {
 		return &IngressRule{}, err
 	}
-	newRule.FromCIDRSet = append(newRule.FromCIDRSet, cidrSet...)
+	newRule.FromCIDRSet = append(e.FromCIDRSet, cidrSet...)
 	newRule.FromGroups = nil
 	return newRule, nil
 }
@@ -254,7 +267,7 @@ func (e *IngressDenyRule) CreateDerivative(ctx context.Context) (*IngressDenyRul
 	if err != nil {
 		return &IngressDenyRule{}, err
 	}
-	newRule.FromCIDRSet = append(newRule.FromCIDRSet, cidrSet...)
+	newRule.FromCIDRSet = append(e.FromCIDRSet, cidrSet...)
 	newRule.FromGroups = nil
 	return newRule, nil
 }

@@ -140,7 +140,5 @@ func (mgr *wsmImmediate) Run(ctx context.Context) {
 	for prefix := range mgr.functions {
 		mgr.ready(ctx, prefix)
 	}
-
-	<-ctx.Done()
 	mgr.wait()
 }

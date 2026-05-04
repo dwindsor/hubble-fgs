@@ -114,17 +114,17 @@ type SmartSwitchProtocolPort struct {
 
 // NetworkObjectGroupRef is a reference to one or more NetworkObjectGroups.
 //
-// A Name or Labels selector must be specified. These will match the
+// Exactly one of Name or GroupSelector must be specified. These will match the
 // corresponding resources in the specified Namespace.
 //
-// +kubebuilder:validation:XValidation:rule="(has(self.name) && !has(self.groupSelector)) || (!has(self.name) && has(self.groupSelector))"
+// +kubebuilder:validation:XValidation:rule="(has(self.name) && !has(self.groupSelector)) || (!has(self.name) && has(self.groupSelector))",message="exactly one of name or groupSelector must be specified"
 //
 //nolint:godoclint
 type NetworkObjectGroupRef struct {
 	// Name of the NetworkObjectGroup.
-	//
-	// +kubebuilder:validation:Required
-	Name string `json:"name"`
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
+	Name string `json:"name,omitempty"`
 
 	// GroupSelector for the NetworkObjectGroup. This may select multiple
 	// NetworkObjectGroup resources based on their metadata.labels.

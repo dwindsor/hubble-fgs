@@ -31,8 +31,8 @@ require (
 	github.com/google/gops v0.3.29
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.19.0-pre.16.0.20260422133224-942d38208adb
-	github.com/isovalent/ipa/k8s v1.19.0-pre.15
+	github.com/isovalent/ipa v1.19.0-rc.1
+	github.com/isovalent/ipa/k8s v1.19.0-rc.1
 	github.com/mennanov/fieldmask-utils v1.1.4
 	github.com/miekg/dns v1.1.72
 	github.com/moby/go-archive v0.2.0
@@ -79,8 +79,6 @@ require (
 	cloud.google.com/go/auth v0.20.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cyphar.com/go-pathrs v0.2.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/hcsshim v0.14.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
@@ -146,6 +144,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
+	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/isovalent/metricstool v0.1.4 // indirect
@@ -277,7 +276,7 @@ require (
 )
 
 replace (
-	github.com/cilium/cilium => github.com/isovalent/cilium v1.19.0-cee.pre.1
+	github.com/cilium/cilium => github.com/isovalent/cilium v1.19.0-pre.2
 
 	// use local submodule for OSS
 	github.com/cilium/tetragon => ./modules/tetragon-oss

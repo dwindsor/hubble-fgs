@@ -126,14 +126,13 @@ type BackendInstanceKey struct {
 }
 
 func (k BackendInstanceKey) Key() []byte {
-	const separator = ' '
 	if k.SourcePriority == 0 {
-		return append(k.ServiceName.Key(), separator)
+		return k.ServiceName.Key()
 	}
 	sk := k.ServiceName.Key()
 	buf := make([]byte, 0, 2+len(sk))
 	buf = append(buf, sk...)
-	return append(buf, separator, k.SourcePriority)
+	return append(buf, ' ', k.SourcePriority)
 }
 
 func (be *Backend) GetInstance(name ServiceName) *BackendParams {
@@ -300,6 +299,7 @@ func (be *Backend) PreferredInstances() iter.Seq2[BackendInstanceKey, BackendPar
 				}
 			} // Skip instances with the same ServiceName but lower (numerically larger) priorities.
 		}
+
 	}
 }
 

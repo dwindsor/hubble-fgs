@@ -128,10 +128,6 @@ const (
 	// node
 	AWSUsePrimaryAddress = "aws-use-primary-address"
 
-	// AWSMaxResultsPerCall is the maximum number of results per AWS API call for DescribeNetworkInterfaces
-	// and DescribeSecurityGroups. Set to 0 to let AWS determine the optimal page size.
-	AWSMaxResultsPerCall = "aws-max-results-per-call"
-
 	// Azure options
 
 	// AzureSubscriptionID is the subscription ID to use when accessing the Azure API
@@ -211,8 +207,7 @@ const (
 	// default values: k8s-app=kube-dns
 	PodRestartSelector = "pod-restart-selector"
 
-	// Deprecated: AWSPaginationEnabled is deprecated in v1.19 in favor of AWSMaxResultsPerCall.
-	// It will be removed in v1.20. During deprecation: true maps to 1000, false maps to 0.
+	// AWSPaginationEnabled toggles pagination for AWS EC2 API requests
 	AWSPaginationEnabled = "aws-pagination-enabled"
 )
 
@@ -329,10 +324,6 @@ type OperatorConfig struct {
 	// e.g. "ec2-fips.us-west-1.amazonaws.com" to use a FIPS endpoint in the us-west-1 region.
 	EC2APIEndpoint string
 
-	// AWSMaxResultsPerCall is the maximum number of results per AWS API call for DescribeNetworkInterfaces
-	// and DescribeSecurityGroups. Set to 0 to let AWS determine the optimal page size.
-	AWSMaxResultsPerCall int32
-
 	// Azure options
 
 	// AzureSubscriptionID is the subscription ID to use when accessing the Azure API
@@ -393,6 +384,9 @@ type OperatorConfig struct {
 
 	// PodRestartSelector specify the labels contained in the pod that needs to be restarted before the node can be de-stained
 	PodRestartSelector string
+
+	// AWSPaginationEnabled toggles pagination for AWS EC2 API requests
+	AWSPaginationEnabled bool
 }
 
 // Populate sets all options with the values from viper.
@@ -452,13 +446,7 @@ func (c *OperatorConfig) Populate(logger *slog.Logger, vp *viper.Viper) {
 	c.EC2APIEndpoint = vp.GetString(EC2APIEndpoint)
 	c.ExcessIPReleaseDelay = vp.GetInt(ExcessIPReleaseDelay)
 	c.ENIGarbageCollectionInterval = vp.GetDuration(ENIGarbageCollectionInterval)
-
-	// Handle AWSMaxResultsPerCall with backwards compat for deprecated AWSPaginationEnabled flag
-	c.AWSMaxResultsPerCall = int32(vp.GetInt(AWSMaxResultsPerCall))
-	// If the deprecated flag is explicitly set to false, map it to 0 (let AWS decide page size)
-	if vp.IsSet(AWSPaginationEnabled) && !vp.GetBool(AWSPaginationEnabled) {
-		c.AWSMaxResultsPerCall = 0
-	}
+	c.AWSPaginationEnabled = vp.GetBool(AWSPaginationEnabled)
 
 	// Azure options
 

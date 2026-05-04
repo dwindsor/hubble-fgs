@@ -158,6 +158,9 @@ type VirtualNetwork struct {
 	//
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:MaxItems=1
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:items:MaxLength=32
+	// +kubebuilder:validation:items:Pattern=`.*\S.*`
 	VRFs []string `json:"vrfs,omitempty"`
 
 	// VLANs is a list of Virtual LANs in the Network Object Group.

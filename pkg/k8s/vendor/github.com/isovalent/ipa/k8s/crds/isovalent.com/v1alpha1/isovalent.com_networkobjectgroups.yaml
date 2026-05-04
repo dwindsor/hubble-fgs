@@ -112,6 +112,9 @@ spec:
 
                       Only one VRF can be specified currently.
                     items:
+                      maxLength: 32
+                      minLength: 1
+                      pattern: .*\S.*
                       type: string
                     maxItems: 1
                     type: array

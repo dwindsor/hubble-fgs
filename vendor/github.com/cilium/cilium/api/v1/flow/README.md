@@ -6,7 +6,6 @@
 - [flow/flow.proto](#flow_flow-proto)
     - [AgentEvent](#flow-AgentEvent)
     - [AgentEventUnknown](#flow-AgentEventUnknown)
-    - [Aggregate](#flow-Aggregate)
     - [CiliumEventType](#flow-CiliumEventType)
     - [DNS](#flow-DNS)
     - [DebugEvent](#flow-DebugEvent)
@@ -111,23 +110,6 @@
 | ----- | ---- | ----- | ----------- |
 | type | [string](#string) |  |  |
 | notification | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="flow-Aggregate"></a>
-
-### Aggregate
-Aggregate contains flow aggregation counters
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| ingress_flow_count | [uint32](#uint32) |  | ingress_flow_count is the count of flows in the ingress direction |
-| egress_flow_count | [uint32](#uint32) |  | egress_flow_count is the count of flows in the egress direction |
-| unknown_direction_flow_count | [uint32](#uint32) |  | unknown_direction_flow_count is the count of flows with unknown traffic direction |
 
 
 
@@ -368,7 +350,6 @@ EventTypeFilter is a filter describing a particular event type.
 | egress_denied_by | [Policy](#flow-Policy) | repeated | The CiliumNetworkPolicies denying the egress of the flow. |
 | ingress_denied_by | [Policy](#flow-Policy) | repeated | The CiliumNetworkPolicies denying the ingress of the flow. |
 | policy_log | [string](#string) | repeated | The set of Log values for policies that matched this flow. If no matched policies have an explicit log value configured, this list is empty. Duplicate values are elided; each entry is unique. |
-| aggregate | [Aggregate](#flow-Aggregate) |  | Aggregate contains flow aggregation counters when flow aggregation is enabled. This field is only populated for aggregated flows. |
 
 
 
@@ -423,7 +404,6 @@ multiple fields are set, then all fields must match for the filter to match.
 | ip_version | [IPVersion](#flow-IPVersion) | repeated | filter based on IP version (ipv4 or ipv6) |
 | trace_id | [string](#string) | repeated | trace_id filters flows by trace ID |
 | ip_trace_id | [uint64](#uint64) | repeated | ip_trace_id filters flows by IPTraceID |
-| encrypted | [bool](#bool) | repeated | encrypted filters flows based on encryption status (WireGuard/IPsec). When set to true, only encrypted flows are returned. When set to false, only unencrypted flows are returned. |
 | experimental | [FlowFilter.Experimental](#flow-FlowFilter-Experimental) |  | experimental contains filters that are not stable yet. Support for experimental features is always optional and subject to change. |
 
 
@@ -902,7 +882,6 @@ TraceParent identifies the incoming request in a tracing system.
 | protocol | [Tunnel.Protocol](#flow-Tunnel-Protocol) |  |  |
 | IP | [IP](#flow-IP) |  |  |
 | l4 | [Layer4](#flow-Layer4) |  |  |
-| vni | [uint32](#uint32) |  |  |
 
 
 

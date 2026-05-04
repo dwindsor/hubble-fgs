@@ -114,9 +114,6 @@ const (
 	// PolicyEntry is a policy map value
 	PolicyEntry = "policyEntry"
 
-	// PolicyPrecedence is the datapath precedence for a policy Entry
-	PolicyPrecedence = "policyPrecedence"
-
 	// PolicyRevision is the revision of the policy in the repository or of
 	// the object in question
 	PolicyRevision = "policyRevision"
@@ -243,9 +240,6 @@ const (
 
 	// Port is a L4 port
 	Port = "port"
-
-	// EndPort is the last L4 port in a range of ports
-	EndPort = "endPort"
 
 	// Ports is a list of L4 ports
 	Ports = "ports"
@@ -671,9 +665,6 @@ const (
 
 	// K8sUID is the UID of a K8s object
 	K8sUID = "k8sUID"
-
-	// K8sServiceAccount is the name of a K8s ServiceAccount
-	K8sServiceAccount = "k8sServiceAccount"
 
 	// Attempt is the attempt number if an operation is attempted multiple times
 	Attempt = "attempt"
@@ -1291,8 +1282,6 @@ const (
 
 	PrefixCount = "prefixCount"
 
-	MaxResults = "maxResults"
-
 	LenEIPS = "lenEIPS"
 
 	EIP = "eip"
@@ -1497,8 +1486,6 @@ const (
 
 	CRDs = "CRDs"
 
-	CRDName = "crdName"
-
 	PodCIDRs = "podCIDRs"
 
 	LenIPs = "lenIPs"
@@ -1519,6 +1506,8 @@ const (
 
 	EgressAlive = "egressAlive"
 
+	CTMapIPVersion = "ctMapIPVersion"
+
 	ExpectedPrevInterval = "expectedPrevInterval"
 
 	ActualPrevInterval = "actualPrevInterval"
@@ -1537,11 +1526,7 @@ const (
 
 	Cmd = "cmd"
 
-	Maps = "maps"
-
 	Prog = "prog"
-
-	Programs = "programs"
 
 	Table = "table"
 
@@ -1590,10 +1575,6 @@ const (
 	Range = "range"
 
 	Pin = "pin"
-
-	Tier = "tier"
-
-	TierBasePriority = "tierBasePriority"
 
 	Priority = "priority"
 
@@ -1857,6 +1838,4 @@ const (
 	ReloadKeypairError = "reloadKeypairError"
 
 	ReloadCAError = "reloadCAError"
-
-	ExtendedMessage = "extendedMessage"
 )

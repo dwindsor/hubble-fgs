@@ -5,7 +5,6 @@ package types
 
 import (
 	"fmt"
-	"maps"
 	"net/netip"
 
 	"github.com/cilium/cilium/pkg/lock"
@@ -387,7 +386,9 @@ func (in *Subnet) DeepCopyInto(out *Subnet) {
 	if in.Tags != nil {
 		in, out := &in.Tags, &out.Tags
 		*out = make(Tags, len(*in))
-		maps.Copy((*out), *in)
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 }
 

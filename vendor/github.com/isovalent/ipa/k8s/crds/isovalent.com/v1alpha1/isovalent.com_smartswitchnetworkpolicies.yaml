@@ -139,6 +139,9 @@ spec:
 
                                       Only one VRF can be specified currently.
                                     items:
+                                      maxLength: 32
+                                      minLength: 1
+                                      pattern: .*\S.*
                                       type: string
                                     maxItems: 1
                                     type: array
@@ -182,7 +185,7 @@ spec:
                             description: |-
                               NetworkObjectGroupRef is a reference to one or more NetworkObjectGroups.
 
-                              A Name or Labels selector must be specified. These will match the
+                              Exactly one of Name or GroupSelector must be specified. These will match the
                               corresponding resources in the specified Namespace.
                             properties:
                               groupSelector:
@@ -245,12 +248,14 @@ spec:
                                 x-kubernetes-map-type: atomic
                               name:
                                 description: Name of the NetworkObjectGroup.
+                                maxLength: 253
+                                minLength: 1
                                 type: string
-                            required:
-                            - name
                             type: object
                             x-kubernetes-validations:
-                            - rule: (has(self.name) && !has(self.groupSelector)) ||
+                            - message: exactly one of name or groupSelector must be
+                                specified
+                              rule: (has(self.name) && !has(self.groupSelector)) ||
                                 (!has(self.name) && has(self.groupSelector))
                           minItems: 1
                           type: array
@@ -387,6 +392,9 @@ spec:
 
                                       Only one VRF can be specified currently.
                                     items:
+                                      maxLength: 32
+                                      minLength: 1
+                                      pattern: .*\S.*
                                       type: string
                                     maxItems: 1
                                     type: array
@@ -430,7 +438,7 @@ spec:
                             description: |-
                               NetworkObjectGroupRef is a reference to one or more NetworkObjectGroups.
 
-                              A Name or Labels selector must be specified. These will match the
+                              Exactly one of Name or GroupSelector must be specified. These will match the
                               corresponding resources in the specified Namespace.
                             properties:
                               groupSelector:
@@ -493,12 +501,14 @@ spec:
                                 x-kubernetes-map-type: atomic
                               name:
                                 description: Name of the NetworkObjectGroup.
+                                maxLength: 253
+                                minLength: 1
                                 type: string
-                            required:
-                            - name
                             type: object
                             x-kubernetes-validations:
-                            - rule: (has(self.name) && !has(self.groupSelector)) ||
+                            - message: exactly one of name or groupSelector must be
+                                specified
+                              rule: (has(self.name) && !has(self.groupSelector)) ||
                                 (!has(self.name) && has(self.groupSelector))
                           minItems: 1
                           type: array

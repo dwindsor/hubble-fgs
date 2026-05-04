@@ -57,18 +57,15 @@ type CiliumBGPPeerConfig struct {
 	// +deepequal-gen=false
 	metav1.TypeMeta `json:",inline"`
 	// +deepequal-gen=false
-	// +kubebuilder:validation:Required
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec is the specification of the desired behavior of the CiliumBGPPeerConfig.
-	//
-	// +kubebuilder:validation:Required
 	Spec CiliumBGPPeerConfigSpec `json:"spec"`
 
 	// Status is the running status of the CiliumBGPPeerConfig
 	//
 	// +kubebuilder:validation:Optional
-	Status CiliumBGPPeerConfigStatus `json:"status,omitempty"`
+	Status CiliumBGPPeerConfigStatus `json:"status"`
 }
 
 type CiliumBGPPeerConfigSpec struct {
@@ -149,7 +146,7 @@ func (gr *CiliumBGPNeighborGracefulRestart) SetDefaults() {
 type CiliumBGPPeerConfigStatus struct {
 	// The current conditions of the CiliumBGPPeerConfig
 	//
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +listType=map
 	// +listMapKey=type
 	// +deepequal-gen=false
