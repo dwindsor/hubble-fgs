@@ -41,6 +41,16 @@ type TestCase struct {
 	Host model.Binaries
 	// Namespaces that contain pods.
 	Namespaces model.Namespaces
+
+	// A process registry that the various run commands can use to coordinate with each other.
+	ProcessRegistry *deps.ProcessRegistry
+
+	// A sequence of additional steps to perform. The step is an arbitrary
+	// function, but the expectation is that the step modifies either the
+	// server, harness, or Host/Namespaces in the TestCase. After each step, the
+	// TestCase will call server.GetModel and tc.modelCheck to compare the
+	// generated application model against the contents of Host/Namespaces.
+	Steps []func(ctx context.Context, tb testing.TB, tc *TestCase, server *server.Server, harness *harness.Harness)
 }
 
 func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Server, harness *harness.Harness) {
@@ -48,21 +58,33 @@ func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Serve
 		tb.Skip(tc.Skip)
 	}
 
+	tc.ProcessRegistry = deps.NewProcessRegistry()
+	defer tc.ProcessRegistry.Cleanup()
+
 	require.NoError(tb, tc.modelSetup(ctx, tb, harness), "failed to set up application model")
+
+	tc.modelCheck(ctx, tb, server)
+
+	for _, step := range tc.Steps {
+		step(ctx, tb, tc, server, harness)
+
+		tc.modelCheck(ctx, tb, server)
+	}
+}
+
+func (tc *TestCase) modelCheck(ctx context.Context, tb testing.TB, server *server.Server) {
 
 	model, err := server.GetModel(ctx, &v1alpha.GetModelRequest{
 		Host: true,
 	})
 	require.NoError(tb, err, "failed to get model")
 
-	tc.modelCheck(tb, model.GetModel().GetApplicationModel())
-}
+	amodel := model.GetModel().GetApplicationModel()
 
-func (tc *TestCase) modelCheck(tb testing.TB, model *v1alpha.ApplicationModel) {
-	utils.RegisterModelDump(tb, model)
+	utils.RegisterModelDump(tb, amodel)
 
-	assert.True(tb, checkProcesses(tb, tc.Host, model.Host.Processes, false), "host process checks failed")
-	assert.True(tb, checkNamespaces(tb, tc.Namespaces, model.Namespaces), "namespace checks failed")
+	assert.True(tb, checkProcesses(tb, tc.Host, amodel.Host.Processes, false), "host process checks failed")
+	assert.True(tb, checkNamespaces(tb, tc.Namespaces, amodel.Namespaces), "namespace checks failed")
 }
 
 func checkNamespaces(tb testing.TB, checks model.Namespaces, namespaces []*v1alpha.ApplicationNamespace) bool {
@@ -191,22 +213,37 @@ func (tc *TestCase) runHostBinaries(ctx context.Context) error {
 	}
 
 	statusChan := make(chan model.CmdResult, len(tc.Host))
-	registry := deps.NewProcessRegistry()
 
 	// Run binaries in parallel
 	for _, binary := range tc.Host {
-		go binary.Run(ctx, registry, statusChan)
+		go binary.Run(ctx, tc.ProcessRegistry, statusChan)
 	}
 
 	// Collect results
 	for range tc.Host {
-		status := <-statusChan
-		if status.Err != nil {
-			cmd := strings.Join(append([]string{status.Cmd}, status.Args...), " ")
-			return fmt.Errorf("command %q failed: %w", cmd, status.Err)
+		err := tc.collectBinaryStatus(statusChan)
+		if err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func (tc *TestCase) RunSingleBinary(ctx context.Context, binary model.Binary) error {
+	statusChan := make(chan model.CmdResult, 1)
+
+	go binary.Run(ctx, tc.ProcessRegistry, statusChan)
+
+	return tc.collectBinaryStatus(statusChan)
+}
+
+func (tc *TestCase) collectBinaryStatus(statusChan <-chan model.CmdResult) error {
+	status := <-statusChan
+	if status.Err != nil {
+		cmd := strings.Join(append([]string{status.Cmd}, status.Args...), " ")
+		return fmt.Errorf("command %q failed: %w", cmd, status.Err)
+	}
 	return nil
 }
 

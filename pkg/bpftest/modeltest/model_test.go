@@ -13,14 +13,18 @@
 package modeltest
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
 
 	commonNetV1 "github.com/isovalent/ipa/common/net/v1alpha"
+	"github.com/stretchr/testify/require"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+
+	modelserver "github.com/isovalent/hubble-fgs/pkg/model/server"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpftest"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/deps"
@@ -51,6 +55,27 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						},
 					},
 				},
+			},
+		},
+	},
+
+	"AdditionalHostProcesses": {
+		Host: model.Binaries{
+			{
+				Cmd:  "/usr/bin/bash",
+				Args: []string{"-c", "echo dog"},
+			},
+		},
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, _ *modelserver.Server, _ *harness.Harness) {
+				// Start a new process after the initial model check
+				tc.Host = append(tc.Host, model.Binary{
+					Cmd:  "/usr/bin/bash",
+					Args: []string{"-c", "echo cat"},
+				})
+
+				err := tc.RunSingleBinary(ctx, tc.Host[len(tc.Host)-1])
+				require.NoError(tb, err, "failed to run additional host command")
 			},
 		},
 	},
