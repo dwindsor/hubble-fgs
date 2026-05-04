@@ -77,6 +77,9 @@ type Binary struct {
 	Dependencies []deps.Dependency
 	// If true, timeout/signal killed errors should not be treated as failures
 	TimeoutExpected bool
+	// If true, this binary is long lived. It should not be waited for, and
+	// should be force killed when the test finishes.
+	LongLived bool
 	// If non-empty, pipe this string to the command's stdin
 	Stdin string
 }
@@ -102,10 +105,17 @@ func (b *Binary) Run(ctx context.Context, registry *deps.ProcessRegistry, status
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, b.Timeout)
-	defer cancel()
+	var cmdCtx context.Context
+	var cancel context.CancelFunc
 
-	cmd := exec.CommandContext(ctx, b.Cmd, b.Args...)
+	if b.LongLived {
+		cmdCtx = ctx
+	} else {
+		cmdCtx, cancel = context.WithTimeout(ctx, b.Timeout)
+		defer cancel()
+	}
+
+	cmd := exec.CommandContext(cmdCtx, b.Cmd, b.Args...)
 
 	// Set up stdin if provided
 	if b.Stdin != "" {
@@ -156,18 +166,23 @@ func (b *Binary) Run(ctx context.Context, registry *deps.ProcessRegistry, status
 	go forwardOutput(stdout, cmdName, "stdout")
 	go forwardOutput(stderr, cmdName, "stderr")
 
-	// Wait for the process to complete
-	err = cmd.Wait()
+	if b.LongLived {
+		registry.AddLongLivedCommand(cmd)
+		err = nil
+	} else {
+		// Wait for the process to complete
+		err = cmd.Wait()
 
-	// If TimeoutExpected is true and the error is due to context timeout/signal kill, treat as success
-	if b.TimeoutExpected && err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			// Context timeout - this is expected
-			err = nil
-		} else if exitErr, ok := err.(*exec.ExitError); ok {
-			// Check if process was killed by signal (typically SIGKILL from timeout)
-			if exitErr.String() == "signal: killed" {
+		// If TimeoutExpected is true and the error is due to context timeout/signal kill, treat as success
+		if b.TimeoutExpected && err != nil {
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				// Context timeout - this is expected
 				err = nil
+			} else if exitErr, ok := err.(*exec.ExitError); ok {
+				// Check if process was killed by signal (typically SIGKILL from timeout)
+				if exitErr.String() == "signal: killed" {
+					err = nil
+				}
 			}
 		}
 	}

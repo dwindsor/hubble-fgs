@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -32,8 +33,9 @@ const (
 
 // ProcessRegistry tracks running processes by their RunID
 type ProcessRegistry struct {
-	mu        sync.RWMutex
-	processes map[string]bool
+	mu                sync.RWMutex
+	processes         map[string]bool
+	longLivedCommands []*exec.Cmd
 }
 
 // NewProcessRegistry creates a new process registry
@@ -57,6 +59,29 @@ func (pr *ProcessRegistry) IsRegistered(runID string) bool {
 	return pr.processes[runID]
 }
 
+func (pr *ProcessRegistry) AddLongLivedCommand(cmd *exec.Cmd) {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	if pr.longLivedCommands == nil {
+		pr.longLivedCommands = make([]*exec.Cmd, 0)
+	}
+	pr.longLivedCommands = append(pr.longLivedCommands, cmd)
+}
+
+func (pr *ProcessRegistry) Cleanup() {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	for _, cmd := range pr.longLivedCommands {
+		if cmd.Process != nil {
+			err := cmd.Process.Kill()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to kill process %d: %v\n", cmd.Process.Pid, err)
+			}
+		}
+	}
+	pr.longLivedCommands = nil
+}
+
 // Dependency represents a condition that must be met before a binary can run
 type Dependency interface {
 	// Check returns true if the dependency condition is met
@@ -77,6 +102,11 @@ func NewProcessRunning(pattern string) (*ProcessRunning, error) {
 		return nil, fmt.Errorf("invalid regex pattern: %w", err)
 	}
 	return &ProcessRunning{Pattern: regex}, nil
+}
+
+func NewProcessRunningPatternMustCompile(pattern string) *ProcessRunning {
+	regex := regexp.MustCompile(pattern)
+	return &ProcessRunning{Pattern: regex}
 }
 
 func (pr *ProcessRunning) Check(_ context.Context, _ *ProcessRegistry) (bool, error) {

@@ -80,6 +80,23 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
+	"LongLivedHostBinaries": {
+		Host: model.Binaries{
+			{
+				Cmd:       "tail",
+				Args:      []string{"-f", "/dev/null"},
+				LongLived: true,
+			},
+			{
+				Cmd:  "sleep",
+				Args: []string{"1"},
+				Dependencies: []deps.Dependency{
+					deps.NewProcessRunningPatternMustCompile("tail -f /dev/null"),
+				},
+			},
+		},
+	},
+
 	"MissingArgumentsRegression": {
 		Host: model.Binaries{
 			{
