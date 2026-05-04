@@ -117,6 +117,9 @@ type Server struct {
 	// need to actually hold mappings between container ids and container
 	// information, as the pod accessor keeps its own cache of deleted pods.
 	containerIdCache *lru.Cache[uint64, string]
+
+	// The function used to get the current time. Can be overridden in tests.
+	TimeNow func() time.Time
 }
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
@@ -356,10 +359,11 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 func getProcessModel(namespaces []string,
 	debug bool,
 	cgTrackerIdCache *lru.Cache[uint64, uint64],
-	containerIdCache *lru.Cache[uint64, string]) ([]*types.ProcessModel, error) {
-	start := time.Now()
+	containerIdCache *lru.Cache[uint64, string],
+	timeNow func() time.Time) ([]*types.ProcessModel, error) {
+	start := timeNow()
 	defer func() {
-		appmodelmetrics.RecordDuration(appmodelmetrics.PhaseGetProcessModel, float64(time.Since(start).Microseconds()))
+		appmodelmetrics.RecordDuration(appmodelmetrics.PhaseGetProcessModel, float64(timeNow().Sub(start).Microseconds()))
 	}()
 
 	processModel := make([]*types.ProcessModel, 0)
@@ -961,7 +965,7 @@ func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]
 	if !option.Config.EnableApplicationModel {
 		return nil, ErrApplicationModelNotEnabled
 	}
-	return getProcessModel(ns, debug, s.cgTrackerIdCache, s.containerIdCache)
+	return getProcessModel(ns, debug, s.cgTrackerIdCache, s.containerIdCache, s.TimeNow)
 }
 
 func (s *Server) GetApplicationModel(ctx context.Context, nsFilter map[string]bool) (*appModelV1.ApplicationModelEvent, error) {
@@ -1118,5 +1122,6 @@ func NewServer(enableBpfId bool) (*Server, error) {
 	return &Server{
 		cgTrackerIdCache: cgTrackerIdCacheInstance,
 		containerIdCache: containerIdCacheInstance,
+		TimeNow:          time.Now,
 	}, err
 }

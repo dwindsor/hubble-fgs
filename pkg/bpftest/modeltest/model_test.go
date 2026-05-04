@@ -283,6 +283,38 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 			},
 		},
 	},
+
+	"VerifyNoGarbageCollection": {
+		Host: model.Binaries{
+			{
+				Cmd:  "/usr/bin/bash",
+				Args: []string{"-c", "echo hello world"},
+			},
+		},
+		Namespaces: model.Namespaces{
+			"default": {
+				"test-no-garbage-collection": {
+					Containers: model.Containers{
+						"test-no-garbage-collection-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"infinity"},
+							},
+						},
+					},
+				},
+			},
+		},
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(_ context.Context, _ testing.TB, _ *testcase.TestCase, server *modelserver.Server, _ *harness.Harness) {
+				// Set the server "now" to 24 hours in the future.
+				server.TimeNow = func() time.Time {
+					return time.Now().Add(24 * time.Hour)
+				}
+			},
+		},
+	},
 }
 
 func TestModel(t *testing.T) {
