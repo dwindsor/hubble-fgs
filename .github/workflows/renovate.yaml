@@ -73,6 +73,7 @@ jobs:
           LOG_LEVEL: ${{ github.event.inputs.renovate_log_level_debug == 'false' && 'INFO' || 'DEBUG' }}
           RENOVATE_SECRETS: "{APP_TOKEN: \"${{ steps.get_token.outputs.app_token }}\"}"
           RENOVATE_CUSTOM_ENV_VARIABLES: "{GOPRIVATE: \"github.com/isovalent\"}"
+          RENOVATE_HOST_RULES: "[{\"matchHost\": \"${{ vars.ARTIFACTORY_HOST }}\",\"username\": \"${{ vars.ARTIFACTORY_USERNAME }}\",\"password\": \"${{ secrets.ARTIFACTORY_PASSWORD }}\"}]"
         with:
           configurationFile: .github/self-hosted-renovate.json5
           token: '${{ steps.get_token.outputs.app_token }}'

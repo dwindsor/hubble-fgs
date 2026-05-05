@@ -1,5 +1,10 @@
-ARG GOLANG_IMAGE=docker.io/library/golang:1.26.3@sha256:efaccb5b497e90df3ebe5216cc25cd9f98e73874e2d638b56e38d4a3f098c41c
-ARG BASE_IMAGE=gcr.io/distroless/static-debian12@sha256:3f2b64ef97bd285e36132c684e6b2ae8f2723293d09aae046196cca64251acac
+# Chainguard go-dev image (includes shell, make, git via wolfi packages)
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
+ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:1.26.2-dev@sha256:6851274232204ce3a89bef5f098d26bd75d16915372bbe321675bf2c7a98f190
+
+# Chainguard static image (replaces gcr.io/distroless/static-debian12)
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static
+ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static:latest@sha256:a0081f4e329e8e5b97801299043f90454d6a44d5b4b5a1dd51638528a9c58345
 
 FROM --platform=${BUILDPLATFORM} ${GOLANG_IMAGE} AS builder
 ARG TARGETOS

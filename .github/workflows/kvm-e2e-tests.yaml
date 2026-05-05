@@ -40,9 +40,17 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "agentImage=quay.io/isovalent-dev/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "operatorImage=quay.io/isovalent-dev/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "olmIndexImage=quay.io/isovalent-dev/tetragon-operator-index-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "olmIndexImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-index-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "olmBundleImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-bundle-ci:${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Login to Artifactory
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Attempt To Pull Docker Images
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
@@ -55,6 +63,7 @@ jobs:
             docker pull ${{ steps.vars.outputs.agentImage }}
             docker pull ${{ steps.vars.outputs.operatorImage }}
             docker pull ${{ steps.vars.outputs.olmIndexImage }}
+            docker pull ${{ steps.vars.outputs.olmBundleImage }}
 
   run-tests:
     needs: ensure-image-available
@@ -114,9 +123,17 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "agentImage=quay.io/isovalent-dev/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "operatorImage=quay.io/isovalent-dev/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "olmIndexImage=quay.io/isovalent-dev/tetragon-operator-index-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "olmIndexImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-index-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "olmBundleImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-bundle-ci:${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Login to Artifactory
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Update OLM catalog index
         env:
@@ -170,6 +187,10 @@ jobs:
           set -e
           docker pull ${{ steps.vars.outputs.agentImage }}
           docker pull ${{ steps.vars.outputs.operatorImage }}
+          if [ "${{ matrix.testDir }}" = "olm" ]; then
+            docker pull ${{ steps.vars.outputs.olmIndexImage }}
+            docker pull ${{ steps.vars.outputs.olmBundleImage }}
+          fi
 
       - name: Fetch Helm subcharts
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
@@ -183,10 +204,21 @@ jobs:
 
       - name: Load Docker Images Into LVH
         run: |
-          docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
+          if [ "${{ matrix.testDir }}" = "olm" ]; then
+            docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} ${{ steps.vars.outputs.olmIndexImage }} ${{ steps.vars.outputs.olmBundleImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
+          else
+            docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
+          fi
 
       - name: Run Tests
         uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
+        env:
+          OLM_INDEX_IMAGE: ${{ steps.vars.outputs.olmIndexImage }}
+          OLM_BUNDLE_IMAGE: ${{ steps.vars.outputs.olmBundleImage }}
+          ARTIFACTORY_HOST: ${{ vars.ARTIFACTORY_HOST }}
+          ARTIFACTORY_USERNAME: ${{ vars.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          TEST_DIR: ${{ matrix.testDir }}
         with:
           provision: "false"
           cmd: |
@@ -213,6 +245,17 @@ jobs:
             if [[ "${{ matrix.kernel }}" == 6.1-* ]]; then
               export RUN_FIM_DISPATCHER=1
             fi
+
+            # For OLM tests, pre-load the index image into kind cluster
+            # The kind cluster is created by the e2e test framework
+            if [[ "${TEST_DIR}" == "olm" ]]; then
+              export E2E_OLM_INDEX_IMAGE="${OLM_INDEX_IMAGE}"
+              export E2E_OLM_BUNDLE_IMAGE="${OLM_BUNDLE_IMAGE}"
+              export E2E_ARTIFACTORY_HOST="${ARTIFACTORY_HOST}"
+              export E2E_ARTIFACTORY_USERNAME="${ARTIFACTORY_USERNAME}"
+              export E2E_ARTIFACTORY_PASSWORD="${ARTIFACTORY_PASSWORD}"
+            fi
+
             make e2e-test                                          \
               E2E_BUILD_IMAGES=0                                   \
               E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \

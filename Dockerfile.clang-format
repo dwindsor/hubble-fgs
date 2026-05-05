@@ -1,10 +1,14 @@
-FROM ubuntu:resolute@sha256:5e275723f82c67e387ba9e3c24baa0abdcb268917f276a0561c97bef9450d0b4
+# Chainguard glibc-openssl image (wolfi-based, includes apk)
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl
+ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev
 
-RUN apt-get -y update && apt-get -y install clang-format-18
-RUN ln -s /bin/clang-format-18 /bin/clang-format
+FROM ${BASE_IMAGE}
+USER root
 
-USER 1000
+RUN apk add --no-cache clang-18-extras
+
+USER 65532:65532
 WORKDIR /fgs
 
-ENTRYPOINT ["clang-format"]
+ENTRYPOINT ["/usr/bin/clang-format"]
 CMD ["--help"]

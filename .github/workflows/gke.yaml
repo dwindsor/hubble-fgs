@@ -50,8 +50,8 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
-          echo "agentImage=quay.io/isovalent-dev/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
-          echo "operatorImage=quay.io/isovalent-dev/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "agentImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
+          echo "operatorImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
           echo "clusterName=fgs-cli-ci-${{ github.run_id }}-${{ matrix.release-channel }}" >> $GITHUB_OUTPUT
 
       - name: Install Cilium CLI
@@ -125,6 +125,13 @@ jobs:
       - name: Get Credentials
         run: |
           gcloud container clusters get-credentials ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }}
+
+      - name: Login to Artifactory
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Attempt to pull the FGS image
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2

@@ -2,15 +2,6 @@ name: Base Image Build
 
 on:
   workflow_call:
-    secrets:
-      QUAY_USERNAME:
-        required: true
-      QUAY_PASSWORD:
-        required: true
-      QUAY_CHARTS_USERNAME:
-        required: true
-      QUAY_CHARTS_PASSWORD:
-        required: true
     inputs:
       # Used to checkout the source code and as a tag for non-release images.
       sha:
@@ -57,12 +48,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-      - name: Login to quay.io
+      - name: Login to Artifactory
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Checkout Source Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -77,19 +68,21 @@ jobs:
       - name: Get image tags
         id: tags
         run: |
-          org="${{ github.repository_owner }}"
           repo="${{ matrix.name }}"
-          if ! ${{ inputs.is_release }}; then
-            org="$org-dev"
+          # CI images go to isovalent-eng-docker, release images go to isovalent-iep-docker
+          if ${{ inputs.is_release }}; then
+            registry_path="isovalent-iep-docker"
+          else
+            registry_path="isovalent-eng-docker"
             repo="$repo-ci"
           fi
 
           echo "tags<<EOF" >> $GITHUB_OUTPUT
           if ! ${{ inputs.is_release }}; then
-            echo "quay.io/$org/$repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
+            echo "${{ vars.ARTIFACTORY_HOST }}/${registry_path}/$repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
           fi
           if [ -n "${{ inputs.tag }}" ]; then
-            echo "quay.io/$org/$repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "${{ vars.ARTIFACTORY_HOST }}/${registry_path}/$repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
           fi
           echo "EOF" >> $GITHUB_OUTPUT
 
@@ -110,12 +103,7 @@ jobs:
           first_tag=$(echo "${{ steps.tags.outputs.tags }}" | head -n1)
           echo "tag=${first_tag}" >> $GITHUB_OUTPUT
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
-
-      - name: Sign Container Image
-        run: |
-          cosign sign -y "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
+      # NOTE: Cosign signing removed - BES compliance requires images to be signed by SWIMS
 
       - name: Generate SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
@@ -124,10 +112,6 @@ jobs:
           output-file: ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json
           image: ${{ steps.first-tag.outputs.tag }}
           upload-release-assets: false
-
-      - name: Attach SBOM attestation to container image
-        run: |
-          cosign attest -y --predicate sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Image Release Digest
         shell: bash
@@ -231,20 +215,20 @@ jobs:
           version: ${{ steps.version.outputs.chart_version }}
           values_file_changes: |
             {
-              "tetragon.image.repository": "quay.io/isovalent-dev/tetragon-ci",
+              "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci",
               "tetragon.image.tag": "${{ inputs.sha }}",
-              "tetragonAggregator.image.repository": "quay.io/isovalent-dev/tetragon-aggregator-ci",
+              "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-aggregator-ci",
               "tetragonAggregator.image.tag": "${{ inputs.sha }}",
-              "tetragonOperator.image.repository": "quay.io/isovalent-dev/tetragon-operator-ci",
+              "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-ci",
               "tetragonOperator.image.tag": "${{ inputs.sha }}",
             }
-          registry: quay.io
-          registry_namespace: isovalent-charts-dev
-          registry_username: ${{ secrets.QUAY_CHARTS_USERNAME }}
-          registry_password: ${{ secrets.QUAY_CHARTS_PASSWORD }}
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          registry_namespace: isovalent-eng-docker
+          registry_username: ${{ vars.ARTIFACTORY_USERNAME }}
+          registry_password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Print helm command
         run: |
           echo "Example commands:"
-          echo helm template -n tetragon oci://quay.io/isovalent-charts-dev/tetragon --version ${{ steps.version.outputs.chart_version }}
-          echo helm install tetragon -n tetragon oci://quay.io/isovalent-charts-dev/tetragon --version ${{ steps.version.outputs.chart_version }}
+          echo helm template -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon --version ${{ steps.version.outputs.chart_version }}
+          echo helm install tetragon -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon --version ${{ steps.version.outputs.chart_version }}

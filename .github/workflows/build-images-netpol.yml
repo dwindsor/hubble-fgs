@@ -38,14 +38,14 @@ jobs:
           repo="netpol-ci"
           version=$(git describe --tags --always --exclude 'api/*' --exclude '*-codedrop')
           echo "version=$version" >> $GITHUB_OUTPUT
-          echo "tags=quay.io/$org/$repo:$version" >> $GITHUB_OUTPUT
+          echo "tags=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/$repo:$version" >> $GITHUB_OUTPUT
 
-      - name: Login to quay.io
+      - name: Login to Artifactory
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
-          password: ${{ secrets.QUAY_ISOVALENT_DEV_PASSWORD }}
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Configure Git to be able to access isovalent repositories
         run: |
@@ -83,15 +83,15 @@ jobs:
           version: ${{ steps.tags.outputs.version }}
           values_file_changes: |
             {
-              "netpol.image.repository": "quay.io/isovalent-dev/netpol-ci",
+              "netpol.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/netpol-ci",
               "netpol.image.tag": "${{ steps.tags.outputs.version }}",
             }
-          registry: quay.io
-          registry_namespace: isovalent-charts-dev
-          registry_username: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_USERNAME }}
-          registry_password: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_PASSWORD }}
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          registry_namespace: isovalent-eng-docker
+          registry_username: ${{ vars.ARTIFACTORY_USERNAME }}
+          registry_password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Print helm command
         run: |
           echo "Example commands:"
-          echo helm install netpol oci://quay.io/isovalent-charts-dev/netpol --version ${{ steps.tags.outputs.chart_version }}
+          echo helm install netpol oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/netpol --version ${{ steps.tags.outputs.chart_version }}

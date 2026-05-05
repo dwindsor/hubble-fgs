@@ -2,15 +2,6 @@ name: UBI Image Build
 
 on:
   workflow_call:
-    secrets:
-      QUAY_USERNAME:
-        required: true
-      QUAY_PASSWORD:
-        required: true
-      REDHAT_USERNAME_CI:
-        required: true
-      REDHAT_PASSWORD_CI:
-        required: true
     inputs:
       # Used to checkout the source code and as a tag for non-release images.
       sha:
@@ -80,19 +71,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-      - name: Login to quay.io
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
       - name: Login to registry.redhat.io
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: registry.redhat.io
           username: ${{ secrets.REDHAT_USERNAME_CI }}
           password: ${{ secrets.REDHAT_PASSWORD_CI }}
+
+      - name: Login to Artifactory
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Checkout Source Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -105,30 +96,32 @@ jobs:
       - name: Get image tags
         id: tags
         run: |
-          org="${{ github.repository_owner }}"
           repo="${{ matrix.image_repo }}"
           stage_repo="${{ matrix.stage_repo }}"
-          if ! ${{ inputs.is_release }}; then
-            org="$org-dev"
+          # CI images go to isovalent-eng-docker, release images go to isovalent-iep-docker
+          if ${{ inputs.is_release }}; then
+            registry_path="isovalent-iep-docker"
+          else
+            registry_path="isovalent-eng-docker"
             repo="$repo-ci"
             stage_repo="$stage_repo-ci"
           fi
 
           echo "tags<<EOF" >> $GITHUB_OUTPUT
           if ! ${{ inputs.is_release }}; then
-            echo "quay.io/$org/$repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
+            echo "${{ vars.ARTIFACTORY_HOST }}/${registry_path}/$repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
           fi
           if [ -n "${{ inputs.tag }}" ]; then
-            echo "quay.io/$org/$repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "${{ vars.ARTIFACTORY_HOST }}/${registry_path}/$repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
           fi
           echo "EOF" >> $GITHUB_OUTPUT
 
           echo "stage_tags<<EOF" >> $GITHUB_OUTPUT
           if ! ${{ inputs.is_release }}; then
-            echo "quay.io/$org/$stage_repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
+            echo "${{ vars.ARTIFACTORY_HOST }}/${registry_path}/$stage_repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
           fi
           if [ -n "${{ inputs.tag }}" ]; then
-            echo "quay.io/$org/$stage_repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "${{ vars.ARTIFACTORY_HOST }}/${registry_path}/$stage_repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
           fi
           echo "EOF" >> $GITHUB_OUTPUT
 
@@ -176,12 +169,7 @@ jobs:
           tags: |
             ${{ steps.tags.outputs.tags }}
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
-
-      - name: Sign Container Image
-        run: |
-          cosign sign -y "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
+      # NOTE: Cosign signing removed - BES compliance requires images to be signed by SWIMS
 
       - name: Generate SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
@@ -190,10 +178,6 @@ jobs:
           output-file: ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.image_repo }}_${{ inputs.tag || inputs.sha }}.spdx.json
           image: ${{ steps.first-tag.outputs.tag }}
           upload-release-assets: false
-
-      - name: Attach SBOM attestation to container image
-        run: |
-          cosign attest -y --predicate sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.image_repo }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Image Release Digest
         shell: bash

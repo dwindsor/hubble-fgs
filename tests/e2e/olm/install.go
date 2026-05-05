@@ -15,8 +15,11 @@ package olm
 import (
 	"context"
 	_ "embed"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -290,6 +293,122 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 		if err != nil {
 			return ctx, err
 		}
+		// Load the OLM index image into kind cluster if running in kind
+		if clusterName := helpers.GetTempKindClusterName(ctx); clusterName != "" {
+			// Extract image from CatalogSource spec and load it into kind
+			// The CatalogSource YAML is modified by CI to point to the CI-built index image
+			var csImage string
+			for _, obj := range csObjects {
+				// The decoder returns typed CatalogSource objects (not Unstructured) because
+				// the OLM scheme is registered. Handle the typed CatalogSource directly.
+				if cs, ok := obj.(*operatorsv1alpha1.CatalogSource); ok {
+					if cs.Spec.Image != "" {
+						csImage = cs.Spec.Image
+						break
+					}
+				}
+			}
+			if csImage != "" {
+				klog.InfoS("Loading OLM index image into kind cluster",
+					"cluster", clusterName, "image", csImage)
+				var err error
+				if ctx, err = envfuncs.LoadDockerImageToCluster(clusterName, csImage)(ctx, cfg); err != nil {
+					if strings.Contains(err.Error(), "not present locally") {
+						klog.InfoS("OLM index image is not present locally, Kubernetes will attempt to pull it",
+							"cluster", clusterName, "image", csImage)
+					} else {
+						return ctx, fmt.Errorf("failed to load OLM index image %s into cluster %s: %w",
+							csImage, clusterName, err)
+					}
+				} else {
+					klog.InfoS("Successfully loaded OLM index image into kind cluster",
+						"cluster", clusterName, "image", csImage)
+				}
+				// OLM's InferImagePullPolicy returns Always for non-digest
+				// image references (any ref without "@"). This causes the
+				// kubelet to pull from the remote registry even when the
+				// image is already present in containerd, resulting in 401
+				// errors against registries requiring auth. Rewrite the
+				// CatalogSource image to use a digest reference so OLM
+				// sets imagePullPolicy:IfNotPresent instead.
+				digestImage, digestErr := imageDigestRef(clusterName, csImage)
+				if digestErr == nil && digestImage != "" {
+					// Tag the image with the digest reference inside the kind
+					// node so that containerd's CRI can resolve it.
+					nodeName := fmt.Sprintf("%s-control-plane", clusterName)
+					tagCmd := exec.Command("docker", "exec", nodeName,
+						"ctr", "--namespace=k8s.io", "images", "tag", csImage, digestImage)
+					if tagOut, tagErr := tagCmd.CombinedOutput(); tagErr != nil {
+						klog.InfoS("Failed to tag image with digest ref in containerd",
+							"error", tagErr, "output", string(tagOut))
+					}
+					for _, obj := range csObjects {
+						if cs, ok := obj.(*operatorsv1alpha1.CatalogSource); ok {
+							if cs.Spec.Image == csImage {
+								cs.Spec.Image = digestImage
+								klog.InfoS("Updated CatalogSource image to digest reference",
+									"name", cs.Name, "original", csImage, "digest", digestImage)
+							}
+						}
+					}
+				} else if digestErr != nil {
+					klog.InfoS("Could not resolve image digest, OLM will use Always pull policy",
+						"image", csImage, "error", digestErr)
+				}
+			}
+			// Also load the OLM bundle image if provided via env var.
+			// OLM's unpack job pulls the bundle image referenced inside
+			// the catalog index. Without pre-loading, the pull fails
+			// because the kind cluster has no registry credentials.
+			if bundleImage := os.Getenv("E2E_OLM_BUNDLE_IMAGE"); bundleImage != "" {
+				klog.InfoS("Loading OLM bundle image into kind cluster",
+					"cluster", clusterName, "image", bundleImage)
+				if ctx, err = envfuncs.LoadDockerImageToCluster(clusterName, bundleImage)(ctx, cfg); err != nil {
+					if !strings.Contains(err.Error(), "not present locally") {
+						return ctx, fmt.Errorf("failed to load OLM bundle image %s into cluster %s: %w",
+							bundleImage, clusterName, err)
+					}
+				}
+				// Rewrite to digest ref so OLM unpack uses IfNotPresent
+				if digestBundle, dErr := imageDigestRef(clusterName, bundleImage); dErr == nil && digestBundle != "" {
+					nodeName := fmt.Sprintf("%s-control-plane", clusterName)
+					tagCmd := exec.Command("docker", "exec", nodeName,
+						"ctr", "--namespace=k8s.io", "images", "tag", bundleImage, digestBundle)
+					if tagOut, tagErr := tagCmd.CombinedOutput(); tagErr != nil {
+						klog.InfoS("Failed to tag bundle image with digest ref",
+							"error", tagErr, "output", string(tagOut))
+					} else {
+						klog.InfoS("Tagged OLM bundle image with digest ref",
+							"original", bundleImage, "digest", digestBundle)
+					}
+				}
+			}
+		}
+		// Create an imagePullSecret for Artifactory if credentials are
+		// available. OLM pods (including bundle unpack jobs) need this
+		// to pull images from the private registry.
+		if artHost := os.Getenv("E2E_ARTIFACTORY_HOST"); artHost != "" {
+			artUser := os.Getenv("E2E_ARTIFACTORY_USERNAME")
+			artPass := os.Getenv("E2E_ARTIFACTORY_PASSWORD")
+			if artUser != "" && artPass != "" {
+				secretName := "artifactory-registry"
+				csNamespace := "kube-system"
+				if secret, sErr := createRegistrySecret(ctx, cfg, csNamespace, secretName, artHost, artUser, artPass); sErr != nil {
+					klog.InfoS("Failed to create Artifactory imagePullSecret", "error", sErr)
+				} else if secret != nil {
+					klog.InfoS("Created Artifactory imagePullSecret", "namespace", csNamespace, "name", secretName)
+					// Add the secret to CatalogSource.spec.secrets so OLM
+					// sets imagePullSecrets on pods it creates.
+					for _, obj := range csObjects {
+						if cs, ok := obj.(*operatorsv1alpha1.CatalogSource); ok {
+							cs.Spec.Secrets = append(cs.Spec.Secrets, secretName)
+							klog.InfoS("Added imagePullSecret to CatalogSource",
+								"name", cs.Name, "secret", secretName)
+						}
+					}
+				}
+			}
+		}
 		if ctx, err = helpers.LoadObjects(o.Namespace, csObjects, false)(ctx, cfg); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				return ctx, err
@@ -418,4 +537,73 @@ func getPodLogs(ctx context.Context, c clientset.Interface, namespace, podName, 
 		return "", fmt.Errorf("fetched log contains \"internal error\": %q", string(logs))
 	}
 	return string(logs), err
+}
+
+// imageDigestRef queries the kind node's containerd for the digest of the
+// given image and returns a reference in the form "repo@sha256:..." so that
+// OLM's InferImagePullPolicy selects IfNotPresent instead of Always.
+func imageDigestRef(clusterName, image string) (string, error) {
+	nodeName := fmt.Sprintf("%s-control-plane", clusterName)
+	cmd := exec.Command("docker", "exec", nodeName,
+		"ctr", "--namespace=k8s.io", "images", "ls", fmt.Sprintf("name==%s", image))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("ctr images ls: %w (output: %s)", err, string(out))
+	}
+	// Parse the ctr output to extract the digest. Format:
+	// REF TYPE DIGEST SIZE ...
+	// <image> application/vnd.oci.image.manifest.v1+json sha256:abc... 70.8 MiB ...
+	for _, line := range strings.Split(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[0] == image {
+			digest := fields[2]
+			if strings.HasPrefix(digest, "sha256:") {
+				// Strip the tag from the image and append the digest.
+				repo := image
+				if idx := strings.LastIndex(repo, ":"); idx > 0 {
+					repo = repo[:idx]
+				}
+				return repo + "@" + digest, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("digest not found for image %s in ctr output", image)
+}
+
+// createRegistrySecret creates a docker-registry Secret in the given namespace
+// so that OLM pods can authenticate when pulling images from the registry.
+func createRegistrySecret(ctx context.Context, cfg *envconf.Config, namespace, name, server, username, password string) (*corev1.Secret, error) {
+	auth := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+	dockerCfg := map[string]interface{}{
+		"auths": map[string]interface{}{
+			server: map[string]string{
+				"username": username,
+				"password": password,
+				"auth":     auth,
+			},
+		},
+	}
+	dockerCfgJSON, err := json.Marshal(dockerCfg)
+	if err != nil {
+		return nil, fmt.Errorf("marshal docker config: %w", err)
+	}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{
+			corev1.DockerConfigJsonKey: dockerCfgJSON,
+		},
+	}
+	cl, err := clientset.NewForConfig(cfg.Client().RESTConfig())
+	if err != nil {
+		return nil, fmt.Errorf("create clientset: %w", err)
+	}
+	created, err := cl.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
+	if apierrors.IsAlreadyExists(err) {
+		return secret, nil
+	}
+	return created, err
 }

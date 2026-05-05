@@ -16,8 +16,4 @@ jobs:
     with:
       sha: "${{ github.sha }}"
       tag: "${{ github.ref_name }}-latest"
-    secrets:
-      QUAY_USERNAME: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
-      QUAY_PASSWORD: ${{ secrets.QUAY_ISOVALENT_DEV_PASSWORD }}
-      QUAY_CHARTS_USERNAME: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_USERNAME }}
-      QUAY_CHARTS_PASSWORD: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_PASSWORD }}
+    secrets: inherit

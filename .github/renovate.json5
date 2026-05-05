@@ -36,6 +36,15 @@
       ]
     },
     {
+      // Chainguard images from Artifactory
+      "groupName": "Chainguard Images",
+      "matchPackageNames": [
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/go",
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl",
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/static",
+      ],
+    },
+    {
       "enabled": true,
       "groupName": "Go",
       "matchPackageNames": [

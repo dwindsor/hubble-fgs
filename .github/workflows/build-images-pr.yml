@@ -20,11 +20,7 @@ jobs:
       id-token: write
     with:
       sha: "${{ github.event.pull_request.head.sha }}"
-    secrets:
-      QUAY_USERNAME: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
-      QUAY_PASSWORD: ${{ secrets.QUAY_ISOVALENT_DEV_PASSWORD }}
-      QUAY_CHARTS_USERNAME: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_USERNAME }}
-      QUAY_CHARTS_PASSWORD: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_PASSWORD }}
+    secrets: inherit
 
   build-and-push-ubi:
     uses: ./.github/workflows/build-images-ubi-base.yml
@@ -34,8 +30,4 @@ jobs:
       id-token: write
     with:
       sha: "${{ github.event.pull_request.head.sha }}"
-    secrets:
-      QUAY_USERNAME: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
-      QUAY_PASSWORD: ${{ secrets.QUAY_ISOVALENT_DEV_PASSWORD }}
-      REDHAT_USERNAME_CI: ${{ secrets.REDHAT_USERNAME_CI }}
-      REDHAT_PASSWORD_CI: ${{ secrets.REDHAT_PASSWORD_CI }}
+    secrets: inherit

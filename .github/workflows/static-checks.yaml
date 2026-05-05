@@ -101,6 +101,13 @@ jobs:
           go fmt ./...
           git diff --exit-code || (echo "gofmt checks failed. Please run 'go -w fmt ./...', and submit your changes"; exit 1)
 
+      - name: Login to Artifactory
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
+
       - name: Build clang-format Docker image
         run: docker build -f Dockerfile.clang-format -t "isovalent/clang-format:latest" .
 

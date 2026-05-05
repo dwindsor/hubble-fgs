@@ -20,8 +20,14 @@ jobs:
         image: [tetragon-ci, tetragon-operator-ci]
         branch: [v1.16, v1.17, v1.18]
     steps:
+      - name: Login to Artifactory
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
       - name: Pull Docker image
-        run: docker pull quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
+        run: docker pull ${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/${{ matrix.image }}:${{ matrix.branch }}-latest
       - name: Checkout latest VEX data
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -36,7 +42,7 @@ jobs:
       - name: Scan image
         id: scan-image
         run: |
-          ${{ steps.grype.outputs.cmd }} quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest \
+          ${{ steps.grype.outputs.cmd }} ${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/${{ matrix.image }}:${{ matrix.branch }}-latest \
             --output json=results.json --output table=results.txt --fail-on medium \
             --vex vex/.github/.openvex.json \
             --config vex/.github/.grype.yaml        

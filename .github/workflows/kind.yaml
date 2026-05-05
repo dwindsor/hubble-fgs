@@ -24,6 +24,9 @@ jobs:
       id: version
       run: |
         echo "version=$(make chart-version)" >> $GITHUB_OUTPUT
+        SHA=${{ github.event.pull_request.head.sha }}
+        echo "agentImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci:${SHA}" >> $GITHUB_OUTPUT
+        echo "operatorImage=${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-ci:${SHA}" >> $GITHUB_OUTPUT
 
     - name: Install Go
       uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
@@ -42,15 +45,39 @@ jobs:
     - name: Install Kind and create cluster
       uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
 
+    - name: Login to Artifactory
+      run: |
+        helm registry login ${{ vars.ARTIFACTORY_HOST }} \
+          --username ${{ vars.ARTIFACTORY_USERNAME }} \
+          --password ${{ secrets.ARTIFACTORY_PASSWORD }}
+        echo ${{ secrets.ARTIFACTORY_PASSWORD }} | docker login ${{ vars.ARTIFACTORY_HOST }} \
+          --username ${{ vars.ARTIFACTORY_USERNAME }} \
+          --password-stdin
+
     - name: Wait for Helm dev chart to be available
       timeout-minutes: 15
       shell: bash
       run: |
-        until helm pull oci://quay.io/isovalent-charts-dev/tetragon --version ${{ steps.version.outputs.version }}; do sleep 30s; done
+        until helm pull oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon --version ${{ steps.version.outputs.version }}; do sleep 30s; done
+
+    - name: Pre-load CI images into Kind cluster
+      timeout-minutes: 5
+      shell: bash
+      run: |
+        for img in "${{ steps.version.outputs.agentImage }}" "${{ steps.version.outputs.operatorImage }}"; do
+          until docker pull "${img}"; do
+            echo "Waiting for ${img} to become available..."
+            sleep 15
+          done
+        done
+        kind load docker-image \
+          ${{ steps.version.outputs.agentImage }} \
+          ${{ steps.version.outputs.operatorImage }} \
+          --name chart-testing
 
     - name: Run go integration tests
       run: |
-        helm install tetragon -n tetragon --create-namespace oci://quay.io/isovalent-charts-dev/tetragon \
+        helm install tetragon -n tetragon --create-namespace oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon \
           --version ${{ steps.version.outputs.version }} \
           --set tetragonOperator.podInfo.enabled=true
         go test --tags=integration -v ./pkg/manager

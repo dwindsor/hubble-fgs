@@ -1,8 +1,15 @@
 # Copyright 2020-2021 Authors of Cilium
 # SPDX-License-Identifier: Apache-2.0
 
-ARG BASE_IMAGE=scratch
-ARG GOLANG_IMAGE=docker.io/library/golang:1.26.3@sha256:efaccb5b497e90df3ebe5216cc25cd9f98e73874e2d638b56e38d4a3f098c41c
+# Chainguard static image for runtime (replaces scratch)
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static
+ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static:latest@sha256:a0081f4e329e8e5b97801299043f90454d6a44d5b4b5a1dd51638528a9c58345
+
+# Chainguard go-dev image (includes shell, make, git via wolfi packages)
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
+ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:1.26.2-dev@sha256:6851274232204ce3a89bef5f098d26bd75d16915372bbe321675bf2c7a98f190
+
+# Keep Alpine for extracting ca-certificates (Chainguard static already has them)
 ARG ALPINE_IMAGE=docker.io/library/alpine:3.23.4@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
 
 # BUILDPLATFORM is an automatic platform ARG enabled by Docker BuildKit.

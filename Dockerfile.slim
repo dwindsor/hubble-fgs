@@ -24,6 +24,7 @@ RUN gzip bpf/objs/*.o
 # - tetragon-fs-scanner (this one compiles a C program, so a gcc cross compiler is needed)
 # - tetragon
 # - tetra
+# Using Debian golang image for cross-compilation support (needs apt-get for crossbuild-essential)
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.3@sha256:efaccb5b497e90df3ebe5216cc25cd9f98e73874e2d638b56e38d4a3f098c41c AS tetragon-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
@@ -38,23 +39,27 @@ RUN if [ $BUILDARCH != $TARGETARCH ]; \
     else make tetrabox TARGET_ARCH=$TARGETARCH; fi
 
 # Third builder (cross-)compile a stripped gops
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.3-alpine@sha256:91eda9776261207ea25fd06b5b7fed8d397dd2c0a283e77f2ab6e91bfa71079d AS gops
+# Chainguard go-dev image
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
+FROM --platform=$BUILDPLATFORM artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:1.26.2-dev@sha256:6851274232204ce3a89bef5f098d26bd75d16915372bbe321675bf2c7a98f190 AS gops
 ARG TARGETARCH
+# Chainguard go-dev uses wolfi, install binutils and git via apk
 RUN apk add --no-cache binutils git \
  && GOARCH=$TARGETARCH go build -ldflags="-s -w" .
 
 # Almost final step runs on target platform (might need emulation) and
 # retrieves (cross-)compiled binaries from builders
-FROM docker.io/library/alpine:3.23.4@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 AS release
-RUN addgroup hubble	       && \
+# Chainguard glibc-openssl image (replaces alpine)
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl
+FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev AS release
+USER root
+RUN addgroup -S hubble	       && \
     mkdir /var/lib/tetragon/ && \
     mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     mkdir -p /etc/tetragon/tetragon.conf.d/ && \
     mkdir -p /etc/tetragon/tetragon.tp.d/ && \
-    mkdir -p /etc/tetragon/tetragon.policies.d/ && \
-    apk add --no-cache --update bash
-RUN apk upgrade --no-cache
+    mkdir -p /etc/tetragon/tetragon.policies.d/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetrabox /usr/bin/tetrabox
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/tetragon-runner /var/lib/tetragon/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/* /var/lib/tetragon/
