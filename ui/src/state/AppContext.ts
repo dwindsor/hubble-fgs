@@ -4,12 +4,12 @@ import { assert } from "~/utils/assert";
 import { type Endpoint, EndpointModeKind } from "~/utils/endpoints";
 import type { XY } from "~/utils/geometry";
 import {
+  calcTreePathHash,
   type TreePath,
   type TreePathHash,
   type TreePathStatus,
-  calcTreePathHash,
 } from "~/utils/tree";
-import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
+import { getQueryParam, setQueryParam, UrlParams } from "~/utils/url";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
 import { createAppState } from "./AppState";
 
@@ -28,7 +28,7 @@ export function createAppContext({
 }) {
   const state = createAppState(model);
 
-  const inner = {
+  const internal = {
     treePathsMap: new Map<TreePathHash, TreePathStatus>(),
     highlightedEndpointsMap: new Map<Endpoint, Set<EndpointModeKind>>(),
     highlightedProc: null as ApplicationProcessGroup | null,
@@ -39,18 +39,18 @@ export function createAppContext({
     getQueryParam(UrlParams.Expanded)
       ?.split(",")
       .forEach((hash) => {
-        inner.treePathsMap.set(hash, { expanded: true });
+        internal.treePathsMap.set(hash, { expanded: true });
       });
     getQueryParam(UrlParams.Pinned)
-      ?.split(",")
+      ?.split("|")
       .forEach((endpointHash) => {
-        const endpoint = state.endpointsHashMap.get(endpointHash);
+        const endpoint = state.endpointsHashMap.getOrDefault(endpointHash, null);
         if (!endpoint) {
           return;
         }
         const modes = new Set<EndpointModeKind>();
         modes.add(EndpointModeKind.Pinned);
-        inner.highlightedEndpointsMap.set(endpoint, modes);
+        internal.highlightedEndpointsMap.set(endpoint, modes);
       });
   }
 
@@ -70,18 +70,18 @@ export function createAppContext({
     },
 
     getTreePathStatus(hash: TreePathHash) {
-      return inner.treePathsMap.get(hash);
+      return internal.treePathsMap.get(hash);
     },
 
     setTreePathStatus(path: TreePath, status: TreePathStatus) {
       const pathHash = calcTreePathHash(path);
-      inner.treePathsMap.set(
+      internal.treePathsMap.set(
         pathHash,
-        Object.assign(inner.treePathsMap.get(pathHash) ?? {}, status),
+        Object.assign(internal.treePathsMap.get(pathHash) ?? {}, status),
       );
 
       const expanded: TreePathHash[] = [];
-      inner.treePathsMap.forEach((value, hash) => {
+      internal.treePathsMap.forEach((value, hash) => {
         if (!value.expanded || !value.visible) return;
         expanded.push(hash);
       });
@@ -94,7 +94,7 @@ export function createAppContext({
       emitter.emitter.emit(
         EmitterEventKind.TreePathStatusChanged,
         path,
-        inner.treePathsMap.get(pathHash) ?? {},
+        internal.treePathsMap.get(pathHash) ?? {},
       );
     },
 
@@ -102,7 +102,7 @@ export function createAppContext({
 
     toggleTreePath(path: TreePath) {
       const pathHash = calcTreePathHash(path);
-      that.setTreePathStatus(path, { expanded: !inner.treePathsMap.get(pathHash)?.expanded });
+      that.setTreePathStatus(path, { expanded: !internal.treePathsMap.get(pathHash)?.expanded });
     },
 
     get connectionsMap() {
@@ -178,23 +178,23 @@ export function createAppContext({
     onEndpointUpdated: emitter.createSubscriber(EmitterEventKind.EndpointUpdated),
 
     get highlightedEndpointsMap() {
-      return inner.highlightedEndpointsMap;
+      return internal.highlightedEndpointsMap;
     },
 
     highlightEndpoint(endpoint: Endpoint, highlight: boolean, mode: EndpointModeKind) {
-      const modes = inner.highlightedEndpointsMap.get(endpoint) ?? new Set();
+      const modes = internal.highlightedEndpointsMap.get(endpoint) ?? new Set();
       if (!highlight) {
         modes.delete(mode);
         if (!modes.size) {
-          inner.highlightedEndpointsMap.delete(endpoint);
+          internal.highlightedEndpointsMap.delete(endpoint);
         }
       } else {
         modes.add(mode);
-        inner.highlightedEndpointsMap.set(endpoint, modes);
+        internal.highlightedEndpointsMap.set(endpoint, modes);
       }
 
       const pinned: string[] = [];
-      inner.highlightedEndpointsMap.forEach((modes, endpoint) => {
+      internal.highlightedEndpointsMap.forEach((modes, endpoint) => {
         if (!modes.has(EndpointModeKind.Pinned)) return;
         const endpointInfo = state.endpointsMap.get(endpoint);
         if (!endpointInfo) {
@@ -203,7 +203,7 @@ export function createAppContext({
         pinned.push(endpointInfo.hash);
       });
       if (pinned.length) {
-        that.setQueryParam(UrlParams.Pinned, pinned.sort().join(","));
+        that.setQueryParam(UrlParams.Pinned, pinned.sort().join("|"));
       } else {
         that.setQueryParam(UrlParams.Pinned, undefined);
       }
@@ -216,11 +216,11 @@ export function createAppContext({
     onEndpointHighlight: emitter.createSubscriber(EmitterEventKind.HighlightEndpoint),
 
     get highlightedProc() {
-      return inner.highlightedProc;
+      return internal.highlightedProc;
     },
 
     highlightProc(proc: ApplicationProcessGroup, state: boolean) {
-      inner.highlightedProc = state ? proc : null;
+      internal.highlightedProc = state ? proc : null;
       emitter.emitter.emit(EmitterEventKind.HighlightProc, proc, state);
       that.redrawConnectionLines();
     },

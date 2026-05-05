@@ -10,11 +10,11 @@ export const colors = {
   treeBranch: "#b8b8b8",
   suspicious: "#d59011",
 
-  entityDestinationInner: "#cccccc",
-  entityDestinationInnerHighlighted: "#888888",
+  entityDestinationInternal: "#cccccc",
+  entityDestinationInternalHighlighted: "#888888",
 
-  entityDestinationOuter: "#9e83df",
-  entityDestinationOuterHighlighted: "#7748e4",
+  entityDestinationExternal: "#9e83df",
+  entityDestinationExternalHighlighted: "#7748e4",
 
   entityDestinationKubernetes: "#78bbe8",
   entityDestinationKubernetesHighlighted: "#0b81d0",
@@ -29,8 +29,8 @@ export const colors = {
 };
 
 export const destinationColorsMap = {
-  [DestinationKind.OuterIp]: colors.entityDestinationOuter,
-  [DestinationKind.OuterDns]: colors.entityDestinationOuter,
+  [DestinationKind.ExternalIp]: colors.entityDestinationExternal,
+  [DestinationKind.ExternalDns]: colors.entityDestinationExternal,
   [DestinationKind.Kubernetes]: colors.entityDestinationKubernetes,
   [DestinationKind.HostMetadataService]: colors.entityDestinationKubernetes,
 } as { [key: string]: string };

@@ -12,29 +12,29 @@ export interface Props {
 }
 
 const BASE_LINE_COLOR = {
-  [DestinationKind.OuterDns]: colors.entityDestinationOuter,
-  [DestinationKind.OuterIp]: colors.entityDestinationOuter,
+  [DestinationKind.ExternalDns]: colors.entityDestinationExternal,
+  [DestinationKind.ExternalIp]: colors.entityDestinationExternal,
   [DestinationKind.HostMetadataService]: colors.entityDestinationKubernetes,
   [DestinationKind.Kubernetes]: colors.entityDestinationKubernetes,
-  [DestinationKind.InnerDns]: colors.entityDestinationInner,
-  [DestinationKind.InnerIp]: colors.entityDestinationInner,
-  [DestinationKind.Other]: colors.entityDestinationInner,
+  [DestinationKind.InternalDns]: colors.entityDestinationInternal,
+  [DestinationKind.InternalIp]: colors.entityDestinationInternal,
+  [DestinationKind.Other]: colors.entityDestinationInternal,
   [FileEventKind.Read]: colors.entityFileEventRead,
   [FileEventKind.Write]: colors.entityFileEventWrite,
-  [FileEventKind.Unspecified]: colors.entityDestinationInner,
+  [FileEventKind.Unspecified]: colors.entityDestinationInternal,
 } as const;
 
 const HIGHLIGHTED_LINE_COLOR = {
-  [DestinationKind.OuterDns]: colors.entityDestinationOuterHighlighted,
-  [DestinationKind.OuterIp]: colors.entityDestinationOuterHighlighted,
+  [DestinationKind.ExternalDns]: colors.entityDestinationExternalHighlighted,
+  [DestinationKind.ExternalIp]: colors.entityDestinationExternalHighlighted,
   [DestinationKind.HostMetadataService]: colors.entityDestinationKubernetesHighlighted,
   [DestinationKind.Kubernetes]: colors.entityDestinationKubernetesHighlighted,
-  [DestinationKind.InnerDns]: colors.entityDestinationInnerHighlighted,
-  [DestinationKind.InnerIp]: colors.entityDestinationInnerHighlighted,
-  [DestinationKind.Other]: colors.entityDestinationInnerHighlighted,
+  [DestinationKind.InternalDns]: colors.entityDestinationInternalHighlighted,
+  [DestinationKind.InternalIp]: colors.entityDestinationInternalHighlighted,
+  [DestinationKind.Other]: colors.entityDestinationInternalHighlighted,
   [FileEventKind.Read]: colors.entityFileEventReadHighlighted,
   [FileEventKind.Write]: colors.entityFileEventWriteHighlighted,
-  [FileEventKind.Unspecified]: colors.entityDestinationInnerHighlighted,
+  [FileEventKind.Unspecified]: colors.entityDestinationInternalHighlighted,
 } as const;
 
 const MUTED_LINE_COLOR = colors.entityMuted;
@@ -107,7 +107,9 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
     });
 
     [backgroundLines, foregroundLines].forEach((lines) => {
-      lines.forEach((line) => drawLine(ctx, line));
+      lines.forEach((line) => {
+        drawLine(ctx, line);
+      });
     });
   }, [state]);
 

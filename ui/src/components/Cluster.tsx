@@ -16,6 +16,7 @@ export const Cluster = memo(function Cluster() {
         path={TREE_CLUSTER_PATH}
         initialOpen={true}
         summary={({ onClick }) => (
+          // biome-ignore lint/a11y/noStaticElementInteractions: <summary> is natively interactive inside <details>
           <summary className={css.clusterName} onClick={onClick}>
             <div>
               <ClusterIcon className={css.clusterIcon} size={14} color={colors.treeBranch} />

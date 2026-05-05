@@ -6,7 +6,7 @@
   }
 }
 
-.proc:has(> div.inner)::before {
+.proc:has(> div.internal)::before {
   border-style: solid;
   border-image-slice: 1;
   border-image-source: linear-gradient(
@@ -18,7 +18,7 @@
   border-width: 0 0 2px 2px;
 }
 
-.inner {
+.internal {
   display: flex;
   align-items: center;
   max-width: 100%;
@@ -48,7 +48,6 @@
 .tooltip {
   background-color: #444;
   color: white;
-  font-size: 90%;
   padding: 4px 8px;
   border-radius: 4px;
   box-sizing: border-box;

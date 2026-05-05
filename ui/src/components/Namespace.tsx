@@ -44,8 +44,9 @@ export const NamespaceItem = memo(function Namespace(props: NamespaceProps) {
       <Collapsible
         path={path}
         summary={({ onClick }) => (
+          // biome-ignore lint/a11y/noStaticElementInteractions: <summary> is natively interactive inside <details>
           <summary className={entry.className} onClick={onClick}>
-            <div className={css.inner}>
+            <div className={css.internal}>
               <NamespaceIcon
                 className={css.icon}
                 size={14}
@@ -80,8 +81,9 @@ export const NamespacesList = memo(function NamespacesList(props: NamespacesList
       path={TREE_NAMESPACES_PATH}
       initialOpen={true}
       summary={({ onClick }) => (
+        // biome-ignore lint/a11y/noStaticElementInteractions: <summary> is natively interactive inside <details>
         <summary className={entry.className} onClick={onClick}>
-          <div className={css.inner}>
+          <div className={css.internal}>
             <NamespacesIcon className={css.icon} size={14} color={colors.treeBranch} />
             <span>Namespaces</span>
             {entry.stat && <Statistic stat={entry.stat} />}

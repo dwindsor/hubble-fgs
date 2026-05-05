@@ -4,6 +4,7 @@ import { colors } from "~/theme/colors";
 import type { Stat } from "~/utils/stat";
 import { WarningIcon } from "./Icons/WarningIcon";
 import css from "./Statistic.module.css";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/Tooltip";
 
 export interface Props {
   stat: Stat;
@@ -22,9 +23,17 @@ export const Statistic = memo(function Statistic(props: Props) {
       )}
       {props.stat.txDrops > 0 && <Drops drops={props.stat.txDrops} />}
       {props.showSuspiciousMarker && props.stat.hasSuspiciousProcs && (
-        <span className={css.suspiciousMarker}>
-          <WarningIcon color={colors.suspicious} size={14} />
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={css.suspiciousMarker}>
+              <WarningIcon color={colors.suspicious} size={14} />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="ipt-tooltip">
+            Connection opened by a process outside the container's init tree (e.g. spawned
+            manually via shell). The process is highlighted orange on the left.
+          </TooltipContent>
+        </Tooltip>
       )}
     </span>
   );

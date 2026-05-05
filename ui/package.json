@@ -1,6 +1,6 @@
 {
   "name": "@isovalent-eng-npm/process-tree-app-model",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Isovalent Process Tree App Model",
   "publishConfig": {
     "registry": "https://artifactory.devhub-cloud.cisco.com/artifactory/api/npm/isovalent-eng-npm/"
@@ -39,18 +39,18 @@
     "upgrade-deps": "ncu --interactive --format group"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "2.11.0",
+    "@bufbuild/protobuf": "2.12.0",
     "@floating-ui/react": "0.27.19",
     "clsx": "2.1.1",
     "events": "3.3.0",
     "hash-sum": "2.0.0",
-    "ipaddr.js": "2.3.0",
+    "ipaddr.js": "2.4.0",
     "lodash": "4.18.1",
     "ts-case-convert": "2.1.0",
     "typed-emitter": "2.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.11",
+    "@biomejs/biome": "2.4.14",
     "@types/events": "3.0.3",
     "@types/hash-sum": "1.0.2",
     "@types/lodash": "4.17.24",
@@ -58,17 +58,17 @@
     "@types/react": "18.3.27",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "6.0.1",
-    "npm-check-updates": "20.0.2",
+    "npm-check-updates": "22.1.0",
     "npm-run-all": "4.1.5",
     "postcss-nesting": "14.0.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "typescript": "6.0.2",
-    "vite": "8.0.8",
-    "vite-plugin-checker": "0.12.0",
-    "vite-plugin-dts": "4.5.4",
+    "typescript": "6.0.3",
+    "vite": "8.0.10",
+    "vite-plugin-checker": "0.13.0",
+    "vite-plugin-dts": "5.0.0",
     "vite-plugin-lib-inject-css": "2.2.2",
-    "vite-plugin-singlefile": "2.3.2"
+    "vite-plugin-singlefile": "2.3.3"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",

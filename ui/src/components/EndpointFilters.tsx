@@ -5,6 +5,7 @@ import { DestinationFilterKind } from "~/utils/destination";
 import { FileEventFilterKind } from "~/utils/file-event";
 import css from "./EndpointFilters.module.css";
 import { Checkbox } from "./ui/Checkbox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/Tooltip";
 
 export interface Props {
   filters: EndpointFiltersState;
@@ -17,14 +18,14 @@ export const EndpointFilters = memo(function EndpointFilters(props: Props) {
         <span className={css.filterGroupTitle}>Connections</span>
         <ul className={css.wrapper}>
           <EndpointSubFilter
-            kind={DestinationFilterKind.Inner}
-            status={props.filters.value.has(DestinationFilterKind.Inner)}
-            onClick={() => props.filters.toggle(DestinationFilterKind.Inner)}
+            kind={DestinationFilterKind.Internal}
+            status={props.filters.value.has(DestinationFilterKind.Internal)}
+            onClick={() => props.filters.toggle(DestinationFilterKind.Internal)}
           />
           <EndpointSubFilter
-            kind={DestinationFilterKind.Outer}
-            status={props.filters.value.has(DestinationFilterKind.Outer)}
-            onClick={() => props.filters.toggle(DestinationFilterKind.Outer)}
+            kind={DestinationFilterKind.External}
+            status={props.filters.value.has(DestinationFilterKind.External)}
+            onClick={() => props.filters.toggle(DestinationFilterKind.External)}
           />
           <EndpointSubFilter
             kind={DestinationFilterKind.Kubernetes}
@@ -59,34 +60,57 @@ interface EndpointSubFilterProps {
 }
 
 const EndpointSubFilter = memo(function EndpointSubFilter(props: EndpointSubFilterProps) {
-  const title = useMemo(() => {
-    if (props.kind === DestinationFilterKind.Outer) {
-      return "Outer";
+  const { title, tooltip } = useMemo(() => {
+    if (props.kind === DestinationFilterKind.External) {
+      return {
+        title: "External",
+        tooltip:
+          "Connections to destinations outside the cluster — public IPs, external DNS names, the internet.",
+      };
     }
     if (props.kind === DestinationFilterKind.Kubernetes) {
-      return "Kubernetes";
+      return {
+        title: "Internal Kubernetes",
+        tooltip:
+          "Connections to Kubernetes workloads (pods, services) identified by namespace and workload name.",
+      };
     }
-    if (props.kind === DestinationFilterKind.Inner) {
-      return "Inner";
+    if (props.kind === DestinationFilterKind.Internal) {
+      return {
+        title: "Internal",
+        tooltip:
+          "Connections staying within the host or cluster — loopback, private IP ranges, *.cluster.local, AWS ip-*.internal.",
+      };
     }
     if (props.kind === FileEventFilterKind.Read) {
-      return "Read";
+      return { title: "Read", tooltip: "" };
     }
     if (props.kind === FileEventFilterKind.Write) {
-      return "Write";
+      return { title: "Write", tooltip: "" };
     }
-    return "Other";
+    return { title: "Other", tooltip: "" };
   }, [props.kind]);
 
   const className = clsx(css[`entity-${props.kind}`], {
     [css.selected]: props.status,
   });
 
+  const button = (
+    <button type="button" onClick={props.onClick}>
+      <Checkbox readOnly checked={props.status} /> {title}
+    </button>
+  );
+
   return (
     <li className={className}>
-      <button type="button" onClick={props.onClick}>
-        <Checkbox readOnly checked={props.status} /> {title}
-      </button>
+      {tooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent className="ipt-tooltip">{tooltip}</TooltipContent>
+        </Tooltip>
+      ) : (
+        button
+      )}
     </li>
   );
 });

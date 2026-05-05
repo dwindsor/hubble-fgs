@@ -38,6 +38,17 @@
   }
 }
 
+.sectionHeader {
+  margin: 6px 0 4px 5px;
+  font-family: var(--ipt-font-sans-serif);
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--ipt-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: default;
+}
+
 .emptySearch .emptySearchTitle {
   margin-left: 5px;
   font-family: var(--ipt-font-sans-serif);

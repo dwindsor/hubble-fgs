@@ -45,12 +45,12 @@ export type EndpointInfo = {
 };
 
 export const endpointsKindOrder = [
-  DestinationKind.OuterDns,
-  DestinationKind.OuterIp,
+  DestinationKind.ExternalDns,
+  DestinationKind.ExternalIp,
   DestinationKind.HostMetadataService,
   DestinationKind.Kubernetes,
-  DestinationKind.InnerDns,
-  DestinationKind.InnerIp,
+  DestinationKind.InternalDns,
+  DestinationKind.InternalIp,
   FileEventKind.Read,
   FileEventKind.Write,
 ].reduce(

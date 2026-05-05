@@ -2570,10 +2570,7 @@
                       {
                         "destination": {
                           "dns": {
-                            "destination_names": [
-                              "archive.ubuntu.com.",
-                              "security.ubuntu.com."
-                            ]
+                            "destination_names": ["archive.ubuntu.com.", "security.ubuntu.com."]
                           },
                           "port": "80"
                         },
@@ -2748,10 +2745,7 @@
             {
               "destination": {
                 "dns": {
-                  "destination_names": [
-                    "auth.docker.io.",
-                    "registry-1.docker.io."
-                  ]
+                  "destination_names": ["auth.docker.io.", "registry-1.docker.io."]
                 },
                 "port": "443"
               },
@@ -2883,10 +2877,7 @@
             {
               "destination": {
                 "dns": {
-                  "destination_names": [
-                    "",
-                    "ip-192-168-64-75.us-west-1.compute.internal."
-                  ]
+                  "destination_names": ["", "ip-192-168-64-75.us-west-1.compute.internal."]
                 },
                 "port": "6789"
               },

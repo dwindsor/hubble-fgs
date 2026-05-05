@@ -4,7 +4,7 @@ import { useAppState } from "~/state/AppContext";
 import { DestinationKind } from "~/utils/destination";
 import type { Endpoint } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
-import { type Stat, type TreeEntryStat, advanceStat, createTreeEntryStat } from "~/utils/stat";
+import { advanceStat, createTreeEntryStat, type Stat, type TreeEntryStat } from "~/utils/stat";
 import { useConnector } from "./useConnector";
 
 export const VisualStateKind = Enum({
@@ -108,7 +108,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     return clsx("ipt-interactive", {
       "ipt-highlighted": visualState === VisualStateKind.Highlighted || selectedEndpoint,
       "ipt-muted": visualState === VisualStateKind.Muted,
-      "ipt-endpoint-outer": endpointSubKind === DestinationKind.OuterDns,
+      "ipt-endpoint-external": endpointSubKind === DestinationKind.ExternalDns,
       "ipt-endpoint-kube": endpointSubKind === DestinationKind.Kubernetes,
     });
   }, [visualState, selectedEndpoint, endpointSubKind]);

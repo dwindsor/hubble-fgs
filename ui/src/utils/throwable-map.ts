@@ -6,7 +6,7 @@ export class ThrowableMap<K, V> extends Map<K, V> {
     return super.get(key) as V;
   }
 
-  getOrDefault(key: K, defaultValue: V): V {
+  getOrDefault<D>(key: K, defaultValue: D): V | D {
     return super.get(key) ?? defaultValue;
   }
 }

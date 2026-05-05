@@ -12,7 +12,7 @@
 .part {
   width: 7px;
   height: 100%;
-  background: hsl(from var(--ipt-color-entity-destination-inner) h s calc(l + 10));
+  background: hsl(from var(--ipt-color-entity-destination-internal) h s calc(l + 10));
 
   &:first-child {
     border-radius: 3px 0 0 3px;
@@ -26,8 +26,8 @@
     border-radius: 3px;
   }
 
-  &.entityDestinationOuter {
-    background: hsl(from var(--ipt-color-entity-destination-outer) h s calc(l + 10));
+  &.entityDestinationExternal {
+    background: hsl(from var(--ipt-color-entity-destination-external) h s calc(l + 10));
   }
 
   &.entityDestinationKubernetes {
@@ -44,11 +44,11 @@
 }
 
 :global(.ipt-highlighted) .part {
-  background: var(--ipt-color-entity-destination-inner);
+  background: var(--ipt-color-entity-destination-internal);
 }
 
-:global(.ipt-highlighted) .entityDestinationOuter {
-  background: var(--ipt-color-entity-destination-outer);
+:global(.ipt-highlighted) .entityDestinationExternal {
+  background: var(--ipt-color-entity-destination-external);
 }
 
 :global(.ipt-highlighted) .entityDestinationKubernetes {
@@ -64,7 +64,7 @@
 }
 
 :global(.ipt-muted) .part,
-:global(.ipt-muted) .entityDestinationOuter,
+:global(.ipt-muted) .entityDestinationExternal,
 :global(.ipt-muted) .entityDestinationKubernetes,
 :global(.ipt-muted) .entityFileEventRead,
 :global(.ipt-muted) .entityFileEventWrite {

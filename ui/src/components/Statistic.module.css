@@ -1,7 +1,7 @@
 .wrapper {
   position: relative;
   top: 1px;
-  color: var(--ipt-color-entity-destination-inner);
+  color: var(--ipt-color-entity-destination-internal);
   font-size: 0.8em;
   white-space: pre;
   word-spacing: -5px;

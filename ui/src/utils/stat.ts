@@ -1,8 +1,8 @@
 import type { ApplicationProcessGroup } from "~/proto";
+import type { Container } from "./containers";
 import type { Endpoint } from "./endpoints";
 import type { Namespace } from "./namespaces";
 import type { Workload } from "./workloads";
-import { Container } from "./containers";
 
 export type Stat = {
   txBytes: number;

@@ -1,7 +1,7 @@
 import hashsum from "hash-sum";
+import type { Container } from "./containers";
 import type { Namespace } from "./namespaces";
 import type { Workload } from "./workloads";
-import { Container } from "./containers";
 
 export type TreePathHash = string;
 export type TreeClusterPath = { cluster: true };

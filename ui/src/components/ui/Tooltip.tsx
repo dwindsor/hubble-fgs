@@ -1,6 +1,7 @@
+import type { Placement } from "@floating-ui/react";
 import {
-  FloatingPortal,
   autoUpdate,
+  FloatingPortal,
   flip,
   offset,
   shift,
@@ -12,7 +13,6 @@ import {
   useMergeRefs,
   useRole,
 } from "@floating-ui/react";
-import type { Placement } from "@floating-ui/react";
 import * as React from "react";
 
 interface TooltipOptions {

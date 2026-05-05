@@ -3,15 +3,15 @@ import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationContainer, ApplicationNamespace, ApplicationWorkload } from "~/proto";
 import { useAppState } from "~/state/AppContext";
 import { colors } from "~/theme/colors";
+import { getContainerHash } from "~/utils/containers";
 import type { TreeContainerPath } from "~/utils/tree";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
+import css from "./Container.module.css";
+import { ContainerIcon } from "./Icons/ContainerIcon";
 import { ProcsList } from "./Proc";
 import { Statistic } from "./Statistic";
 import { TextOverflow } from "./TextOverflow";
-import css from "./Container.module.css";
-import { getContainerHash } from "~/utils/containers";
-import { ContainerIcon } from "./Icons/ContainerIcon";
 
 export interface ContainerProps {
   namespace: ApplicationNamespace;
@@ -55,8 +55,9 @@ export const ContainerItem = memo(function Container(props: ContainerProps) {
       <Collapsible
         path={path}
         summary={({ onClick }) => (
+          // biome-ignore lint/a11y/noStaticElementInteractions: <summary> is natively interactive inside <details>
           <summary className={entry.className} onClick={onClick}>
-            <div className={css.inner}>
+            <div className={css.internal}>
               <ContainerIcon
                 className={css.containerIcon}
                 size={14}

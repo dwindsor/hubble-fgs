@@ -1,4 +1,3 @@
-// biome-ignore lint/style/useNodejsImportProtocol: events it's the actual npm package
 import { EventEmitter } from "events";
 import type TypedEmitter from "typed-emitter";
 import type { ApplicationProcessGroup } from "~/proto";

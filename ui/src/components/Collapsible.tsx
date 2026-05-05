@@ -1,6 +1,6 @@
-import { type ReactNode, memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import { type TreePath, calcTreePathHash } from "~/utils/tree";
+import { calcTreePathHash, type TreePath } from "~/utils/tree";
 
 export interface Props {
   path: TreePath;

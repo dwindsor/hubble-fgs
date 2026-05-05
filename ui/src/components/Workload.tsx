@@ -7,11 +7,11 @@ import type { TreeWorkloadPath } from "~/utils/tree";
 import { getWorkloadHash } from "~/utils/workloads";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
+import { ContainersList } from "./Container";
 import { WorkloadIcon } from "./Icons/WorkloadIcon";
 import { Statistic } from "./Statistic";
 import { TextOverflow } from "./TextOverflow";
 import css from "./Workload.module.css";
-import { ContainersList } from "./Container";
 
 export interface WorkloadProps {
   namespace: ApplicationNamespace;
@@ -48,8 +48,9 @@ export const WorkloadItem = memo(function Workload(props: WorkloadProps) {
       <Collapsible
         path={path}
         summary={({ onClick }) => (
+          // biome-ignore lint/a11y/noStaticElementInteractions: <summary> is natively interactive inside <details>
           <summary className={entry.className} onClick={onClick}>
-            <div className={css.inner}>
+            <div className={css.internal}>
               <WorkloadIcon
                 className={css.workloadIcon}
                 size={14}

@@ -21,7 +21,8 @@
     "rules": {
       "recommended": true,
       "complexity": {
-        "noForEach": "off"
+        "noForEach": "off",
+        "noImportantStyles": "off"
       },
       "a11y": {
         "useKeyWithClickEvents": "off"

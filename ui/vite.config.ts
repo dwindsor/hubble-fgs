@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import react from "@vitejs/plugin-react";
 import postcssNesting from "postcss-nesting";
-import { type LibraryFormats, defineConfig } from "vite";
+import { defineConfig, type LibraryFormats } from "vite";
 import checker from "vite-plugin-checker";
 import dts from "vite-plugin-dts";
 import { libInjectCss } from "vite-plugin-lib-inject-css";
@@ -103,7 +103,7 @@ export default defineConfig(() => {
           root: root,
           tsconfigPath: path.resolve(root, "tsconfig.lib.json"),
           entryRoot: src,
-          rollupTypes: true,
+          bundleTypes: true,
         }),
       checker({
         typescript: { tsconfigPath: path.resolve(root, "tsconfig.json") },

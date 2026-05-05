@@ -40,13 +40,13 @@
   color: #444;
 }
 
-@property --ipt-color-entity-destination-inner-color-prop {
+@property --ipt-color-entity-destination-internal-color-prop {
   syntax: "<color>";
   initial-value: transparent;
   inherits: false;
 }
 
-@property --ipt-color-entity-destination-outer-color-prop {
+@property --ipt-color-entity-destination-external-color-prop {
   syntax: "<color>";
   initial-value: transparent;
   inherits: false;
@@ -71,33 +71,33 @@
 }
 
 .title {
-  --ipt-color-entity-destination-inner-color-prop: hsl(
-    from var(--ipt-color-entity-destination-inner) h s calc(l + 10)
+  --ipt-color-entity-destination-internal-color-prop: hsl(
+    from var(--ipt-color-entity-destination-internal) h s calc(l + 10)
   );
   display: inline-block;
   padding-left: 5px;
   border-radius: 3px 0 0 3px;
   background: linear-gradient(
     to right,
-    var(--ipt-color-entity-destination-inner-color-prop),
+    var(--ipt-color-entity-destination-internal-color-prop),
     var(--ipt-color-page) 50%
   );
   transition:
-    --ipt-color-entity-destination-inner-color-prop 1s ease-out,
+    --ipt-color-entity-destination-internal-color-prop 1s ease-out,
     text-shadow 1s ease-in;
 }
 
-.entityDestinationOuter .title {
-  --ipt-color-entity-destination-outer-color-prop: hsl(
-    from var(--ipt-color-entity-destination-outer) h s calc(l + 20)
+.entityDestinationExternal .title {
+  --ipt-color-entity-destination-external-color-prop: hsl(
+    from var(--ipt-color-entity-destination-external) h s calc(l + 20)
   );
   background: linear-gradient(
     to right,
-    var(--ipt-color-entity-destination-outer-color-prop),
+    var(--ipt-color-entity-destination-external-color-prop),
     var(--ipt-color-page) 50%
   );
   transition:
-    --ipt-color-entity-destination-outer-color-prop 1s ease-in,
+    --ipt-color-entity-destination-external-color-prop 1s ease-in,
     text-shadow 1s ease-in;
 }
 
@@ -177,21 +177,21 @@
 .endpoint:hover,
 .endpoint.highlighted {
   :global(.ipt-tree-item-stat) {
-    color: hsl(from var(--ipt-color-entity-destination-inner) h s calc(l - 30));
+    color: hsl(from var(--ipt-color-entity-destination-internal) h s calc(l - 30));
   }
 
   .title {
-    --ipt-color-entity-destination-inner-color-prop: hsl(
-      from var(--ipt-color-entity-destination-inner) h s calc(l + 5)
+    --ipt-color-entity-destination-internal-color-prop: hsl(
+      from var(--ipt-color-entity-destination-internal) h s calc(l + 5)
     );
     text-shadow:
       -0.25px 0px 0 currentColor,
       0.25px 0px 0 currentColor;
   }
 
-  &.entityDestinationOuter .title {
-    --ipt-color-entity-destination-outer-color-prop: hsl(
-      from var(--ipt-color-entity-destination-outer) h s calc(l + 5)
+  &.entityDestinationExternal .title {
+    --ipt-color-entity-destination-external-color-prop: hsl(
+      from var(--ipt-color-entity-destination-external) h s calc(l + 5)
     );
   }
 
@@ -229,10 +229,10 @@
   color: hsl(from var(--ipt-color-text-muted) h s calc(l - 5));
 }
 
-.endpoint.entityDestinationOuter {
+.endpoint.entityDestinationExternal {
   .pin,
   :global(.ipt-tree-item-stat) {
-    color: hsl(from var(--ipt-color-entity-destination-outer) h s calc(l - 10)) !important;
+    color: hsl(from var(--ipt-color-entity-destination-external) h s calc(l - 10)) !important;
   }
 }
 
@@ -257,9 +257,9 @@
   }
 }
 
-.endpoint.entityDestinationOuter.highlighted {
+.endpoint.entityDestinationExternal.highlighted {
   :global(.ipt-tree-item-stat) {
-    color: var(--ipt-color-entity-destination-outer) !important;
+    color: var(--ipt-color-entity-destination-external) !important;
   }
 }
 

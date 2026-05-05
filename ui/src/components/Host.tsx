@@ -26,8 +26,9 @@ export const Host = memo(function Host(props: HostProps) {
     <Collapsible
       path={TREE_HOST_PATH}
       summary={({ onClick }) => (
+        // biome-ignore lint/a11y/noStaticElementInteractions: <summary> is natively interactive inside <details>
         <summary className={entry.className} onClick={onClick}>
-          <div className={css.inner}>
+          <div className={css.internal}>
             <HostIcon
               className={css.icon}
               size={14}

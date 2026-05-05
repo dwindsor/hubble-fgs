@@ -38,37 +38,22 @@
     "noUnusedParameters": true,
     "noImplicitOverride": true,
     "noErrorTruncation": true,
-    "types": [
-      "vite/client"
-    ],
+    "types": ["vite/client"],
     "paths": {
-      "~/*": [
-        "./src/*"
-      ],
-      "@ipa/*": [
-        "../vendor/github.com/isovalent/ipa/*"
-      ],
-      "@bufbuild/protobuf": [
-        "./node_modules/@bufbuild/protobuf/dist/esm/index.d.ts"
-      ],
-      "@bufbuild/protobuf/wkt": [
-        "./node_modules/@bufbuild/protobuf/dist/esm/wkt/index.d.ts"
-      ],
+      "~/*": ["./src/*"],
+      "@ipa/*": ["../vendor/github.com/isovalent/ipa/*"],
+      "@bufbuild/protobuf": ["./node_modules/@bufbuild/protobuf/dist/esm/index.d.ts"],
+      "@bufbuild/protobuf/wkt": ["./node_modules/@bufbuild/protobuf/dist/esm/wkt/index.d.ts"],
       "@bufbuild/protobuf/codegenv2": [
         "./node_modules/@bufbuild/protobuf/dist/esm/codegenv2/index.d.ts"
       ]
     }
   },
-  "files": [
-    "./vite.config.ts",
-    "./postcss.config.cjs"
-  ],
+  "files": ["./vite.config.ts", "./postcss.config.cjs"],
   "include": [
     "./src/**/*",
     "../vendor/github.com/isovalent/ipa/application_model/**/*",
     "../vendor/github.com/isovalent/ipa/common/k8s/**/*"
   ],
-  "exclude": [
-    "./node_modules/*"
-  ]
+  "exclude": ["./node_modules/*"]
 }

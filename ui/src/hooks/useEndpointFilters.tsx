@@ -4,7 +4,7 @@ import { useAppState } from "~/state/AppContext";
 import { DestinationFilterKind, DestinationKind } from "~/utils/destination";
 import { type Endpoint, EndpointKind, inferEndpointSubKind } from "~/utils/endpoints";
 import { FileEventFilterKind } from "~/utils/file-event";
-import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
+import { getQueryParam, setQueryParam, UrlParams } from "~/utils/url";
 
 export type FilterKind = DestinationFilterKind | FileEventFilterKind;
 
@@ -74,15 +74,15 @@ function checkEndpointPassesFilters(filters: Set<FilterKind>, endpoint: Endpoint
   if ("port" in endpoint) {
     const subKind = inferEndpointSubKind(endpoint, EndpointKind.Destination);
     if (
-      (subKind === DestinationKind.OuterIp || subKind === DestinationKind.OuterDns) &&
-      filters.has(DestinationFilterKind.Outer)
+      (subKind === DestinationKind.ExternalIp || subKind === DestinationKind.ExternalDns) &&
+      filters.has(DestinationFilterKind.External)
     ) {
       return true;
     }
 
     if (
-      (subKind === DestinationKind.InnerIp || subKind === DestinationKind.InnerDns) &&
-      filters.has(DestinationFilterKind.Inner)
+      (subKind === DestinationKind.InternalIp || subKind === DestinationKind.InternalDns) &&
+      filters.has(DestinationFilterKind.Internal)
     ) {
       return true;
     }

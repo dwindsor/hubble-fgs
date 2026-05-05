@@ -114,8 +114,9 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
         <Collapsible
           path={info.path}
           summary={({ onClick }) => (
+            // biome-ignore lint/a11y/noStaticElementInteractions: <summary> is natively interactive inside <details>
             <summary className={entry.className} onClick={onClick}>
-              <div className={css.inner}>
+              <div className={css.internal}>
                 <Binary name={props.proc.name} /> <Arguments arguments={props.proc.arguments} />
                 {tooltipAvailable && <ProcTooltip proc={props.proc} />}
                 {entry.stat && <Statistic stat={entry.stat} />}
@@ -133,7 +134,7 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
           />
         </Collapsible>
       ) : (
-        <div className={clsx(css.inner, entry.className)}>
+        <div className={clsx(css.internal, entry.className)}>
           <Binary name={props.proc.name} /> <Arguments arguments={props.proc.arguments} />
           {tooltipAvailable && <ProcTooltip proc={props.proc} />}
           {entry.stat && <Statistic stat={entry.stat} />}

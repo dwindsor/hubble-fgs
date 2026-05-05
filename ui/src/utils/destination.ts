@@ -6,10 +6,10 @@ import { capitalizeFirstLetter } from "./strings";
 import { workloadKindAsHumanString } from "./workloads";
 
 export const DestinationKind = Enum({
-  OuterIp: "destination-outer-ip",
-  InnerIp: "destination-inner-ip",
-  OuterDns: "destination-outer-dns",
-  InnerDns: "destination-inner-dns",
+  ExternalIp: "destination-external-ip",
+  InternalIp: "destination-internal-ip",
+  ExternalDns: "destination-external-dns",
+  InternalDns: "destination-internal-dns",
   Kubernetes: "destination-kubernetes",
   HostMetadataService: "destination-host-metadata-service",
   Other: "destination-other",
@@ -17,141 +17,122 @@ export const DestinationKind = Enum({
 export type DestinationKind = EnumType<typeof DestinationKind>;
 
 export const DestinationFilterKind = Enum({
-  Inner: "destination-inner",
-  Outer: "destination-outer",
+  Internal: "destination-internal",
+  External: "destination-external",
   Kubernetes: "destination-kubernetes",
   Other: "destination-other",
 });
 export type DestinationFilterKind = EnumType<typeof DestinationFilterKind>;
 
-export function inferEndpointDestinationKind(destination: Destination): DestinationKind {
+type NormalizedDestination =
+  | { case: "ip"; ip: string | undefined }
+  | { case: "workload"; hashPart: string; titlePart: string }
+  | { case: "dns"; names: string[] }
+  | { case: "unknown" };
+
+function normalize(destination: Destination): NormalizedDestination {
   if ("type" in destination) {
     switch (destination.type.case) {
-      case "ip": {
-        if (destination.type.value.ip === "169.254.169.254:80") {
-          return DestinationKind.HostMetadataService;
-        }
-        const ranges = {
-          inner: specialIps,
-        };
-        const type = ipaddr.subnetMatch(
-          ipaddr.parse(destination.type.value.ip ?? ""),
-          ranges,
-          "outer",
-        );
-        return type === "inner" ? DestinationKind.InnerIp : DestinationKind.OuterIp;
-      }
-
+      case "ip":
+        return { case: "ip", ip: destination.type.value.ip };
       case "workload": {
-        return DestinationKind.Kubernetes;
+        const { namespace, kind, name } = destination.type.value;
+        const titleNs = namespace ?? "<undefined>";
+        const titleName = name ?? "<undefined>";
+        return {
+          case: "workload",
+          hashPart: `${namespace}/${kind}/${name}`,
+          titlePart: `${titleNs}/${kind}:${titleName}`,
+        };
       }
-
-      case "dns": {
-        const dns = destination.type.value.destination_names[0] ?? "";
-        if (
-          (dns.startsWith("ip-") && dns.endsWith(".internal")) ||
-          dns.endsWith(".svc.cluster.local")
-        ) {
-          return DestinationKind.InnerDns;
-        }
-        return DestinationKind.OuterDns;
-      }
+      case "dns":
+        return { case: "dns", names: destination.type.value.destination_names ?? [] };
       default:
-        break;
-    }
-  } else {
-    if ("ip" in destination) {
-      if (destination.ip?.ip === "169.254.169.254:80") {
-        return DestinationKind.HostMetadataService;
-      }
-      const ranges = {
-        inner: specialIps,
-      };
-      const type = ipaddr.subnetMatch(ipaddr.parse(destination.ip?.ip ?? ""), ranges, "outer");
-      return type === "inner" ? DestinationKind.InnerIp : DestinationKind.OuterIp;
-    }
-
-    if ("workload" in destination) {
-      return DestinationKind.Kubernetes;
-    }
-
-    if ("dns" in destination) {
-      const dns = destination.dns?.destination_names[0] ?? "";
-      if (
-        (dns.startsWith("ip-") && dns.endsWith(".internal")) ||
-        dns.endsWith(".svc.cluster.local")
-      ) {
-        return DestinationKind.InnerDns;
-      }
-      return DestinationKind.OuterDns;
+        return { case: "unknown" };
     }
   }
+  if ("ip" in destination) {
+    return { case: "ip", ip: destination.ip?.ip };
+  }
+  if ("workload" in destination) {
+    const { namespace, kind = WorkloadKind.Unspecified, name } = destination.workload ?? {};
+    const titleNs = namespace ?? "<undefined>";
+    const titleName = name ?? "<undefined>";
+    return {
+      case: "workload",
+      hashPart: `${namespace}/${kind}/${name}`,
+      titlePart: `${titleNs}/${capitalizeFirstLetter(workloadKindAsHumanString(kind))}:${titleName}`,
+    };
+  }
+  if ("dns" in destination) {
+    return { case: "dns", names: destination.dns?.destination_names ?? [] };
+  }
+  return { case: "unknown" };
+}
 
-  return DestinationKind.Other;
+function classifyIp(ip: string): DestinationKind {
+  if (ip === "169.254.169.254:80") {
+    return DestinationKind.HostMetadataService;
+  }
+  const type = ipaddr.subnetMatch(ipaddr.parse(ip), { internal: specialIps }, "external");
+  return type === "internal" ? DestinationKind.InternalIp : DestinationKind.ExternalIp;
+}
+
+function classifyDns(name: string): DestinationKind {
+  const n = name.replace(/\.$/, "").toLowerCase();
+  if (n === "" || n === "localhost") return DestinationKind.InternalDns;
+  if (ipaddr.isValid(n)) {
+    return classifyIp(n) === DestinationKind.InternalIp
+      ? DestinationKind.InternalDns
+      : DestinationKind.ExternalDns;
+  }
+  if (n.startsWith("ip-") && n.endsWith(".internal")) return DestinationKind.InternalDns;
+  if (n.endsWith(".local")) return DestinationKind.InternalDns;
+  return DestinationKind.ExternalDns;
+}
+
+export function inferEndpointDestinationKind(destination: Destination): DestinationKind {
+  const n = normalize(destination);
+  switch (n.case) {
+    case "ip":
+      return classifyIp(n.ip ?? "");
+    case "workload":
+      return DestinationKind.Kubernetes;
+    case "dns":
+      return classifyDns(n.names.find((x) => x !== "") ?? "");
+    case "unknown":
+      return DestinationKind.Other;
+  }
 }
 
 export function inferEndpointDestinationHash(destination: Destination): string {
   const { port } = destination;
-
-  if ("type" in destination) {
-    switch (destination.type.case) {
-      case "ip":
-        return `destination/${destination.type.value.ip}:${port}`;
-      case "workload":
-        return `destination/${destination.type.value.namespace}/${destination.type.value.kind}/${destination.type.value.name}:${port}`;
-      case "dns":
-        return `destination/{${[...(destination.type.value.destination_names ?? [])].sort().join(",")}}:${port}`;
-      default:
-        break;
-    }
-  } else {
-    if ("ip" in destination) {
-      return `destination/${destination.ip?.ip}:${port}`;
-    }
-    if ("workload" in destination) {
-      return `destination/${destination.workload?.namespace}/${destination.workload?.kind}/${destination.workload?.name}:${port}`;
-    }
-    if ("dns" in destination) {
-      return `destination/{${[...(destination.dns?.destination_names ?? [])].sort().join(",")}}:${port}`;
-    }
+  const n = normalize(destination);
+  switch (n.case) {
+    case "ip":
+      return `destination/${n.ip}:${port}`;
+    case "workload":
+      return `destination/${n.hashPart}:${port}`;
+    case "dns":
+      return `destination/{${[...n.names].sort().join(",")}}:${port}`;
+    case "unknown":
+      return "destination/<undefined>";
   }
-  return "destination/<undefined>";
 }
 
 export function inferEndpointDestinationTitle(destination: Destination): string {
-  if ("type" in destination) {
-    switch (destination.type.case) {
-      case "ip":
-        return destination.type.value.ip ?? "<undefined>";
-      case "workload": {
-        const {
-          namespace = "<undefined>",
-          kind,
-          name = "<undefined>",
-        } = destination.type.value ?? {};
-        return `${namespace}/${kind}:${name}`;
-      }
-      case "dns": {
-        return `${[...(destination.type.value.destination_names ?? [])].sort().join(",")}`;
-      }
-      default:
-        break;
-    }
-  } else {
-    if ("ip" in destination) {
-      return destination.ip?.ip ?? "<undefined>";
-    }
-    if ("workload" in destination) {
-      const {
-        namespace = "<undefined>",
-        kind = WorkloadKind.Unspecified,
-        name = "<undefined>",
-      } = destination.workload ?? {};
-      return `${namespace}/${capitalizeFirstLetter(workloadKindAsHumanString(kind))}:${name}`;
-    }
-    if ("dns" in destination) {
-      return `${[...(destination.dns?.destination_names ?? [])].sort().join(",")}`;
-    }
+  const n = normalize(destination);
+  switch (n.case) {
+    case "ip":
+      return n.ip ?? "<undefined>";
+    case "workload":
+      return n.titlePart;
+    case "dns":
+      return n.names
+        .filter((x) => x !== "")
+        .sort()
+        .join(",");
+    case "unknown":
+      return "<undefined>";
   }
-  return "<undefined>";
 }

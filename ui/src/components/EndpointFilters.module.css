@@ -29,8 +29,8 @@
         margin-right: 3px;
       }
     }
-    &.entity-destination-outer {
-      --color: var(--ipt-color-entity-destination-outer);
+    &.entity-destination-external {
+      --color: var(--ipt-color-entity-destination-external);
       button {
         border: 1px solid var(--color);
         background: var(--color);
@@ -66,8 +66,8 @@
         }
       }
     }
-    &.entity-destination-inner {
-      --color: var(--ipt-color-entity-destination-inner);
+    &.entity-destination-internal {
+      --color: var(--ipt-color-entity-destination-internal);
       button {
         border: 1px solid hsl(from var(--color) h s calc(l - 10));
         background: hsl(from var(--color) h s calc(l - 10));

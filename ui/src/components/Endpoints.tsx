@@ -5,7 +5,7 @@ import { type EndpointFiltersState, useEndpointFilters } from "~/hooks/useEndpoi
 import { type AppState, useAppState } from "~/state/AppContext";
 import { type Endpoint, EndpointModeKind, endpointsKindOrder } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
-import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
+import { getQueryParam, setQueryParam, UrlParams } from "~/utils/url";
 import { EndpointItem } from "./Endpoint";
 import { EndpointFilters } from "./EndpointFilters";
 import css from "./Endpoints.module.css";
@@ -41,8 +41,11 @@ export const Endpoints = memo(function Endpoints() {
   );
 
   const isEmptySearchResult = useMemo(() => {
+    const hasSearchOrVisible = endpoints.list.some(
+      ({ kind }) => kind === EndpointItemKind.Search || kind === EndpointItemKind.Visible,
+    );
     return (
-      (searchQuery.length > 0 && endpoints.list[0]?.kind !== EndpointItemKind.Search) ||
+      (searchQuery.length > 0 && !hasSearchOrVisible) ||
       (endpoints.filters.value.size > 0 && endpoints.list.length === 0)
     );
   }, [searchQuery, endpoints]);
@@ -69,12 +72,6 @@ export const Endpoints = memo(function Endpoints() {
         </div>
       </div>
       <div ref={ref} className={css.endpointsList}>
-        {isEmptySearchResult && (
-          <div className={css.emptySearch}>
-            <div className={css.emptySearchTitle}>Entries not found</div>
-            <hr />
-          </div>
-        )}
         {isNotShowingEndpoints && (
           <div className={css.noEndpoints}>
             <div className={css.noEndpointsTitle}>
@@ -85,13 +82,22 @@ export const Endpoints = memo(function Endpoints() {
         {endpoints.list.map(({ kind, endpoint }, idx) => {
           const endpointInfo = state.endpointsMap.get(endpoint);
           const prev = endpoints.list[idx - 1];
+          const isSectionStart = !prev || prev.kind !== kind;
+          const showHeader = isSectionStart && endpoints.sectionCount > 1;
           return (
             <React.Fragment key={endpointInfo?.hash ?? idx}>
               {prev && prev.kind !== kind && <hr />}
+              {showHeader && <div className={css.sectionHeader}>{sectionTitle(kind)}</div>}
               <EndpointItem endpoint={endpoint} />
             </React.Fragment>
           );
         })}
+        {isEmptySearchResult && (
+          <div className={css.emptySearch}>
+            {endpoints.list.length > 0 && <hr />}
+            <div className={css.emptySearchTitle}>Entries not found</div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -128,10 +134,30 @@ function useEndpoints(searchQuery: string) {
     });
   }, [state, debouncedUpdate]);
 
-  return useMemo(() => ({ list, filters }), [list, filters]);
+  const sectionCount = useMemo(() => {
+    const kinds = new Set<EndpointItemKind>();
+    for (const { kind } of list) {
+      kinds.add(kind);
+    }
+    return kinds.size;
+  }, [list]);
+
+  return useMemo(() => ({ list, filters, sectionCount }), [list, filters, sectionCount]);
+}
+
+function sectionTitle(kind: EndpointItemKind): string {
+  switch (kind) {
+    case EndpointItemKind.Pinned:
+      return "Pinned";
+    case EndpointItemKind.Visible:
+      return "From visible processes";
+    case EndpointItemKind.Search:
+      return "Search results";
+  }
 }
 
 const EndpointItemKind = Enum({
+  Pinned: "pinned",
   Search: "search",
   Visible: "visible",
 });
@@ -145,6 +171,7 @@ function createEndpointsList(
   query: string,
   filters: EndpointFiltersState,
 ): EndpointsList {
+  const pinnedEndpoints = new Set<Endpoint>();
   const visibleEndpoints = new Set<Endpoint>();
   const searchEndpoints = new Set<Endpoint>();
 
@@ -156,7 +183,7 @@ function createEndpointsList(
 
   state.highlightedEndpointsMap.forEach((modes, endpoint) => {
     if (modes.has(EndpointModeKind.Pinned)) {
-      addEndpoint(visibleEndpoints, endpoint);
+      addEndpoint(pinnedEndpoints, endpoint);
     }
   });
 
@@ -178,18 +205,24 @@ function createEndpointsList(
     });
   }
 
+  pinnedEndpoints.forEach((endpoint) => {
+    visibleEndpoints.delete(endpoint);
+    searchEndpoints.delete(endpoint);
+  });
+
   visibleEndpoints.forEach((endpoint) => {
     searchEndpoints.delete(endpoint);
   });
 
+  const sortedPinnedEndpoints = sortEndpoints(state, pinnedEndpoints);
   const sortedVisibleEndpoints = sortEndpoints(state, visibleEndpoints);
   const sortedSearchEndpoints = sortEndpoints(state, searchEndpoints);
 
   const list: EndpointsList = [];
 
   list.push(
-    ...sortedSearchEndpoints.map((endpoint) => ({
-      kind: EndpointItemKind.Search,
+    ...sortedPinnedEndpoints.map((endpoint) => ({
+      kind: EndpointItemKind.Pinned,
       endpoint,
     })),
   );
@@ -197,6 +230,13 @@ function createEndpointsList(
   list.push(
     ...sortedVisibleEndpoints.map((endpoint) => ({
       kind: EndpointItemKind.Visible,
+      endpoint,
+    })),
+  );
+
+  list.push(
+    ...sortedSearchEndpoints.map((endpoint) => ({
+      kind: EndpointItemKind.Search,
       endpoint,
     })),
   );

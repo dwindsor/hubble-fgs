@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { type ReactNode, memo } from "react";
+import { memo, type ReactNode } from "react";
 
 import { colors } from "~/theme/colors";
 import css from "./Icon.module.css";

@@ -8,16 +8,16 @@ import {
   inferEndpointHash,
   inferEndpointSubKind,
 } from "~/utils/endpoints";
-import { type ProcessesMap, getProcHash, isSuspiciousProc } from "~/utils/procs";
+import { getProcHash, isSuspiciousProc, type ProcessesMap } from "~/utils/procs";
 import {
-  type StatState,
-  type TreeEntryStat,
   advanceEndpointStat,
   advanceEndpointStatMap,
   advanceStat,
   createStat,
   createStatState,
   createTreeEntryStat,
+  type StatState,
+  type TreeEntryStat,
 } from "~/utils/stat";
 import { ThrowableMap } from "~/utils/throwable-map";
 import type { TreeContainerProcPath, TreeHostProcPath } from "~/utils/tree";

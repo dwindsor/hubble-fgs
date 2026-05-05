@@ -13,8 +13,8 @@ export interface Props {
 }
 
 const CLASS_NAMES = {
-  [DestinationKind.OuterIp]: css.entityDestinationOuter,
-  [DestinationKind.OuterDns]: css.entityDestinationOuter,
+  [DestinationKind.ExternalIp]: css.entityDestinationExternal,
+  [DestinationKind.ExternalDns]: css.entityDestinationExternal,
   [DestinationKind.Kubernetes]: css.entityDestinationKubernetes,
   [DestinationKind.HostMetadataService]: css.entityDestinationKubernetes,
   [FileEventKind.Read]: css.entityFileEventRead,

@@ -1,11 +1,9 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { useAppState } from "~/state/AppContext";
-
 import clsx from "clsx";
-import React from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useConnector } from "~/hooks/useConnector";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import { type ApplicationProcessGroup, type Destination, FileEventKind } from "~/proto";
+import { useAppState } from "~/state/AppContext";
 import { DestinationKind } from "~/utils/destination";
 import {
   type Endpoint,
@@ -15,7 +13,7 @@ import {
   inferEndpointTitle,
 } from "~/utils/endpoints";
 import { isSuspiciousProc } from "~/utils/procs";
-import { type Stat, advanceStat, createStat } from "~/utils/stat";
+import { advanceStat, createStat, type Stat } from "~/utils/stat";
 import type { TreePath } from "~/utils/tree";
 import css from "./Endpoint.module.css";
 import { ExpandVerticalIcon } from "./Icons/ExpandVerticalIcon";
@@ -155,6 +153,7 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
   });
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: endpoint row behaves like a pinnable list item, not a button
     <div
       className={className}
       onMouseEnter={onMouseEnter}
@@ -189,7 +188,7 @@ function renderEndpoint(
           )}
         </>
       );
-    case DestinationKind.OuterDns:
+    case DestinationKind.ExternalDns:
       return (
         <span className={css.title}>
           {isPinned && <Pin />}
@@ -203,8 +202,8 @@ function renderEndpoint(
           )}
         </span>
       );
-    case DestinationKind.OuterIp:
-    case DestinationKind.InnerIp:
+    case DestinationKind.ExternalIp:
+    case DestinationKind.InternalIp:
     case DestinationKind.HostMetadataService:
       return (
         <>
@@ -247,9 +246,9 @@ function renderEndpoint(
 
 function classNameFromEndpointInfo(endpointInfo: EndpointInfo): string | null {
   switch (endpointInfo.subKind) {
-    case DestinationKind.OuterIp:
-    case DestinationKind.OuterDns:
-      return css.entityDestinationOuter;
+    case DestinationKind.ExternalIp:
+    case DestinationKind.ExternalDns:
+      return css.entityDestinationExternal;
     case DestinationKind.Kubernetes:
     case DestinationKind.HostMetadataService:
       return css.entityDestinationKubernetes;
@@ -279,7 +278,8 @@ function IpEndpoint(props: { ip: string; port: string | null; isPinned: boolean 
       {parts.map((part, idx) => {
         const isLast = idx === lastIdx;
         return (
-          <React.Fragment key={`${idx}:${part}`}>
+          // biome-ignore lint/suspicious/noArrayIndexKey: octets have no stable identity beyond position; list is derived from props.ip and never reordered
+          <React.Fragment key={idx}>
             <span className={css.ipPart}>{part}</span>
             {!isLast && <span className={css.separator}>{separator}</span>}
           </React.Fragment>
@@ -294,7 +294,7 @@ function KubernetesEndpoint(props: { title: string; port: string | null; isPinne
   const state = useAppState();
 
   const { workloadName, workloadKind, workloadNamespace } = useMemo(() => {
-    const parts = props.title.split(/[\/:]/);
+    const parts = props.title.split(/[/:]/);
     return {
       workloadNamespace: parts[0],
       workloadKind: parts[1],
@@ -332,6 +332,7 @@ function KubernetesEndpoint(props: { title: string; port: string | null; isPinne
       <span className={css.entityDestinationKubernetesKind}>{workloadKind}</span>
       <Tooltip>
         <TooltipTrigger asChild>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: decorative expand affordance inside a Tooltip trigger */}
           <span className={css.entityDestinationKubernetesExpandLink} onClick={onClickExpandLink}>
             <ExpandVerticalIcon size={12} color="transparent" />
           </span>

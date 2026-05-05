@@ -1,10 +1,10 @@
-import * as ProtoAppModel from "@ipa/application_model/v1alpha/application_model_pb";
+import type * as ProtoAppModel from "@ipa/application_model/v1alpha/application_model_pb";
 import {
-  WorkloadKindSchema,
   WorkloadKind as ProtoWorkloadKind,
+  WorkloadKindSchema,
 } from "@ipa/common/k8s/type/v1alpha/workload_pb";
 import type { ObjectToSnake } from "ts-case-convert";
-import { type EnumType, createEnumFromProto } from "~/utils/enum";
+import { createEnumFromProto, type EnumType } from "~/utils/enum";
 import type { DeepPartial } from "~/utils/types";
 
 export type ApplicationModelEvent = ObjectToSnake<DeepPartial<ProtoAppModel.ApplicationModelEvent>>;
