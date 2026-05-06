@@ -558,3 +558,8 @@ func forwardOutput(reader io.ReadCloser, cmdName, streamType string) {
 	}
 	mu.Unlock()
 }
+
+type NotPresent struct {
+	Host       Binaries
+	Namespaces Namespaces
+}

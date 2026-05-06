@@ -59,6 +59,185 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
+	"NotPresentHostBinary": {
+		Host: model.Binaries{
+			{
+				Cmd:  "/usr/bin/bash",
+				Args: []string{"-c", "echo some command"},
+			},
+		},
+		NotInModel: model.NotPresent{
+			Host: model.Binaries{
+				{
+					Cmd: "not-a-real-command",
+				},
+			},
+		},
+	},
+
+	"NotPresentHostBinaryArgsMismatch": {
+		Host: model.Binaries{
+			{
+				Cmd:  "/usr/bin/bash",
+				Args: []string{"-c", "echo some other command"},
+			},
+		},
+		NotInModel: model.NotPresent{
+			Host: model.Binaries{
+				{
+					Cmd:  "/usr/bin/bash",
+					Args: []string{"-c", "echo this command is not run"},
+				},
+			},
+		},
+	},
+
+	"NotPresentNamespace": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"present-pod": {
+					Containers: model.Containers{
+						"present-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"infinity"},
+							},
+						},
+					},
+				},
+			},
+		},
+		NotInModel: model.NotPresent{
+			Namespaces: model.Namespaces{
+				"not-a-real-namespace": {},
+			},
+		},
+	},
+
+	"NotPresentWorkload": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"present-pod-2": {
+					Containers: model.Containers{
+						"present-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"infinity"},
+							},
+						},
+					},
+				},
+			},
+		},
+		NotInModel: model.NotPresent{
+			Namespaces: model.Namespaces{
+				"default": {
+					"not-a-real-pod": {},
+				},
+			},
+		},
+	},
+
+	"NotPresentContainer": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"present-pod-3": {
+					Containers: model.Containers{
+						"present-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"infinity"},
+							},
+						},
+					},
+				},
+			},
+		},
+		NotInModel: model.NotPresent{
+			Namespaces: model.Namespaces{
+				"default": {
+					"present-pod-3": {
+						Containers: model.Containers{
+							"not-a-real-container": {},
+						},
+					},
+				},
+			},
+		},
+	},
+
+	"NotPresentContainerProcess": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"present-pod-4": {
+					Containers: model.Containers{
+						"present-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"infinity"},
+							},
+						},
+					},
+				},
+			},
+		},
+		NotInModel: model.NotPresent{
+			Namespaces: model.Namespaces{
+				"default": {
+					"present-pod-4": {
+						Containers: model.Containers{
+							"present-container": {
+								ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+								Cmd: model.Binary{
+									Cmd: "not-a-real-process",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+
+	"NotPresentContainerProcessArgsMismatch": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"present-pod-5": {
+					Containers: model.Containers{
+						"present-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"infinity"},
+							},
+						},
+					},
+				},
+			},
+		},
+		NotInModel: model.NotPresent{
+			Namespaces: model.Namespaces{
+				"default": {
+					"present-pod-5": {
+						Containers: model.Containers{
+							"present-container": {
+								ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+								Cmd: model.Binary{
+									Cmd:  "/bin/sleep",
+									Args: []string{"1"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+
 	"AdditionalHostProcesses": {
 		Host: model.Binaries{
 			{

@@ -51,6 +51,9 @@ type TestCase struct {
 	// TestCase will call server.GetModel and tc.modelCheck to compare the
 	// generated application model against the contents of Host/Namespaces.
 	Steps []func(ctx context.Context, tb testing.TB, tc *TestCase, server *server.Server, harness *harness.Harness)
+
+	// A set of host processes and namespaces that must *not* be present in the application model.
+	NotInModel model.NotPresent
 }
 
 func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Server, harness *harness.Harness) {
@@ -85,6 +88,9 @@ func (tc *TestCase) modelCheck(ctx context.Context, tb testing.TB, server *serve
 
 	assert.True(tb, checkProcesses(tb, tc.Host, amodel.Host.Processes, false), "host process checks failed")
 	assert.True(tb, checkNamespaces(tb, tc.Namespaces, amodel.Namespaces), "namespace checks failed")
+
+	assert.True(tb, checkNotPresentProcesses(tb, tc.NotInModel.Host, amodel.Host.Processes, false), "host not present process checks failed")
+	assert.True(tb, checkNotPresentNamespaces(tb, tc.NotInModel.Namespaces, amodel.Namespaces), "not present namespace checks failed")
 }
 
 func checkNamespaces(tb testing.TB, checks model.Namespaces, namespaces []*v1alpha.ApplicationNamespace) bool {
@@ -193,6 +199,110 @@ func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.A
 	}
 
 	return cl.AssertComplete(tb)
+}
+
+func checkNotPresentNamespaces(tb testing.TB, checks model.Namespaces, namespaces []*v1alpha.ApplicationNamespace) bool {
+
+	ok := true
+
+	for _, namespace := range namespaces {
+		check, exists := checks[namespace.Name]
+		if !exists {
+			continue
+		}
+
+		if len(check) == 0 {
+			// Don't care about contents, if the namespace is present, it's a failure.
+			assert.Fail(tb, fmt.Sprintf("unexpected namespace present: %s", namespace.Name))
+			ok = false
+		} else {
+			if !checkNotPresentWorkloads(tb, check, namespace.Workloads) {
+				ok = false
+			}
+		}
+	}
+
+	return ok
+}
+
+func checkNotPresentWorkloads(tb testing.TB, checks model.Pods, workloads []*v1alpha.ApplicationWorkload) bool {
+	ok := true
+
+	for _, workload := range workloads {
+		check, exists := checks[workload.Name]
+		if !exists {
+			continue
+		}
+
+		if len(check.Containers) == 0 {
+			// Don't care about contents, if the workload is present, it's a failure.
+			assert.Fail(tb, fmt.Sprintf("unexpected workload present: %s", workload.Name))
+			ok = false
+		} else {
+			if !checkNotPresentContainers(tb, check.Containers, workload.Containers) {
+				ok = false
+			}
+		}
+	}
+
+	return ok
+}
+
+func checkNotPresentContainers(tb testing.TB, checks model.Containers, containers []*v1alpha.ApplicationContainer) bool {
+	ok := true
+
+	for _, container := range containers {
+		check, exists := checks[container.Name]
+		if !exists {
+			continue
+		}
+		if check.Cmd.Cmd == "" {
+			// Don't care about contents, if the container is present, it's a failure.
+			assert.Fail(tb, fmt.Sprintf("unexpected container present: %s", container.Name))
+			ok = false
+		} else {
+			if !checkNotPresentProcesses(tb, []model.Binary{check.Cmd}, container.Processes, true) {
+				ok = false
+			}
+		}
+	}
+
+	return ok
+}
+
+func checkNotPresentProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.ApplicationProcessGroup, isContainer bool) bool {
+	ok := true
+
+	for _, check := range checks {
+
+		var binary string
+		if !isContainer {
+			binary = utils.FixupBinaryPathname(check.Cmd)
+		} else {
+			binary = check.Cmd
+		}
+
+		// Fixup args containing spaces to match app model encoding
+		var args []string
+		for _, arg := range check.Args {
+			if strings.ContainsRune(arg, ' ') {
+				args = append(args, fmt.Sprintf("%q", arg))
+				continue
+			}
+			args = append(args, arg)
+		}
+
+		expectedArgs := strings.Join(args, " ")
+
+		for _, process := range processes {
+			if process.Name == binary && process.Arguments == expectedArgs {
+				assert.Fail(tb, fmt.Sprintf("unexpected process present: %s %s", binary, expectedArgs))
+				ok = false
+			}
+		}
+	}
+
+	return ok
 }
 
 func (tc *TestCase) modelSetup(ctx context.Context, tb testing.TB, harness *harness.Harness) error {
