@@ -202,7 +202,7 @@ jobs:
           cpu-kind: host
           arch: ${{ inputs.arch }}
           cmd: |
-            set -eux
+            set -euxo pipefail
 
             systemd-detect-virt
             systemd-detect-virt | grep -Eiq 'kvm|qemu' || { echo 'No KVM or QEMU support detected! Bailing out...'; exit 1; }
@@ -232,9 +232,9 @@ jobs:
 
             export CGO_ENABLED=0
             if [[ ${{ matrix.variation }} != LSEG ]]; then
-              make test-nodeps
+              make test-nodeps 2>&1 | tee /tmp/test-output-${{ inputs.arch }}-${{ matrix.kernel }}-${{ matrix.variation }}.log
             else
-              make test-nodeps-lseg
+              make test-nodeps-lseg 2>&1 | tee /tmp/test-output-${{ inputs.arch }}-${{ matrix.kernel }}-${{ matrix.variation }}.log
             fi
 
       - name: Copy out Tetragon logs
@@ -244,12 +244,14 @@ jobs:
           # Make output dirs for logs
           mkdir -p logs/unit-tests
           mkdir -p logs/model-test-dumps
+          mkdir -p logs/test-output
 
           # Copy logs over
           scp -P 2222 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
           scp -P 2222 'root@localhost:/tmp/*.json' logs/unit-tests || true
           scp -P 2222 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
           scp -P 2222 'root@localhost:/tmp/TestModel*' logs/model-test-dumps || true
+          scp -P 2222 'root@localhost:/tmp/test-output-*.log' logs/test-output || true
 
       # AWS Baremetal Instances do not honor shutdown signals when QEMU VMs are running
       # Cleanup by force killing QEMU processes
@@ -263,6 +265,14 @@ jobs:
         with:
           name: tetragon-unit-tests-${{ matrix.kernel }}-${{ inputs.arch }}-${{ matrix.variation }}
           path: logs/unit-tests
+          retention-days: 5
+
+      - name: Upload test output log
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: test-output-${{ matrix.kernel }}-${{ inputs.arch }}-${{ matrix.variation }}
+          path: logs/test-output
           retention-days: 5
 
       - name: Upload modeltest dumps

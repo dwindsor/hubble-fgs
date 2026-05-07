@@ -44,3 +44,107 @@ jobs:
       socat_filename: socat-arm
     secrets:
       ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES: ${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}
+
+  summary:
+    name: Post Summary
+    runs-on: ubuntu-latest
+    needs: [amd64, arm64]
+    if: failure()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Download test output logs
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.2
+        with:
+          pattern: test-output-*
+          path: logs/test-output
+          merge-multiple: true
+
+      - name: Extract failed tests and authors
+        run: |
+          # Collect unique failed test names
+          grep -h -- "--- FAIL:" logs/test-output/test-output-*.log \
+            | sort -u \
+            | awk '{print $3}' > /tmp/failed-test-names || true
+
+          # First pass: map each failed test to its kernel/arch combos
+          declare -A test_kernels
+          for logfile in logs/test-output/test-output-*.log; do
+            [ -f "$logfile" ] || continue
+            fname=$(basename "$logfile" .log)
+            rest="${fname#test-output-}"
+            arch="${rest%%-*}"
+            rest="${rest#${arch}-}"
+            variation="${rest##*-}"
+            kernel="${rest%-${variation}}"
+            kernel_short=$(echo "$kernel" | sed 's/-[0-9]\{8\}\..*//')
+
+            while IFS= read -r fail_line; do
+              tname=$(echo "$fail_line" | awk '{print $3}')
+              [ -z "$tname" ] && continue
+              tag="${arch}-${kernel_short}-${variation}"
+              existing="${test_kernels[$tname]:-}"
+              if [ -z "$existing" ]; then
+                test_kernels[$tname]="$tag"
+              else
+                test_kernels[$tname]="${existing} ${tag}"
+              fi
+            done < <(grep -- "--- FAIL:" "$logfile" 2>/dev/null || true)
+          done
+
+          # Build a table of failed tests with file location, author, and kernels
+          echo "| Test | File | Author | Kernels |" > /tmp/failed-tests-table
+          echo "|------|------|--------|---------|" >> /tmp/failed-tests-table
+
+          while read -r test_name; do
+            [ -z "$test_name" ] && continue
+
+            # For subtests (TestFoo/bar), search for the parent function definition
+            search_name="${test_name%%/*}"
+            kernels="${test_kernels[$test_name]:-unknown}"
+
+            # Find the test function definition in the repo
+            match=$(git grep -n "func ${search_name}(" -- '*.go' | head -1) || true
+            if [ -z "$match" ]; then
+              echo "| \`${test_name}\` | unknown | unknown | ${kernels} |" >> /tmp/failed-tests-table
+              continue
+            fi
+
+            # Find the author of the test. It will be the first person who wrote the funcition
+            IFS=':' read -r file line rest <<< "$match"
+            author=$(git log --reverse --format='%an' -s -L ":${search_name}:${file}" 2>/dev/null | head -n 1) || true
+            author=${author:-unknown}
+
+            echo "| \`${test_name}\` | \`${file}:${line}\` | ${author} | ${kernels} |" >> /tmp/failed-tests-table
+          done < /tmp/failed-test-names
+
+          # Extract error details (20 lines before FAIL + 2 after) for each failed test
+          > /tmp/failed-tests-details
+          while read -r test_name; do
+            [ -z "$test_name" ] && continue
+            echo "<details>" >> /tmp/failed-tests-details
+            echo "<summary><code>${test_name}</code></summary>" >> /tmp/failed-tests-details
+            echo "" >> /tmp/failed-tests-details
+            echo '```' >> /tmp/failed-tests-details
+            grep -B 20 -A 2 -- "--- FAIL: ${test_name} " logs/test-output/test-output-*.log | tail -50 >> /tmp/failed-tests-details || true
+            echo '```' >> /tmp/failed-tests-details
+            echo "</details>" >> /tmp/failed-tests-details
+            echo "" >> /tmp/failed-tests-details
+          done < /tmp/failed-test-names
+
+      - name: Write Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## Test Results Summary
+          ### Failed Tests
+
+          $(cat /tmp/failed-tests-table 2>/dev/null || echo "No failed tests found.")
+
+          ### Error Details
+
+          $(cat /tmp/failed-tests-details 2>/dev/null || echo "No error details available.")
+
+          EOF
