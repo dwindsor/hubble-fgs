@@ -461,35 +461,66 @@ func getSyscallInfo(abi string, syscalls []uint32) (*appModelV1.ApplicationSysca
 
 var warnOnce = false
 
+// processAccumulator collects per-key state across all process entries in a
+// single pass, replacing the seven separate maps used by the old two-pass loop.
+type processAccumulator struct {
+	model           *types.ProcessModel
+	parents         map[string]bool
+	execCount       uint64
+	exitCount       uint64
+	firstStartTime  *time.Time
+	latestStartTime *time.Time
+	latestExitTime  *time.Time
+}
+
 func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess bool) (NetworkMonitorData, NetworkQuotaData, ProcessMonitorData) {
-
-	result := NetworkMonitorData{}
+	n := len(processModel)
+	result := make(NetworkMonitorData, n)
 	quota := NetworkQuotaData{}
+	proc := make(ProcessMonitorData, n)
 
-	// Track unique parents for each process key
-	processParents := make(map[ProcessKey]map[string]struct{})
+	// Single pass: accumulate network data and per-key process state together.
+	accum := make(map[ProcessKey]*processAccumulator, n)
 
-	// First pass: collect all parents and network data
 	for _, process := range processModel {
 		processKey := getProcessMonitorKey(process)
 
-		// Initialize parents map for this process key if not exists
-		if _, ok := processParents[processKey]; !ok {
-			processParents[processKey] = make(map[string]struct{})
+		// Accumulate process state.
+		acc := accum[processKey]
+		if acc == nil {
+			acc = &processAccumulator{
+				model:   process,
+				parents: make(map[string]bool),
+			}
+			accum[processKey] = acc
+		} else {
+			acc.model = process
 		}
-
-		// Add parent to the set if it exists
 		if process.Parent != "" {
-			processParents[processKey][process.Parent] = struct{}{}
+			acc.parents[process.Parent] = true
+		}
+		acc.execCount += process.ExecCount
+		acc.exitCount += process.ExitCount
+		if process.FirstStartTime != nil {
+			if acc.firstStartTime == nil || process.FirstStartTime.Before(*acc.firstStartTime) {
+				acc.firstStartTime = process.FirstStartTime
+			}
+		}
+		if process.LatestStartTime != nil {
+			if acc.latestStartTime == nil || process.LatestStartTime.After(*acc.latestStartTime) {
+				acc.latestStartTime = process.LatestStartTime
+			}
+		}
+		if process.LatestExitTime != nil {
+			if acc.latestExitTime == nil || process.LatestExitTime.After(*acc.latestExitTime) {
+				acc.latestExitTime = process.LatestExitTime
+			}
 		}
 
-		// Handle network destinations
+		// Accumulate network destinations.
 		for _, dst := range process.Dest {
 			key := getNetworkMonitorKey(process, dst, includeProcess)
 			if dst.Port != 0 {
-				if _, ok := result[key]; !ok {
-					result[key] = NetworkMonitorValue{}
-				}
 				currentValue := result[key]
 				if dst.Stats != nil {
 					currentValue.PolicyName = dst.Stats.Policy
@@ -508,53 +539,8 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 		}
 	}
 
-	// Second pass: create ProcessValue entries with aggregated parents, execution counts, and times
-	type aggrProcessValue struct {
-		info        *types.ProcessModel
-		execCounts  uint64
-		exitCounts  uint64
-		firstStart  *time.Time
-		latestStart *time.Time
-		latestExit  *time.Time
-	}
-	processInfoMap := make(map[ProcessKey]aggrProcessValue)
-
-	for _, process := range processModel {
-		processKey := getProcessMonitorKey(process)
-		pVal := processInfoMap[processKey]
-		pVal.info = process
-		// Sum execution/exit counts across all entries with the same process key
-		pVal.execCounts += process.ExecCount
-		pVal.exitCounts += process.ExitCount
-
-		// Track the earliest first start time (minimum)
-		if process.FirstStartTime != nil {
-			if existing := pVal.firstStart; existing == nil || process.FirstStartTime.Before(*existing) {
-				pVal.firstStart = process.FirstStartTime
-			}
-		}
-
-		// Track the latest start time (maximum)
-		if process.LatestStartTime != nil {
-			if existing := pVal.latestStart; existing == nil || process.LatestStartTime.After(*existing) {
-				pVal.latestStart = process.LatestStartTime
-			}
-		}
-
-		// Track the latest exit time (maximum)
-		if process.LatestExitTime != nil {
-			if existing := pVal.latestExit; existing == nil || process.LatestExitTime.After(*existing) {
-				pVal.latestExit = process.LatestExitTime
-			}
-		}
-
-		// update val
-		processInfoMap[processKey] = pVal
-	}
-
-	proc := make(ProcessMonitorData, len(processInfoMap))
-	for processKey, process := range processInfoMap {
-		syscalls, err := getSyscallInfo(process.info.Abi, process.info.Syscalls)
+	for processKey, acc := range accum {
+		syscalls, err := getSyscallInfo(acc.model.Abi, acc.model.Syscalls)
 		if err != nil {
 			if !warnOnce {
 				logger.GetLogger().Debug("failed to populate system call data for process", logfields.Error, err)
@@ -562,22 +548,21 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 			}
 		}
 
-		// Convert parents map to sorted slice
-		parentsList := make([]string, 0, len(processParents[processKey]))
-		for parent := range processParents[processKey] {
+		parentsList := make([]string, 0, len(acc.parents))
+		for parent := range acc.parents {
 			parentsList = append(parentsList, parent)
 		}
 		slices.Sort(parentsList)
 
 		proc[processKey] = ProcessValue{
-			InInitTree:      process.info.InInitTree,
+			InInitTree:      acc.model.InInitTree,
 			Syscalls:        syscalls,
 			Parents:         parentsList,
-			FirstStartTime:  process.firstStart,
-			LatestStartTime: process.latestStart,
-			LatestExitTime:  process.latestExit,
-			ExecCount:       process.execCounts,
-			ExitCount:       process.exitCounts,
+			FirstStartTime:  acc.firstStartTime,
+			LatestStartTime: acc.latestStartTime,
+			LatestExitTime:  acc.latestExitTime,
+			ExecCount:       acc.execCount,
+			ExitCount:       acc.exitCount,
 		}
 	}
 
