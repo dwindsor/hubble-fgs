@@ -19,3 +19,10 @@ func initContainerIDMap() error {
 func getContainerID(cgroupid uint64, dummy any) (string, bool) {
 	return "", false
 }
+
+// newKtimeConverter returns a zero-value converter on Windows. Windows does
+// not run real BPF sensors, so returning nil timestamps from convert() is
+// correct behavior.
+func newKtimeConverter() ktimeConverter {
+	return ktimeConverter{}
+}

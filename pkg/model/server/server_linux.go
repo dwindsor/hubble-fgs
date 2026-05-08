@@ -13,9 +13,27 @@
 package server
 
 import (
+	"time"
+
 	"github.com/cilium/tetragon/pkg/cgidmap"
 	lru "github.com/hashicorp/golang-lru/v2"
+	"golang.org/x/sys/unix"
 )
+
+// newKtimeConverter reads CLOCK_BOOTTIME once and records the offset.
+// Falls back to a zero-value converter (all conversions return nil) on error.
+func newKtimeConverter() ktimeConverter {
+	// Use CLOCK_BOOTTIME (monotonic=false) since BPF uses ktime_get_boot_ns()
+	// when available. This ensures correct timestamp conversion after
+	// system suspend/resume cycles.
+	var bt unix.Timespec
+	if err := unix.ClockGettime(unix.CLOCK_BOOTTIME, &bt); err != nil {
+		return ktimeConverter{}
+	}
+	// base = now - boottime, so that base.Add(ktime) gives the wall-clock time.
+	base := time.Now().Add(-time.Duration(bt.Nano()))
+	return ktimeConverter{base: base}
+}
 
 var cgmap cgidmap.Map
 

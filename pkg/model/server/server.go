@@ -82,24 +82,24 @@ func decodeBinaryArgs(val *types.ProcessTreeValue) (bin, args string) {
 	return bin, args
 }
 
-// ktimeToTime converts a ktime value to *time.Time, returning nil for zero values
-func ktimeToTime(kt uint64) *time.Time {
-	if kt == 0 {
-		return nil
-	}
-	// Use CLOCK_BOOTTIME (monotonic=false) since BPF uses ktime_get_boot_ns() when available.
-	// This ensures correct timestamp conversion after system suspend/resume cycles.
-	// The application model requires modern kernels (5.x+) where ktime_get_boot_ns is
-	// always available, so CLOCK_BOOTTIME is the sensible default here.
-	t, err := ktime.DecodeKtime(int64(kt), false)
-	if err != nil {
+// ktimeConverter converts BPF ktime values to wall-clock times using a single
+// CLOCK_BOOTTIME syscall captured at construction. All per-entry conversions
+// are pure arithmetic, eliminating one syscall per timestamp field.
+type ktimeConverter struct {
+	// base is wallclock - boottime, i.e. the offset to add to a ktime_get_boot_ns value.
+	base time.Time
+}
+
+// convert returns the wall-clock time for kt, or nil for zero values.
+func (c ktimeConverter) convert(kt uint64) *time.Time {
+	if kt == 0 || c.base.IsZero() {
 		return nil
 	}
 	// There is some nanosecond precision loss in the ktime conversion,
 	// so truncate to microsecond precision to preserve consistency in diffs.
 	// Otherwise, you end up with consistently differing timestamps which leads to
 	// a stream of new telemetry events on every export tick.
-	t = t.Truncate(time.Microsecond)
+	t := c.base.Add(time.Duration(kt)).Truncate(time.Microsecond)
 	return &t
 }
 
@@ -846,6 +846,8 @@ func getProcessModel(namespaces []string,
 		exitCount       uint64
 	}
 
+	ktConv := newKtimeConverter()
+
 	// Pass 1: iterate the BPF map, collect per-entry state, and populate
 	// binaryByUID so that parent resolution in pass 2 never misses.
 	var procEntries []processEntry
@@ -906,7 +908,7 @@ func getProcessModel(namespaces []string,
 			cgroupCountsMap[cgroupid] = append(cgroupCountsMap[cgroupid], key)
 		}
 		if val.ExecCount > 0 && val.ExecCount == val.ExitCount && val.KtimeLatestExit > 0 {
-			if exitTime := ktimeToTime(val.KtimeLatestExit); exitTime != nil && exitTime.Before(retentionCutoff) {
+			if exitTime := ktConv.convert(val.KtimeLatestExit); exitTime != nil && exitTime.Before(retentionCutoff) {
 				logger.GetLogger().Debug("Marking process tree entry as stale", "binary", selfBin, "args", selfArgs, "wlid", key.WLID, "cgroupid", cgroupid, "ExecCount", val.ExecCount, "ExitCount", val.ExitCount, "exitTime", exitTime)
 				staleProcessTreeKeys[key] = val
 
@@ -1048,9 +1050,9 @@ func getProcessModel(namespaces []string,
 			Container:       e.container,
 			Dest:            e.dest,
 			InInitTree:      e.inInitTree,
-			FirstStartTime:  ktimeToTime(e.ktimeFirstExec),
-			LatestStartTime: ktimeToTime(e.ktimeLastExec),
-			LatestExitTime:  ktimeToTime(e.ktimeLatestExit),
+			FirstStartTime:  ktConv.convert(e.ktimeFirstExec),
+			LatestStartTime: ktConv.convert(e.ktimeLastExec),
+			LatestExitTime:  ktConv.convert(e.ktimeLatestExit),
 			ExecCount:       e.execCount,
 			ExitCount:       e.exitCount,
 		})
