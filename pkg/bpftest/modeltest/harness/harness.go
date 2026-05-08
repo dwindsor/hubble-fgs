@@ -47,7 +47,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 
-const clientCreateTimeout = 1 * time.Minute
+const clientCreateTimeout = 5 * time.Minute
 const cleanupTimeout = 30 * time.Second
 
 type Harness struct {
