@@ -103,6 +103,12 @@ func (c ktimeConverter) convert(kt uint64) *time.Time {
 	return &t
 }
 
+// cachedBinaryInfo holds the decoded binary path and args for a process UID.
+type cachedBinaryInfo struct {
+	binary string
+	args   string
+}
+
 type Server struct {
 	tetragon.UnimplementedProcessModelServiceServer
 	appModelV1.UnimplementedApplicationModelServiceServer
@@ -120,6 +126,12 @@ type Server struct {
 
 	// The function used to get the current time. Can be overridden in tests.
 	TimeNow func() time.Time
+
+	// binaryArgsCache caches decodeBinaryArgs results by process UID. The
+	// binary/args bytes embedded in ProcessTreeValue are set at insertion time
+	// and never change, so the decoded strings are stable for the lifetime of
+	// the UID in the BPF map.
+	binaryArgsCache *lru.Cache[uint64, cachedBinaryInfo]
 }
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
@@ -450,6 +462,7 @@ func getProcessModel(namespaces []string,
 	debug bool,
 	cgTrackerIdCache *lru.Cache[uint64, uint64],
 	containerIdCache *lru.Cache[uint64, string],
+	binaryArgsCache *lru.Cache[uint64, cachedBinaryInfo],
 	timeNow func() time.Time) ([]*types.ProcessModel, error) {
 	start := timeNow()
 	defer func() {
@@ -822,11 +835,8 @@ func getProcessModel(namespaces []string,
 	}
 	pendingNSIDUpdates := make(map[types.ProcessTreeKey]WLIDUpdate)
 	var skippedEntries int
-	type binaryInfo struct {
-		binary string
-		args   string
-	}
-	binaryByUID := make(map[uint64]binaryInfo)
+	treeMaxEntries := int(m.MaxEntries())
+	binaryByUID := make(map[uint64]cachedBinaryInfo, treeMaxEntries)
 
 	type processEntry struct {
 		key             types.ProcessTreeKey
@@ -850,7 +860,7 @@ func getProcessModel(namespaces []string,
 
 	// Pass 1: iterate the BPF map, collect per-entry state, and populate
 	// binaryByUID so that parent resolution in pass 2 never misses.
-	var procEntries []processEntry
+	procEntries := make([]processEntry, 0, treeMaxEntries)
 
 	// Keep track of "stale" process tree keys, where the ExecCount == ExitCount
 	// and KTimeLatestExec is older than now - the retention duration.
@@ -867,13 +877,25 @@ func getProcessModel(namespaces []string,
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
-		syscalls := set.NewSet[uint32]()
+		var syscalls set.Set[uint32]
+		if option.Config.EnableSyscallTracking {
+			syscalls = set.NewSet[uint32]()
+		}
 
 		// If EnableCgTrackerID is enabled, we need to find the cgroup tracker id for this cgroup id
 		var cgroupid uint64
 
-		// Read binary path and args directly from the embedded fields in process_tree_value.
-		selfBin, selfArgs := decodeBinaryArgs(&val)
+		// Read binary path and args from the LRU cache, falling back to decode.
+		// Binary is embedded at insertion time and never changes for a given UID.
+		var binInfo cachedBinaryInfo
+		if cached, ok := binaryArgsCache.Get(key.Self); ok {
+			binInfo = cached
+		} else {
+			selfBin, selfArgs := decodeBinaryArgs(&val)
+			binInfo = cachedBinaryInfo{binary: selfBin, args: selfArgs}
+			binaryArgsCache.Add(key.Self, binInfo)
+		}
+		selfBin, selfArgs := binInfo.binary, binInfo.args
 		// Binary is embedded at insertion time, so this is not expected
 		// to be empty in practice. Guard defensively just in case.
 		if selfBin == "" {
@@ -947,7 +969,7 @@ func getProcessModel(namespaces []string,
 			continue
 		}
 
-		binaryByUID[key.Self] = binaryInfo{binary: selfBin, args: selfArgs}
+		binaryByUID[key.Self] = binInfo
 
 		idKey := dstListKey{
 			localID:    key.Self,
@@ -1111,7 +1133,7 @@ func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]
 	if !option.Config.EnableApplicationModel {
 		return nil, ErrApplicationModelNotEnabled
 	}
-	return getProcessModel(ns, debug, s.cgTrackerIdCache, s.containerIdCache, s.TimeNow)
+	return getProcessModel(ns, debug, s.cgTrackerIdCache, s.containerIdCache, s.binaryArgsCache, s.TimeNow)
 }
 
 func (s *Server) GetApplicationModel(ctx context.Context, nsFilter map[string]bool) (*appModelV1.ApplicationModelEvent, error) {
@@ -1265,9 +1287,16 @@ func NewServer(enableBpfId bool) (*Server, error) {
 		return nil, err
 	}
 
+	binaryArgsCacheInstance, err := lru.New[uint64, cachedBinaryInfo](option.Config.ProcessTreeCacheSize)
+	if err != nil {
+		logger.GetLogger().Error("Failed to create LRU cache for binary args", logfields.Error, err)
+		return nil, err
+	}
+
 	return &Server{
 		cgTrackerIdCache: cgTrackerIdCacheInstance,
 		containerIdCache: containerIdCacheInstance,
+		binaryArgsCache:  binaryArgsCacheInstance,
 		TimeNow:          time.Now,
 	}, err
 }
