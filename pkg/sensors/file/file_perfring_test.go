@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -284,17 +285,21 @@ func TestFileSuffixPattern(t *testing.T) {
 
 	assert.Equal(t, len(executedEvents), len(capturedEvents), "Got a different number of events compared to what expected")
 	if len(executedEvents) != len(capturedEvents) { // different number of events, print everything
-		execEvents := "Executed:"
+		var execEvents strings.Builder
+		execEvents.WriteString("Executed:")
 		for _, e := range executedEvents {
-			execEvents += ("\n" + e)
+			execEvents.WriteString("\n")
+			execEvents.WriteString(e)
 		}
-		t.Log(execEvents)
+		t.Log(execEvents.String())
 
-		captEvents := "Captured:"
+		var captEvents strings.Builder
+		captEvents.WriteString("Captured:")
 		for _, e := range capturedEvents {
-			captEvents += ("\n" + e)
+			captEvents.WriteString("\n")
+			captEvents.WriteString(e)
 		}
-		t.Log(captEvents)
+		t.Log(captEvents.String())
 	} else { // same number of events, compare all of them to be the same
 		// sort both slices to avoid flakes due to out-of-order event delivery
 		sort.Strings(executedEvents)

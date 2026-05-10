@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -126,7 +127,7 @@ func netstat() {
 	}
 	if err == nil {
 		netstats := string(netstat)
-		for _, line := range strings.Split(netstats, "\n") {
+		for line := range strings.SplitSeq(netstats, "\n") {
 			logger.GetLogger().Info(line)
 		}
 	} else {
@@ -316,20 +317,20 @@ func TestLoadLayer3Sensor(t *testing.T) {
 }
 
 func ipToHexstring(addr net.IP) string {
-	ret := ""
+	var sb strings.Builder
 	if addr.To4() == nil {
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			for j := 3; j >= 0; j-- {
-				ret += fmt.Sprintf("%02X", addr[i*4+j])
+				fmt.Fprintf(&sb, "%02X", addr[i*4+j])
 			}
 		}
-		return ret
+		return sb.String()
 	}
 	addr = addr.To4()
-	for i := len(addr) - 1; i >= 0; i-- {
-		ret += fmt.Sprintf("%02X", addr[i])
+	for _, b := range slices.Backward(addr) {
+		fmt.Fprintf(&sb, "%02X", b)
 	}
-	return ret
+	return sb.String()
 }
 
 func TestIpToHexstring(t *testing.T) {
@@ -363,8 +364,7 @@ func isSocketEstablished(addr net.IP, port uint16, protocol uint16, af uint16, l
 	if err != nil {
 		return false, err
 	}
-	netLines := strings.Split(string(netData), "\n")
-	for _, line := range netLines {
+	for line := range strings.SplitSeq(string(netData), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
 			continue

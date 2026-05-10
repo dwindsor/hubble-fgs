@@ -14,6 +14,8 @@ package http
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 )
 
@@ -53,9 +55,7 @@ func TestFrameQueue(t *testing.T) {
 
 		q.push(makeEvent(1))
 		e := q.pop()
-		if e == nil {
-			t.Fatal("initial element nil")
-		}
+		require.NotNil(t, e, "initial element nil")
 		if e.Request.ReqId != 1 {
 			t.Errorf("Initial element not 1, but %d", e.Request.ReqId)
 		}
@@ -96,9 +96,7 @@ func TestFrameQueueWrapAround(t *testing.T) {
 
 	checkPop := func(i uint64) {
 		e := q.pop()
-		if e == nil {
-			t.Fatalf("expected %d, not nil\n", i)
-		}
+		require.NotNilf(t, e, "expected %d, not nil", i)
 		if e.Request.ReqId != i {
 			t.Errorf("expected %d, got %d\n", i, e.Request.ReqId)
 		}

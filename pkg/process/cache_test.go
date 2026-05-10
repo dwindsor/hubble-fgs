@@ -107,14 +107,14 @@ func TestProcessCacheRemoveStale(t *testing.T) {
 	require.NoError(t, err)
 
 	// add some processes to the cache.
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		addFakeProcess(uint32(1234 + i))
 	}
 	processes := process.GetCacheEntries()
 	require.Equal(t, 8, len(processes))
 
 	var p []*process.ProcessInternal
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		pInt, err := process.Get(process.GetProcessID(uint32(1234+i), 0))
 		require.NoError(t, err)
 		require.Equal(t, uint32(1), pInt.RefGet())
@@ -175,7 +175,7 @@ func TestProcessCacheRemoveStale(t *testing.T) {
 			`)))
 
 	// Confirm entries have expected ref counts
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		pInt, err := process.Get(p[i].GetProcessCopy().ExecId)
 		require.NoError(t, err)
 		require.Equal(t, uint32(1234+i), pInt.GetProcessCopy().Pid.Value)

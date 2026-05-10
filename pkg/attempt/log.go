@@ -56,7 +56,7 @@ func (l *Log) Attempts() Attempts {
 
 	n := min(l.total, maxAttempts)
 	idx0 := l.total - n
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx := (idx0 + i) % maxAttempts
 		ret.Entries = append(ret.Entries, l.last[idx])
 	}

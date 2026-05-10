@@ -367,9 +367,9 @@ func (p PrefixSuffixFileMatchers) MatchPath(path string, mode fs.FileMode, rule 
 
 func (p PrefixSuffixFileMatchers) String() string {
 	var res strings.Builder
-	res.WriteString(fmt.Sprintf("[common prefix %s]", p.WalkPrefix))
+	fmt.Fprintf(&res, "[common prefix %s]", p.WalkPrefix)
 	for m := range p.Matchers {
-		res.WriteString(fmt.Sprintf("[%s]", m.Matcher.String()))
+		fmt.Fprintf(&res, "[%s]", m.Matcher.String())
 	}
 	return res.String()
 }

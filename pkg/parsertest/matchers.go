@@ -57,7 +57,7 @@ func (bm BytesMatcher) String() string {
 	var s strings.Builder
 	s.WriteString("$ ")
 	for i, b := range bm {
-		s.WriteString(fmt.Sprintf("%02x", b))
+		fmt.Fprintf(&s, "%02x", b)
 		if i != len(bm)-1 {
 			s.WriteString(" ")
 		}

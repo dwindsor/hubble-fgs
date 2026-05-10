@@ -1095,12 +1095,12 @@ func runTcpClient() {
 		panic(err)
 	}
 
-	for i := 0; i < numBursts; i++ {
-		for j := 0; j < (baselineDuration * baselineRate); j++ {
+	for range numBursts {
+		for range baselineDuration * baselineRate {
 			tcpSendData(socket, buf)
 			time.Sleep(baselineWait * time.Microsecond)
 		}
-		for j := 0; j < (burstDuration * burstRate); j++ {
+		for range burstDuration * burstRate {
 			tcpSendData(socket, buf)
 			time.Sleep(burstWait * time.Microsecond)
 		}
@@ -1305,17 +1305,8 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 		t.Fatalf("ERROR Server process not in network watermarks map: '%s'", err)
 	}
 
-	if serverCmd != nil {
-		serverProcess := serverCmd.Process
-		if serverProcess != nil {
-			serverProcess.Kill()
-			serverProcess.Wait()
-		} else {
-			t.Fatal("ERROR serverProcess is nil")
-		}
-	} else {
-		t.Fatal("ERROR serverCmd is nil")
-	}
+	serverCmd.Process.Kill()
+	serverCmd.Process.Wait()
 
 	quit := false
 	for !quit {

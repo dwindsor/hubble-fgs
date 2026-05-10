@@ -626,7 +626,7 @@ func (p *Parser) parseTupleMatcher() (ms []Matcher, err error) {
 
 func (p *Parser) parseTupleMatcherAddr() (TupleMatcherIP, error) {
 	tm := TupleMatcherIP{}
-	text := ""
+	var sb strings.Builder
 	for tok := p.scanner.Scan(); ; tok = p.scanner.Scan() {
 		if tok == '#' {
 			p.skipComment()
@@ -634,8 +634,8 @@ func (p *Parser) parseTupleMatcherAddr() (TupleMatcherIP, error) {
 		} else if tok == '\n' || tok == scanner.EOF {
 			break
 		}
-		text += p.scanner.TokenText()
-		switch strings.ToUpper(text) {
+		sb.WriteString(p.scanner.TokenText())
+		switch strings.ToUpper(sb.String()) {
 		case "CLI", "CLIENT":
 			tm.IsCli = true
 			return tm, nil
@@ -645,6 +645,7 @@ func (p *Parser) parseTupleMatcherAddr() (TupleMatcherIP, error) {
 		}
 	}
 
+	text := sb.String()
 	addr, err := netip.ParseAddrPort(text)
 	if err != nil {
 		return tm, fmt.Errorf("failed to parse addr '%s': %w", text, err)
@@ -654,7 +655,7 @@ func (p *Parser) parseTupleMatcherAddr() (TupleMatcherIP, error) {
 }
 
 func (p *Parser) parseIPMatcher() (ms []Matcher, err error) {
-	text := ""
+	var sb strings.Builder
 	for tok := p.scanner.Scan(); tok != scanner.EOF; tok = p.scanner.Scan() {
 		if tok == '#' {
 			p.skipComment()
@@ -662,8 +663,9 @@ func (p *Parser) parseIPMatcher() (ms []Matcher, err error) {
 		} else if tok == scanner.EOF || tok == '\n' {
 			break
 		}
-		text += p.scanner.TokenText()
+		sb.WriteString(p.scanner.TokenText())
 	}
+	text := sb.String()
 	addr := net.ParseIP(text)
 	if addr == nil {
 		return nil, fmt.Errorf("failed to parse IP '%s'", text)

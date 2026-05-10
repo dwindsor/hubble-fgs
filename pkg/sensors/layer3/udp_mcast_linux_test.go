@@ -74,7 +74,7 @@ func storeMSB(buf []byte, index uint, size uint, value uint64) {
 	if size == 0 {
 		return
 	}
-	for i := uint(0); i < size; i++ {
+	for i := range size {
 		buf[index+i] = byte((value >> ((size - i - 1) * 8)) & 0xff)
 	}
 }

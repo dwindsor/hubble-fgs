@@ -93,7 +93,7 @@ func testAncestorsN(t *testing.T, numAncestors int) {
 			WithParent(testBinCheckers[a-2])
 	}
 	ancestors := make([]*ec.ProcessChecker, numAncestors)
-	for a := 0; a < numAncestors; a++ {
+	for a := range numAncestors {
 		ancestors[a] = testBinCheckers[a]
 	}
 	checkers[numAncestors+2] = ec.NewProcessExecChecker("sleepBin").

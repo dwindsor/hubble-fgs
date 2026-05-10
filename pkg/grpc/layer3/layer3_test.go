@@ -253,7 +253,7 @@ func (n DummyNotifier) AddListener(_ server.Listener) {}
 
 func (n DummyNotifier) RemoveListener(_ server.Listener) {}
 
-func (n DummyNotifier) NotifyListener(original interface{}, processed *tetragon.GetEventsResponse) {
+func (n DummyNotifier) NotifyListener(original any, processed *tetragon.GetEventsResponse) {
 	switch v := original.(type) {
 	case *exec.MsgExecveEventUnix:
 	case *exec.MsgExitEventUnix:

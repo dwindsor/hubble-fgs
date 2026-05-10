@@ -305,12 +305,12 @@ func runUdpWatermarksClient() {
 		panic(err)
 	}
 
-	for i := 0; i < numBursts; i++ {
-		for j := 0; j < (baselineDuration * baselineRate); j++ {
+	for range numBursts {
+		for range baselineDuration * baselineRate {
 			udpSendData(socket, buf)
 			time.Sleep(baselineWait * time.Microsecond)
 		}
-		for j := 0; j < (burstDuration * burstRate); j++ {
+		for range burstDuration * burstRate {
 			udpSendData(socket, buf)
 			time.Sleep(burstWait * time.Microsecond)
 		}

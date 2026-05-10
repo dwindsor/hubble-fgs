@@ -105,10 +105,7 @@ func main() {
 		os.Exit(6)
 	}
 
-	maxRate := max(rates[1], rates[baseline])
-	if rates[2] > maxRate {
-		maxRate = rates[2]
-	}
+	maxRate := max(rates[1], rates[baseline], rates[2])
 
 	maxSend := int(math.Ceil(float64(maxRate) / float64(sampPerSec)))
 

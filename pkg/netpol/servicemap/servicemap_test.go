@@ -15,6 +15,8 @@ package servicemap
 import (
 	"net/netip"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestServiceMap_AddAndGet(t *testing.T) {
@@ -34,18 +36,14 @@ func TestServiceMap_AddAndGet(t *testing.T) {
 
 	// Test GetByName
 	got := sm.GetByName("default", "test-svc")
-	if got == nil {
-		t.Fatal("GetByName returned nil")
-	}
+	require.NotNil(t, got, "GetByName returned nil")
 	if got.ClusterIP != clusterIP {
 		t.Errorf("GetByName ClusterIP = %v, want %v", got.ClusterIP, clusterIP)
 	}
 
 	// Test GetByClusterIP
 	got = sm.GetByClusterIP(clusterIP)
-	if got == nil {
-		t.Fatal("GetByClusterIP returned nil")
-	}
+	require.NotNil(t, got, "GetByClusterIP returned nil")
 	if got.Name != "test-svc" {
 		t.Errorf("GetByClusterIP Name = %q, want %q", got.Name, "test-svc")
 	}
@@ -129,9 +127,7 @@ func TestServiceMap_UpdateEndpoints(t *testing.T) {
 	sm.UpdateEndpoints("default", "test-svc", endpoints)
 
 	got := sm.GetByName("default", "test-svc")
-	if got == nil {
-		t.Fatal("GetByName returned nil")
-	}
+	require.NotNil(t, got, "GetByName returned nil")
 	if len(got.Endpoints) != 2 {
 		t.Errorf("Endpoints count = %d, want 2", len(got.Endpoints))
 	}

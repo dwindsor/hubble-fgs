@@ -109,7 +109,7 @@ func Test_msgToExecveKubeUnix(t *testing.T) {
 	assert.Equal(t, idLength, len(kube.Docker))
 
 	// Empty event so we don't fail tests
-	for i := 0; i < api.DOCKER_ID_LENGTH; i++ {
+	for i := range api.DOCKER_ID_LENGTH {
 		event.Kube.Docker[i] = 0
 	}
 	// Not valid
@@ -119,7 +119,7 @@ func Test_msgToExecveKubeUnix(t *testing.T) {
 	assert.Empty(t, kube.Docker)
 
 	// Empty event so we don't fail tests
-	for i := 0; i < api.DOCKER_ID_LENGTH; i++ {
+	for i := range api.DOCKER_ID_LENGTH {
 		event.Kube.Docker[i] = 0
 	}
 	id = ":ba4c34f800cf9f92881fd55cea8e60d"

@@ -90,8 +90,8 @@ func PrintFilenameDigestMaps(policyDir string) error {
 				digestLen = dlen
 			}
 			var digestStr strings.Builder
-			for i := 0; i < digestLen; i++ {
-				digestStr.WriteString(fmt.Sprintf("%02x", digest.Digest[i]))
+			for i := range digestLen {
+				fmt.Fprintf(&digestStr, "%02x", digest.Digest[i])
 			}
 			fmt.Printf("    digest:[%d, %d, %s],digestID:[%d]\n", digest.Ok, digest.Algo, digestStr.String(), digestIdx)
 		}

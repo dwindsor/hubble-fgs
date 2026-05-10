@@ -77,19 +77,15 @@ func TestGeneratedExecEvents(t *testing.T) {
 		readyCalled = true
 	}
 
-	// pidWg is for the tetragon process goroutine
-	pidWg.Add(1)
-
 	// Start tetragon in separate process so we can keep the whole
 	// export/server machinery running until we get expected results.
-	go func() {
-		defer pidWg.Done()
+	pidWg.Go(func() {
 		err = tetragonExecuteCtx(ctx, cancel, ready)
 		if !readyCalled {
 			ready()
 		}
 		assert.NoError(t, err)
-	}()
+	})
 
 	// Wait till tetragon's observer is up and running
 	readyWg.Wait()

@@ -125,8 +125,7 @@ type testCase struct {
 // Run a test case using t.Run().
 func (tc *testCase) run(t *testing.T) {
 	t.Run(tc.name, func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		port, errChan, err := startTlsWebServer(ctx)
 		require.NoError(t, err, "web server should start")
@@ -139,7 +138,7 @@ func (tc *testCase) run(t *testing.T) {
 			var builder strings.Builder
 			temp, err := template.New("").Parse(tc.tracingPolicy.string)
 			require.NoError(t, err, "template should parse")
-			temp.Execute(&builder, map[string]interface{}{
+			temp.Execute(&builder, map[string]any{
 				"port": port,
 			})
 
