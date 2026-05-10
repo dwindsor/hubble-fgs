@@ -366,11 +366,12 @@ func (p PrefixSuffixFileMatchers) MatchPath(path string, mode fs.FileMode, rule 
 }
 
 func (p PrefixSuffixFileMatchers) String() string {
-	res := fmt.Sprintf("[common prefix %s]", p.WalkPrefix)
+	var res strings.Builder
+	res.WriteString(fmt.Sprintf("[common prefix %s]", p.WalkPrefix))
 	for m := range p.Matchers {
-		res += fmt.Sprintf("[%s]", m.Matcher.String())
+		res.WriteString(fmt.Sprintf("[%s]", m.Matcher.String()))
 	}
-	return res
+	return res.String()
 }
 
 type ExactPathFileMatcher struct {

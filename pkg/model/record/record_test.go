@@ -189,7 +189,7 @@ func BenchmarkDiffRecord(b *testing.B) {
 
 	record := []DatapathRecord{}
 
-	for id := 0; id < 20000; id++ {
+	for id := range 20000 {
 		s := *src
 		s.WLID = uint64(id)
 
@@ -213,8 +213,8 @@ func BenchmarkDiffRecord(b *testing.B) {
 		}
 		record = append(record, r)
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		Diff(record, record)
 	}
 }
@@ -244,7 +244,7 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 
 	record := []DatapathRecord{}
 
-	for id := 0; id < 20000; id++ {
+	for id := range 20000 {
 		s := *src
 		s.WLID = uint64(id)
 
@@ -271,8 +271,8 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 	r2 := make([]DatapathRecord, len(record)-1000)
 	copy(r1, record)
 	copy(r2, record)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		Diff(r1, r2)
 	}
 }

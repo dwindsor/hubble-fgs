@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/netip"
 	"strconv"
+	"strings"
 	"text/scanner"
 	"unsafe"
 
@@ -53,14 +54,15 @@ func (sm StringMatcher) Serialize() []byte {
 type BytesMatcher []byte
 
 func (bm BytesMatcher) String() string {
-	s := "$ "
+	var s strings.Builder
+	s.WriteString("$ ")
 	for i, b := range bm {
-		s += fmt.Sprintf("%02x", b)
+		s.WriteString(fmt.Sprintf("%02x", b))
 		if i != len(bm)-1 {
-			s += " "
+			s.WriteString(" ")
 		}
 	}
-	return s
+	return s.String()
 }
 
 func (bm BytesMatcher) Match(_ *TestContext, r io.Reader) (int, error) {

@@ -286,7 +286,7 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgExecveEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgExecveEventUnix) Cast(o any) notify.Message {
 	return &MsgExecveEventUnix{Unix: new(o.(processapi.MsgExecveEventUnix))}
 }
 
@@ -337,7 +337,7 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return nil
 }
 
-func (msg *MsgCloneEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgCloneEventUnix) Cast(o any) notify.Message {
 	t := o.(processapi.MsgCloneEvent)
 	return &MsgCloneEventUnix{MsgCloneEvent: t}
 }
@@ -507,7 +507,7 @@ func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgExitEventUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgExitEventUnix) Cast(o any) notify.Message {
 	t := o.(processapi.MsgExitEvent)
 	return &MsgExitEventUnix{MsgExitEvent: t}
 }
@@ -572,6 +572,6 @@ func (msg *MsgProcessCleanupEventUnix) HandleMessage() *tetragon.GetEventsRespon
 	return nil
 }
 
-func (msg *MsgProcessCleanupEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgProcessCleanupEventUnix) Cast(_ any) notify.Message {
 	return &MsgProcessCleanupEventUnix{}
 }

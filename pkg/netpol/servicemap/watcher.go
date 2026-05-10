@@ -37,7 +37,7 @@ func AddServiceInformer(ctx context.Context, m *manager.ControllerManager, sm *S
 	}
 
 	_, err = svcInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			svc, ok := obj.(*corev1.Service)
 			if !ok {
 				return
@@ -45,7 +45,7 @@ func AddServiceInformer(ctx context.Context, m *manager.ControllerManager, sm *S
 			addService(sm, svc)
 			log.Debug("ServiceMap: Service added", "name", svc.Name, "namespace", svc.Namespace, "clusterIP", svc.Spec.ClusterIP)
 		},
-		UpdateFunc: func(_, newObj interface{}) {
+		UpdateFunc: func(_, newObj any) {
 			svc, ok := newObj.(*corev1.Service)
 			if !ok {
 				return
@@ -53,7 +53,7 @@ func AddServiceInformer(ctx context.Context, m *manager.ControllerManager, sm *S
 			addService(sm, svc)
 			log.Debug("Service updated", "name", svc.Name, "namespace", svc.Namespace, "clusterIP", svc.Spec.ClusterIP)
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			if dfsu, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 				obj = dfsu.Obj
 			}
@@ -77,21 +77,21 @@ func AddServiceInformer(ctx context.Context, m *manager.ControllerManager, sm *S
 	}
 
 	_, err = epsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj any) {
 			eps, ok := obj.(*discoveryv1.EndpointSlice)
 			if !ok {
 				return
 			}
 			updateEndpointsFromSlice(sm, eps)
 		},
-		UpdateFunc: func(_, newObj interface{}) {
+		UpdateFunc: func(_, newObj any) {
 			eps, ok := newObj.(*discoveryv1.EndpointSlice)
 			if !ok {
 				return
 			}
 			updateEndpointsFromSlice(sm, eps)
 		},
-		DeleteFunc: func(_ interface{}) {
+		DeleteFunc: func(_ any) {
 			// EndpointSlice deletion - would need to track which endpoints came from which slice
 			// For now, endpoints will be refreshed on next EndpointSlice update
 		},

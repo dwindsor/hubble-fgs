@@ -192,6 +192,6 @@ func (msg *MsgDnsUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgDnsUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgDnsUnix) Cast(_ any) notify.Message {
 	return &MsgDnsUnix{}
 }

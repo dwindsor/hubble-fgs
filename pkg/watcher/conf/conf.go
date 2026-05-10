@@ -148,11 +148,11 @@ func ExtractNamespaceAndServiceAccount(tokenString string) (string, string) {
 	var namespace, serviceAccount string
 
 	// Try the nested structure first (modern format: claims["kubernetes.io"] is a map with "namespace" and "serviceaccount" keys)
-	if k8sInfo, ok := claims["kubernetes.io"].(map[string]interface{}); ok {
+	if k8sInfo, ok := claims["kubernetes.io"].(map[string]any); ok {
 		if ns, ok := k8sInfo["namespace"].(string); ok {
 			namespace = ns
 		}
-		if saInfo, ok := k8sInfo["serviceaccount"].(map[string]interface{}); ok {
+		if saInfo, ok := k8sInfo["serviceaccount"].(map[string]any); ok {
 			if saName, ok := saInfo["name"].(string); ok {
 				serviceAccount = saName
 			}

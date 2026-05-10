@@ -35,12 +35,12 @@ const (
 
 // ths removes the prefix from a container ID (i.e. "containerd://")
 func RemoveContainerIdPrefix(cId string) string {
-	if strings.HasPrefix(cId, ContainerdPrefix) {
-		return strings.TrimPrefix(cId, ContainerdPrefix)
-	} else if strings.HasPrefix(cId, DockerPrefix) {
-		return strings.TrimPrefix(cId, DockerPrefix)
-	} else if strings.HasPrefix(cId, CrioPrefix) {
-		return strings.TrimPrefix(cId, CrioPrefix)
+	if after, ok := strings.CutPrefix(cId, ContainerdPrefix); ok {
+		return after
+	} else if after, ok := strings.CutPrefix(cId, DockerPrefix); ok {
+		return after
+	} else if after, ok := strings.CutPrefix(cId, CrioPrefix); ok {
+		return after
 	}
 	return cId
 }
@@ -250,22 +250,22 @@ func CrioIdToRootFs(cid, endpoint string) (string, error) {
 // it check the prefix of cid argument in order to determine
 // the container runtime
 func ContainerIdToRootFs(cid, endpoint string) (string, error) {
-	if strings.HasPrefix(cid, ContainerdPrefix) {
-		c := strings.TrimPrefix(cid, ContainerdPrefix)
+	if after, ok := strings.CutPrefix(cid, ContainerdPrefix); ok {
+		c := after
 		rootDir, err := ContainerdIdToRootFs(c, endpoint)
 		if err != nil {
 			return "", err
 		}
 		return rootDir, nil
-	} else if strings.HasPrefix(cid, DockerPrefix) {
-		c := strings.TrimPrefix(cid, DockerPrefix)
+	} else if after, ok := strings.CutPrefix(cid, DockerPrefix); ok {
+		c := after
 		rootDir, err := DockerIdToRootFs(c)
 		if err != nil {
 			return "", err
 		}
 		return rootDir, nil
-	} else if strings.HasPrefix(cid, CrioPrefix) {
-		c := strings.TrimPrefix(cid, CrioPrefix)
+	} else if after, ok := strings.CutPrefix(cid, CrioPrefix); ok {
+		c := after
 		rootDir, err := CrioIdToRootFs(c, endpoint)
 		if err != nil {
 			return "", err

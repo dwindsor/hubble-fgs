@@ -155,15 +155,15 @@ func (c *bpfErrorCollector) Collect(ch chan<- prometheus.Metric) {
 
 		var sum fileapi.FileErrors
 		for _, val := range allCpuValue {
-			for i := 0; i < fileapi.FileHookMax; i++ {
-				for j := 0; j < fileapi.FileErrMax; j++ {
+			for i := range fileapi.FileHookMax {
+				for j := range fileapi.FileErrMax {
 					sum.M[i][j] += val.M[i][j]
 				}
 			}
 		}
 
-		for i := 0; i < fileapi.FileHookMax; i++ {
-			for j := 0; j < fileapi.FileErrMax; j++ {
+		for i := range fileapi.FileHookMax {
+			for j := range fileapi.FileErrMax {
 				if sum.M[i][j] != 0 {
 					hook, ok := fileHookMap[i]
 					if !ok {

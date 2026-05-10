@@ -160,16 +160,16 @@ func getCPUName() string {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "model name") {
-			i := strings.Index(line, ": ")
-			if i >= 0 {
-				return line[i+2:]
+			_, after, ok := strings.Cut(line, ": ")
+			if ok {
+				return after
 			}
 		}
 	}
 	return "unknown"
 }
 
-func valueToCellData(value interface{}) *sheets.CellData {
+func valueToCellData(value any) *sheets.CellData {
 	ev := &sheets.ExtendedValue{}
 	switch v := value.(type) {
 	case string:

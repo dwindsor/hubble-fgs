@@ -111,7 +111,7 @@ func configValue[V string | bool](log logr.Logger, config map[string]any, key st
 func configMapOfString(log logr.Logger, m map[string]any, key string) map[string]string {
 	stringValues := map[string]string{}
 	if values, ok := m[key]; ok {
-		typedValues, ok := values.(map[string]interface{})
+		typedValues, ok := values.(map[string]any)
 		if !ok {
 			log.WithValues("key", key, "value", values).Error(errors.New("could not unmarshal"), "not applied")
 		} else {

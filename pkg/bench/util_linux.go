@@ -42,7 +42,7 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 	if err != nil {
 		log.Printf("Failed to read memory.stat: %s\n", err)
 	} else {
-		for _, line := range strings.Split(string(memStat), "\n") {
+		for line := range strings.SplitSeq(string(memStat), "\n") {
 			if strings.HasPrefix(line, "total_rss ") {
 				if _, err := fmt.Sscanf(line, "total_rss %d", &rss); err != nil {
 					log.Printf("Failed to parse memory.stat ('%s'): %s\n", line, err)
@@ -85,7 +85,7 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 // that also needs to be parsed. Perhaps nicer would be to just use the GNU version with
 // custom format, but this would require custom docker images for nginx, h2load and netperf.
 func CPUUsageFromTime(output string, otherLine func(line string)) (cpuUsage CPUUsage, err error) {
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if strings.HasPrefix(line, "user") {
 			var secs float64
 			if _, err = fmt.Sscanf(line, "user %f", &secs); err != nil {

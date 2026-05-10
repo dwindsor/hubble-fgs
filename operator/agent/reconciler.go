@@ -199,7 +199,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	aggregatorConfigYaml := opCM.Data[OperatorConfigMapAggregatorKey]
-	aggregatorCMFields := make(map[string]interface{})
+	aggregatorCMFields := make(map[string]any)
 	if err := yaml.Unmarshal([]byte(aggregatorConfigYaml), &aggregatorCMFields); err != nil {
 		log.WithValues("value", aggregatorConfigYaml).Error(err, "could not unmarshal the aggregator configuration")
 		return ctrl.Result{}, err

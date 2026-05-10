@@ -67,7 +67,7 @@ func (msg *MsgUdpSeqCheckErrorEventUnix) HandleMessage() *tetragon.GetEventsResp
 	return res
 }
 
-func (msg *MsgUdpSeqCheckErrorEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgUdpSeqCheckErrorEventUnix) Cast(_ any) notify.Message {
 	return &MsgUdpSeqCheckErrorEventUnix{}
 }
 

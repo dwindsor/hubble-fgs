@@ -340,7 +340,7 @@ func TestDelete_RefCount_Decrement(t *testing.T) {
 	cidr := netip.MustParsePrefix("10.0.0.0/24")
 
 	// Write 3 times
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if err := m.Write(cidr, 1); err != nil {
 			t.Fatalf("write %d failed: %v", i+1, err)
 		}

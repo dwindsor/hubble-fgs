@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	stdNet "net"
+	"slices"
 
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
@@ -135,10 +136,8 @@ func (f *cidrFilter) MatchCIDR(res *tetragon.GetEventsResponse) bool {
 	}
 
 	for _, cidr := range f.cidrs {
-		for _, ipAddr := range addrs {
-			if cidr.Contains(ipAddr) {
-				return true
-			}
+		if slices.ContainsFunc(addrs, cidr.Contains) {
+			return true
 		}
 	}
 

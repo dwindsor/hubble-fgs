@@ -85,7 +85,7 @@ type policyData = []byte
 
 type Mandate struct {
 	Info     map[string]any `json:"info"`
-	Conf     Conf           `json:"conf,omitempty"`
+	Conf     Conf           `json:"conf"`
 	Policies []Policy       `json:"policies"`
 
 	// private convenience fields:

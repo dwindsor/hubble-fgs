@@ -280,7 +280,7 @@ func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 		io.WriteString(w, "couldn't serialize app model json")
 		return
 	}
-	values := map[string]interface{}{
+	values := map[string]any{
 		"IPT_APP_MODEL_SCRIPT": fmt.Sprintf(
 			"<script>window.IPT_APP_MODEL_JSON = %s</script>", string(appModelJson),
 		),

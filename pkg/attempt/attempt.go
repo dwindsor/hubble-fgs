@@ -35,7 +35,7 @@ type Attempt struct {
 	Info     []InfoEntry   `json:"info,omitempty"`
 	Time     time.Time     `json:"time"`
 	Duration time.Duration `json:"duration"`
-	Result   Result        `json:"result,omitempty"`
+	Result   Result        `json:"result"`
 	Attempts []Attempt     `json:"attempts,omitempty"`
 }
 

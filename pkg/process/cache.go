@@ -63,7 +63,7 @@ func __cleanStaleEntries(excludeExecveProcesses bool) {
 			refCnt := int32(process.RefGet())
 			if refCnt > 0 {
 				metrics.ProcessCacheRemovedStale.Inc()
-				for i := int32(0); i < refCnt; i++ {
+				for range refCnt {
 					process.RefDec("stale")
 				}
 			} else if refCnt < 0 {

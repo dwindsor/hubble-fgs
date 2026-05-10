@@ -74,7 +74,7 @@ func NewJSONEncoder(writer io.Writer, ocsfWriter, flowWriter io.Writer, ocsfServ
 }
 
 // Encode implements EventEncoder.Encode.
-func (h *JSONEncoder) Encode(v interface{}) error {
+func (h *JSONEncoder) Encode(v any) error {
 	response, ok := v.(*tetragon.GetEventsResponse)
 	if !ok {
 		logger.GetLogger().Warn("invalid event", "event", v)

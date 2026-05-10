@@ -14,6 +14,7 @@ import (
 	"container/list"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -266,12 +267,7 @@ func (c *UnorderedMultiResponseChecker) Append(checkers ...ResponseChecker) {
 	}
 }
 
-type fgsEvent interface {
-	// used for FGS events such as:
-	// tetragon.ProcessExec
-	// tetragon.ProcessClose
-	// etc.
-}
+type fgsEvent any
 
 // EventChainChecker is a checker that verifies a chain of events
 type EventChainChecker struct {
@@ -336,7 +332,7 @@ func eventGetParent(ev fgsEvent) *tetragon.Process {
 	return nil
 }
 
-func EventTypeString(ev interface{}) string {
+func EventTypeString(ev any) string {
 	switch xev := ev.(type) {
 	case *tetragon.GetEventsResponse_ProcessConnect:
 		return fmt.Sprintf("ProcessConnect(%s:%s->%s:%s)",
@@ -388,10 +384,8 @@ func (e EventTypeError) Error() string {
 func checkEvent(r *tetragon.GetEventsResponse, _ Logger, types ...tetragon.EventType) (fgsEvent, error) {
 
 	checkTypes := func(ty tetragon.EventType) error {
-		for i := range types {
-			if types[i] == ty {
-				return nil
-			}
+		if slices.Contains(types, ty) {
+			return nil
 		}
 		return EventTypeError{
 			Err: fmt.Errorf("type %s not in %+v", tetragon.EventType_name[int32(ty)], types),

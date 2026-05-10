@@ -46,7 +46,7 @@ func collectMapStats(mapPath string, sum *fileapi.FileExecStats) error {
 	}
 
 	for _, val := range allCpuValue {
-		for i := 0; i < fileapi.FileExecMetricMax; i++ {
+		for i := range fileapi.FileExecMetricMax {
 			sum.M[i] += val.M[i]
 		}
 	}
@@ -63,7 +63,7 @@ func (c *bpfCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	for i := 0; i < fileapi.FileExecMetricMax; i++ {
+	for i := range fileapi.FileExecMetricMax {
 		ch <- fileExecEbpfErrors.MustMetric(float64(sum.M[i]), fileapi.FileExecMetricTable[i])
 	}
 }

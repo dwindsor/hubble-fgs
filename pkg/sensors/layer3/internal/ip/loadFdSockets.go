@@ -575,7 +575,7 @@ func GetSocketForFD(protocol uint16, pid int, fd int, cookie uint64, family int)
 		Family:    uint16(family),
 	}
 	m.Put(k, v)
-	for loadWait := 0; loadWait < 10; loadWait++ {
+	for range 10 {
 		// See GetAndAddSocketViaProc for details on how this works.
 		os.ReadFile(filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid), "comm"))
 		err := m.Lookup(k, v)

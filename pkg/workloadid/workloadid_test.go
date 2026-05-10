@@ -196,7 +196,7 @@ func TestConcurrentUpdates(t *testing.T) {
 	done := make(chan bool)
 	numGoroutines := 10
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(idx int) {
 			workload := nginxWorkload()
 			cgroupID := CgroupID(1000 + idx)
@@ -206,7 +206,7 @@ func TestConcurrentUpdates(t *testing.T) {
 		}(i)
 	}
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		<-done
 	}
 
@@ -224,7 +224,7 @@ func TestConcurrentLookups(t *testing.T) {
 	done := make(chan bool)
 	numGoroutines := 100
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			id, ok := state.LookupID(workload)
 			assert.True(t, ok)
@@ -238,7 +238,7 @@ func TestConcurrentLookups(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		<-done
 	}
 }

@@ -292,7 +292,7 @@ extraVolumeMounts: |
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			// get the config
-			config := make(map[string]interface{})
+			config := make(map[string]any)
 			err := yaml.Unmarshal([]byte(tt.cm.Data[OperatorConfigMapAggregatorKey]), &config)
 			require.NoError(t, err)
 

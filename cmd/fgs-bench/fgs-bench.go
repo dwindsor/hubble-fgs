@@ -76,7 +76,7 @@ func main() {
 	var tlsParser, httpParser bool
 	var tcp, udp, iface, hist bool
 
-	for _, p := range strings.Split(*parsers, ",") {
+	for p := range strings.SplitSeq(*parsers, ",") {
 		switch p {
 		case "http":
 			httpParser = true

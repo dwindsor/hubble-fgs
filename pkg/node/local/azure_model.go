@@ -12,8 +12,8 @@ package local
 
 // VMData is following https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service?tabs=linux
 type VMData struct {
-	Compute Compute `json:"compute,omitempty"`
-	Network Network `json:"network,omitempty"`
+	Compute Compute `json:"compute"`
+	Network Network `json:"network"`
 }
 
 type Compute struct {

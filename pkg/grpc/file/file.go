@@ -780,7 +780,7 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgFileEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgFileEventUnix) Cast(_ any) notify.Message {
 	return &MsgFileEventUnix{}
 }
 
@@ -827,7 +827,7 @@ func (msg *MsgFileLinkEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgFileLinkEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgFileLinkEventUnix) Cast(_ any) notify.Message {
 	return &MsgFileLinkEventUnix{}
 }
 
@@ -872,7 +872,7 @@ func (msg *MsgFileSymlinkEventUnix) HandleMessage() *tetragon.GetEventsResponse 
 	}
 }
 
-func (msg *MsgFileSymlinkEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgFileSymlinkEventUnix) Cast(_ any) notify.Message {
 	return &MsgFileSymlinkEventUnix{}
 }
 
@@ -917,13 +917,13 @@ func (msg *MsgFileOpenrawEventUnix) HandleMessage() *tetragon.GetEventsResponse 
 	}
 }
 
-func (msg *MsgFileOpenrawEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgFileOpenrawEventUnix) Cast(_ any) notify.Message {
 	return &MsgFileOpenrawEventUnix{}
 }
 
 func GetRenameFlags(flags uint32) []string {
 	var f []string
-	for i := uint32(0); i < 32; i++ {
+	for i := range uint32(32) {
 		if (1<<i)&flags != 0 {
 			f = append(f, renameFlagsString[i])
 		}
@@ -1079,6 +1079,6 @@ func (msg *MsgFileRenameEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgFileRenameEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgFileRenameEventUnix) Cast(_ any) notify.Message {
 	return &MsgFileRenameEventUnix{}
 }

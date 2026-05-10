@@ -64,7 +64,7 @@ func (msg *MsgRawSyscall) Notify() bool {
 	return msg.tpMsg.Notify()
 }
 
-func (msg *MsgRawSyscall) Cast(o interface{}) notify.Message {
+func (msg *MsgRawSyscall) Cast(o any) notify.Message {
 	return new(o.(MsgRawSyscall))
 }
 

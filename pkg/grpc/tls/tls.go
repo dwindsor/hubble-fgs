@@ -180,6 +180,6 @@ func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgTLSEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgTLSEventUnix) Cast(_ any) notify.Message {
 	return &MsgTLSEventUnix{}
 }

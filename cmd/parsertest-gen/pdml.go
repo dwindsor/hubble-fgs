@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -63,12 +64,7 @@ var (
 )
 
 func isTextProto(proto string) bool {
-	for _, p := range textProtos {
-		if p == proto {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(textProtos, proto)
 }
 
 const MaxHexLineLen = 48

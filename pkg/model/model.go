@@ -313,10 +313,7 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 	if appModel.ApplicationModel.GetHost() != nil {
 		hostProcesses := appModel.ApplicationModel.Host.GetProcesses()
 		for i := 0; i < len(hostProcesses); i += hostProcessesPerEvent {
-			end := i + hostProcessesPerEvent
-			if end > len(hostProcesses) {
-				end = len(hostProcesses)
-			}
+			end := min(i+hostProcessesPerEvent, len(hostProcesses))
 			hostFragment := &appModelV1.ApplicationModelFragment{
 				ApplicationModelFragment: &appModelV1.ApplicationModel{
 					Id: appModel.ApplicationModel.Id,

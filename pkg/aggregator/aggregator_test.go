@@ -45,7 +45,7 @@ func Test_connectEventBasic(t *testing.T) {
 		DestinationPort:  &wrapperspb.UInt32Value{Value: 80},
 		DestinationNames: nil,
 	}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		agg.GetEventChannel() <- &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &connectA,
@@ -77,7 +77,7 @@ func Test_acceptEventBasic(t *testing.T) {
 		DestinationPort:  &wrapperspb.UInt32Value{Value: 45678},
 		DestinationNames: nil,
 	}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		agg.GetEventChannel() <- &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessAccept{
 				ProcessAccept: &acceptA,
@@ -115,11 +115,11 @@ func (m *mockServer) Context() context.Context {
 	return context.Background()
 }
 
-func (m *mockServer) SendMsg(_ interface{}) error {
+func (m *mockServer) SendMsg(_ any) error {
 	panic("implement me")
 }
 
-func (m *mockServer) RecvMsg(_ interface{}) error {
+func (m *mockServer) RecvMsg(_ any) error {
 	panic("implement me")
 }
 

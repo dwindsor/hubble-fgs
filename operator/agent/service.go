@@ -18,7 +18,7 @@ import (
 )
 
 // AggregatorService instantiates a Tetragon Aggregator Service.
-func AggregatorService(log logr.Logger, namespace string, name string, config map[string]interface{}) (*corev1.Service, error) {
+func AggregatorService(log logr.Logger, namespace string, name string, config map[string]any) (*corev1.Service, error) {
 	// the aggregator service gets only created if it is enabled
 	if !configValue(log, config, "enabled", false) {
 		return nil, nil

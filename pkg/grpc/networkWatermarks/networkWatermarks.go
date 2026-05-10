@@ -97,7 +97,7 @@ func (msg *MsgProcessNetworkWatermarksEventUnix) HandleMessage() *tetragon.GetEv
 	return res
 }
 
-func (msg *MsgProcessNetworkWatermarksEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgProcessNetworkWatermarksEventUnix) Cast(_ any) notify.Message {
 	return &MsgProcessNetworkWatermarksEventUnix{}
 }
 

@@ -167,7 +167,7 @@ func TestConfigMapOfString(t *testing.T) {
 		},
 		{
 			configMap: map[string]any{
-				key: map[string]interface{}{
+				key: map[string]any{
 					"key1": "value1",
 					"key2": "true",
 					"key3": "-1",

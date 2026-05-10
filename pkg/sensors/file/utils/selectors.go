@@ -303,7 +303,7 @@ func (k *KernelSelectorState) InitOrGetOpenFlags(selIdx uint32) *OpenFlagsOps {
 		return val
 	}
 	inner := &OpenFlagsOps{}
-	for i := 0; i < MaxOpenFlagMaskPerOp; i++ {
+	for i := range MaxOpenFlagMaskPerOp {
 		inner.flags[i].Op = 0
 		inner.flags[i].Mask = 0
 		inner.flags[i].HasAccMode = 0

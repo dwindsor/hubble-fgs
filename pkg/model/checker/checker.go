@@ -172,7 +172,7 @@ func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.C
 			return nil, fmt.Errorf("error executing CEL program: %w", err)
 		}
 
-		v, err := out.ConvertToNative(reflect.TypeOf(false))
+		v, err := out.ConvertToNative(reflect.TypeFor[bool]())
 		if err != nil {
 			return nil, fmt.Errorf("bad conversion of result to bool: %w", err)
 		}
@@ -202,8 +202,8 @@ func (checker *ApplicationModelChecker) CheckApplicationModelEventJSON(ctx conte
 
 func indentString(s string) string {
 	var indentedLines []string
-	lines := strings.Split(strings.TrimSpace(s), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(strings.TrimSpace(s), "\n")
+	for line := range lines {
 		indentedLines = append(indentedLines, "   "+line)
 	}
 	return strings.Join(indentedLines, "\n")

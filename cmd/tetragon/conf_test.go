@@ -30,13 +30,13 @@ type confInput struct {
 	path    string
 	dropIn  bool
 	write   bool // If set we write options to file/directories even if empty
-	options map[string]interface{}
+	options map[string]any
 }
 
 type testCase struct {
 	description     string
 	confs           []confInput
-	expectedOptions map[string]interface{} // The expected Options after parsing all the above
+	expectedOptions map[string]any // The expected Options after parsing all the above
 }
 
 var (
@@ -46,7 +46,7 @@ var (
 		{
 			description: "Test n0 Default configuration",
 			// expected options: default options nothing changes
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/",
@@ -88,7 +88,7 @@ var (
 			description: "Test n1 Reset empty Drop-in /usr/lib/tetragon/tetragon.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside /usr/lib/tetragon/tetragon.conf.d/ directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -103,7 +103,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true, // write empty values
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -138,7 +138,7 @@ var (
 		},
 		{
 			description: "Test n2 Drop-in /usr/lib/tetragon/tetragon.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_0",
 				opt.KeyHubbleLib:          "/usr/lib/hubble-fgs/bpf/_0",
@@ -153,7 +153,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -185,7 +185,7 @@ var (
 			description: "Test n3 Reset empty Drop-in /usr/local/lib/tetragon/tetragon.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside /usr/local/lib/tetragon/tetragon.conf.d/ directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -205,7 +205,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true, // write empty values
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -235,7 +235,7 @@ var (
 		},
 		{
 			description: "Test n4 Drop-in /usr/local/lib/tetragon/tetragon.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_1",
 				opt.KeyHubbleLib:          "/usr/local/lib/hubble-fgs/bpf/_1",
@@ -250,7 +250,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -262,7 +262,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -291,7 +291,7 @@ var (
 			description: "Test n5 Reset empty in /etc/hubble-fgs/hubble-fgs.yaml",
 			// expected options: all zeroed / cleared values
 			// As we write empty /etc/hubble-fgs/hubble-fgs.yaml file
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -306,7 +306,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -317,7 +317,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -328,7 +328,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true, // write empty values
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -355,7 +355,7 @@ var (
 			description: "Test n6 Partial update in /etc/hubble-fgs/hubble-fgs.yaml",
 			// expected options: partial update
 			// As we write /etc/hubble-fgs/hubble-fgs.yaml file
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/",
@@ -381,7 +381,7 @@ var (
 					dropIn: false,
 					write:  true, // write values
 					// Partial update only btf
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyBTF: "/sys/kernel/btf/vmlinux",
 					},
 				},
@@ -400,7 +400,7 @@ var (
 		{
 			// Retest default values, assert our testing logic
 			description: "Test n7 Re-test default values",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/",
@@ -440,7 +440,7 @@ var (
 		},
 		{
 			description: "Test n8 /etc/hubble-fgs/hubble-fgs.yaml",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
@@ -455,7 +455,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -467,7 +467,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -478,7 +478,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
@@ -504,7 +504,7 @@ var (
 			description: "Test n9 Reset empty Drop-in /etc/hubble-fgs/hubble-fgs.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside /etc/hubble-fgs/hubble-fgs.conf.d/ directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -534,7 +534,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -554,7 +554,7 @@ var (
 		},
 		{
 			description: "Test n10 Drop-in /etc/hubble-fgs/hubble-fgs.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
@@ -569,7 +569,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -581,7 +581,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -593,7 +593,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
@@ -607,7 +607,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_3",
@@ -627,7 +627,7 @@ var (
 			description: "Test n11 Reset empty Drop-in --config-dir /usr/lib/hubble-fgs",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -642,7 +642,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -653,7 +653,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -663,7 +663,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -673,7 +673,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -683,7 +683,7 @@ var (
 					path:   "/etc/hubble-fgs/usr.lib.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -699,7 +699,7 @@ var (
 			description: "Test n12 Reset empty Drop-in --config-dir /usr/local/lib/hubble-fgs",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -714,7 +714,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -725,7 +725,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -736,7 +736,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -746,7 +746,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -756,7 +756,7 @@ var (
 					path:   "/etc/hubble-fgs/usr.local.lib.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -772,7 +772,7 @@ var (
 			description: "Test n13 Reset empty Drop-in --config-dir /etc/hubble-fgs/hubble-fgs.yaml",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -787,7 +787,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -798,7 +798,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -809,7 +809,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -820,7 +820,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -830,7 +830,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -846,7 +846,7 @@ var (
 			description: "Test n14 Reset empty Drop-in --config-dir /etc/hubble-fgs/hubble-fgs.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -861,7 +861,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -872,7 +872,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -883,7 +883,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -894,7 +894,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -905,7 +905,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -919,7 +919,7 @@ var (
 		},
 		{
 			description: "Test n15 Drop-in --config-dir from /etc/hubble-fgs/hubble-fgs.yaml",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
@@ -934,7 +934,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -946,7 +946,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -958,7 +958,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
@@ -973,7 +973,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_3",
@@ -986,7 +986,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_4",
@@ -1000,7 +1000,7 @@ var (
 		},
 		{
 			description: "Test n16 Drop-in --config-dir from /etc/hubble-fgs/hubble-fgs.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
@@ -1015,7 +1015,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -1027,7 +1027,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -1039,7 +1039,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
@@ -1054,7 +1054,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 						opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
@@ -1068,7 +1068,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_4",
@@ -1086,7 +1086,7 @@ var (
 		{
 			description: "Test n0 Default configuration",
 			// expected options: default options nothing changes
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/",
@@ -1128,7 +1128,7 @@ var (
 			description: "Test n1 Reset empty Drop-in /usr/lib/tetragon/tetragon.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside /usr/lib/tetragon/tetragon.conf.d/ directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1143,7 +1143,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true, // write empty values
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -1178,7 +1178,7 @@ var (
 		},
 		{
 			description: "Test n2 Drop-in /usr/lib/tetragon/tetragon.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_0",
 				opt.KeyHubbleLib:          "/usr/lib/hubble-fgs/bpf/_0",
@@ -1193,7 +1193,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -1225,7 +1225,7 @@ var (
 			description: "Test n3 Reset empty Drop-in /usr/local/lib/tetragon/tetragon.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside /usr/local/lib/tetragon/tetragon.conf.d/ directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1245,7 +1245,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true, // write empty values
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -1275,7 +1275,7 @@ var (
 		},
 		{
 			description: "Test n4 Drop-in /usr/local/lib/tetragon/tetragon.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_1",
 				opt.KeyHubbleLib:          "/usr/local/lib/hubble-fgs/bpf/_1",
@@ -1290,7 +1290,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -1302,7 +1302,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -1331,7 +1331,7 @@ var (
 			description: "Test n5 Reset empty in /etc/tetragon/tetragon.yaml",
 			// expected options: all zeroed / cleared values
 			// As we write empty /etc/hubble-fgs/hubble-fgs.yaml file
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1346,7 +1346,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -1357,7 +1357,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -1368,7 +1368,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true, // write empty values
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -1395,7 +1395,7 @@ var (
 			description: "Test n6 Partial update in /etc/tetragon/tetragon.yaml",
 			// expected options: partial update
 			// As we write /etc/hubble-fgs/hubble-fgs.yaml file
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/",
@@ -1421,7 +1421,7 @@ var (
 					dropIn: false,
 					write:  true, // write values
 					// Partial update only btf
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyBTF: "/sys/kernel/btf/vmlinux",
 					},
 				},
@@ -1440,7 +1440,7 @@ var (
 		{
 			// Retest default values, assert our testing logic
 			description: "Test n7 Re-test default values",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/",
@@ -1480,7 +1480,7 @@ var (
 		},
 		{
 			description: "Test n8 /etc/tetragon/tetragon.yaml",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
@@ -1495,7 +1495,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -1507,7 +1507,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -1518,7 +1518,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
@@ -1544,7 +1544,7 @@ var (
 			description: "Test n9 Reset empty Drop-in /etc/tetragon/tetragon.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside /etc/hubble-fgs/hubble-fgs.conf.d/ directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1574,7 +1574,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "",
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
@@ -1594,7 +1594,7 @@ var (
 		},
 		{
 			description: "Test n10 Drop-in /etc/tetragon/tetragon.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
@@ -1609,7 +1609,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -1621,7 +1621,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -1633,7 +1633,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc-hubble-fgs.yaml_2",
@@ -1647,7 +1647,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_3",
@@ -1667,7 +1667,7 @@ var (
 			description: "Test n11 Reset empty Drop-in --config-dir /usr/lib/hubble-fgs",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1682,7 +1682,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1693,7 +1693,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -1703,7 +1703,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -1713,7 +1713,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d//",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -1723,7 +1723,7 @@ var (
 					path:   "/etc/hubble-fgs/usr.lib.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -1739,7 +1739,7 @@ var (
 			description: "Test n12 Reset empty Drop-in --config-dir /usr/local/lib/hubble-fgs",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1754,7 +1754,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1765,7 +1765,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1776,7 +1776,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -1786,7 +1786,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -1796,7 +1796,7 @@ var (
 					path:   "/etc/hubble-fgs/usr.local.lib.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -1812,7 +1812,7 @@ var (
 			description: "Test n13 Reset empty Drop-in --config-dir /etc/hubble-fgs/hubble-fgs.yaml",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1827,7 +1827,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1838,7 +1838,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1849,7 +1849,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1860,7 +1860,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
 						opt.KeyEventQueueSize:     uint(30000),
@@ -1870,7 +1870,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -1886,7 +1886,7 @@ var (
 			description: "Test n14 Reset empty Drop-in --config-dir /etc/hubble-fgs/hubble-fgs.conf.d/",
 			// expected options: all zeroed / cleared values
 			// As we write empty drop-ins inside --config-dir directory
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 				opt.KeyExportFilename:     "",
 				opt.KeyHubbleLib:          "",
@@ -1901,7 +1901,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1912,7 +1912,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/usr.local.lib.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1923,7 +1923,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1934,7 +1934,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 						opt.KeyVerbosity:          3,
 						option.KeyEnableCiliumAPI: false,
@@ -1945,7 +1945,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "",
 						opt.KeyHubbleLib:          "",
 						opt.KeyBTF:                "",
@@ -1959,7 +1959,7 @@ var (
 		},
 		{
 			description: "Test n15 Drop-in --config-dir from /etc/hubble-fgs/hubble-fgs.yaml",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
@@ -1974,7 +1974,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -1986,7 +1986,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -1998,7 +1998,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
@@ -2013,7 +2013,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_3",
@@ -2026,7 +2026,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_4",
@@ -2040,7 +2040,7 @@ var (
 		},
 		{
 			description: "Test n16 Drop-in --config-dir from /etc/hubble-fgs/hubble-fgs.conf.d/",
-			expectedOptions: map[string]interface{}{
+			expectedOptions: map[string]any{
 				opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 				opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 				opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
@@ -2055,7 +2055,7 @@ var (
 					path:   "/usr/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_0",
 						opt.KeyHubbleLib:      "/usr/lib/hubble-fgs/bpf/_0",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-lib_0",
@@ -2067,7 +2067,7 @@ var (
 					path:   "/usr/local/lib/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename: "/var/log/tetragon.log_1",
 						opt.KeyHubbleLib:      "/usr/local/lib/hubble-fgs/bpf/_1",
 						opt.KeyBTF:            "/sys/kernel/btf/vmlinux-usr-local-lib_1",
@@ -2079,7 +2079,7 @@ var (
 					path:   "/etc/tetragon/tetragon.yaml",
 					dropIn: false,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.yaml.k8s.conf.d",
 						opt.KeyExportFilename:     "/var/run/hubble-fgs/hubble-fgs.log_2",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/bpf/_2",
@@ -2094,7 +2094,7 @@ var (
 					path:   "/etc/tetragon/tetragon.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyConfigDir:          "/etc/hubble-fgs/hubble-fgs.k8s.conf.d",
 						opt.KeyExportFilename:     "/var/log/tetragon.log_3",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_3",
@@ -2108,7 +2108,7 @@ var (
 					path:   "/etc/hubble-fgs/hubble-fgs.k8s.conf.d/",
 					dropIn: true,
 					write:  true,
-					options: map[string]interface{}{
+					options: map[string]any{
 						opt.KeyExportFilename:     "/var/log/tetragon.log_4",
 						opt.KeyHubbleLib:          "/var/lib/tetragon/_4",
 						opt.KeyBTF:                "/sys/kernel/btf/vmlinux-etc_4",
@@ -2123,9 +2123,9 @@ var (
 	}
 )
 
-func writeDropInConf(_ *testing.T, _ string, fullDir string, options map[string]interface{}) error {
+func writeDropInConf(_ *testing.T, _ string, fullDir string, options map[string]any) error {
 	for k, v := range options {
-		data := []byte(fmt.Sprint(v))
+		data := fmt.Append(nil, v)
 		file := filepath.Join(fullDir, k)
 		err := os.WriteFile(file, data, 0644)
 		if err != nil {

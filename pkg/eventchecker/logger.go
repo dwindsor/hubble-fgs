@@ -18,10 +18,10 @@ import (
 
 // Logger interface to be used in checkers
 type Logger interface {
-	Log(args ...interface{})
-	Logf(format string, args ...interface{})
-	Fatal(args ...interface{})
-	Fatalf(format string, args ...interface{})
+	Log(args ...any)
+	Logf(format string, args ...any)
+	Fatal(args ...any)
+	Fatalf(format string, args ...any)
 }
 
 // PrefixLogger is a simple wrapper of Logger that allows to log with a prefix
@@ -31,40 +31,40 @@ type PrefixLogger struct {
 }
 
 // Log logs a new message at the INFO level
-func (l *PrefixLogger) Log(args ...interface{}) {
+func (l *PrefixLogger) Log(args ...any) {
 	if t, ok := l.Logger.(*testing.T); ok {
 		t.Helper()
 	}
-	newargs := append([]interface{}{l.Prefix}, args...)
+	newargs := append([]any{l.Prefix}, args...)
 	l.Logger.Log(newargs...)
 }
 
 // Fatal logs a new message at the FATAL level
-func (l *PrefixLogger) Fatal(args ...interface{}) {
+func (l *PrefixLogger) Fatal(args ...any) {
 	if t, ok := l.Logger.(*testing.T); ok {
 		t.Helper()
 	}
-	newargs := append([]interface{}{l.Prefix}, args...)
+	newargs := append([]any{l.Prefix}, args...)
 	l.Logger.Fatal(newargs...)
 }
 
 // Logf logs a new message at the INFO level using a format string
-func (l *PrefixLogger) Logf(format string, args ...interface{}) {
+func (l *PrefixLogger) Logf(format string, args ...any) {
 	if t, ok := l.Logger.(*testing.T); ok {
 		t.Helper()
 	}
 	newfmt := "%s" + format
-	newargs := append([]interface{}{l.Prefix}, args...)
+	newargs := append([]any{l.Prefix}, args...)
 	l.Logger.Logf(newfmt, newargs...)
 }
 
 // Fatalf logs a new message at the FATL level using a format string
-func (l *PrefixLogger) Fatalf(format string, args ...interface{}) {
+func (l *PrefixLogger) Fatalf(format string, args ...any) {
 	if t, ok := l.Logger.(*testing.T); ok {
 		t.Helper()
 	}
 	newfmt := "%s" + format
-	newargs := append([]interface{}{l.Prefix}, args...)
+	newargs := append([]any{l.Prefix}, args...)
 	l.Logger.Fatalf(newfmt, newargs...)
 }
 
@@ -74,21 +74,21 @@ type LogrusLogger struct {
 }
 
 // Log wraps the logrus Log method
-func (l *LogrusLogger) Log(args ...interface{}) {
+func (l *LogrusLogger) Log(args ...any) {
 	l.L.Log(logrus.InfoLevel, args...)
 }
 
 // Fatal wraps the logrus Fatal method
-func (l *LogrusLogger) Fatal(args ...interface{}) {
+func (l *LogrusLogger) Fatal(args ...any) {
 	l.L.Fatal(args...)
 }
 
 // Logf wraps the logrus Logf method
-func (l *LogrusLogger) Logf(format string, args ...interface{}) {
+func (l *LogrusLogger) Logf(format string, args ...any) {
 	l.L.Logf(logrus.InfoLevel, format, args...)
 }
 
 // Fatalf wraps the logrus Fatalf method
-func (l *LogrusLogger) Fatalf(format string, args ...interface{}) {
+func (l *LogrusLogger) Fatalf(format string, args ...any) {
 	l.L.Fatalf(format, args...)
 }

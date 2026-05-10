@@ -26,17 +26,17 @@ func BenchmarkNamespaceMapToApplicationModel(b *testing.B) {
 	numConnectionsPerProc := 50
 
 	var processModels []*types.ProcessModel
-	for ns := 0; ns < numNamespaces; ns++ {
+	for ns := range numNamespaces {
 		nsName := fmt.Sprintf("namespace-%d", ns)
-		for wl := 0; wl < numWorkloadsPerNS; wl++ {
+		for wl := range numWorkloadsPerNS {
 			wlName := fmt.Sprintf("workload-%d", wl)
-			for cont := 0; cont < numContainersPerWL; cont++ {
+			for cont := range numContainersPerWL {
 				contID := fmt.Sprintf("container-%d", cont)
-				for proc := 0; proc < numProcessesPerCont; proc++ {
+				for proc := range numProcessesPerCont {
 					procName := fmt.Sprintf("process-%d", proc)
 
 					var destinations []*types.Destination
-					for conn := 0; conn < numConnectionsPerProc; conn++ {
+					for conn := range numConnectionsPerProc {
 						destinations = append(destinations, &types.Destination{
 							DestinationNames: []string{"10.0.0." + string(rune('0'+conn))},
 							Port:             8080,

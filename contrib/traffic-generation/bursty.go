@@ -105,10 +105,7 @@ func main() {
 		os.Exit(6)
 	}
 
-	maxRate := rates[baseline]
-	if rates[1] > maxRate {
-		maxRate = rates[1]
-	}
+	maxRate := max(rates[1], rates[baseline])
 	if rates[2] > maxRate {
 		maxRate = rates[2]
 	}

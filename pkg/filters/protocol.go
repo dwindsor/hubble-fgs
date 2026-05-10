@@ -12,6 +12,7 @@ package filters
 
 import (
 	"context"
+	"slices"
 
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
@@ -49,13 +50,7 @@ func filterByProtocol(fs []tetragon.SocketProtocol) (filters.FilterFunc, error) 
 			return false
 		}
 
-		for _, proto := range fs {
-			if proto == protocol {
-				return true
-			}
-		}
-
-		return false
+		return slices.Contains(fs, protocol)
 	}, nil
 }
 

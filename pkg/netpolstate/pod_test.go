@@ -62,7 +62,7 @@ func newPod(t *testing.T, ns, name, kind, matchLabels string) *v1alpha1.PodInfo 
 	t.Helper()
 
 	ml := make(map[string]string)
-	for _, l := range strings.Split(matchLabels, ",") {
+	for l := range strings.SplitSeq(matchLabels, ",") {
 		kv := strings.Split(l, "=")
 		if len(kv) == 2 {
 			ml[kv[0]] = kv[1]
@@ -1310,7 +1310,7 @@ func TestConcurrentExportedPolicyStateCall(t *testing.T) {
 	numIterations := 50
 
 	policies := make([]*types.TetragonNetworkPolicy, numPolicies)
-	for i := 0; i < numPolicies; i++ {
+	for i := range numPolicies {
 		policies[i] = testMatchDstLabelsDenyPolicy(
 			"netpol-"+string(rune('A'+i)),
 			srcPodLabels,
@@ -1320,7 +1320,7 @@ func TestConcurrentExportedPolicyStateCall(t *testing.T) {
 	}
 
 	pods := make([]*v1alpha1.PodInfo, numPods)
-	for i := 0; i < numPods; i++ {
+	for i := range numPods {
 		podName := "testPod-" + string(rune('0'+i))
 		pods[i] = newPodFromCluster(t, s, testNamespace, podName, testKind, srcPodLabels)
 	}
@@ -1330,7 +1330,7 @@ func TestConcurrentExportedPolicyStateCall(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < numIterations; i++ {
+		for range numIterations {
 			for _, policy := range policies {
 				s.AddPolicies([]*types.TetragonNetworkPolicy{policy})
 			}
@@ -1339,7 +1339,7 @@ func TestConcurrentExportedPolicyStateCall(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < numIterations; i++ {
+		for range numIterations {
 			for _, policy := range policies {
 				s.RemovePolicies([]*types.TetragonNetworkPolicy{policy})
 			}
@@ -1348,7 +1348,7 @@ func TestConcurrentExportedPolicyStateCall(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < numIterations; i++ {
+		for range numIterations {
 			for _, pod := range pods {
 				s.PodAdd(pod)
 			}
@@ -1357,7 +1357,7 @@ func TestConcurrentExportedPolicyStateCall(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < numIterations; i++ {
+		for range numIterations {
 			for _, pod := range pods {
 				s.PodRemove(pod)
 			}

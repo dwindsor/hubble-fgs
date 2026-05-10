@@ -135,10 +135,7 @@ func GetTLSSNI(sni [api.SNI_BUFFER_SIZE]byte) (string, string) {
 	case 0:
 		typeSNI = "host_name"
 	}
-	nameLength := binary.BigEndian.Uint16(sni[3:5])
-	if nameLength > api.SNI_BUFFER_SIZE-5 {
-		nameLength = api.SNI_BUFFER_SIZE - 5
-	}
+	nameLength := min(binary.BigEndian.Uint16(sni[3:5]), api.SNI_BUFFER_SIZE-5)
 	return typeSNI, string(sni[5 : 5+nameLength])
 }
 
@@ -155,10 +152,7 @@ func GetTLSSupportedVersions(flv *api.FLV16, hasLength bool) string {
 	if len(vers) < 2 {
 		return ""
 	} else if hasLength {
-		end := int(vers[0]) + 1
-		if end > len(vers) {
-			end = len(vers)
-		}
+		end := min(int(vers[0])+1, len(vers))
 		vers = vers[1:end]
 	} else {
 		// serverHello supported versions extensions only has the

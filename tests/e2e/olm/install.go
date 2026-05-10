@@ -141,7 +141,7 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 		klog.InfoS("Installing Tetragon...", "opts", o)
 		opCM := agent.DefaultOperatorConfigMap(klog.NewKlogr(), o.Namespace, agent.OperatorConfigMapName)
 		agentCMMap := agent.ValuesAsMap(klog.Background(), opCM.Data[agent.OperatorConfigMapAgentConfigMapKey])
-		daemonsetMap := make(map[string]interface{})
+		daemonsetMap := make(map[string]any)
 		if err := yaml.Unmarshal([]byte(opCM.Data[agent.OperatorConfigMapAgentDaemonSetKey]), &daemonsetMap); err != nil {
 			klog.V(2).ErrorS(err, "could not unmarshal the DaemonSet configuration", "value", opCM.Data[agent.OperatorConfigMapAgentDaemonSetKey])
 			return nil, err
@@ -553,7 +553,7 @@ func imageDigestRef(clusterName, image string) (string, error) {
 	// Parse the ctr output to extract the digest. Format:
 	// REF TYPE DIGEST SIZE ...
 	// <image> application/vnd.oci.image.manifest.v1+json sha256:abc... 70.8 MiB ...
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) >= 3 && fields[0] == image {
 			digest := fields[2]
@@ -574,8 +574,8 @@ func imageDigestRef(clusterName, image string) (string, error) {
 // so that OLM pods can authenticate when pulling images from the registry.
 func createRegistrySecret(ctx context.Context, cfg *envconf.Config, namespace, name, server, username, password string) (*corev1.Secret, error) {
 	auth := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
-	dockerCfg := map[string]interface{}{
-		"auths": map[string]interface{}{
+	dockerCfg := map[string]any{
+		"auths": map[string]any{
 			server: map[string]string{
 				"username": username,
 				"password": password,

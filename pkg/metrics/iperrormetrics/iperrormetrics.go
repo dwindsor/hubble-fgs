@@ -11,6 +11,8 @@
 package iperrormetrics
 
 import (
+	"slices"
+
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -215,10 +217,5 @@ func ProtoConsoleEnabled(proto Protocol) bool {
 	if !ok {
 		return false
 	}
-	for _, p := range option.Config.DebugX {
-		if pstr+"+" == p {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(option.Config.DebugX, pstr+"+")
 }

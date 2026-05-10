@@ -18,7 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 )
 
-func getTypeInternal(sb *strings.Builder, myType interface{}, fnName string, kretprobe bool) {
+func getTypeInternal(sb *strings.Builder, myType any, fnName string, kretprobe bool) {
 	switch t := myType.(type) {
 	case *btf.Pointer:
 		switch t.Target.(type) {
@@ -64,7 +64,7 @@ func getTypeInternal(sb *strings.Builder, myType interface{}, fnName string, kre
 	}
 }
 
-func getType(myType interface{}, fnName string, kretprobe bool) string {
+func getType(myType any, fnName string, kretprobe bool) string {
 	var sb strings.Builder
 	getTypeInternal(&sb, myType, fnName, kretprobe)
 	return sb.String()

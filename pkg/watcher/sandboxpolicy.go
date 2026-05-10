@@ -28,14 +28,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
-func addSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj interface{}) {
+func addSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj any) {
 	err := sandboxpolicy.AddSandboxPolicy(ctx, log, s, obj)
 	if err != nil {
 		log.Warn("failed to add sandbox policy", logfields.Error, err)
 	}
 }
 
-func deleteSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj interface{}) {
+func deleteSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj any) {
 	var err error
 	switch sp := obj.(type) {
 	case *v1alpha1.SandboxPolicy:
@@ -57,7 +57,7 @@ func deleteSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors
 }
 
 func sandboxPolicyNeedsUpdate(
-	oldObj interface{}, newObj interface{},
+	oldObj any, newObj any,
 ) (bool, error) {
 	switch oldSp := oldObj.(type) {
 	case *v1alpha1.SandboxPolicy:
@@ -79,7 +79,7 @@ func sandboxPolicyNeedsUpdate(
 
 func updateSandboxPolicy(
 	ctx context.Context, log logger.FieldLogger,
-	s *sensors.Manager, oldObj interface{}, newObj interface{},
+	s *sensors.Manager, oldObj any, newObj any,
 ) {
 	upd, err := sandboxPolicyNeedsUpdate(oldObj, newObj)
 	if err != nil {
@@ -102,13 +102,13 @@ func AddSandboxPolicyInformer(ctx context.Context, m *manager.ControllerManager,
 	}
 	_, err = spInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
+			AddFunc: func(obj any) {
 				addSandboxPolicy(ctx, log, s, obj)
 			},
-			DeleteFunc: func(obj interface{}) {
+			DeleteFunc: func(obj any) {
 				deleteSandboxPolicy(ctx, log, s, obj)
 			},
-			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			UpdateFunc: func(oldObj any, newObj any) {
 				updateSandboxPolicy(ctx, log, s, oldObj, newObj)
 			}})
 	if err != nil {
@@ -121,13 +121,13 @@ func AddSandboxPolicyInformer(ctx context.Context, m *manager.ControllerManager,
 	}
 	_, err = spnInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
+			AddFunc: func(obj any) {
 				addSandboxPolicy(ctx, log, s, obj)
 			},
-			DeleteFunc: func(obj interface{}) {
+			DeleteFunc: func(obj any) {
 				deleteSandboxPolicy(ctx, log, s, obj)
 			},
-			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			UpdateFunc: func(oldObj any, newObj any) {
 				updateSandboxPolicy(ctx, log, s, oldObj, newObj)
 			}})
 	return err

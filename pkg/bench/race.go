@@ -111,7 +111,7 @@ type raceEncoder struct {
 	enc   *json.Encoder
 }
 
-func (re *raceEncoder) Encode(v interface{}) error {
+func (re *raceEncoder) Encode(v any) error {
 	re.count++
 	if re.count%1000 == 0 {
 		logger.GetLogger().Info(fmt.Sprintf("FGS RACE: %d events received...", re.count))
@@ -363,24 +363,18 @@ func RunRace() {
 	var wg sync.WaitGroup
 
 	ready := make(chan bool)
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		runRaceFGS(ctx, ready)
-		wg.Done()
-	}()
+	})
 	<-ready
 
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		raceTCPLoad(ctx)
-		wg.Done()
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		raceUDPLoad(ctx)
-		wg.Done()
-	}()
+	})
 
 	wg.Wait()
 }

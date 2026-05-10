@@ -38,7 +38,7 @@ func (r remoteLoader) OnSandboxPolicy(ctx context.Context, fname string, bytes [
 		return err
 	}
 
-	var tp interface{}
+	var tp any
 	switch sp := pol.(type) {
 	case *v1alpha1.SandboxPolicy:
 		tp, err = sandboxpolicy.ToTracingPolicy(sp)

@@ -1136,10 +1136,7 @@ func handleFileOpenrawOps(r *bytes.Reader) ([]observer.Event, error) {
 		openPath = openPath[:m.Path.Size]
 	}
 
-	retval := m.Retval
-	if retval > 0 {
-		retval = 0
-	}
+	retval := min(m.Retval, 0)
 	retval = -retval
 
 	s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
@@ -1588,14 +1585,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			if checkReWrite() == nil {
 				val = 1
 			}
-			load.RewriteConstants = map[string]interface{}{
+			load.RewriteConstants = map[string]any{
 				"USE_BPF_D_PATH_HELPER": uint32(val),
 				// this applies to all path-based programs
 				// so, we don't need to use a separate section for that
 				"PATH_BASED_MATCHER": uint32(pathMatcher),
 			}
 		} else {
-			load.RewriteConstants = map[string]interface{}{}
+			load.RewriteConstants = map[string]any{}
 		}
 
 		if bpf.HasProgramLargeSize() {

@@ -855,11 +855,11 @@ func (msg *MsgIPWithStatsEventUnix) HandleMessage() *tetragon.GetEventsResponse 
 	return res
 }
 
-func (msg *MsgIPEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgIPEventUnix) Cast(_ any) notify.Message {
 	return &MsgIPEventUnix{}
 }
 
-func (msg *MsgIPWithStatsEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgIPWithStatsEventUnix) Cast(_ any) notify.Message {
 	return &MsgIPWithStatsEventUnix{}
 }
 

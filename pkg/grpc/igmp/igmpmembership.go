@@ -71,7 +71,7 @@ func (msg *MsgIGMPMembershipReportUnix) HandleMessage() *tetragon.GetEventsRespo
 	return res
 }
 
-func (msg *MsgIGMPMembershipReportUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgIGMPMembershipReportUnix) Cast(_ any) notify.Message {
 	return &MsgIGMPMembershipReportUnix{}
 }
 

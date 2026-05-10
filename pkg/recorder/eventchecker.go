@@ -27,7 +27,7 @@ import (
 
 type Spec struct {
 	// Metadata to use in the recorded eventchecker.
-	Metadata ecYaml.Metadata `json:"metadata,omitempty"`
+	Metadata ecYaml.Metadata `json:"metadata"`
 	// Kind of eventchecker to record.
 	CheckerKind string `json:"checkerKind"`
 	// Fields to include and exclude in recorded event checkers. Keys are checker type
@@ -35,7 +35,7 @@ type Spec struct {
 	FieldFilters map[string]CheckerFieldFilters `json:"fieldFilters,omitempty"`
 	// Events to include and exclude while recording checkers, specified as lists of event
 	// checkers.
-	EventFilters EventFilters `json:"eventFilters,omitempty"`
+	EventFilters EventFilters `json:"eventFilters"`
 }
 
 type EventFilters struct {

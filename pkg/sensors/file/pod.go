@@ -206,7 +206,7 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 	return nil
 }
 
-func podhooksAddFunc(obj interface{}) {
+func podhooksAddFunc(obj any) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		logger.GetLogger().Warn(fmt.Sprintf("fim, add-pod handler: unexpected object type: %T", pod))
@@ -261,7 +261,7 @@ func podhooksAddFunc(obj interface{}) {
 	}
 }
 
-func podhooksUpdateFunc(oldObj, newObj interface{}) {
+func podhooksUpdateFunc(oldObj, newObj any) {
 	pod1, ok1 := oldObj.(*v1.Pod)
 	pod2, ok2 := newObj.(*v1.Pod)
 	if !ok1 || !ok2 {
@@ -335,7 +335,7 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 	}
 }
 
-func podhooksDeleteFunc(obj interface{}) {
+func podhooksDeleteFunc(obj any) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		logger.GetLogger().Warn(fmt.Sprintf("fim, add-pod handler: unexpected object type: %T", pod))

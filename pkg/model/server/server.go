@@ -957,7 +957,7 @@ func getProcessModel(namespaces []string,
 			err = sm.Lookup(&key.Self, &syscallVal)
 			if err == nil {
 				for i, mask := range syscallVal.Syscalls {
-					for j := 0; j < 64; j++ {
+					for j := range 64 {
 						if mask&(uint64(1)<<j) != uint64(0) {
 							id := i*64 + j
 							syscalls.Insert(uint32(id))

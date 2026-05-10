@@ -34,10 +34,7 @@ type StringMatcher struct {
 
 // StringArg is a dummy interface for either a plain string (defaults to a full match) or
 // a StringMatcher
-type StringArg interface {
-	// string -> FullMatch
-	// StringMatcher
-}
+type StringArg any
 
 func stringMatcherFromArg(arg StringArg) StringMatcher {
 	switch v := arg.(type) {

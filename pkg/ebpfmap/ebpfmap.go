@@ -15,7 +15,7 @@ import (
 )
 
 type Iterator interface {
-	Next(keyOut, valueOut interface{}) bool
+	Next(keyOut, valueOut any) bool
 	Err() error
 }
 

@@ -11,6 +11,7 @@
 package agent
 
 import (
+	"maps"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -21,21 +22,17 @@ import (
 )
 
 // AggregatorDeployment instantiates a Tetragon Aggregator Deployment.
-func AggregatorDeployment(log logr.Logger, namespace string, name string, config map[string]interface{}) (*appv1.Deployment, error) {
+func AggregatorDeployment(log logr.Logger, namespace string, name string, config map[string]any) (*appv1.Deployment, error) {
 	// the aggregator deployment gets only created if it is enabled
 	if !configValue(log, config, "enabled", false) {
 		return nil, nil
 	}
 
 	labels := labelsForManaged(name)
-	for k, v := range configMapOfString(log, config, "extraLabels") {
-		labels[k] = v
-	}
+	maps.Copy(labels, configMapOfString(log, config, "extraLabels"))
 
 	podLabels := labelsForManaged(name)
-	for k, v := range configMapOfString(log, config, "extraPodLabels") {
-		podLabels[k] = v
-	}
+	maps.Copy(podLabels, configMapOfString(log, config, "extraPodLabels"))
 
 	imagePullSecrets := make([]corev1.LocalObjectReference, 0)
 	imagePullSecretsValue := configValue(log, config, "imagePullSecrets", "")

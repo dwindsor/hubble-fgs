@@ -53,7 +53,7 @@ func NewEnterpriseEncoder(w io.Writer, colorMode encoder.ColorMode, timestamps b
 }
 
 // Encode implements EventEncoder.Encode.
-func (p *EnterpriseEncoder) EncodePrefix(prefix string, v interface{}) error {
+func (p *EnterpriseEncoder) EncodePrefix(prefix string, v any) error {
 	event, ok := v.(*tetragon.GetEventsResponse)
 	if !ok {
 		return encoder.ErrInvalidEvent
@@ -72,7 +72,7 @@ func (p *EnterpriseEncoder) EncodePrefix(prefix string, v interface{}) error {
 	return nil
 }
 
-func (p *EnterpriseEncoder) Encode(v interface{}) error {
+func (p *EnterpriseEncoder) Encode(v any) error {
 	return p.EncodePrefix("", v)
 }
 

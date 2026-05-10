@@ -49,7 +49,7 @@ type Status struct {
 	Running bool                    `json:"running"`
 	Mandate *LoadedMandate          `json:"mandate,omitempty"`
 
-	Log attempt.Attempts `json:"log,omitempty"`
+	Log attempt.Attempts `json:"log"`
 }
 
 type ConfArg struct {

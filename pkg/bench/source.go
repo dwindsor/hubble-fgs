@@ -442,7 +442,7 @@ func genGoSource(ctx context.Context, _ int, args SourceArgs, act func() error) 
 
 	stats.CPUUsage = CPUUsage{}
 	wg.Add(nthreads)
-	for i := 0; i < nthreads; i++ {
+	for range nthreads {
 		go func() {
 			runtime.LockOSThread()
 			latenciesPerThread := make([]time.Duration, 0, 1024)

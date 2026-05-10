@@ -13,6 +13,7 @@ package file
 import (
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/cilium/ebpf"
 
@@ -88,11 +89,11 @@ func PrintFilenameDigestMaps(policyDir string) error {
 			if dlen, ok := HashAlgoLen[tetragon.DigestAlgo(digest.Algo)]; ok {
 				digestLen = dlen
 			}
-			var digestStr string
+			var digestStr strings.Builder
 			for i := 0; i < digestLen; i++ {
-				digestStr += fmt.Sprintf("%02x", digest.Digest[i])
+				digestStr.WriteString(fmt.Sprintf("%02x", digest.Digest[i]))
 			}
-			fmt.Printf("    digest:[%d, %d, %s],digestID:[%d]\n", digest.Ok, digest.Algo, digestStr, digestIdx)
+			fmt.Printf("    digest:[%d, %d, %s],digestID:[%d]\n", digest.Ok, digest.Algo, digestStr.String(), digestIdx)
 		}
 	}
 	return nil

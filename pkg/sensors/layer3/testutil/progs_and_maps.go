@@ -11,6 +11,8 @@
 package testutil
 
 import (
+	"slices"
+
 	"github.com/cilium/ebpf"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
@@ -47,12 +49,7 @@ func GetMapProgs(maps []tus.SensorMap, name string) []uint {
 }
 
 func progInList(name string, progNames []string) bool {
-	for _, p := range progNames {
-		if name == p {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(progNames, name)
 }
 
 func getMapIndicesByName(progs []tus.SensorProg, progNames []string) []uint {

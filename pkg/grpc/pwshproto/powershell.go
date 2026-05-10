@@ -88,6 +88,6 @@ func (msg *MsgPowerShellEvent) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgPowerShellEvent) Cast(_ interface{}) notify.Message {
+func (msg *MsgPowerShellEvent) Cast(_ any) notify.Message {
 	return &MsgPowerShellEvent{}
 }

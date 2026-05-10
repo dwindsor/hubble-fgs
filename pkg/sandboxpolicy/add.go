@@ -25,7 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
-func AddSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj interface{}) error {
+func AddSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj any) error {
 	var tp tracingpolicy.TracingPolicy
 
 	switch sp := obj.(type) {

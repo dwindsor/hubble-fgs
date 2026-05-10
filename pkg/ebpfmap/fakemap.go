@@ -28,7 +28,7 @@ type fakeIterator[K fmt.Stringer, V any] struct {
 	idx   int
 }
 
-func (fi *fakeIterator[K, V]) Next(keyOut, valueOut interface{}) bool {
+func (fi *fakeIterator[K, V]) Next(keyOut, valueOut any) bool {
 	if fi.idx >= len(fi.pairs) {
 		return false
 	}

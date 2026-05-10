@@ -157,7 +157,7 @@ func TestManySimplePolicy(t *testing.T) {
 
 	p := &PolicyList{}
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		is := fmt.Sprintf("%d", i)
 		netpol := &types.TetragonNetworkPolicy{
 			PolicyUID: types.TetragonPolicyUniqueID{
@@ -172,7 +172,7 @@ func TestManySimplePolicy(t *testing.T) {
 		s.Labels[is] = is
 		p.Add(s)
 	}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		is := fmt.Sprintf("%d", i)
 		s := &LabelSet{
 			Labels: make(map[string]string),
@@ -187,7 +187,7 @@ func TestManySimplePolicy(t *testing.T) {
 func TestManyLongerPolicy(t *testing.T) {
 	p := &PolicyList{}
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		is := fmt.Sprintf("%d", i)
 		netpol := &types.TetragonNetworkPolicy{
 			PolicyUID: types.TetragonPolicyUniqueID{
@@ -205,7 +205,7 @@ func TestManyLongerPolicy(t *testing.T) {
 	s := &LabelSet{
 		Labels: make(map[string]string),
 	}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		is := fmt.Sprintf("%d", i)
 		s.Labels[is] = is
 	}
@@ -279,7 +279,7 @@ func BenchmarkMatchPolicy(b *testing.B) {
 
 	// I am not sure it makes sense, but this is what was
 	// happening here before.
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		s := &LabelSet{
 			Labels: make(map[string]string),
 			Policy: &types.TetragonNetworkPolicy{
@@ -301,12 +301,12 @@ func BenchmarkMatchPolicy(b *testing.B) {
 	find := &LabelSet{
 		Labels: make(map[string]string),
 	}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		is := fmt.Sprintf("%d%+100s", i, " ")
 		find.Labels[is] = is
 	}
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		p.Exists(find)
 	}
 	p.Flush()
@@ -315,7 +315,7 @@ func BenchmarkMatchPolicy(b *testing.B) {
 func BenchmarkCollection(b *testing.B) {
 	p := PolicyList{}
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		s := &LabelSet{
 			Labels: make(map[string]string),
 			Policy: &types.TetragonNetworkPolicy{
@@ -336,13 +336,13 @@ func BenchmarkCollection(b *testing.B) {
 	find := &LabelSet{
 		Labels: make(map[string]string),
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		is := fmt.Sprintf("%d%+20s", i, " ")
 		find.Labels[is] = is
 	}
 
 	var collection []*LabelSet
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		collection = p.Collection(find)
 	}
 	assert.Equal(b, 100, len(collection))

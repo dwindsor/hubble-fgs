@@ -54,10 +54,7 @@ func (l *Log) Attempts() Attempts {
 	ret.Total = l.total
 	ret.Failures = l.failures
 
-	n := l.total
-	if n > maxAttempts {
-		n = maxAttempts
-	}
+	n := min(l.total, maxAttempts)
 	idx0 := l.total - n
 	for i := 0; i < n; i++ {
 		idx := (idx0 + i) % maxAttempts

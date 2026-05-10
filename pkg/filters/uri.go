@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
@@ -207,10 +208,8 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (filters.Fi
 		// in the case of the DestinationNames field which may container one or more
 		// destination names.
 		for _, URI := range URIs {
-			for _, URIString := range URIStrings {
-				if URI.MatchString(URIString) {
-					return true
-				}
+			if slices.ContainsFunc(URIStrings, URI.MatchString) {
+				return true
 			}
 		}
 

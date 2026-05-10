@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"slices"
 	"strings"
 	"sync"
 
@@ -272,13 +273,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 			newNameSet := strings.Split(ep.Dns, ",")
 			oldNameSet := strings.Split(epExists.Dns, ",")
 			for _, name := range oldNameSet {
-				found := false
-				for _, check := range newNameSet {
-					if check == name {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(newNameSet, name)
 				if !found {
 					newNameSet = append(newNameSet, name)
 				}

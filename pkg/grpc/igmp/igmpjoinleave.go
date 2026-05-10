@@ -66,7 +66,7 @@ func (msg *MsgIGMPJoinEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgIGMPJoinEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgIGMPJoinEventUnix) Cast(_ any) notify.Message {
 	return &MsgIGMPJoinEventUnix{}
 }
 
@@ -167,7 +167,7 @@ func (msg *MsgIGMPLeaveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgIGMPLeaveEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgIGMPLeaveEventUnix) Cast(_ any) notify.Message {
 	return &MsgIGMPLeaveEventUnix{}
 }
 

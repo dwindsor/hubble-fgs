@@ -101,7 +101,7 @@ func createServiceMonitors(ctx context.Context, log logr.Logger, client client.C
 
 func agentMonitorCfg(log logr.Logger, cm *corev1.ConfigMap) (monitorServiceCfg, error) {
 	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
-	cmFields := make(map[string]interface{})
+	cmFields := make(map[string]any)
 	if err := yaml.Unmarshal([]byte(configYaml), &cmFields); err != nil {
 		log.WithValues("value", configYaml).Error(err, "could not unmarshal the DaemonSet configuration")
 		return monitorServiceCfg{}, err

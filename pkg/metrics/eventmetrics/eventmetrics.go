@@ -24,7 +24,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 )
 
-func HandleOriginalEvent(originalEvent interface{}) {
+func HandleOriginalEvent(originalEvent any) {
 	var flags uint32
 	switch msg := originalEvent.(type) {
 	case *processapi.MsgExecveEventUnix:
@@ -35,7 +35,7 @@ func HandleOriginalEvent(originalEvent interface{}) {
 	}
 }
 
-func HandleProcessedEvent(processedEvent interface{}) {
+func HandleProcessedEvent(processedEvent any) {
 	var eventType, namespace, workload, pod, binary, nodeName string
 	switch ev := processedEvent.(type) {
 	case *tetragon.GetEventsResponse:

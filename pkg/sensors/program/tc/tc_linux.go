@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -42,12 +43,7 @@ func getAllRouteLinks() ([]netlink.Link, error) {
 }
 
 func inInterfaces(i string, interfaces []string) bool {
-	for _, s := range interfaces {
-		if s == i {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(interfaces, i)
 }
 
 func filterLinks(links []netlink.Link, interfaces []string) []netlink.Link {

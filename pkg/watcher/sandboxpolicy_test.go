@@ -30,7 +30,7 @@ func TestNeedSandboxpolicyUpdate(t *testing.T) {
 	)
 
 	type tc struct {
-		newObj, oldObj interface{}
+		newObj, oldObj any
 		expected       fnRet
 	}
 

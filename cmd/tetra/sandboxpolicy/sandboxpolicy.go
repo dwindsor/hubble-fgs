@@ -76,7 +76,7 @@ func convertCmd() *cobra.Command {
 				log.Fatalf("failed to parse %s: %v", fname, err)
 			}
 
-			var tp interface{}
+			var tp any
 			switch sp := pol.(type) {
 			case *v1alpha1.SandboxPolicy:
 				tp, err = sandboxpolicy.ToTracingPolicy(sp)

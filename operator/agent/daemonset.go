@@ -32,14 +32,14 @@ func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 	// - specific to the agent DS
 	// - specific to the RT DS
 	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
-	cmFields := make(map[string]interface{})
+	cmFields := make(map[string]any)
 	if err := yaml.Unmarshal([]byte(configYaml), &cmFields); err != nil {
 		log.WithValues("value", configYaml).Error(err, "could not unmarshal the DaemonSet configuration")
 		return nil, err
 	}
 	// RT hooks fail namespaces need to be passed to the agent
 	rtConfigYaml := cm.Data[OperatorConfigMapRTHooksDaemonSetKey]
-	if err := yaml.Unmarshal([]byte(rtConfigYaml), new(make(map[string]interface{}))); err != nil {
+	if err := yaml.Unmarshal([]byte(rtConfigYaml), new(make(map[string]any))); err != nil {
 		log.WithValues("value", rtConfigYaml).Error(err, "could not unmarshal the runtime hooks DaemonSet configuration")
 		return nil, err
 	}
@@ -137,13 +137,13 @@ func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 func RTDaemonSet(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*appv1.DaemonSet, error) {
 	// TODO: Unmarshalling of the CM should be done once: before calling DaemonSet and RTDaemonSet (see above)
 	configYaml := cm.Data[OperatorConfigMapAgentDaemonSetKey]
-	cmFields := make(map[string]interface{})
+	cmFields := make(map[string]any)
 	if err := yaml.Unmarshal([]byte(configYaml), &cmFields); err != nil {
 		log.WithValues("value", configYaml).Error(err, "could not unmarshal the DaemonSet configuration")
 		return nil, err
 	}
 	rtConfigYaml := cm.Data[OperatorConfigMapRTHooksDaemonSetKey]
-	rtCMFields := make(map[string]interface{})
+	rtCMFields := make(map[string]any)
 	if err := yaml.Unmarshal([]byte(rtConfigYaml), &rtCMFields); err != nil {
 		log.WithValues("value", rtConfigYaml).Error(err, "could not unmarshal the runtime hooks DaemonSet configuration")
 		return nil, err
@@ -736,7 +736,7 @@ func hostPathVolumesFromConfigMap(log logr.Logger, cmFields map[string]any, key 
 
 func configArray(log logr.Logger, config map[string]any, key string, defaultValue []string) []string {
 	if value, ok := config[key]; ok {
-		if a, ok := value.([]interface{}); ok {
+		if a, ok := value.([]any); ok {
 			result := make([]string, 0, len(a))
 			for _, v := range a {
 				result = append(result, v.(string))

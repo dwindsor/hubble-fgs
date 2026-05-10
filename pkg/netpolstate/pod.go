@@ -15,6 +15,7 @@ package netpolstate
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
@@ -575,9 +576,7 @@ func (deps externalDeps) getNamespaceLabels(ns string) map[string]string {
 		}
 
 		// Add all namespace labels
-		for k, v := range namespace.Labels {
-			l[k] = v
-		}
+		maps.Copy(l, namespace.Labels)
 	} else {
 		logger.GetLogger().Warn("k8sReader not set, cannot fetch namespace labels for namespaceSelector",
 			"namespace", ns)

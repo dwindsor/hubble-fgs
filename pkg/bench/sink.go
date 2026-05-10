@@ -366,7 +366,7 @@ func withStats(sinkStats chan SinkStats, run func()) {
 // on same port.
 func findFreePort() int {
 	taken := tcpListenPorts()
-	for try := 0; try < 10; try++ {
+	for range 10 {
 		port := 14000 + rand.Intn(10000)
 		if _, ok := taken[port]; ok {
 			continue
@@ -385,7 +385,7 @@ func tcpListenPorts() map[int]struct{} {
 		log.Printf("Failed to get TCP listen ports: %s", err)
 		return ports
 	}
-	for _, s := range strings.Split(string(out), "\n") {
+	for s := range strings.SplitSeq(string(out), "\n") {
 		if s == "" {
 			continue
 		}

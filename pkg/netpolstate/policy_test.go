@@ -25,7 +25,7 @@ import (
 
 func testMatchSrcLabelsPolicy(name, labels string) *types.TetragonNetworkPolicy {
 	ml := make(map[string]string)
-	for _, l := range strings.Split(labels, ",") {
+	for l := range strings.SplitSeq(labels, ",") {
 		kv := strings.Split(l, "=")
 		ml[kv[0]] = kv[1]
 	}
@@ -61,7 +61,7 @@ func testMatchSrcLabelsPolicy(name, labels string) *types.TetragonNetworkPolicy 
 func testMatchDstLabelsPolicy(name, src, dst string) *types.TetragonNetworkPolicy {
 	p := testMatchSrcLabelsPolicy(name, src)
 	ml := make(map[string]string)
-	for _, l := range strings.Split(dst, ",") {
+	for l := range strings.SplitSeq(dst, ",") {
 		kv := strings.Split(l, "=")
 		ml[kv[0]] = kv[1]
 	}

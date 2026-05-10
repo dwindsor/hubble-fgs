@@ -90,7 +90,7 @@ func ProbeTCPPort(port int, ns *netns.NsHandle) bool {
 
 	ready := false
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	for attempt := 0; attempt < attempts; attempt++ {
+	for range attempts {
 		conn, err := net.Dial("tcp", addr)
 		if err == nil {
 			conn.Close()

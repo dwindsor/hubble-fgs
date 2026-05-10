@@ -69,7 +69,7 @@ func doBenchmark(output string, tests []benchmarkNetworkTest) error {
 	var tcp, udp, iface, hist, tls, http bool
 
 	for _, t := range tests {
-		for _, p := range strings.Split(t.parsers, ",") {
+		for p := range strings.SplitSeq(t.parsers, ",") {
 			switch p {
 			case "http":
 				http = true

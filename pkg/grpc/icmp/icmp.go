@@ -77,7 +77,7 @@ func (msg *MsgICMPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgICMPEventUnix) Cast(_ interface{}) notify.Message {
+func (msg *MsgICMPEventUnix) Cast(_ any) notify.Message {
 	return &MsgICMPEventUnix{}
 }
 
