@@ -37,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
+	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -838,6 +839,7 @@ func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	initialLayer3Sensor.PreUnloadHook = func() error {
 		return unloadLayer3Sensor(option.Config.KeepSensorsOnExit)
 	}
+	initialLayer3Sensor.PostLoadHook = manager.StartPodInfoReconcilerHook
 	if err := mgr.AddSensor(ctx, initialLayer3Sensor.Name, initialLayer3Sensor); err != nil {
 		return err
 	}

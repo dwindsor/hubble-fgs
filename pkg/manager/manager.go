@@ -117,10 +117,9 @@ func New(ctx context.Context) (KubernetesManager, error) {
 		}
 
 		state := netpolstate.Get()
-		podInfoReconciler := controllers.NewPodInfoReconciler(ossManager.Manager.GetClient(), endpoint.MustGet(), state)
-		if err = podInfoReconciler.SetupWithManager(ossManager.Manager); err != nil {
-			return nil, fmt.Errorf("failed to setup PodInfo reconciler: %w", err)
-		}
+		// Do not start the PodInfo Reconciler yet as it depends on the
+		// layer3 sensor maps (because it's used in the netpolstate
+		// handlers), it will be loaded in layer3 sensor PostLoadHook.
 		sm := servicemap.NewServiceMap(state)
 		if err := servicemap.AddServiceInformer(ctx, ossManager, sm); err != nil {
 			return nil, err
@@ -129,6 +128,30 @@ func New(ctx context.Context) (KubernetesManager, error) {
 		state.SetServiceMap(sm)
 	}
 	return &EnterpriseManager{ossManager}, nil
+}
+
+// StartPodInfoReconciler should be ideally called after the layer3 sensor has
+// been loaded, otherwise, it retries with back offs and produces log errors.
+func StartPodInfoReconcilerHook() error {
+	if !enterpriseOption.Config.EnableApplicationModel {
+		return nil
+	}
+
+	if mgr := Get(); mgr == nil || mgr.GetControllerManager() == nil || mgr.GetControllerManager().Manager == nil {
+		return nil
+	}
+	mgr := Get().GetControllerManager().Manager
+
+	podInfoReconciler := controllers.NewPodInfoReconciler(
+		mgr.GetClient(),
+		endpoint.MustGet(),
+		netpolstate.Get(),
+	)
+	if err := podInfoReconciler.SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("failed to setup PodInfo reconciler: %w", err)
+	}
+
+	return nil
 }
 
 func (em *EnterpriseManager) GetControllerManager() *manager.ControllerManager {
