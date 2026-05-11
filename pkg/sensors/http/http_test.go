@@ -46,8 +46,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
@@ -227,7 +225,7 @@ func spawnHttp2Server(ctx context.Context, t *testing.T, ipv6 bool) string {
 			w.Write([]byte("hello world"))
 		})
 	s := http.Server{
-		Handler: h2c.NewHandler(handler, &http2.Server{}),
+		Handler: handler,
 	}
 	if ipv6 {
 		s.Addr = "[::1]:0"
@@ -244,6 +242,9 @@ func spawnHttp2Server(ctx context.Context, t *testing.T, ipv6 bool) string {
 		s.Shutdown(ctx)
 		ln.Close()
 	}()
+	s.Protocols = new(http.Protocols)
+	s.Protocols.SetHTTP1(true)
+	s.Protocols.SetUnencryptedHTTP2(true)
 	go s.Serve(ln)
 
 	return ln.Addr().String()

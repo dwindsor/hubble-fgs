@@ -29,8 +29,6 @@ import (
 	"time"
 
 	"github.com/vishvananda/netns"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type SinkStats struct {
@@ -201,8 +199,11 @@ func (sink goHTTP2Sink) Start(ctx context.Context, _ bool) (int, chan SinkStats,
 				w.Write(buf)
 			})
 		s := http.Server{
-			Handler: h2c.NewHandler(handler, &http2.Server{}),
+			Handler: handler,
 		}
+		s.Protocols = new(http.Protocols)
+		s.Protocols.SetHTTP1(true)
+		s.Protocols.SetUnencryptedHTTP2(true)
 		s.Serve(l)
 
 		// TODO: No good way to collect CPU usage statistics since "net/http" forks
