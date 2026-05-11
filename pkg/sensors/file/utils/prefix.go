@@ -62,6 +62,7 @@ func (node *PrefixTreeNode) Insert(ps PrefixSuffixFileMatcher, rule uint32) erro
 	}
 
 	currentNode := node
+	currentNode.Matchers[PrefixSuffixFileMatcherRule{Matcher: ps, Rule: rule}] = struct{}{}
 	for _, part := range pathParts {
 		// we have already added '/' as the root node
 		if part == "/" {
