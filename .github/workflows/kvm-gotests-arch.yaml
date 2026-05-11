@@ -277,7 +277,7 @@ jobs:
     name: Cleanup
     runs-on: ${{ inputs.runner_label }}
     needs: [run-tests]
-    if: always()
+    if: ${{ needs.run-tests.result == 'success' }}
     steps:
       # Delete built binaries from artifacts in case of success.
       - uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118 # v6.0.0
