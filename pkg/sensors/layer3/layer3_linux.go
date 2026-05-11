@@ -254,8 +254,6 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		progsInitSock = append(socktrackProgs, fdLookupProgs...)
 	}
 
-	maps = appendApplicationModelMaps(maps)
-
 	if tcpEnabled {
 		tcpProgsInit, tcpProgsStats, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
 		progsInitSock = append(progsInitSock, tcpProgsInit...)
@@ -717,6 +715,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 func init() {
 	AddLayer3()
+	base.AddCgroupIdToWorkloadIDMapProgs([]*program.Program{tcpconfig.ConnectKprobe, tcpconfig.ConnectFentry, EgressDispatcher, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer, IngressDispatcher, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer, tcpconfig.TcpSockops, ip.FdLookupFentryProcessTree, ip.FdLookupKprobeProcessTree})
 }
 
 func AddLayer3() {

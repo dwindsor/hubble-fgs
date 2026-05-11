@@ -15,7 +15,6 @@ package layer3
 import (
 	"fmt"
 
-	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 )
 
@@ -25,8 +24,4 @@ func enableBPFDnsPerPod(ipToIDMaps dnsparser.IPToIDMaps) error {
 
 func setupWorkloadID() error {
 	return fmt.Errorf("cannot enable workloadID in a nok8s build")
-}
-
-func appendApplicationModelMaps(maps []*program.Map) []*program.Map {
-	return maps
 }

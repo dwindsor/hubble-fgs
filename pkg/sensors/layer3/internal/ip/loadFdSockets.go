@@ -253,8 +253,6 @@ func getFdLookupMaps() []*program.Map {
 
 	}
 
-	maps = appendApplicationModelMaps(maps)
-
 	if enterpriseOption.Config.EnableBPFDNSParser {
 		DNSIPToIDMaps.SetMaxEntries(dnsparser.MaxNumberOfPods)
 

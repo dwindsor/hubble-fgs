@@ -10,21 +10,29 @@
 
 //go:build !nok8s
 
-package ip
+package base
 
 import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 )
 
 var (
 	// This is needed for pkg/workloadid for the application model to do the
-	// cgroup ID / workload resolution, ideally the MapBuilder should be in
-	// the layer3_linux.go file but we have an import cycle.
-	CgroupIDToWorkloadIDMap = program.MapBuilder(workloadid.CgroupIDWorkloadIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+	// cgroup ID / workload resolution.
+	CgroupIDToWorkloadIDMapProgs = []*program.Program{Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, Exit, ExitV511, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry}
+
+	// Create now, might be recreated in a call to AddCgroupIdToWorkloadIDMapProgs
+	CgroupIDToWorkloadIDMap = program.MapBuilder(workloadid.CgroupIDWorkloadIDMapName, CgroupIDToWorkloadIDMapProgs...)
 )
+
+func AddCgroupIdToWorkloadIDMapProgs(progs []*program.Program) {
+	CgroupIDToWorkloadIDMapProgs = append(CgroupIDToWorkloadIDMapProgs, progs...)
+	CgroupIDToWorkloadIDMap = program.MapBuilder(workloadid.CgroupIDWorkloadIDMapName, CgroupIDToWorkloadIDMapProgs...)
+}
 
 func appendApplicationModelMaps(maps []*program.Map) []*program.Map {
 	if enterpriseOption.Config.EnableApplicationModel {

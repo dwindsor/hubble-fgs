@@ -16,19 +16,11 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/rthooks"
-	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/manager"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/workloadid"
-)
-
-var (
-	// Process tree (application model) maps
-	CgroupIDToWorkloadIDMap = program.MapUserFrom(ip.CgroupIDToWorkloadIDMap)
 )
 
 func init() {
@@ -56,14 +48,17 @@ func enableBPFDnsPerPod(ipToIDMaps dnsparser.IPToIDMaps) error {
 	return nil
 }
 
+// This probably shouldn't be here, but there doesn't seem to be a hook in the
+// base sensor for after the bpf programs have been loaded and the maps have
+// been created?
 func setupWorkloadID() error {
 	// Initialize the workloadid state with the BPF map so it can be
 	// used even without a K8s control plane (e.g. in tests). We
 	// have already registered the hook for the container creation
 	// at init, we need to enable the hook by wiring the BPF map.
-	err := workloadid.GetState().SetMap(ip.CgroupIDToWorkloadIDMap.MapHandle)
+	err := workloadid.GetState().SetMap(base.CgroupIDToWorkloadIDMap.MapHandle)
 	if err != nil {
-		return fmt.Errorf("failed to set workload ID map with %s: %w", ip.CgroupIDToWorkloadIDMap.Name, err)
+		return fmt.Errorf("failed to set workload ID map with %s: %w", base.CgroupIDToWorkloadIDMap.Name, err)
 	}
 
 	// Start the reconciler only if there is a k8s control plane
@@ -75,11 +70,4 @@ func setupWorkloadID() error {
 	}
 
 	return nil
-}
-
-func appendApplicationModelMaps(maps []*program.Map) []*program.Map {
-	if utils.SupportProcessTree() && enterpriseOption.Config.EnableApplicationModel {
-		maps = append(maps, CgroupIDToWorkloadIDMap)
-	}
-	return maps
 }

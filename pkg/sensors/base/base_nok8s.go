@@ -10,9 +10,17 @@
 
 //go:build nok8s
 
-package ip
+package base
 
-import "github.com/cilium/tetragon/pkg/sensors/program"
+import (
+	"github.com/cilium/tetragon/pkg/sensors/program"
+)
+
+var ()
+
+func AddCgroupIdToWorkloadIDMapProgs(progs []*program.Program) {
+
+}
 
 func appendApplicationModelMaps(maps []*program.Map) []*program.Map {
 	return maps
