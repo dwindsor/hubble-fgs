@@ -14,6 +14,7 @@
 #include "../networking/l3/tcp/bpf_tcp_info.h"
 #include "../networking/bpf_process_network_watermarks.h"
 #include "process_endpoint.h"
+#include "process_tree.h"
 #include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -24,6 +25,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 FUNC_INLINE void update_process_tree_exit(__u32 tgid)
 {
 	struct process_tree_key *tree_key;
+	struct process_tree_key tree_key_copy;
 	struct process_tree_value *tree_val;
 
 	/* Look up the process tree key for this PID */
@@ -33,10 +35,30 @@ FUNC_INLINE void update_process_tree_exit(__u32 tgid)
 
 	/* Update the process tree value with exit timestamp */
 	tree_val = map_lookup_elem(&process_tree_map, tree_key);
-	if (tree_val) {
-		tree_val->ktime_latest_exit = tg_get_ktime();
-		tree_val->exit_count++;
+	if (!tree_val) {
+		// There really shouldn't be a process tree key but no mapping from the
+		// key to a value. This could occur if the process was new (wlid was 0)
+		// and the app model server updated the wlid with workload info. We
+		// might need to update the value in tg_ee_pid_data (which has a
+		// separate process tree key) with the new workload.
+
+		__u64 cgid = tg_get_current_cgroup_id();
+		__u64 *my_wlid = map_lookup_elem(&tg_cgid_wlid, &cgid);
+
+		if (!my_wlid || *my_wlid == 0)
+			return;
+
+		tree_key_copy = *tree_key;
+		tree_key_copy.wlid = *my_wlid;
+		map_update_elem(&tg_ee_pid_data, &tgid, &tree_key_copy, 0);
+
+		tree_val = map_lookup_elem(&process_tree_map, &tree_key_copy);
+		if (!tree_val)
+			return;
 	}
+
+	tree_val->ktime_latest_exit = tg_get_ktime();
+	tree_val->exit_count++;
 }
 
 /*

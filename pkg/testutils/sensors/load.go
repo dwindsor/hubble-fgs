@@ -37,6 +37,7 @@ func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, s
 		4: tus.SensorProg{Name: "tg_kp_bprm_committing_creds", Type: ebpf.Kprobe},
 		5: tus.SensorProg{Name: "execve_rate", Type: ebpf.TracePoint},
 		6: tus.SensorProg{Name: "execve_map_update", Type: ebpf.SocketFilter},
+		7: tus.SensorProg{Name: "event_exit_acct_process", Type: ebpf.Kprobe},
 	}
 
 	var baseMaps = []tus.SensorMap{
@@ -56,7 +57,7 @@ func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, s
 
 	if utils.SupportProcessTree() {
 		pstreeMaps := []tus.SensorMap{
-			{Name: "tg_conf_map", Progs: []uint{0, 2, 3, 5}},
+			{Name: "tg_conf_map", Progs: []uint{0, 2, 3, 5, 7}},
 		}
 		baseMaps = append(baseMaps, pstreeMaps...)
 	}
