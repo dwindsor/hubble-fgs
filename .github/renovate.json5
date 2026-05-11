@@ -8,9 +8,9 @@
   ],
   "baseBranchPatterns": [
     "master",
+    "v1.19",
     "v1.18",
     "v1.17",
-    "v1.16",
   ],
   "cloneSubmodules": true,
   "prConcurrentLimit": 7,
@@ -20,9 +20,9 @@
       "enabled": false,
       "matchPackageNames": ["*"],
       "matchBaseBranches": [
+        "v1.19",
         "v1.18",
         "v1.17",
-        "v1.16",
       ]
     },
     {
@@ -30,9 +30,9 @@
       "enabled": true,
       "matchPackageNames": ["docker.io/library/alpine"],
       "matchBaseBranches": [
+        "v1.19",
         "v1.18",
         "v1.17",
-        "v1.16",
       ]
     },
     {
@@ -44,6 +44,7 @@
       ],
       "allowedVersions": "/^1\\.26\\.[0-9]+-?(alpine)?$/",
       "matchBaseBranches": [
+        "v1.19",
         "v1.18",
       ]
     },
@@ -57,7 +58,6 @@
       "allowedVersions": "/^1\\.24\\.[0-9]+-?(alpine)?$/",
       "matchBaseBranches": [
         "v1.17",
-        "v1.16",
       ]
     },
     {
