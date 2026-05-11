@@ -14,6 +14,7 @@
 package file
 
 import (
+	"io/fs"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,6 +100,18 @@ func TestPrefixTree3(t *testing.T) {
 			},
 		},
 	)
+}
+
+func TestPrefixTree4(t *testing.T) {
+	prefixTree := NewPrefixTree()
+	prefixTree.Insert(PrefixSuffixFileMatcher{Prefix: "/", Suffix: ".db"}, 0)
+
+	prefixes := prefixTree.Traverse()
+	assert.Equal(t, 1, len(prefixes))
+
+	var ruleId uint32
+	assert.True(t, prefixes[0].MatchPath("/home/user/hubble-fgs/test.db", fs.FileMode(0), &ruleId))
+	assert.Equal(t, ruleId, uint32(0))
 }
 
 func TestPrefixTreeEmpty(t *testing.T) {
