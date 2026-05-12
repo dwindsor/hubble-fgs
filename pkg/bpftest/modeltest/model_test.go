@@ -463,18 +463,26 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
-	"VerifyNoGarbageCollection": {
+	"GarbageCollectionHostProcesses": {
 		Host: model.Binaries{
 			{
 				Cmd:  "/usr/bin/bash",
 				Args: []string{"-c", "echo hello world"},
+				Dependencies: []deps.Dependency{
+					deps.NewProcessRunningPatternMustCompile("sleep infinity"),
+				},
+			},
+			{
+				Cmd:       "sleep",
+				Args:      []string{"infinity"},
+				LongLived: true,
 			},
 		},
 		Namespaces: model.Namespaces{
 			"default": {
-				"test-no-garbage-collection": {
+				"test-garbage-collection-host-workloads": {
 					Containers: model.Containers{
-						"test-no-garbage-collection-container": {
+						"test-garbage-collection-host-workloads-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
 								Cmd:  "/bin/sleep",
@@ -486,10 +494,89 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 			},
 		},
 		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
-			func(_ context.Context, _ testing.TB, _ *testcase.TestCase, server *modelserver.Server, _ *harness.Harness) {
-				// Set the server "now" to 24 hours in the future.
+			func(_ context.Context, _ testing.TB, tc *testcase.TestCase, server *modelserver.Server, _ *harness.Harness) {
+				// Set the server "now" to 96 hours in the future.
 				server.TimeNow = func() time.Time {
-					return time.Now().Add(24 * time.Hour)
+					return time.Now().Add(96 * time.Hour)
+				}
+
+				// Remove the bash process. It should have been garbage collected.
+				tc.Host = tc.Host[1:]
+
+				// The bash process should be not present now. The container
+				// will still be present.
+				tc.NotInModel.Host = model.Binaries{
+					{
+						Cmd:  "/usr/bin/bash",
+						Args: []string{"-c", "echo hello world"},
+					},
+				}
+			},
+		},
+	},
+
+	"GarbageCollectionWorkloads": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"short-lived-workload": {
+					Containers: model.Containers{
+						"short-lived-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"5"},
+							},
+						},
+					},
+				},
+				"long-lived-workload": {
+					Containers: model.Containers{
+						"long-lived-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"7200"},
+							},
+						},
+					},
+				},
+				"killed-workload": {
+					Containers: model.Containers{
+						"killed-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:  "/bin/sleep",
+								Args: []string{"infinity"},
+							},
+						},
+					},
+				},
+			},
+		},
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness) {
+				harness.DeletePod(ctx, tb, "default", "killed-workload")
+
+				harness.WaitForContainerExit(ctx, tb, "default", "short-lived-workload", "short-lived-container", 90*time.Second)
+				harness.WaitForPodExit(ctx, tb, "default", "killed-workload", 90*time.Second)
+
+				// Set the server "now" to 96 hours in the future.
+				server.TimeNow = func() time.Time {
+					return time.Now().Add(96 * time.Hour)
+				}
+
+				// Remove the deleted pods from the testcase
+				delete(tc.Namespaces["default"], "short-lived-workload")
+				delete(tc.Namespaces["default"], "killed-workload")
+
+				// The workload should be not present now
+				tc.NotInModel = model.NotPresent{
+					Namespaces: model.Namespaces{
+						"default": {
+							"short-lived-workload": {},
+							"killed-workload":      {},
+						},
+					},
 				}
 			},
 		},
@@ -507,6 +594,9 @@ func TestModel(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			tc.Run(t.Context(), t, server, &harness)
+			// Some tests modify the notion of "now", so reset to current time
+			// after each test.
+			server.TimeNow = time.Now
 		})
 	}
 }
