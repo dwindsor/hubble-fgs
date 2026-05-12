@@ -230,9 +230,9 @@ func ConfigureSensor() error {
 }
 
 func StartSocketGC() {
-	if enterpriseOption.Config.EnableUDP && enterpriseOption.Config.UDPIdleSocketTimeout > 0 && !enterpriseOption.Config.UDPInKernelManaged {
-		UdpDeleteInterval = enterpriseOption.Config.UDPIdleSocketTimeout
-		gcTimer.Start(UdpDeleteInterval)
+	if enterpriseOption.Config.EnableUDP && ((enterpriseOption.Config.UDPIdleSocketTimeout > 0 && !enterpriseOption.Config.UDPInKernelManaged) ||
+		enterpriseOption.Config.UDPStatsInterval > 0) {
+		gcTimer.Start(udpGcInterval)
 		gcTimerRunning = true
 	}
 }
@@ -242,7 +242,7 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 		gcTimer.Stop()
 		gcTimerRunning = false
 	}
-	udpStatsEnable = false
+	ConfigureGCFromConfig()
 	// If we enabled via CLI switches, run the GC so it can reap idle
 	// pseudo-sockets.
 	StartSocketGC()
@@ -320,10 +320,33 @@ func EnableUdp(cgroup bool) ([]*program.Program, []*program.Program, []*program.
 
 func SetGcInterval(interval time.Duration) {
 	udpGcInterval = interval
-	logger.GetLogger().Info("UDP configured", "statsInterval", interval)
+	logger.GetLogger().Info("UDP configured", "gcInterval", interval)
 }
 
-func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (time.Duration, error) {
+func SetStatsEnable(enable bool) {
+	udpStatsEnable = enable
+	logger.GetLogger().Info("UDP configured", "statsEnable", enable)
+}
+
+func SetDeleteInterval(interval time.Duration) {
+	UdpDeleteInterval = interval
+	logger.GetLogger().Info("UDP configured", "deleteInterval", interval)
+}
+
+// ConfigureGCFromConfig should be called when we don't have a tracing policy.
+func ConfigureGCFromConfig() {
+	interval := enterpriseOption.Config.UDPIdleSocketTimeout
+	SetDeleteInterval(interval)
+	if enterpriseOption.Config.UDPStatsInterval > 0 {
+		interval = enterpriseOption.Config.UDPStatsInterval
+		SetStatsEnable(true)
+	} else {
+		SetStatsEnable(false)
+	}
+	SetGcInterval(interval)
+}
+
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	if spec.Parser.Udp != nil && spec.Parser.Udp.Metrics != nil {
 		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
 		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
@@ -342,20 +365,22 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (time.Duration, error) {
 	var interval = time.Duration(0)
 	if spec.Parser.Udp != nil && spec.Parser.Udp.StatsInterval > 0 {
 		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
-		udpStatsEnable = true
+		SetStatsEnable(true)
 	} else {
-		udpStatsEnable = false
+		SetStatsEnable(false)
 	}
 
-	UdpDeleteInterval = enterpriseOption.Config.UDPIdleSocketTimeout
+	udpDeleteInterval := enterpriseOption.Config.UDPIdleSocketTimeout
 	if spec.Parser.Udp != nil && spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
-		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
+		udpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
+	SetDeleteInterval(udpDeleteInterval)
 	if !udpStatsEnable {
 		interval = UdpDeleteInterval
 	}
+	SetGcInterval(interval)
 	Config = ParseUdpSpec(spec)
-	return interval, nil
+	return nil
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {

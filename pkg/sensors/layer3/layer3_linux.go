@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -378,8 +377,7 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 	return append(progsInitSock, progsCollectStats...), maps
 }
 
-func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, cgroup bool,
-	udpInterval time.Duration) (*sensors.Sensor, error) {
+func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, cgroup bool) (*sensors.Sensor, error) {
 	spec := policy.TpSpec()
 
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
@@ -399,9 +397,8 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, cgroup bool
 			logger.GetLogger().Warn("failed to configure layer3 maps", logfields.Error, err)
 			return nil, fmt.Errorf("failed to configure layer3 maps: %w", err)
 		}
+		udp.StartSocketGC()
 	}
-
-	udp.SetGcInterval(udpInterval)
 
 	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, progs, maps)
 	l3Sensor.PreUnloadHook = func() error {
@@ -485,9 +482,8 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	var udpInterval time.Duration
 	if spec.Parser.Udp != nil && udpEnabled {
-		udpInterval, err = udp.PolicyHandler(spec)
+		err = udp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("udp.PolicyHandler error: %w", err)
 		}
@@ -507,7 +503,7 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	return l3.enableLayer3(policy, udpCgroup, udpInterval)
+	return l3.enableLayer3(policy, udpCgroup)
 }
 
 func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
@@ -778,6 +774,7 @@ func EnableLayer3Progs() error {
 		if enterpriseOption.Config.UDPInKernelManaged && (!utils.SupportProcessTree() || !utils.SupportTimers()) {
 			return fmt.Errorf("UDP in kernel management requires process tree and bpf timer support")
 		}
+		udp.ConfigureGCFromConfig()
 		udp.InitKernelDNS()
 	}
 	if enterpriseOption.Config.EnableICMP {
@@ -849,7 +846,6 @@ func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	if err != nil {
 		return err
 	}
-	udp.StartSocketGC()
 	return nil
 }
 
