@@ -776,6 +776,7 @@ func EnableLayer3Progs() error {
 		}
 		udp.ConfigureGCFromConfig()
 		udp.InitKernelDNS()
+		udp.ParseWatermarksOptions(&udp.Config)
 	}
 	if enterpriseOption.Config.EnableICMP {
 		icmpEnabled = true

@@ -260,7 +260,9 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 		config.WatermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Watermarks.BurstTriggerPercent) + 100
 		// DipTriggerPercent is the percent below the average; we supply it as a percentage multiplier.
 		config.WatermarksDipTriggerPercent = 100 - uint64(spec.Parser.Udp.Watermarks.DipTriggerPercent)
-		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_UDP, false)
+		if spec.Parser.NetworkWatermarksExitGen.Enable && spec.Parser.NetworkWatermarksExitGen.Interval > 0 {
+			go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_UDP, false)
+		}
 	} else if spec.Parser.Udp != nil && spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
 		WatermarksEnabled = true
 		config.WatermarksEnable = 1
@@ -273,7 +275,34 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 		config.WatermarksWindowSize = (uint64(spec.Parser.Udp.Burst.WindowSize) * 2 * 1000000) / 3
 		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
 		config.WatermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Burst.TriggerPercent) + 100
-		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_UDP, true)
+		if spec.Parser.NetworkWatermarksExitGen.Enable && spec.Parser.NetworkWatermarksExitGen.Interval > 0 {
+			go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_UDP, true)
+		}
+	} else {
+		// Use the CLI switch config instead
+		ParseWatermarksOptions(config)
+	}
+}
+
+// ParseWatermarksSpec parses the Tetragon config and outputs the kernel selectors
+// needed for BPF to identify UDP watermarks and run the monitor on it.
+func ParseWatermarksOptions(config *networkapi.UdpConfigValue) {
+	if option.Config.EnableUDPWatermarks {
+		config.WatermarksEnable = 1
+		// WindowSize is in milliseconds
+		config.WatermarksAvgWindowSizeMs = uint64(option.Config.UDPWatermarksWindowSizeMs)
+		// The actual window size we use in calculations is a) in nanoseconds;
+		// and b) is 2/3 of the provided window size because the measurement window
+		// varies between 1 window (2/3 window size) and 2 windows (4/3 window size), meaning
+		// the average measurement window == window size.
+		config.WatermarksWindowSize = (uint64(option.Config.UDPWatermarksWindowSizeMs) * 2 * 1000000) / 3
+		// BurstTriggerPercent is the percent above the average; we supply it as a percentage multiplier.
+		config.WatermarksBurstTriggerPercent = uint64(option.Config.UDPWatermarksBurstTriggerPercent) + 100
+		// DipTriggerPercent is the percent below the average; we supply it as a percentage multiplier.
+		config.WatermarksDipTriggerPercent = 100 - uint64(option.Config.UDPWatermarksDipTriggerPercent)
+		if option.Config.EnableNetworkWatermarksExitGen && option.Config.NetworkWatermarksExitGenInterval > 0 {
+			go networkWatermarksEvents.Start(option.Config.NetworkWatermarksExitGenInterval, syscall.IPPROTO_UDP, false)
+		}
 	} else {
 		config.WatermarksEnable = 0
 		config.WatermarksAvgWindowSizeMs = 0
