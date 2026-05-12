@@ -457,6 +457,15 @@ func validateConfig(config config) error {
 		}
 	}
 
+	if config.EnableUDPWatermarks {
+		if config.UDPWatermarksWindowSizeMs == 0 {
+			return fmt.Errorf("UDP watermarks observability requires a window size > 0, set with --%s", keyUDPWatermarksWindowSizeMs)
+		}
+		if config.UDPWatermarksBurstTriggerPercent == 0 && config.UDPWatermarksDipTriggerPercent == 0 {
+			return fmt.Errorf("UDP watermarks requires a burst trigger percent > 0 or a dip trigger percent > 0, specify them with --%s or --%s", keyUDPWatermarksBurstTriggerPercent, keyUDPWatermarksDipTriggerPercent)
+		}
+	}
+
 	if len(config.MulticastPorts) > networkapi.UdpMaxMulticastPorts {
 		return fmt.Errorf("invalid number of multicast ports len(%v)=%d, the maximum number of port is %d", config.MulticastPorts, len(config.MulticastPorts), networkapi.UdpMaxMulticastPorts)
 	}
