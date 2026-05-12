@@ -18,6 +18,7 @@ import (
 	"math"
 	"net"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -259,7 +260,7 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 		config.WatermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Watermarks.BurstTriggerPercent) + 100
 		// DipTriggerPercent is the percent below the average; we supply it as a percentage multiplier.
 		config.WatermarksDipTriggerPercent = 100 - uint64(spec.Parser.Udp.Watermarks.DipTriggerPercent)
-		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_UDP, false)
+		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_UDP, false)
 	} else if spec.Parser.Udp != nil && spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
 		WatermarksEnabled = true
 		config.WatermarksEnable = 1
@@ -272,7 +273,7 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 		config.WatermarksWindowSize = (uint64(spec.Parser.Udp.Burst.WindowSize) * 2 * 1000000) / 3
 		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
 		config.WatermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Burst.TriggerPercent) + 100
-		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_UDP, true)
+		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_UDP, true)
 	} else {
 		config.WatermarksEnable = 0
 		config.WatermarksAvgWindowSizeMs = 0

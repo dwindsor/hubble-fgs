@@ -25,8 +25,6 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/timer"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/networkWatermarks"
@@ -95,38 +93,22 @@ func HandleProcessNetworkWatermarks(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
-func Start(spec *v1alpha1.TracingPolicySpec, protocol uint32, legacy bool) {
-	if spec.Parser.NetworkWatermarksExitGen.Enable {
-		var err error
-		refCountMu.Lock()
-		defer refCountMu.Unlock()
-		// open map, allowing for it to be not immediately ready
-		watermarksMapFile := filepath.Join(bpf.MapPrefixPath(), ProcessNetworkWatermarksMapName)
+func Start(interval time.Duration, protocol uint32, legacy bool) {
+	var err error
+	refCountMu.Lock()
+	defer refCountMu.Unlock()
+	// open map, allowing for it to be not immediately ready
+	watermarksMapFile := filepath.Join(bpf.MapPrefixPath(), ProcessNetworkWatermarksMapName)
+	watermarksMap, err = ebpf.LoadPinnedMap(watermarksMapFile, nil)
+	for err != nil {
+		time.Sleep(100 * time.Millisecond)
 		watermarksMap, err = ebpf.LoadPinnedMap(watermarksMapFile, nil)
-		for err != nil {
-			time.Sleep(100 * time.Millisecond)
-			watermarksMap, err = ebpf.LoadPinnedMap(watermarksMapFile, nil)
-		}
-
-		// Attempting to start an already running timer is a NOP.
-		watermarksExitTimer.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval) * time.Millisecond)
-		refCount++
-	} else if spec.Parser.BurstExitGen.Enable {
-		var err error
-		refCountMu.Lock()
-		defer refCountMu.Unlock()
-		// open map, allowing for it to be not immediately ready
-		watermarksMapFile := filepath.Join(bpf.MapPrefixPath(), ProcessNetworkWatermarksMapName)
-		watermarksMap, err = ebpf.LoadPinnedMap(watermarksMapFile, nil)
-		for err != nil {
-			time.Sleep(100 * time.Millisecond)
-			watermarksMap, err = ebpf.LoadPinnedMap(watermarksMapFile, nil)
-		}
-
-		// Attempting to start an already running timer is a NOP.
-		watermarksExitTimer.Start(time.Duration(spec.Parser.BurstExitGen.Interval) * time.Millisecond)
-		refCount++
 	}
+
+	// Attempting to start an already running timer is a NOP.
+	watermarksExitTimer.Start(interval)
+	refCount++
+
 	// Default to sending Watermark events instead of Burst events, but if a config only uses legacy burst entries,
 	// then we will send legacy burst events instead of watermarks events. Any use of watermark entries in the config
 	// implies the user is aware of watermarks events, so we switch to sending them instead.

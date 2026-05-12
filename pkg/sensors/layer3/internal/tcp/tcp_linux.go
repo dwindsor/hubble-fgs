@@ -232,13 +232,13 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		WatermarksWindowSize = uint64(spec.Parser.Tcp.Watermarks.WindowSize)
 		WatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Watermarks.BurstTriggerPercent)
 		WatermarksDipTriggerMult = uint64(spec.Parser.Tcp.Watermarks.DipTriggerPercent)
-		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_TCP, false)
+		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_TCP, false)
 	} else if spec.Parser.Tcp != nil && spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
 		WatermarksEnabled = true
 		WatermarksEnable = true
 		WatermarksWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
 		WatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
-		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_TCP, true)
+		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_TCP, true)
 	} else {
 		WatermarksEnable = false
 		WatermarksWindowSize = 0
