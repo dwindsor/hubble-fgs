@@ -64,10 +64,8 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
 
 	operation = eval_selectors((struct sel_args){ .action = action_exec, .flags = flags.d32, .retval = 0, .secureexec = INVALID_SECUREEXEC }, digest, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
-	if (!(operation & FILE_OP_POST)) {
-		err = operation;
+	if (!(operation & FILE_OP_POST))
 		goto lsm_bprm_check_security_ret;
-	}
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0, msg_id);
 
@@ -92,7 +90,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	}
 
 lsm_bprm_check_security_ret:
-	return handle_enforcement(err);
+	return handle_enforcement(operation);
 
 lsm_bprm_check_security_error:
 	inc_error(hook_security_bprm_check, -err);
