@@ -4948,8 +4948,6 @@ spec:
                             format: int32
                             type: integer
                         type: object
-                    required:
-                    - enable
                     type: object
                   tls:
                     description: A Tls specs.
@@ -5128,8 +5126,6 @@ spec:
                             format: int32
                             type: integer
                         type: object
-                    required:
-                    - enable
                     type: object
                 type: object
               podSelector:

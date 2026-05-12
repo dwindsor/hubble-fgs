@@ -688,6 +688,7 @@ type TcpRttHistogram struct {
 }
 
 type TcpPolicySpec struct {
+	// +kubebuilder:validation:Optional
 	// Enable TCP statistics
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Optional
@@ -765,6 +766,7 @@ type RawsockPolicySpec struct {
 }
 
 type UdpPolicySpec struct {
+	// +kubebuilder:validation:Optional
 	// Enable UDP observability
 	Enable bool `json:"enable"`
 	// +kubebuilder:default=true
