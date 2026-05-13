@@ -11,6 +11,7 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -449,6 +450,22 @@ type FileSpec struct {
 	// Tags to categorize the event, will be include in the event output.
 	// Maximum of 16 Tags are supported.
 	Tags []string `json:"tags,omitempty"`
+}
+
+// We define a custom Unmarshaler for FileSpec to set
+// monitorHostFiles default equals to true even in nok8s
+// builds. This is called from json.Unmarshal when we have
+// a FileSpec and is applied both in k8s and nok8s cases.
+func (spec *FileSpec) UnmarshalJSON(data []byte) error {
+	type fileSpec FileSpec
+	ret := fileSpec{
+		MonitorHostFiles: true,
+	}
+	if err := json.Unmarshal(data, &ret); err != nil {
+		return err
+	}
+	*spec = FileSpec(ret)
+	return nil
 }
 
 type FileCapabilitiesSelector struct {
