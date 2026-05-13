@@ -35,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/e2e-framework/klient"
+	"sigs.k8s.io/e2e-framework/klient/k8s"
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	"sigs.k8s.io/e2e-framework/third_party/kind"
@@ -200,7 +201,7 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string, 
 
 		// Delete the pod
 		err := harness.client.Resources().Delete(deleteCtx, podInfo)
-		if err != nil {
+		if err != nil && !k8sErrors.IsNotFound(err) {
 			tb.Fatalf("failed to delete pod %q in namespace %q: %v", podName, namespace, err)
 		}
 	})
@@ -222,6 +223,81 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string, 
 
 func GetClusterName(harness *Harness) string {
 	return harness.clusterName
+}
+
+func (harness *Harness) DeletePod(ctx context.Context, tb testing.TB, namespace, podName string) {
+	tb.Helper()
+
+	podInfo := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+		},
+	}
+
+	err := harness.client.Resources().Get(ctx, podName, namespace, podInfo)
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		require.NoError(tb, err, "failed to get pod %q in namespace %q", podName, namespace)
+		return
+	}
+
+	err = harness.client.Resources().Delete(ctx, podInfo)
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		require.NoError(tb, err, "failed to delete pod %q in namespace %q", podName, namespace)
+	}
+
+	if err == nil {
+		harness.clearPodState(tb, podInfo)
+	}
+}
+
+func (harness *Harness) WaitForPodExit(ctx context.Context, tb testing.TB, namespace, podName string, timeout time.Duration) {
+	tb.Helper()
+
+	resources := harness.client.Resources(namespace)
+	podInfo := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+		},
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	err := wait.For(conditions.New(resources).ResourceDeleted(podInfo), wait.WithContext(waitCtx))
+	require.NoError(tb, err, "failed waiting for pod %q/%q to be deleted", namespace, podName)
+}
+
+func (harness *Harness) WaitForContainerExit(ctx context.Context, tb testing.TB, namespace, podName, containerName string, timeout time.Duration) {
+	tb.Helper()
+
+	resources := harness.client.Resources(namespace)
+	podInfo := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+		},
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	err := wait.For(conditions.New(resources).ResourceMatch(podInfo, func(object k8s.Object) bool {
+		pod, ok := object.(*corev1.Pod)
+		if !ok {
+			return false
+		}
+
+		for _, status := range pod.Status.ContainerStatuses {
+			if status.Name == containerName {
+				return status.State.Terminated != nil
+			}
+		}
+
+		return false
+	}), wait.WithContext(waitCtx))
+	require.NoError(tb, err, "failed waiting for container %q in pod %q/%q to exit", containerName, namespace, podName)
 }
 
 func fixupClusterName(name string) string {
@@ -307,5 +383,5 @@ func (harness *Harness) clearPodState(tb testing.TB, podInfo *corev1.Pod) {
 
 	harness.cgmap.Update(podID, []string{})
 
-	harness.fakeK8sWatcher.ClearAllPods()
+	harness.fakeK8sWatcher.RemovePod(podInfo)
 }

@@ -127,7 +127,7 @@ func checkWorkloads(tb testing.TB, checks model.Pods, workloads []*v1alpha.Appli
 		cl.Check(workload.Name)
 	}
 
-	return true
+	return cl.AssertComplete(tb)
 }
 
 func checkContainers(tb testing.TB, checks model.Containers, containers []*v1alpha.ApplicationContainer) bool {
