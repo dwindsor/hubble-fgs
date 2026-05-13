@@ -365,7 +365,11 @@ func ParseMetricsSpec(spec *v1alpha1.TracingPolicySpec) {
 		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
 		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
 	} else {
-		udpconfig.MetricsEnabled = true
-		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter()
+		ParseMetricsOptions()
 	}
+}
+
+func ParseMetricsOptions() {
+	udpconfig.MetricsEnabled = option.Config.EnableUDPMetrics
+	udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(option.Config.UDPMetricsLabelFilter)
 }
