@@ -10,9 +10,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.101.0
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.19.3
-	github.com/cilium/ebpf v0.21.1-0.20260427123516-6bf8ddfd0f0f
+	github.com/cilium/ebpf v0.21.1-0.20260501093402-9f87aafaeb37
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.7.0
+	github.com/cilium/tetragon v1.8.0-pre.0.0.20260513174248-ab20129b4e1f
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.3.0
@@ -167,7 +167,7 @@ require (
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect

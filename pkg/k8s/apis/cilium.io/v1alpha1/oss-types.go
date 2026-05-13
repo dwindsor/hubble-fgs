@@ -53,8 +53,9 @@ type KProbeSpec struct {
 	// A return argument to include in the trace output.
 	ReturnArg *KProbeArg `json:"returnArg,omitempty"`
 	// +kubebuilder:validation:Optional
-	// An action to perform on the return argument.
-	// Available actions are: Post;TrackSock;UntrackSock
+	// An action to perform on the return value.
+	// Use returnArg to include the return value in the event output.
+	// Supported actions are: TrackSock;UntrackSock
 	ReturnArgAction string `json:"returnArgAction,omitempty"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed and short-circuited.
@@ -73,7 +74,7 @@ type KProbeArg struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=auto;int;sint8;int8;uint8;sint16;int16;uint16;uint32;sint32;int32;ulong;uint64;size_t;long;sint64;int64;char_buf;char_iovec;skb;sock;sockaddr;socket;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;const_buf;load_info;module;syscall64;kernel_cap_t;cap_inheritable;cap_permitted;cap_effective;linux_binprm;data_loc;net_device;bpf_cmd;dentry;bpf_prog;
+	// +kubebuilder:validation:Enum=auto;int;sint8;int8;uint8;sint16;int16;uint16;uint32;sint32;int32;ulong;uint64;size_t;long;sint64;int64;char_buf;char_iovec;skb;sock;sockaddr;socket;sockaddr_un;string;fd;file;filename;path;nop;bpf_attr;perf_event;bpf_map;user_namespace;capability;kiocb;iov_iter;cred;const_buf;load_info;module;syscall64;kernel_cap_t;cap_inheritable;cap_permitted;cap_effective;linux_binprm;data_loc;net_device;bpf_cmd;dentry;bpf_prog;
 	// +kubebuilder:default=auto
 	// Argument type.
 	Type string `json:"type"`
@@ -108,10 +109,14 @@ type KProbeArg struct {
 	// Source of the data, if missing the default if function arguments
 	Source string `json:"source"`
 	// +kubebuilder:validation:Optional
-	// Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-	// the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-	// type.
+	// Type to use as the initial resolve type. For kprobe args it looks up the named struct
+	// from the kernel BTF, casting the argument's type before traversing the resolve path.
+	// For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
 	BTFType string `json:"btfType,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Kernel module that contains the BTFType. This is used only for kprobe args.
+	// The module must already be loaded and expose BTF in /sys/kernel/btf.
+	BTFTypeModule string `json:"btfTypeModule,omitempty"`
 }
 
 type BinarySelector struct {

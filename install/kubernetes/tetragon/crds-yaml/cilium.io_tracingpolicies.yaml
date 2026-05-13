@@ -125,9 +125,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -196,6 +201,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -239,9 +245,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -310,6 +321,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -366,9 +378,14 @@ spec:
                       properties:
                         btfType:
                           description: |-
-                            Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                            the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                            type.
+                            Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                            from the kernel BTF, casting the argument's type before traversing the resolve path.
+                            For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                          type: string
+                        btfTypeModule:
+                          description: |-
+                            Kernel module that contains the BTFType. This is used only for kprobe args.
+                            The module must already be loaded and expose BTF in /sys/kernel/btf.
                           type: string
                         index:
                           description: Position of the argument.
@@ -437,6 +454,7 @@ spec:
                           - sock
                           - sockaddr
                           - socket
+                          - sockaddr_un
                           - string
                           - fd
                           - file
@@ -472,8 +490,9 @@ spec:
                       type: object
                     returnArgAction:
                       description: |-
-                        An action to perform on the return argument.
-                        Available actions are: Post;TrackSock;UntrackSock
+                        An action to perform on the return value.
+                        Use returnArg to include the return value in the event output.
+                        Supported actions are: TrackSock;UntrackSock
                       type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
@@ -1858,9 +1877,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -1929,6 +1953,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -1972,9 +1997,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -2043,6 +2073,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -2099,9 +2130,14 @@ spec:
                       properties:
                         btfType:
                           description: |-
-                            Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                            the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                            type.
+                            Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                            from the kernel BTF, casting the argument's type before traversing the resolve path.
+                            For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                          type: string
+                        btfTypeModule:
+                          description: |-
+                            Kernel module that contains the BTFType. This is used only for kprobe args.
+                            The module must already be loaded and expose BTF in /sys/kernel/btf.
                           type: string
                         index:
                           description: Position of the argument.
@@ -2170,6 +2206,7 @@ spec:
                           - sock
                           - sockaddr
                           - socket
+                          - sockaddr_un
                           - string
                           - fd
                           - file
@@ -2205,8 +2242,9 @@ spec:
                       type: object
                     returnArgAction:
                       description: |-
-                        An action to perform on the return argument.
-                        Available actions are: Post;TrackSock;UntrackSock
+                        An action to perform on the return value.
+                        Use returnArg to include the return value in the event output.
+                        Supported actions are: TrackSock;UntrackSock
                       type: string
                     selectors:
                       description: Selectors to apply before producing trace output.
@@ -2907,9 +2945,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -2978,6 +3021,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -5038,9 +5082,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -5109,6 +5158,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -5827,9 +5877,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -5898,6 +5953,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -5941,9 +5997,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -6012,6 +6073,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
@@ -6076,9 +6138,14 @@ spec:
                       properties:
                         btfType:
                           description: |-
-                            Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                            the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                            type.
+                            Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                            from the kernel BTF, casting the argument's type before traversing the resolve path.
+                            For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                          type: string
+                        btfTypeModule:
+                          description: |-
+                            Kernel module that contains the BTFType. This is used only for kprobe args.
+                            The module must already be loaded and expose BTF in /sys/kernel/btf.
                           type: string
                         index:
                           description: Position of the argument.
@@ -6147,6 +6214,7 @@ spec:
                           - sock
                           - sockaddr
                           - socket
+                          - sockaddr_un
                           - string
                           - fd
                           - file
@@ -6848,9 +6916,14 @@ spec:
                         properties:
                           btfType:
                             description: |-
-                              Type of original argument. This is currently only used in UsdtSpecs and UprobeSpecs for arguments with
-                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
-                              type.
+                              Type to use as the initial resolve type. For kprobe args it looks up the named struct
+                              from the kernel BTF, casting the argument's type before traversing the resolve path.
+                              For UprobeSpecs and UsdtSpecs it looks up the type from the BTF file defined by BTFPath.
+                            type: string
+                          btfTypeModule:
+                            description: |-
+                              Kernel module that contains the BTFType. This is used only for kprobe args.
+                              The module must already be loaded and expose BTF in /sys/kernel/btf.
                             type: string
                           index:
                             description: Position of the argument.
@@ -6919,6 +6992,7 @@ spec:
                             - sock
                             - sockaddr
                             - socket
+                            - sockaddr_un
                             - string
                             - fd
                             - file
