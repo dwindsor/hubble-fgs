@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/dnsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 )
 
@@ -160,6 +161,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) networkapi.UdpConfigValue {
 	ParseDnsSpec(&config, spec)
 	ParseUdpWatermarksSpec(&config, spec)
 	ParseDisableSpec(&config, spec)
+	ParseMetricsSpec(spec)
 
 	return config
 }
@@ -356,4 +358,14 @@ func ParseDisableSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingP
 	}
 	logger.GetLogger().Info("UDP event types", "disableConnect", DisableCloseEvents, "disableListen", DisableListenEvents,
 		"disableClose", DisableCloseEvents, "disableStats", DisableStatsEvents)
+}
+
+func ParseMetricsSpec(spec *v1alpha1.TracingPolicySpec) {
+	if spec.Parser.Udp != nil && spec.Parser.Udp.Metrics != nil {
+		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
+		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
+	} else {
+		udpconfig.MetricsEnabled = true
+		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter()
+	}
 }
