@@ -91,8 +91,6 @@ jobs:
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
           yq_version: 4.53.2
-          # renovate: datasource=docker depName=quay.io/cilium/tetragon-rthooks
-          rthooks_tag: v0.8
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           lower_tag="${{ steps.tag.outputs.tag }}"
@@ -106,7 +104,8 @@ jobs:
           tetragon_operator_img="$(cat digests/tetragon-operator.txt | grep isovalent)"
           echo "tetragon-operator image: ${tetragon_operator_img}"
           hubble_enterprise_metadata_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/isovalent/hubble-enterprise-metadata:current | jq -r '.Digest')
-          tetragon_rthooks_image_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/cilium/tetragon-rthooks:${rthooks_tag} | jq -r '.Digest')
+          tetragon_rthooks_img="$(cat digests/tetragon-rthooks.txt | grep isovalent)"
+          echo "tetragon-rthooks image: ${tetragon_rthooks_img}"
           # sed commands seem fragile. Templating or yq may be better.
           sed -i "s/quay.io\/isovalent\/tetragon[:@].*\"$/${tetragon_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/tetragon[:@].*[^\"]$/${tetragon_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
@@ -114,8 +113,8 @@ jobs:
           sed -i "s/quay.io\/isovalent\/tetragon-aggregator[:@].*[^\"]$/${tetragon_aggregator_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*\"$/${tetragon_operator_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*[^\"]$/${tetragon_operator_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/cilium\/tetragon-rthooks[:@].*\"$/quay.io\/cilium\/tetragon-rthooks:${rthooks_tag}@${tetragon_rthooks_image_digest}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/cilium\/tetragon-rthooks[:@].*[^\"]$/quay.io\/cilium\/tetragon-rthooks:${rthooks_tag}@${tetragon_rthooks_image_digest}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/cilium\/tetragon-rthooks[:@].*\"$/${tetragon_rthooks_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/cilium\/tetragon-rthooks[:@].*[^\"]$/${tetragon_rthooks_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*\"$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*[^\"]$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           # TODO: the value in the olm.skipRange annotation may need to be replaced when the annotation has been added.

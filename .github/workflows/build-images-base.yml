@@ -37,6 +37,9 @@ jobs:
           - name: tetragon-operator
             dockerfile: ./Dockerfile.operator
 
+          - name: tetragon-rthooks
+            dockerfile: ./Dockerfile.rthooks
+
     steps:
       # https://github.com/docker/setup-qemu-action
       - name: Set up QEMU
@@ -221,6 +224,8 @@ jobs:
               "tetragonAggregator.image.tag": "${{ inputs.sha }}",
               "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-ci",
               "tetragonOperator.image.tag": "${{ inputs.sha }}",
+              "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-rthooks-ci",
+              "rthooks.image.tag": "${{ inputs.sha }}",
             }
           registry: ${{ vars.ARTIFACTORY_HOST }}
           registry_namespace: isovalent-eng-docker
