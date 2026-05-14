@@ -347,16 +347,31 @@ func ParseMulticastOptions(config *networkapi.UdpConfigValue) {
 
 func ParseDisableSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp != nil {
-		DisableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
-		DisableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
-		DisableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
-		DisableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
+		// Events disabled by the CLI switches stay disabled.
+		DisableConnectEvents = option.Config.UDPDisableConnectEvents || spec.Parser.Udp.DisableEvents.DisableConnect
+		DisableListenEvents = option.Config.UDPDisableListenEvents || spec.Parser.Udp.DisableEvents.DisableListen
+		DisableCloseEvents = option.Config.UDPDisableCloseEvents || spec.Parser.Udp.DisableEvents.DisableClose
+		DisableStatsEvents = option.Config.UDPDisableStatsEvents || spec.Parser.Udp.DisableEvents.DisableStats
 	}
 	config.DisableListenEvents = 0
 	if DisableListenEvents {
 		config.DisableListenEvents = 1
 	}
-	logger.GetLogger().Info("UDP event types", "disableConnect", DisableCloseEvents, "disableListen", DisableListenEvents,
+	logger.GetLogger().Info("UDP event types (from policy and switches)", "disableConnect", DisableConnectEvents, "disableListen", DisableListenEvents,
+		"disableClose", DisableCloseEvents, "disableStats", DisableStatsEvents)
+}
+
+func ParseDisableOptions(config *networkapi.UdpConfigValue) {
+	DisableConnectEvents = option.Config.UDPDisableConnectEvents
+	DisableListenEvents = option.Config.UDPDisableListenEvents
+	DisableCloseEvents = option.Config.UDPDisableCloseEvents
+	DisableStatsEvents = option.Config.UDPDisableStatsEvents
+
+	config.DisableListenEvents = 0
+	if DisableListenEvents {
+		config.DisableListenEvents = 1
+	}
+	logger.GetLogger().Info("UDP event types (from switches)", "disableConnect", DisableConnectEvents, "disableListen", DisableListenEvents,
 		"disableClose", DisableCloseEvents, "disableStats", DisableStatsEvents)
 }
 
