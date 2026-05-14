@@ -168,14 +168,22 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) networkapi.UdpConfigValue {
 
 // ParseOptions parses the command line options into the config
 func ParseOptions(config *networkapi.UdpConfigValue) {
+	if option.Config.Layer3CLIEnable {
+		ParseDNSOptions(config)
+		ParseWatermarksOptions(config)
+		ParseMetricsOptions()
+		ParseDisableOptions(config)
+	}
+	ParseMulticastOptions(config)
+}
+
+func ParseDNSOptions(config *networkapi.UdpConfigValue) {
 	config.DnsStatsPerSocket = 0
 	if option.Config.DNSStatsPerSocket {
 		config.DnsStatsPerSocket = 1
 	}
 
 	parseDNSPortsOption(config)
-
-	ParseMulticastOptions(config)
 }
 
 func parseDNSPortsOption(config *networkapi.UdpConfigValue) {
@@ -195,7 +203,7 @@ func parseDNSPortsOption(config *networkapi.UdpConfigValue) {
 }
 
 func InitDNS() {
-	ParseOptions(&Config)
+	ParseDNSOptions(&Config)
 }
 
 // InitKernelDNS is separated from InitDNS because it can be called
