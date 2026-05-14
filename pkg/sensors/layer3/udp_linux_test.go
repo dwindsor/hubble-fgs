@@ -44,6 +44,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
@@ -56,6 +57,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -206,19 +208,6 @@ spec:
   parser:
     udp:
       enable: true
-      cgroup: true
-      statsInterval: 2
-`
-
-const udpBasicConfigWOEnable = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "udp"
-spec:
-  parser:
-    udp:
-      enable: false
       cgroup: true
       statsInterval: 2
 `
@@ -548,7 +537,7 @@ func getBasicUdpObserver(t *testing.T, ctx context.Context) *observer.Observer {
 	return getLayer3Observer(t, ctx, udpBasicConfig, true)
 }
 
-func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, CLISwitches bool, disableConnect bool, disableListen bool, disableClose bool, disableStats bool) *observer.Observer {
+func configureDisableSwitchesAndConfig(t *testing.T, CLISwitches bool, disableConnect bool, disableListen bool, disableClose bool, disableStats bool) string {
 	eventDisableConfig := `
       disableEvents:
 `
@@ -557,13 +546,21 @@ func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, CLISwitches 
 	eventDisableConfig += "\n        disableClose: " + strconv.FormatBool(disableClose)
 	eventDisableConfig += "\n        disableStats: " + strconv.FormatBool(disableStats)
 
-	var udpDisableEventsConfig string
 	if CLISwitches {
-		udpDisableEventsConfig = udpBasicConfigWOEnable + eventDisableConfig
-	} else {
-		udpDisableEventsConfig = udpBasicConfig + eventDisableConfig
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: utils.CGroupSKBAvailable()},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 2 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPDisableListenEvents, Value: disableListen},
+			{KeyPtr: &enterpriseOption.Config.UDPDisableConnectEvents, Value: disableConnect},
+			{KeyPtr: &enterpriseOption.Config.UDPDisableStatsEvents, Value: disableStats},
+			{KeyPtr: &enterpriseOption.Config.UDPDisableCloseEvents, Value: disableClose},
+		}))
+		return ""
 	}
-	return getLayer3Observer(t, ctx, udpDisableEventsConfig, true)
+	return udpBasicConfig + eventDisableConfig
 }
 
 type UDPBasic struct {
@@ -905,22 +902,7 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	layer3.BaseLoaded = false
-
-	if CLISwitches {
-		oldEnableUDPValue := enterpriseOption.Config.EnableUDP
-		enterpriseOption.Config.EnableUDP = true
-		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
-		enterpriseOption.Config.Layer3CLIEnable = true
-		oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
-		enterpriseOption.Config.EnableNetworkEvents = true
-		t.Cleanup(func() {
-			enterpriseOption.Config.EnableICMP = oldEnableUDPValue
-			enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
-			enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
-		})
-		layer3.EnableLayer3Progs()
-	}
+	configYaml := configureDisableSwitchesAndConfig(t, CLISwitches, disableConnect, true, true, disableStats)
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -963,10 +945,15 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 				WithSourcePort(8084)),
 	)
 
-	obs := getUdpObserverDisableEvents(t, ctx, CLISwitches, disableConnect, true, true, disableStats)
-	if CLISwitches {
-		layer3.RunLayer3Progs(ctx, nil)
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(configYaml)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
+
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
@@ -974,8 +961,8 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8084", "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8084, syscall.IPPROTO_UDP, syscall.AF_INET)
 	assert.NoError(t, err)
 
@@ -1604,7 +1591,7 @@ func TestDnsEventsWithoutQuestions(t *testing.T) {
 	testDnsEvents(t, false)
 }
 
-func testDisableCloseConfig(t *testing.T, disableClose bool) {
+func testDisableCloseConfig(t *testing.T, CLISwitches, disableClose bool) {
 	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
 		t.Skip("Test requires amd64 or kernel >=5.8")
 	}
@@ -1629,14 +1616,26 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	disableCloseConfig := udpConfigDisableClose + strconv.FormatBool(disableClose)
-	if err := observertesthelper.WriteConfigFile(testConfigFile, disableCloseConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: utils.CGroupSKBAvailable()},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPDisableCloseEvents, Value: disableClose},
+		}))
 	}
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		disableCloseConfig := udpConfigDisableClose + strconv.FormatBool(disableClose)
+		tp, err := tracingpolicy.FromYAML(disableCloseConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -1645,40 +1644,48 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 
 	cmdServer := exec.Command(server, "-unvlp", "8081", "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	require.NoError(t, err)
+	require.NoError(t, cmdClient.Start())
 	sendData(t, stdin, "hello")
 	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdServer)
 
 	err = jsonchecker.JsonTestCheckExpect(t, checker, disableClose)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	killAndWaitCommand(t, cmdClient)
 }
 
 func TestDisableClose(t *testing.T) {
-	testDisableCloseConfig(t, true)
+	testDisableCloseConfig(t, false, true)
 }
 
 func TestNoDisableClose(t *testing.T) {
-	testDisableCloseConfig(t, false)
+	testDisableCloseConfig(t, false, false)
 }
 
-func testDisableListenConfig(t *testing.T, disableListen bool) {
+func TestDisableCloseCLI(t *testing.T) {
+	testDisableCloseConfig(t, true, true)
+}
+
+func TestNoDisableCloseCLI(t *testing.T) {
+	testDisableCloseConfig(t, true, false)
+}
+
+func testDisableListenConfig(t *testing.T, CLISwitches, disableListen bool) {
 	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
 		t.Skip("Test requires amd64 or kernel >=5.8")
 	}
 
-	bpf.CheckOrMountCgroup2()
+	//bpf.CheckOrMountCgroup2()
 
 	server := getNCCommand(t, "nc.openbsd")
 
@@ -1697,14 +1704,26 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	disableListenConfig := udpConfigDisableListen + strconv.FormatBool(disableListen)
-	if err := observertesthelper.WriteConfigFile(testConfigFile, disableListenConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: utils.CGroupSKBAvailable()},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPDisableListenEvents, Value: disableListen},
+		}))
 	}
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		disableListenConfig := udpConfigDisableListen + strconv.FormatBool(disableListen)
+		tp, err := tracingpolicy.FromYAML(disableListenConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -1712,23 +1731,31 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 	readyWG.Wait()
 
 	cmdServer := exec.Command(server, "-unvlp", "8081", "-s", "0.0.0.0")
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
+	err := waitForSocketToListen(t, net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
+	require.NoError(t, err)
 
 	err = jsonchecker.JsonTestCheckExpect(t, checker, disableListen)
 
 	killAndWaitCommand(t, cmdServer)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDisableListen(t *testing.T) {
-	testDisableListenConfig(t, true)
+	testDisableListenConfig(t, false, true)
 }
 
 func TestNoDisableListen(t *testing.T) {
-	testDisableListenConfig(t, false)
+	testDisableListenConfig(t, false, false)
+}
+
+func TestNoDisableListenCLI(t *testing.T) {
+	testDisableListenConfig(t, true, false)
+}
+
+func TestDisableListenCLI(t *testing.T) {
+	testDisableListenConfig(t, true, true)
 }
 
 func udpGcMetricGet(ty socketmetrics.UDPGCType) float64 {
