@@ -97,6 +97,16 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["ghcr.io/renovatebot/renovate"],
       "schedule": ["* * 1 * *"],
+    },
+    {
+      "matchDepNames": [
+        "quay.io/isovalent-dev/ipa-builder"
+      ],
+      // This matches the following two formats:
+      // major.minor.patch
+      // major.minor.patch-dev.123-20250818154258
+      // https://regex101.com/r/q5f7nC/2
+      "versioning": "regex:^v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(?:-dev\\.(?<build>\\d+)-(?<revision>\\d+))?$"
     }
   ]
 }
