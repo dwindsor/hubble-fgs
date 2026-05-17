@@ -399,6 +399,58 @@ func (x *GetAlertRuleResponse) GetRule() *AlertRule {
 	return nil
 }
 
+type GetAlertsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	AlertRuleNames []string               `protobuf:"bytes,1,rep,name=alert_rule_names,json=alertRuleNames,proto3" json:"alert_rule_names,omitempty"`
+	CelExpression  []string               `protobuf:"bytes,2,rep,name=cel_expression,json=celExpression,proto3" json:"cel_expression,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetAlertsRequest) Reset() {
+	*x = GetAlertsRequest{}
+	mi := &file_tetragon_alertservice_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAlertsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAlertsRequest) ProtoMessage() {}
+
+func (x *GetAlertsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_alertservice_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAlertsRequest.ProtoReflect.Descriptor instead.
+func (*GetAlertsRequest) Descriptor() ([]byte, []int) {
+	return file_tetragon_alertservice_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetAlertsRequest) GetAlertRuleNames() []string {
+	if x != nil {
+		return x.AlertRuleNames
+	}
+	return nil
+}
+
+func (x *GetAlertsRequest) GetCelExpression() []string {
+	if x != nil {
+		return x.CelExpression
+	}
+	return nil
+}
+
 var File_tetragon_alertservice_proto protoreflect.FileDescriptor
 
 const file_tetragon_alertservice_proto_rawDesc = "" +
@@ -421,12 +473,16 @@ const file_tetragon_alertservice_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\"?\n" +
 	"\x14GetAlertRuleResponse\x12'\n" +
-	"\x04rule\x18\x01 \x01(\v2\x13.tetragon.AlertRuleR\x04rule2\xf1\x02\n" +
+	"\x04rule\x18\x01 \x01(\v2\x13.tetragon.AlertRuleR\x04rule\"c\n" +
+	"\x10GetAlertsRequest\x12(\n" +
+	"\x10alert_rule_names\x18\x01 \x03(\tR\x0ealertRuleNames\x12%\n" +
+	"\x0ecel_expression\x18\x02 \x03(\tR\rcelExpression2\xaf\x03\n" +
 	"\fAlertService\x12_\n" +
 	"\x14AddAlertRuleFromYAML\x12%.tetragon.AddAlertRuleFromYAMLRequest\x1a\x1e.tetragon.AddAlertRuleResponse\"\x00\x12X\n" +
 	"\x0fDeleteAlertRule\x12 .tetragon.DeleteAlertRuleRequest\x1a!.tetragon.DeleteAlertRuleResponse\"\x00\x12U\n" +
 	"\x0eListAlertRules\x12\x1f.tetragon.ListAlertRulesRequest\x1a .tetragon.ListAlertRulesResponse\"\x00\x12O\n" +
-	"\fGetAlertRule\x12\x1d.tetragon.GetAlertRuleRequest\x1a\x1e.tetragon.GetAlertRuleResponse\"\x00B,Z*github.com/cilium/tetragon/api/v1/tetragonb\x06proto3"
+	"\fGetAlertRule\x12\x1d.tetragon.GetAlertRuleRequest\x1a\x1e.tetragon.GetAlertRuleResponse\"\x00\x12<\n" +
+	"\tGetAlerts\x12\x1a.tetragon.GetAlertsRequest\x1a\x0f.tetragon.Alert\"\x000\x01B,Z*github.com/cilium/tetragon/api/v1/tetragonb\x06proto3"
 
 var (
 	file_tetragon_alertservice_proto_rawDescOnce sync.Once
@@ -440,7 +496,7 @@ func file_tetragon_alertservice_proto_rawDescGZIP() []byte {
 	return file_tetragon_alertservice_proto_rawDescData
 }
 
-var file_tetragon_alertservice_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_tetragon_alertservice_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_tetragon_alertservice_proto_goTypes = []any{
 	(*AddAlertRuleFromYAMLRequest)(nil), // 0: tetragon.AddAlertRuleFromYAMLRequest
 	(*AddAlertRuleResponse)(nil),        // 1: tetragon.AddAlertRuleResponse
@@ -450,25 +506,29 @@ var file_tetragon_alertservice_proto_goTypes = []any{
 	(*ListAlertRulesResponse)(nil),      // 5: tetragon.ListAlertRulesResponse
 	(*GetAlertRuleRequest)(nil),         // 6: tetragon.GetAlertRuleRequest
 	(*GetAlertRuleResponse)(nil),        // 7: tetragon.GetAlertRuleResponse
-	(*AlertRule)(nil),                   // 8: tetragon.AlertRule
+	(*GetAlertsRequest)(nil),            // 8: tetragon.GetAlertsRequest
+	(*AlertRule)(nil),                   // 9: tetragon.AlertRule
+	(*Alert)(nil),                       // 10: tetragon.Alert
 }
 var file_tetragon_alertservice_proto_depIdxs = []int32{
-	8, // 0: tetragon.AddAlertRuleResponse.rule:type_name -> tetragon.AlertRule
-	8, // 1: tetragon.ListAlertRulesResponse.rules:type_name -> tetragon.AlertRule
-	8, // 2: tetragon.GetAlertRuleResponse.rule:type_name -> tetragon.AlertRule
-	0, // 3: tetragon.AlertService.AddAlertRuleFromYAML:input_type -> tetragon.AddAlertRuleFromYAMLRequest
-	2, // 4: tetragon.AlertService.DeleteAlertRule:input_type -> tetragon.DeleteAlertRuleRequest
-	4, // 5: tetragon.AlertService.ListAlertRules:input_type -> tetragon.ListAlertRulesRequest
-	6, // 6: tetragon.AlertService.GetAlertRule:input_type -> tetragon.GetAlertRuleRequest
-	1, // 7: tetragon.AlertService.AddAlertRuleFromYAML:output_type -> tetragon.AddAlertRuleResponse
-	3, // 8: tetragon.AlertService.DeleteAlertRule:output_type -> tetragon.DeleteAlertRuleResponse
-	5, // 9: tetragon.AlertService.ListAlertRules:output_type -> tetragon.ListAlertRulesResponse
-	7, // 10: tetragon.AlertService.GetAlertRule:output_type -> tetragon.GetAlertRuleResponse
-	7, // [7:11] is the sub-list for method output_type
-	3, // [3:7] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	9,  // 0: tetragon.AddAlertRuleResponse.rule:type_name -> tetragon.AlertRule
+	9,  // 1: tetragon.ListAlertRulesResponse.rules:type_name -> tetragon.AlertRule
+	9,  // 2: tetragon.GetAlertRuleResponse.rule:type_name -> tetragon.AlertRule
+	0,  // 3: tetragon.AlertService.AddAlertRuleFromYAML:input_type -> tetragon.AddAlertRuleFromYAMLRequest
+	2,  // 4: tetragon.AlertService.DeleteAlertRule:input_type -> tetragon.DeleteAlertRuleRequest
+	4,  // 5: tetragon.AlertService.ListAlertRules:input_type -> tetragon.ListAlertRulesRequest
+	6,  // 6: tetragon.AlertService.GetAlertRule:input_type -> tetragon.GetAlertRuleRequest
+	8,  // 7: tetragon.AlertService.GetAlerts:input_type -> tetragon.GetAlertsRequest
+	1,  // 8: tetragon.AlertService.AddAlertRuleFromYAML:output_type -> tetragon.AddAlertRuleResponse
+	3,  // 9: tetragon.AlertService.DeleteAlertRule:output_type -> tetragon.DeleteAlertRuleResponse
+	5,  // 10: tetragon.AlertService.ListAlertRules:output_type -> tetragon.ListAlertRulesResponse
+	7,  // 11: tetragon.AlertService.GetAlertRule:output_type -> tetragon.GetAlertRuleResponse
+	10, // 12: tetragon.AlertService.GetAlerts:output_type -> tetragon.Alert
+	8,  // [8:13] is the sub-list for method output_type
+	3,  // [3:8] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_alertservice_proto_init() }
@@ -483,7 +543,7 @@ func file_tetragon_alertservice_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tetragon_alertservice_proto_rawDesc), len(file_tetragon_alertservice_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

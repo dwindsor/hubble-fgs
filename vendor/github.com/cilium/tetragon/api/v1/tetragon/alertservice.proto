@@ -21,6 +21,7 @@ service AlertService {
   rpc DeleteAlertRule(DeleteAlertRuleRequest) returns (DeleteAlertRuleResponse) {}
   rpc ListAlertRules(ListAlertRulesRequest) returns (ListAlertRulesResponse) {}
   rpc GetAlertRule(GetAlertRuleRequest) returns (GetAlertRuleResponse) {}
+  rpc GetAlerts(GetAlertsRequest) returns (stream Alert) {}
 }
 
 message AddAlertRuleFromYAMLRequest {
@@ -54,4 +55,9 @@ message GetAlertRuleRequest {
 
 message GetAlertRuleResponse {
   AlertRule rule = 1;
+}
+
+message GetAlertsRequest {
+  repeated string alert_rule_names = 1;
+  repeated string cel_expression = 2;
 }

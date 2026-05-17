@@ -181,6 +181,7 @@
     - [DeleteAlertRuleResponse](#tetragon-DeleteAlertRuleResponse)
     - [GetAlertRuleRequest](#tetragon-GetAlertRuleRequest)
     - [GetAlertRuleResponse](#tetragon-GetAlertRuleResponse)
+    - [GetAlertsRequest](#tetragon-GetAlertsRequest)
     - [ListAlertRulesRequest](#tetragon-ListAlertRulesRequest)
     - [ListAlertRulesResponse](#tetragon-ListAlertRulesResponse)
   
@@ -3693,6 +3694,22 @@ Determins the behaviour of a field filter
 
 
 
+<a name="tetragon-GetAlertsRequest"></a>
+
+### GetAlertsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| alert_rule_names | [string](#string) | repeated |  |
+| cel_expression | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="tetragon-ListAlertRulesRequest"></a>
 
 ### ListAlertRulesRequest
@@ -3740,6 +3757,7 @@ Determins the behaviour of a field filter
 | DeleteAlertRule | [DeleteAlertRuleRequest](#tetragon-DeleteAlertRuleRequest) | [DeleteAlertRuleResponse](#tetragon-DeleteAlertRuleResponse) |  |
 | ListAlertRules | [ListAlertRulesRequest](#tetragon-ListAlertRulesRequest) | [ListAlertRulesResponse](#tetragon-ListAlertRulesResponse) |  |
 | GetAlertRule | [GetAlertRuleRequest](#tetragon-GetAlertRuleRequest) | [GetAlertRuleResponse](#tetragon-GetAlertRuleResponse) |  |
+| GetAlerts | [GetAlertsRequest](#tetragon-GetAlertsRequest) | [Alert](#tetragon-Alert) stream |  |
 
  
 

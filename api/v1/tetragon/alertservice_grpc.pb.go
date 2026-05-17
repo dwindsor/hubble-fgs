@@ -33,6 +33,7 @@ const (
 	AlertService_DeleteAlertRule_FullMethodName      = "/tetragon.AlertService/DeleteAlertRule"
 	AlertService_ListAlertRules_FullMethodName       = "/tetragon.AlertService/ListAlertRules"
 	AlertService_GetAlertRule_FullMethodName         = "/tetragon.AlertService/GetAlertRule"
+	AlertService_GetAlerts_FullMethodName            = "/tetragon.AlertService/GetAlerts"
 )
 
 // AlertServiceClient is the client API for AlertService service.
@@ -43,6 +44,7 @@ type AlertServiceClient interface {
 	DeleteAlertRule(ctx context.Context, in *DeleteAlertRuleRequest, opts ...grpc.CallOption) (*DeleteAlertRuleResponse, error)
 	ListAlertRules(ctx context.Context, in *ListAlertRulesRequest, opts ...grpc.CallOption) (*ListAlertRulesResponse, error)
 	GetAlertRule(ctx context.Context, in *GetAlertRuleRequest, opts ...grpc.CallOption) (*GetAlertRuleResponse, error)
+	GetAlerts(ctx context.Context, in *GetAlertsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Alert], error)
 }
 
 type alertServiceClient struct {
@@ -93,6 +95,25 @@ func (c *alertServiceClient) GetAlertRule(ctx context.Context, in *GetAlertRuleR
 	return out, nil
 }
 
+func (c *alertServiceClient) GetAlerts(ctx context.Context, in *GetAlertsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Alert], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &AlertService_ServiceDesc.Streams[0], AlertService_GetAlerts_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetAlertsRequest, Alert]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AlertService_GetAlertsClient = grpc.ServerStreamingClient[Alert]
+
 // AlertServiceServer is the server API for AlertService service.
 // All implementations must embed UnimplementedAlertServiceServer
 // for forward compatibility.
@@ -101,6 +122,7 @@ type AlertServiceServer interface {
 	DeleteAlertRule(context.Context, *DeleteAlertRuleRequest) (*DeleteAlertRuleResponse, error)
 	ListAlertRules(context.Context, *ListAlertRulesRequest) (*ListAlertRulesResponse, error)
 	GetAlertRule(context.Context, *GetAlertRuleRequest) (*GetAlertRuleResponse, error)
+	GetAlerts(*GetAlertsRequest, grpc.ServerStreamingServer[Alert]) error
 	mustEmbedUnimplementedAlertServiceServer()
 }
 
@@ -122,6 +144,9 @@ func (UnimplementedAlertServiceServer) ListAlertRules(context.Context, *ListAler
 }
 func (UnimplementedAlertServiceServer) GetAlertRule(context.Context, *GetAlertRuleRequest) (*GetAlertRuleResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAlertRule not implemented")
+}
+func (UnimplementedAlertServiceServer) GetAlerts(*GetAlertsRequest, grpc.ServerStreamingServer[Alert]) error {
+	return status.Error(codes.Unimplemented, "method GetAlerts not implemented")
 }
 func (UnimplementedAlertServiceServer) mustEmbedUnimplementedAlertServiceServer() {}
 func (UnimplementedAlertServiceServer) testEmbeddedByValue()                      {}
@@ -216,6 +241,17 @@ func _AlertService_GetAlertRule_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AlertService_GetAlerts_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetAlertsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AlertServiceServer).GetAlerts(m, &grpc.GenericServerStream[GetAlertsRequest, Alert]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AlertService_GetAlertsServer = grpc.ServerStreamingServer[Alert]
+
 // AlertService_ServiceDesc is the grpc.ServiceDesc for AlertService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -240,6 +276,12 @@ var AlertService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AlertService_GetAlertRule_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetAlerts",
+			Handler:       _AlertService_GetAlerts_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "tetragon/alertservice.proto",
 }
