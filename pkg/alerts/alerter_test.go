@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
@@ -285,4 +286,148 @@ func TestRPCGetAlertRule(t *testing.T) {
 			},
 		},
 	}, resp)
+}
+
+// TestAlertListenerFanOut verifies that a registered listener receives an alert
+// when evaluateRules matches a rule against an incoming event.
+func TestAlertListenerFanOut(t *testing.T) {
+	a := newAlerter(t.Context(), NewRuleManager())
+	require.NoError(t, a.ruleManager.AddAlertRule(exampleAR))
+
+	l := &alertListener{
+		alerts: make(chan *tetragon.Alert, 1),
+		req:    &tetragon.GetAlertsRequest{},
+	}
+	a.addAlertListener(l)
+	defer a.removeAlertListener(l)
+
+	err := a.evaluateRules(t.Context(), exampleEvent)
+	require.NoError(t, err)
+
+	require.Len(t, l.alerts, 1)
+	alert := <-l.alerts
+	assert.Equal(t, "curl", alert.GetRule().GetName())
+}
+
+// TestAlertListenerCELFilter verifies that a listener with a cel_expression
+// only receives alerts whose inner event satisfies the expression.
+func TestAlertListenerCELFilter(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		expr    string
+		wantHit bool
+	}{
+		{
+			name:    "matching expression delivers alert",
+			expr:    `process_exec.process.binary == "/usr/bin/curl"`,
+			wantHit: true,
+		},
+		{
+			name:    "non-matching expression drops alert",
+			expr:    `process_exec.process.binary == "/usr/bin/wget"`,
+			wantHit: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a := newAlerter(t.Context(), NewRuleManager())
+			require.NoError(t, a.ruleManager.AddAlertRule(exampleAR))
+
+			prog, eventNames, err := cef.CompileCEL(tc.expr)
+			require.NoError(t, err)
+
+			l := &alertListener{
+				alerts:   make(chan *tetragon.Alert, 1),
+				req:      &tetragon.GetAlertsRequest{},
+				celProgs: []alertCELProg{{program: prog, eventNames: eventNames}},
+			}
+			a.addAlertListener(l)
+			defer a.removeAlertListener(l)
+
+			require.NoError(t, a.evaluateRules(t.Context(), exampleEvent))
+
+			if tc.wantHit {
+				require.Len(t, l.alerts, 1)
+				assert.Equal(t, "curl", (<-l.alerts).GetRule().GetName())
+			} else {
+				assert.Empty(t, l.alerts)
+			}
+		})
+	}
+}
+
+// TestAlertListenerAlertRuleNamesFilter verifies that a listener with
+// alert_rule_names set only receives alerts for the specified rule.
+func TestAlertListenerAlertRuleNamesFilter(t *testing.T) {
+	a := newAlerter(t.Context(), NewRuleManager())
+	require.NoError(t, a.ruleManager.AddAlertRule(exampleAR))
+	require.NoError(t, a.ruleManager.AddAlertRule(anotherAR))
+
+	// Register a listener that only wants alerts from "shell".
+	l := &alertListener{
+		alerts: make(chan *tetragon.Alert, 1),
+		req:    &tetragon.GetAlertsRequest{AlertRuleNames: []string{"shell"}},
+	}
+	a.addAlertListener(l)
+	defer a.removeAlertListener(l)
+
+	// exampleEvent matches "curl" (not "shell") — listener should receive nothing.
+	err := a.evaluateRules(t.Context(), exampleEvent)
+	require.NoError(t, err)
+	assert.Empty(t, l.alerts)
+}
+
+// TestAlertListenerCELOR verifies OR semantics across multiple cel_expression
+// values: an alert is delivered if any program matches. This mirrors the OSS
+// getevents --cel-expression behaviour.
+func TestAlertListenerCELOR(t *testing.T) {
+	a := newAlerter(t.Context(), NewRuleManager())
+	require.NoError(t, a.ruleManager.AddAlertRule(exampleAR))
+
+	matching := `process_exec.process.binary == "/usr/bin/curl"`
+	nonMatching := `process_exec.process.binary == "/usr/bin/wget"`
+
+	progMatch, eventNamesMatch, err := cef.CompileCEL(matching)
+	require.NoError(t, err)
+	progMiss, eventNamesMiss, err := cef.CompileCEL(nonMatching)
+	require.NoError(t, err)
+
+	l := &alertListener{
+		alerts: make(chan *tetragon.Alert, 1),
+		req:    &tetragon.GetAlertsRequest{},
+		celProgs: []alertCELProg{
+			{program: progMiss, eventNames: eventNamesMiss},
+			{program: progMatch, eventNames: eventNamesMatch},
+		},
+	}
+	a.addAlertListener(l)
+	defer a.removeAlertListener(l)
+
+	require.NoError(t, a.evaluateRules(t.Context(), exampleEvent))
+	require.Len(t, l.alerts, 1)
+	assert.Equal(t, "curl", (<-l.alerts).GetRule().GetName())
+}
+
+// TestAlertListenerCELUnrelatedEventType verifies that a CEL
+// expression referencing only a different event type than the alert's
+// inner event is skipped (cel expression has process_kprobe while
+// event is process_exec), so the listener simply receives nothing
+// rather than dropping silently due to a CEL runtime error.
+func TestAlertListenerCELUnrelatedEventType(t *testing.T) {
+	a := newAlerter(t.Context(), NewRuleManager())
+	require.NoError(t, a.ruleManager.AddAlertRule(exampleAR))
+
+	// Reference process_kprobe even though exampleEvent is process_exec.
+	prog, eventNames, err := cef.CompileCEL(`process_kprobe.policy_name == "x"`)
+	require.NoError(t, err)
+
+	l := &alertListener{
+		alerts:   make(chan *tetragon.Alert, 1),
+		req:      &tetragon.GetAlertsRequest{},
+		celProgs: []alertCELProg{{program: prog, eventNames: eventNames}},
+	}
+	a.addAlertListener(l)
+	defer a.removeAlertListener(l)
+
+	require.NoError(t, a.evaluateRules(t.Context(), exampleEvent))
+	assert.Empty(t, l.alerts)
 }
