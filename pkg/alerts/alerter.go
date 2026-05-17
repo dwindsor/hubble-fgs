@@ -15,14 +15,17 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/logger/logfields"
+	"github.com/google/cel-go/cel"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/server"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -35,6 +38,21 @@ import (
 type Alerter interface {
 	tetragon.AlertServiceServer
 	Start(*server.Server) error
+}
+
+// alertListener is a per-GetAlerts-stream sink for matched alerts.
+type alertListener struct {
+	alerts   chan *tetragon.Alert
+	req      *tetragon.GetAlertsRequest
+	celProgs []alertCELProg
+}
+
+// alertCELProg pairs a compiled CEL program with the set of event names it
+// references, so the filter can skip evaluation for unrelated event types
+// (matching the OSS getevents --cel-expression behaviour).
+type alertCELProg struct {
+	program    cel.Program
+	eventNames []string
 }
 
 // alerter implements a few interfaces:
@@ -50,6 +68,8 @@ type Alerter interface {
 type alerter struct {
 	ctx         context.Context
 	ruleManager *AlertRuleManager
+	listeners   []*alertListener
+	listenersMu sync.Mutex
 	tetragon.UnimplementedAlertServiceServer
 }
 
@@ -62,6 +82,24 @@ func newAlerter(ctx context.Context, r RuleManager) *alerter {
 	return &alerter{
 		ruleManager: rm,
 		ctx:         ctx,
+		listeners:   make([]*alertListener, 0),
+	}
+}
+
+func (a *alerter) addAlertListener(l *alertListener) {
+	a.listenersMu.Lock()
+	defer a.listenersMu.Unlock()
+	a.listeners = append(a.listeners, l)
+}
+
+func (a *alerter) removeAlertListener(l *alertListener) {
+	a.listenersMu.Lock()
+	defer a.listenersMu.Unlock()
+	for i, existing := range a.listeners {
+		if existing == l {
+			a.listeners = append(a.listeners[:i], a.listeners[i+1:]...)
+			return
+		}
 	}
 }
 
@@ -162,17 +200,115 @@ func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsRe
 			alertmetrics.RecordAlertMatch(r.name, r.severity)
 
 			// Handle alert output
+			alert := eventToAlert(event, r)
 			if r.jsonEncoder != nil {
-				alert := eventToAlert(event, r)
 				err = r.jsonEncoder.encode(alert, r.rateLimiter)
 				if err != nil {
 					errs = errors.Join(errs, fmt.Errorf("failed to export alert to JSON log file: %w", err))
 					continue
 				}
 			}
+			a.notifyListeners(ctx, alert)
 		}
 	}
 	return errs
+}
+
+func (a *alerter) notifyListeners(ctx context.Context, alert *tetragon.Alert) {
+	a.listenersMu.Lock()
+	listeners := make([]*alertListener, len(a.listeners))
+	copy(listeners, a.listeners)
+	a.listenersMu.Unlock()
+	for _, l := range listeners {
+		if !alertMatchesListener(ctx, alert, l) {
+			continue
+		}
+		select {
+		case l.alerts <- alert:
+		default:
+			logger.GetLogger().Warn("Alert listener channel full, dropping alert",
+				"rule", alert.GetRule().GetName())
+		}
+	}
+}
+
+// alertMatchesListener returns true if the alert should be forwarded to a
+// listener based on its request filters.
+func alertMatchesListener(ctx context.Context, alert *tetragon.Alert, l *alertListener) bool {
+	if len(l.req.GetAlertRuleNames()) > 0 {
+		matched := false
+		if slices.Contains(l.req.GetAlertRuleNames(), alert.GetRule().GetName()) {
+			matched = true
+		}
+		if !matched {
+			return false
+		}
+	}
+	if len(l.celProgs) == 0 {
+		return true
+	}
+	// Build a fully-populated empty event map (all keys present as typed-nil)
+	// and overwrite the single key corresponding to this alert's inner event.
+	// This mirrors filters.filterByCELExpression so CEL programs that reference
+	// other event types evaluate without "no such attribute" errors.
+	evName, evData, _ := helpers.ProcessEventMapTuple(alert.GetEvent())
+	eventMap := helpers.ProcessEventMapEmpty()
+	eventMap[evName] = evData
+	// OR semantics across multiple --cel-expression values, matching OSS
+	// getevents. Programs whose declared event names don't match the current
+	// event are skipped (not treated as non-matching).
+	for _, prog := range l.celProgs {
+		related := false
+		for _, n := range prog.eventNames {
+			if !reflect.ValueOf(eventMap[n]).IsNil() {
+				related = true
+				break
+			}
+		}
+		if !related {
+			continue
+		}
+		match, err := filters.EvalCEL(ctx, prog.program, eventMap)
+		if err != nil {
+			logger.GetLogger().Warn("Alert listener CEL evaluation error",
+				logfields.Error, err)
+			continue
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *alerter) GetAlerts(req *tetragon.GetAlertsRequest, stream tetragon.AlertService_GetAlertsServer) error {
+	var celProgs []alertCELProg
+	for _, expr := range req.GetCelExpression() {
+		prog, eventNames, err := cef.CompileCEL(expr)
+		if err != nil {
+			return fmt.Errorf("invalid CEL expression %q: %w", expr, err)
+		}
+		celProgs = append(celProgs, alertCELProg{program: prog, eventNames: eventNames})
+	}
+	l := &alertListener{
+		alerts:   make(chan *tetragon.Alert, 1000),
+		req:      req,
+		celProgs: celProgs,
+	}
+	a.addAlertListener(l)
+	defer a.removeAlertListener(l)
+	for {
+		select {
+		case alert := <-l.alerts:
+			if err := stream.Send(alert); err != nil {
+				return err
+			}
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		case <-a.ctx.Done():
+			return a.ctx.Err()
+		}
+	}
 }
 
 func eventToAlert(event *tetragon.GetEventsResponse, r *rule) *tetragon.Alert {
