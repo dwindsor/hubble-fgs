@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/getalerts"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/getevents"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/record"
@@ -34,6 +35,7 @@ func addBaseCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(status.New())
 	rootCmd.AddCommand(record.New())
 	rootCmd.AddCommand(alertrule.New())
+	rootCmd.AddCommand(getalerts.New())
 	rootCmd.AddCommand(network.New())
 	rootCmd.AddCommand(rules.New())
 	rootCmd.AddCommand(info.New())
