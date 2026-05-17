@@ -67,6 +67,8 @@ func (p *EnterpriseEncoder) EncodePrefix(prefix string, v any) error {
 	if p.inner.Timestamps {
 		ts := event.Time.AsTime().UTC().Format(rfc3339Nano)
 		str = fmt.Sprintf("%s%s %s", prefix, ts, str)
+	} else {
+		str = fmt.Sprintf("%s%s", prefix, str)
 	}
 	fmt.Fprintln(p.inner.Writer, str)
 	return nil
