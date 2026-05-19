@@ -274,7 +274,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 			result.ApplicationModel.Namespaces = append(result.ApplicationModel.Namespaces, ns)
 		}
 	}
-	// TODO(michi): Not very efficient. Optimize if anybody complains.
+	// Sort the resulting ApplicationModel.
 	EnsureSorted(result.ApplicationModel)
 	return result
 }

@@ -14,154 +14,58 @@ package model
 
 import (
 	"cmp"
-	"errors"
 	"fmt"
 	"net/netip"
 	"slices"
 	"strings"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	"google.golang.org/protobuf/reflect/protopath"
-	"google.golang.org/protobuf/reflect/protorange"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-var (
-	ErrEmptyStack           = errors.New("empty stack")
-	ErrUnhandledMessageType = errors.New("unhandled message type")
-)
-
-type stack[T any] struct {
-	s []T
-}
-
-func (stack *stack[T]) push(v T) {
-	stack.s = append(stack.s, v)
-}
-
-func (stack *stack[T]) pop() (v T, err error) {
-	l := len(stack.s)
-	if l == 0 {
-		return v, ErrEmptyStack
-	}
-	v = stack.s[l-1]
-	stack.s = stack.s[:l-1]
-	return v, nil
-}
-
-func (stack *stack[T]) peek() (v T, err error) {
-	l := len(stack.s)
-	if l == 0 {
-		return v, ErrEmptyStack
-	}
-	return stack.s[l-1], nil
-}
-
-// EnsureSorted recursively sorts all "repeated" fields of an [appModelV1.ApplicationModel].
 func EnsureSorted(model *appModelV1.ApplicationModel) {
-	toSort := stack[*[]protoreflect.Value]{}
-	protorange.Options{}.Range(
-		model.ProtoReflect(),
-		// Push
-		func(p protopath.Values) error {
-			last := p.Index(-1)
-			switch last.Step.Kind() {
-			case protopath.FieldAccessStep:
-				if last.Step.FieldDescriptor().IsList() {
-					toSort.push(&[]protoreflect.Value{})
-				}
+	if model.Host != nil {
+		sortProcessGroups(model.Host.Processes)
+	}
+	slices.SortFunc(model.Namespaces, func(a, b *appModelV1.ApplicationNamespace) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
+	for _, ns := range model.Namespaces {
+		slices.SortFunc(ns.Workloads, func(a, b *appModelV1.ApplicationWorkload) int {
+			if res := cmp.Compare(a.Name, b.Name); res != 0 {
+				return res
 			}
-			return nil
-		},
-		// Pop
-		func(p protopath.Values) error {
-			last := p.Index(-1)
-			switch last.Step.Kind() {
-			case protopath.FieldAccessStep:
-				if last.Step.FieldDescriptor().IsList() {
-					ptr, err := toSort.pop()
-					if err != nil {
-						return fmt.Errorf("failed to pop sort buffer: %w", err)
-					}
-					if len(*ptr) == 0 {
-						return nil
-					}
-					var unhandledErr error
-					slices.SortStableFunc(*ptr, func(aVal, bVal protoreflect.Value) (res int) {
-						b := bVal.Message().Interface()
-						switch a := aVal.Message().Interface().(type) {
-						case *appModelV1.ApplicationProcessGroup:
-							b := b.(*appModelV1.ApplicationProcessGroup)
-							res = cmp.Compare(a.Name, b.Name)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.Arguments, b.Arguments)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.Hash, b.Hash)
-							if res != 0 {
-								return res
-							}
-						case *appModelV1.ApplicationContainer:
-							b := b.(*appModelV1.ApplicationContainer)
-							res = cmp.Compare(a.Id, b.Id)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.Name, b.Name)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.Image, b.Image)
-							if res != 0 {
-								return res
-							}
-						case *appModelV1.ApplicationWorkload:
-							b := b.(*appModelV1.ApplicationWorkload)
-							res = cmp.Compare(a.Name, b.Name)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.Kind, b.Kind)
-							if res != 0 {
-								return res
-							}
-						case *appModelV1.ApplicationNamespace:
-							b := b.(*appModelV1.ApplicationNamespace)
-							res = cmp.Compare(a.Name, b.Name)
-							if res != 0 {
-								return res
-							}
-						case *appModelV1.ApplicationConnection:
-							b := b.(*appModelV1.ApplicationConnection)
-							return CompareConnection(a, b)
-						default:
-							unhandledErr = fmt.Errorf("%w: %T", ErrUnhandledMessageType, a)
-							return 0
-						}
-						return 0
-					})
-					if unhandledErr != nil {
-						return unhandledErr
-					}
-					for i := 0; i < last.Value.List().Len(); i++ {
-						last.Value.List().Set(i, (*ptr)[i])
-					}
-				}
-			case protopath.ListIndexStep:
-				ptr, err := toSort.peek()
-				if err != nil {
-					return fmt.Errorf("failed to peek sort buffer: %w", err)
-				}
-				beforeLast := p.Index(-2)
-				if beforeLast.Step.FieldDescriptor().Message() != nil {
-					*ptr = append(*ptr, last.Value)
-				}
-			}
-			return nil
+			return cmp.Compare(a.Kind, b.Kind)
 		})
+		for _, wl := range ns.Workloads {
+			slices.SortFunc(wl.Containers, func(a, b *appModelV1.ApplicationContainer) int {
+				if res := cmp.Compare(a.Id, b.Id); res != 0 {
+					return res
+				}
+				if res := cmp.Compare(a.Name, b.Name); res != 0 {
+					return res
+				}
+				return cmp.Compare(a.Image, b.Image)
+			})
+			for _, cont := range wl.Containers {
+				sortProcessGroups(cont.Processes)
+			}
+		}
+	}
+}
+
+func sortProcessGroups(procs []*appModelV1.ApplicationProcessGroup) {
+	slices.SortFunc(procs, func(a, b *appModelV1.ApplicationProcessGroup) int {
+		if res := cmp.Compare(a.Name, b.Name); res != 0 {
+			return res
+		}
+		if res := cmp.Compare(a.Arguments, b.Arguments); res != 0 {
+			return res
+		}
+		return cmp.Compare(a.Hash, b.Hash)
+	})
+	for _, proc := range procs {
+		slices.SortFunc(proc.Connections, CompareConnection)
+	}
 }
 
 // CompareConnection compares two [appModelV1.ApplicationConnection] by destination and protocol.
