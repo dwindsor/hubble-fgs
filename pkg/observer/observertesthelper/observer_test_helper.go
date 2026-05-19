@@ -34,7 +34,8 @@ var (
 
 func enterpriseInit() {
 	enterpriseOnce.Do(func() {
-		enterpriseMetricsConfig.InitAllEEMetrics(metricsconfig.GetRegistry())
+		enterpriseMetricsConfig.InitAllEEHealthMetrics(metricsconfig.GetRegistry())
+		enterpriseMetricsConfig.InitAllEEEventMetrics(metricsconfig.GetRegistry())
 		cilium.InitCiliumState(context.Background(), false)
 	})
 }

@@ -198,21 +198,13 @@ func initAllDebugDNSParserMetrics(registry *prometheus.Registry) {
 	}
 }
 
-func InitAllEEMetrics(registry *prometheus.Registry) {
+func InitAllEEHealthMetrics(registry *prometheus.Registry) {
 	initAllDNSHealthMetrics(registry)
-	initAllDNSEventsMetrics(registry)
 	initAllFileHealthMetrics(registry)
-	initAllFileEventsMetrics(registry)
 	initAllHTTPHealthMetrics(registry)
-	initAllHTTPEventsMetrics(registry)
-	initAllICMPEventsMetrics(registry)
-	initAllInterfaceEventsMetrics(registry)
 	initAllNetworkHealthMetrics(registry)
-	initAllTCPEventsMetrics(registry)
-	initAllUDPEventsMetrics(registry)
 	initAllRawSocketEventsMetrics(registry)
 	initAllTLSHealthMetrics(registry)
-	initAllTLSEventsMetrics(registry)
 	initAllSandboxMetrics(registry)
 	initAllProcessCacheCleanMetrics(registry)
 	initAllAlertMetrics(registry)
@@ -221,8 +213,23 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllAppModelMetrics(registry)
 }
 
-func InitAllMetrics(registry *prometheus.Registry) {
-	oss.InitHealthMetrics(registry)
-	oss.InitEventsMetrics(registry)
-	InitAllEEMetrics(registry)
+func InitAllEEEventMetrics(registry *prometheus.Registry) {
+	initAllDNSEventsMetrics(registry)
+	initAllFileEventsMetrics(registry)
+	initAllHTTPEventsMetrics(registry)
+	initAllICMPEventsMetrics(registry)
+	initAllInterfaceEventsMetrics(registry)
+	initAllTCPEventsMetrics(registry)
+	initAllUDPEventsMetrics(registry)
+	initAllTLSEventsMetrics(registry)
+}
+
+func InitAllHealthMetrics(registry *prometheus.Registry) {
+	oss.InitHealthMetrics((registry))
+	InitAllEEHealthMetrics(registry)
+}
+
+func InitAllEventMetrics(registry *prometheus.Registry) {
+	oss.InitEventsMetrics((registry))
+	InitAllEEEventMetrics(registry)
 }
