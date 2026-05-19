@@ -465,10 +465,9 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 
 	result := NetworkMonitorData{}
 	quota := NetworkQuotaData{}
-	proc := ProcessMonitorData{}
 
 	// Track unique parents for each process key
-	processParents := make(map[ProcessKey]map[string]bool)
+	processParents := make(map[ProcessKey]map[string]struct{})
 
 	// First pass: collect all parents and network data
 	for _, process := range processModel {
@@ -476,12 +475,12 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 
 		// Initialize parents map for this process key if not exists
 		if _, ok := processParents[processKey]; !ok {
-			processParents[processKey] = make(map[string]bool)
+			processParents[processKey] = make(map[string]struct{})
 		}
 
 		// Add parent to the set if it exists
 		if process.Parent != "" {
-			processParents[processKey][process.Parent] = true
+			processParents[processKey][process.Parent] = struct{}{}
 		}
 
 		// Handle network destinations
@@ -510,44 +509,52 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 	}
 
 	// Second pass: create ProcessValue entries with aggregated parents, execution counts, and times
-	processInfoMap := make(map[ProcessKey]*types.ProcessModel)
-	processExecCounts := make(map[ProcessKey]uint64)
-	processExitCounts := make(map[ProcessKey]uint64)
-	processFirstStartTimes := make(map[ProcessKey]*time.Time)
-	processLatestStartTimes := make(map[ProcessKey]*time.Time)
-	processLatestExitTimes := make(map[ProcessKey]*time.Time)
+	type aggrProcessValue struct {
+		info        *types.ProcessModel
+		execCounts  uint64
+		exitCounts  uint64
+		firstStart  *time.Time
+		latestStart *time.Time
+		latestExit  *time.Time
+	}
+	processInfoMap := make(map[ProcessKey]aggrProcessValue)
 
 	for _, process := range processModel {
 		processKey := getProcessMonitorKey(process)
-		processInfoMap[processKey] = process
+		pVal := processInfoMap[processKey]
+		pVal.info = process
 		// Sum execution/exit counts across all entries with the same process key
-		processExecCounts[processKey] += process.ExecCount
-		processExitCounts[processKey] += process.ExitCount
+		pVal.execCounts += process.ExecCount
+		pVal.exitCounts += process.ExitCount
 
 		// Track the earliest first start time (minimum)
 		if process.FirstStartTime != nil {
-			if existing := processFirstStartTimes[processKey]; existing == nil || process.FirstStartTime.Before(*existing) {
-				processFirstStartTimes[processKey] = process.FirstStartTime
+			if existing := pVal.firstStart; existing == nil || process.FirstStartTime.Before(*existing) {
+				pVal.firstStart = process.FirstStartTime
 			}
 		}
 
 		// Track the latest start time (maximum)
 		if process.LatestStartTime != nil {
-			if existing := processLatestStartTimes[processKey]; existing == nil || process.LatestStartTime.After(*existing) {
-				processLatestStartTimes[processKey] = process.LatestStartTime
+			if existing := pVal.latestStart; existing == nil || process.LatestStartTime.After(*existing) {
+				pVal.latestStart = process.LatestStartTime
 			}
 		}
 
 		// Track the latest exit time (maximum)
 		if process.LatestExitTime != nil {
-			if existing := processLatestExitTimes[processKey]; existing == nil || process.LatestExitTime.After(*existing) {
-				processLatestExitTimes[processKey] = process.LatestExitTime
+			if existing := pVal.latestExit; existing == nil || process.LatestExitTime.After(*existing) {
+				pVal.latestExit = process.LatestExitTime
 			}
 		}
+
+		// update val
+		processInfoMap[processKey] = pVal
 	}
 
+	proc := make(ProcessMonitorData, len(processInfoMap))
 	for processKey, process := range processInfoMap {
-		syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
+		syscalls, err := getSyscallInfo(process.info.Abi, process.info.Syscalls)
 		if err != nil {
 			if !warnOnce {
 				logger.GetLogger().Debug("failed to populate system call data for process", logfields.Error, err)
@@ -563,14 +570,14 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 		slices.Sort(parentsList)
 
 		proc[processKey] = ProcessValue{
-			InInitTree:      process.InInitTree,
+			InInitTree:      process.info.InInitTree,
 			Syscalls:        syscalls,
 			Parents:         parentsList,
-			FirstStartTime:  processFirstStartTimes[processKey],
-			LatestStartTime: processLatestStartTimes[processKey],
-			LatestExitTime:  processLatestExitTimes[processKey],
-			ExecCount:       processExecCounts[processKey],
-			ExitCount:       processExitCounts[processKey],
+			FirstStartTime:  process.firstStart,
+			LatestStartTime: process.latestStart,
+			LatestExitTime:  process.latestExit,
+			ExecCount:       process.execCounts,
+			ExitCount:       process.exitCounts,
 		}
 	}
 
