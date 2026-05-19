@@ -435,8 +435,8 @@ jobs:
         working-directory: ${{ github.workspace }}
         shell: pwsh
         run: |
-          go build -o .\Tetra.exe .\cmd\bin\tetra\ 
-          go build -o .\Tetragon.exe .\cmd\bin\tetragon\
+          go build -ldflags="-s -w" -o .\Tetra.exe .\cmd\bin\tetra\ 
+          go build -ldflags="-s -w" -o .\Tetragon.exe .\cmd\bin\tetragon\
           New-Item -ItemType Directory -Path ${{ env.TEMP }}\Tetragon-Windows
           Copy-Item *.exe -Destination ${{ env.TEMP }}\Tetragon-Windows
           Compress-Archive -Path ${{ env.TEMP }}\Tetragon-Windows\* -DestinationPath ${{ env.TEMP }}\Tetragon-Windows.zip
