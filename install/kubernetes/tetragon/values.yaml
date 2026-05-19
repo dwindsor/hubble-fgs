@@ -358,6 +358,11 @@ tetragon:
   # for Telemetry export to take effect. Telemetry export uses the export
   # interval specified by tetragon.applicationModelExportInterval value.
   telemetryExportFilename: ""
+  # -- Export filename for connections log (e.g "connections.log"). Set to empty
+  # to disable. Note that tetragon.enableApplicationModel must be set to true
+  # for connections log export to take effect. Connections log export uses the export
+  # interval specified by tetragon.applicationModelExportInterval value.
+  connectionLogFilename: ""
 # Tetragon Operator settings
 tetragonOperator:
   # -- Enables the Tetragon Operator.

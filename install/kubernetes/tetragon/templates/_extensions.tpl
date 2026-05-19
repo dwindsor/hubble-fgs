@@ -33,6 +33,9 @@ application-model-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetr
 {{- if .Values.tetragon.telemetryExportFilename }}
 telemetry-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.telemetryExportFilename }}
 {{- end }}
+{{- if .Values.tetragon.connectionLogFilename }}
+connection-log-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.connectionLogFilename }}
+{{- end }}
 {{- if .Values.tetragon.enableSyscallTracking }}
 {{- if .Values.tetragon.enableApplicationModel }}
 enable-syscall-tracking: "true"

@@ -241,6 +241,7 @@ tetragon:
   enableApplicationModel: true          # Enable model server
   applicationModelExportInterval: 10s   # Export frequency
   telemetryExportFilename: "telemetry.log"
+  connectionLogFilename: "connections.log"
 ```
 
 ## Kind Cluster Testing
@@ -305,6 +306,7 @@ tetragon:
   applicationModelExportFilename: "application-model.log"
   applicationModelExportInterval: 10s
   telemetryExportFilename: "telemetry.log"
+  connectionLogFilename: "connections.log"
   layer3:
     tcp:
       enabled: true
