@@ -222,6 +222,7 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 }
 
 func InitAllMetrics(registry *prometheus.Registry) {
-	oss.InitAllMetrics(registry)
+	oss.InitHealthMetrics(registry)
+	oss.InitEventsMetrics(registry)
 	InitAllEEMetrics(registry)
 }

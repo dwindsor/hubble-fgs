@@ -12,7 +12,7 @@ require (
 	github.com/cilium/cilium v1.19.4
 	github.com/cilium/ebpf v0.21.1-0.20260501093402-9f87aafaeb37
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.8.0-pre.0.0.20260513174248-ab20129b4e1f
+	github.com/cilium/tetragon v1.8.0-pre.0.0.20260519083949-d800078bbfe9
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.3.0
@@ -195,7 +195,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.36.1 // indirect
 	k8s.io/component-base v0.36.1 // indirect
-	k8s.io/cri-api v0.36.0 // indirect
+	k8s.io/cri-api v0.36.1 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/kube-openapi v0.0.0-20260427204847-8949caaa1199 // indirect
 	k8s.io/streaming v0.36.1 // indirect
