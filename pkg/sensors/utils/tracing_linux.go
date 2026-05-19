@@ -13,13 +13,12 @@ package utils
 import (
 	"fmt"
 	"os"
-	"path"
 	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
 	"github.com/cilium/ebpf/link"
-	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/config"
 	"golang.org/x/sys/unix"
 )
 
@@ -46,7 +45,10 @@ var probeTracingFentry = sync.OnceValue(_probeTracingFentry)
 // Finally, we use sync.OnceValue to ensure that we only call this function once
 // and minimise the overheads of calling it.
 func _probeLSM() error {
-	objPath := path.Join(option.Config.HubbleLib, "bpf_lsm_check.o")
+	objPath, err := config.FindProgramFile("bpf_lsm_check.o")
+	if err != nil {
+		return fmt.Errorf("checkLSMHooks: %w", err)
+	}
 	spec, err := ebpf.LoadCollectionSpec(objPath)
 	if err != nil {
 		return fmt.Errorf("checkLSMHooks: %w", err)
