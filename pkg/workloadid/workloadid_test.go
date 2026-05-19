@@ -273,3 +273,81 @@ func TestBPFMapIntegration(t *testing.T) {
 	err = state.cgroupIDToWorkloadIDMap.Lookup(cgid1, &wlid1)
 	assert.ErrorIs(t, err, ebpf.ErrKeyNotExist)
 }
+
+func TestDeleteWrongCgroupID(t *testing.T) {
+
+	state := newTestState()
+	workload := nginxWorkload()
+	cgroupID := CgroupID(2817)
+	wrongCgroupID := CgroupID(9999)
+
+	err := state.Update(workload, cgroupID)
+	require.NoError(t, err)
+
+	err = state.DeleteCgroup(wrongCgroupID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get workload ID for cgroupID")
+}
+
+func TestDeleteCgroupSingleWorkload(t *testing.T) {
+
+	state := newTestState()
+	workload := nginxWorkload()
+	cgroupID := CgroupID(12727)
+
+	err := state.Update(workload, cgroupID)
+	require.NoError(t, err)
+
+	workloadID, found := state.LookupID(workload)
+	assert.True(t, found)
+	assert.Equal(t, WorkloadID(1), workloadID)
+
+	err = state.DeleteCgroup(cgroupID)
+	require.NoError(t, err)
+
+	_, found = state.LookupID(workload)
+	assert.False(t, found)
+
+	_, found = state.LookupMeta(workloadID)
+	assert.False(t, found)
+}
+
+func TestDeleteCgroupMultipleWorkloads(t *testing.T) {
+
+	state := newTestState()
+	workload := nginxWorkload()
+	cgroupID1 := CgroupID(575)
+	cgroupID2 := CgroupID(1823)
+
+	err := state.Update(workload, cgroupID1)
+	require.NoError(t, err)
+
+	workloadID, found := state.LookupID(workload)
+	assert.True(t, found)
+	assert.Equal(t, WorkloadID(1), workloadID)
+
+	err = state.Update(workload, cgroupID2)
+	require.NoError(t, err)
+
+	workloadID2, found := state.LookupID(workload)
+	assert.True(t, found)
+	assert.Equal(t, WorkloadID(1), workloadID2)
+
+	err = state.DeleteCgroup(cgroupID1)
+	require.NoError(t, err)
+
+	_, found = state.LookupID(workload)
+	assert.True(t, found)
+
+	_, found = state.LookupMeta(workloadID)
+	assert.True(t, found)
+
+	err = state.DeleteCgroup(cgroupID2)
+	require.NoError(t, err)
+
+	_, found = state.LookupID(workload)
+	assert.False(t, found)
+
+	_, found = state.LookupMeta(workloadID)
+	assert.False(t, found)
+}

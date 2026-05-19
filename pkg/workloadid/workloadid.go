@@ -140,3 +140,46 @@ func (s *State) LookupMeta(workloadID WorkloadID) (WorkloadMeta, bool) {
 	}
 	return WorkloadMeta{}, false
 }
+
+func (s *State) DeleteCgroup(cgroupID CgroupID) error {
+	if s.cgroupIDToWorkloadIDMap == nil {
+		return fmt.Errorf("the cgroup ID to workload ID map should be set, this is a bug please report")
+	}
+
+	// Find the workload id associated with this cgroup id. We might remove it
+	// from idToMeta/metaToID if this was the last reference to this workload
+	// id.
+	var workloadID WorkloadID
+	err := s.cgroupIDToWorkloadIDMap.Lookup(cgroupID, &workloadID)
+	if err != nil {
+		return fmt.Errorf("failed to get workload ID for cgroupID %d: %w", cgroupID, err)
+	}
+
+	if err := s.cgroupIDToWorkloadIDMap.Delete(cgroupID); err != nil {
+		return fmt.Errorf("failed to delete cgroupID %d from workload ID map: %w", cgroupID, err)
+	}
+
+	var cgid CgroupID
+	var wlid WorkloadID
+	iter := s.cgroupIDToWorkloadIDMap.Iterate()
+
+	for iter.Next(&cgid, &wlid) {
+		if wlid == workloadID {
+			// A different cgroup id points to this workload id, don't remove
+			// anything.
+
+			return nil
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("failed to iterate over cgroupID to workload ID map: %w", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.metaToID, s.idToMeta[workloadID])
+	delete(s.idToMeta, workloadID)
+
+	return nil
+}
