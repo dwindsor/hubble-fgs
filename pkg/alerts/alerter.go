@@ -136,6 +136,8 @@ func (a *alerter) RecvMsg(any) error {
 
 func (a *alerter) Close() error {
 	var errs error
+	a.ruleManager.mutex.RLock()
+	defer a.ruleManager.mutex.RUnlock()
 	for _, r := range a.ruleManager.rules {
 		if r.jsonEncoder != nil {
 			err := r.jsonEncoder.writer.Close()
@@ -165,16 +167,20 @@ func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsRe
 		a.ruleManager.eventMap[evName] = evDefer
 	}()
 
-	// keep only the rules that are related to that event
-	rules := []*rule{}
+	// Snapshot rules under RLock; gRPC AddAlertRule/DeleteAlertRule may race
+	// with this iteration. *rule is immutable after insertion, so snapshotted
+	// pointers remain safe to use after release.
+	a.ruleManager.mutex.RLock()
+	rules := make([]*rule, 0, len(a.ruleManager.rules))
 	for _, r := range a.ruleManager.rules {
 		for _, n := range r.eventNames {
-			if !reflect.ValueOf(a.ruleManager.eventMap[n]).IsNil() { // is the incoming event related to that alert?
+			if !reflect.ValueOf(a.ruleManager.eventMap[n]).IsNil() {
 				rules = append(rules, r)
 				break
 			}
 		}
 	}
+	a.ruleManager.mutex.RUnlock()
 
 	var errs error
 	for _, r := range rules {
@@ -396,7 +402,10 @@ func (a *alerter) GetAlertRule(_ context.Context, req *tetragon.GetAlertRuleRequ
 		domain: domain,
 		name:   req.Name,
 	}
+	a.ruleManager.mutex.RLock()
 	r, ok := a.ruleManager.rules[key]
+	a.ruleManager.mutex.RUnlock()
+
 	if !ok {
 		return nil, fmt.Errorf("rule not found: %s", req.Name)
 	}
