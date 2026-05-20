@@ -73,6 +73,29 @@ func TestSomeTestName(t *testing.T) {
 	// ...
 }
 ```
+### How do build things on my laptop that depend on artifactory images?
+
+For example, `make image` may lead to errors such as:
+
+```
+ERROR: failed to build: failed to solve: failed to fetch anonymous token: unexpected status from GET request to https://artifactory.devhub-cloud.cisco.com/v2/token?scope=repository%3Aglibc-openssl%3Apull&scope=repository%3Asto-cg-docker%2Fglibc-openssl%3Apull&service=artifactory.devhub-cloud.cisco.com: 401 Unauthorized
+```
+
+To solve this issue, you need access to
+https://artifactory.devhub-cloud.cisco.com/ui/repos/tree/General/sto-cg-docker.
+
+Then you need to create a token. To do so, follow the instructions under "How Do I Create An Access
+Token Via The UI?" in
+https://code.cisco.com/code-docs/dev-tools/binary/platform-offerings/artifactory/faq
+
+Once you have a token, you can use it as a password to login to artifactory.devhub-cloud.cisco.com:
+```
+docker login artifactory.devhub-cloud.cisco.com -u <username>
+```
+
+Where <username> is your cisco username.
+
+See slack thread: https://isovalent.slack.com/archives/C01N6G0CHFV/p1779266912678339
 
 ## Alerts
 
