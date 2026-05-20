@@ -29,6 +29,9 @@ application-model-export-interval: {{ .Values.tetragon.applicationModelExportInt
 application-model-export-fragments: {{ .Values.tetragon.applicationModelExportFragments | quote }}
 {{- if .Values.tetragon.applicationModelExportFilename }}
 application-model-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.applicationModelExportFilename }}
+application-model-export-file-max-size-mb: {{ .Values.tetragon.applicationModelExportFileMaxSizeMB | quote }}
+application-model-export-file-max-backups: {{ .Values.tetragon.applicationModelExportFileMaxBackups | quote }}
+application-model-export-file-compress: {{ .Values.tetragon.applicationModelExportFileCompress | quote }}
 {{- end }}
 {{- if .Values.tetragon.telemetryExportFilename }}
 telemetry-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.telemetryExportFilename }}

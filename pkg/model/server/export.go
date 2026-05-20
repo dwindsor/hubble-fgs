@@ -197,13 +197,13 @@ func exportTick(
 			for _, fragment := range fragments {
 				if err := appModelEncoder.Encode(fragment); err != nil {
 					logAppModelEncodeError(err, "Failed to encode application model fragment as JSON",
-						"raise export-file-max-size-mb or lower application-model-split-max-host-processes")
+						"raise application-model-export-file-max-size-mb or lower application-model-split-max-host-processes")
 				}
 			}
 		} else {
 			if err := appModelEncoder.Encode(newModel); err != nil {
 				logAppModelEncodeError(err, "Failed to encode application model as JSON",
-					"raise export-file-max-size-mb or set application-model-export-fragments=true")
+					"raise application-model-export-file-max-size-mb or set application-model-export-fragments=true")
 			}
 		}
 	}

@@ -113,6 +113,9 @@ Helm chart for Tetragon Enterprise
 | tetragon.alerts.exportDirectory | string | `"/var/run/cilium/tetragon"` | Directory for alert JSON export (filenames will be retrieved from alert rule names). |
 | tetragon.alerts.exportFilename | string | `""` | Global filename for alert JSON export (instead of retrieving it from alert rule names). |
 | tetragon.applicationModelCacheSize | int | `65536` | Cache size for application model. |
+| tetragon.applicationModelExportFileCompress | bool | `false` |  |
+| tetragon.applicationModelExportFileMaxBackups | int | `1` |  |
+| tetragon.applicationModelExportFileMaxSizeMB | int | `25` |  |
 | tetragon.applicationModelExportFilename | string | `""` | Export filename for application model (e.g "application-model.log"). Set to empty to disable exporting the application model. |
 | tetragon.applicationModelExportFragments | bool | `false` | Whether to export complete application model objects or "fragments" that can be reassembled into a complete application model. Using fragments is desirable when there is a maximum message size limit when collecting application model objects from tetragon agents and saving to a central data store. Complete application model objects might hit this limit but fragments would not. |
 | tetragon.applicationModelExportInterval | string | `"60s"` | Interval at which to export application model. |

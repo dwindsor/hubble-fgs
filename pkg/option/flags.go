@@ -140,6 +140,10 @@ const (
 	KeyApplicationModelExportFragments   = "application-model-export-fragments"
 	KeyApplicationModelRetentionDuration = "application-model-retention-duration"
 
+	KeyApplicationModelExportFileMaxSizeMB  = "application-model-export-file-max-size-mb"
+	KeyApplicationModelExportFileMaxBackups = "application-model-export-file-max-backups"
+	KeyApplicationModelExportFileCompress   = "application-model-export-file-compress"
+
 	EnvironmentAWS        = "aws"
 	EnvironmentAzure      = "azure"
 	EnvironmentGCloud     = "gcloud"
@@ -205,6 +209,12 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyApplicationModelExportInterval)
 	flags.String(KeyApplicationModelExportFilename, "", "Filename for application model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelExportFilename)
+	flags.Int(KeyApplicationModelExportFileMaxSizeMB, 25, "Size in MB for rotating flow JSON export files")
+	flags.MarkHidden(KeyApplicationModelExportFileMaxSizeMB)
+	flags.Int(KeyApplicationModelExportFileMaxBackups, 1, "Number of rotated flow JSON export files to retain")
+	flags.MarkHidden(KeyApplicationModelExportFileMaxBackups)
+	flags.Bool(KeyApplicationModelExportFileCompress, false, "Compress rotated flow JSON export files")
+	flags.MarkHidden(KeyApplicationModelExportFileCompress)
 	flags.Bool(KeyApplicationModelExportFragments, false, "When exporting application model to JSON, export as fragments. This circumvents message ingest size limits when the application model is large.")
 	flags.Duration(KeyApplicationModelRetentionDuration, time.Duration(24*time.Hour), "Retention period for exited processes in the application model.")
 	flags.String(KeyTelemetryExportFilename, "", "Filename for telemetry JSON export. Set to \"\" to disable. To enable telemetry export, --"+KeyEnableApplicationModel+" flag must be set to true. Telemetry export uses the export interval specified by --"+KeyApplicationModelExportInterval+" flag.")
@@ -335,6 +345,9 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ApplicationModelExportFilename = viper.GetString(KeyApplicationModelExportFilename)
+	Config.ApplicationModelExportFileMaxSizeMB = viper.GetInt(KeyApplicationModelExportFileMaxSizeMB)
+	Config.ApplicationModelExportFileMaxBackups = viper.GetInt(KeyApplicationModelExportFileMaxBackups)
+	Config.ApplicationModelExportFileCompress = viper.GetBool(KeyApplicationModelExportFileCompress)
 	Config.ApplicationModelSplitMaxHostProcs = viper.GetInt(KeyApplicationModelSplitMaxHostProcs)
 	Config.ApplicationModelExportFragments = viper.GetBool(KeyApplicationModelExportFragments)
 	Config.ApplicationModelRetentionDuration = viper.GetDuration(KeyApplicationModelRetentionDuration)

@@ -13,6 +13,15 @@ options:
       default_value: "65536"
       usage: |
         Set the size of the BPF data structure to store application model and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
+    - name: application-model-export-file-compress
+      default_value: "false"
+      usage: Compress rotated flow JSON export files
+    - name: application-model-export-file-max-backups
+      default_value: "1"
+      usage: Number of rotated flow JSON export files to retain
+    - name: application-model-export-file-max-size-mb
+      default_value: "25"
+      usage: Size in MB for rotating flow JSON export files
     - name: application-model-export-filename
       usage: |
         Filename for application model JSON export. Set to "" to disable.

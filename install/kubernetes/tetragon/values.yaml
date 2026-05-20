@@ -455,6 +455,12 @@ tetragon:
   applicationModelExportFilename: ""
   # -- Interval at which to export application model.
   applicationModelExportInterval: 60s
+  # Size in megabytes at which to rotate flow JSON export files.
+  applicationModelExportFileMaxSizeMB: 25
+  # Number of rotated flow JSON export files to retain.
+  applicationModelExportFileMaxBackups: 1
+  # Compress rotated flow JSON export files.
+  applicationModelExportFileCompress: false
   # -- Whether to export complete application model objects or "fragments" that
   # can be reassembled into a complete application model. Using fragments is
   # desirable when there is a maximum message size limit when collecting

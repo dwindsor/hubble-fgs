@@ -161,9 +161,9 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 	if enterpriseOption.Config.ApplicationModelExportFilename != "" {
 		writer, err = getWriter(
 			enterpriseOption.Config.ApplicationModelExportFilename,
-			option.Config.ExportFileMaxSizeMB,
-			option.Config.ExportFileMaxBackups,
-			option.Config.ExportFileCompress,
+			enterpriseOption.Config.ApplicationModelExportFileMaxSizeMB,
+			enterpriseOption.Config.ApplicationModelExportFileMaxBackups,
+			enterpriseOption.Config.ApplicationModelExportFileCompress,
 		)
 		if err != nil {
 			return err
@@ -173,9 +173,9 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 	if enterpriseOption.Config.TelemetryExportFilename != "" {
 		flatWriter, err = getWriter(
 			enterpriseOption.Config.TelemetryExportFilename,
-			option.Config.ExportFileMaxSizeMB,
-			option.Config.ExportFileMaxBackups,
-			option.Config.ExportFileCompress,
+			enterpriseOption.Config.ApplicationModelExportFileMaxSizeMB,
+			enterpriseOption.Config.ApplicationModelExportFileMaxBackups,
+			enterpriseOption.Config.ApplicationModelExportFileCompress,
 		)
 		if err != nil {
 			return err
@@ -184,9 +184,9 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 	if enterpriseOption.Config.ConnectionLogFileName != "" {
 		connectionWriter, err = getWriter(
 			enterpriseOption.Config.ConnectionLogFileName,
-			option.Config.ExportFileMaxSizeMB,
-			option.Config.ExportFileMaxBackups,
-			option.Config.ExportFileCompress,
+			enterpriseOption.Config.ApplicationModelExportFileMaxSizeMB,
+			enterpriseOption.Config.ApplicationModelExportFileMaxBackups,
+			enterpriseOption.Config.ApplicationModelExportFileCompress,
 		)
 		if err != nil {
 			return err

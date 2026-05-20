@@ -33,6 +33,10 @@ type config struct {
 	ApplicationModelExportFragments   bool
 	ApplicationModelRetentionDuration time.Duration
 
+	ApplicationModelExportFileMaxSizeMB  int
+	ApplicationModelExportFileMaxBackups int
+	ApplicationModelExportFileCompress   bool
+
 	TelemetryExportFilename string
 	ConnectionLogFileName   string
 
