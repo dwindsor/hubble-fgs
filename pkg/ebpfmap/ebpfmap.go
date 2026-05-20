@@ -14,10 +14,15 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type Iterator interface {
+	Next(keyOut, valueOut interface{}) bool
+	Err() error
+}
+
 type InterfaceTyped[K any, V any] interface {
 	Lookup(key K, result *V) error
 	Update(key K, value V, flags ebpf.MapUpdateFlags) error
-	Iterate() *ebpf.MapIterator
+	Iterate() Iterator
 	Delete(key K) error
 }
 
@@ -38,7 +43,7 @@ func (em *ebpfMapTyped[K, V]) Update(key K, value V, flags ebpf.MapUpdateFlags) 
 	return em.m.Update(key, value, flags)
 }
 
-func (em *ebpfMapTyped[K, V]) Iterate() *ebpf.MapIterator {
+func (em *ebpfMapTyped[K, V]) Iterate() Iterator {
 	return em.m.Iterate()
 }
 

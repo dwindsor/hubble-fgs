@@ -22,8 +22,35 @@ type KVPair[K any, V any] struct {
 	b V
 }
 
+// fakeIterator implements Iterator for Fake maps
+type fakeIterator[K fmt.Stringer, V any] struct {
+	pairs []KVPair[K, V]
+	idx   int
+}
+
+func (fi *fakeIterator[K, V]) Next(keyOut, valueOut interface{}) bool {
+	if fi.idx >= len(fi.pairs) {
+		return false
+	}
+	pair := fi.pairs[fi.idx]
+	fi.idx++
+
+	// Use type assertion to set the output values
+	if kp, ok := keyOut.(*K); ok {
+		*kp = pair.a
+	}
+	if vp, ok := valueOut.(*V); ok {
+		*vp = pair.b
+	}
+	return true
+}
+
+func (fi *fakeIterator[K, V]) Err() error {
+	return nil
+}
+
 // syncMap is a minimal generic wrapper over sync.Map, providing just the
-// Load/Store/Delete surface Fake needs. It lets us avoid depending on
+// Load/Store/Delete/Iterate surface Fake needs. It lets us avoid depending on
 // github.com/cilium/cilium/pkg/lock for a single in-memory test helper.
 type syncMap[K comparable, V any] struct {
 	m sync.Map
@@ -75,6 +102,11 @@ func (fm *Fake[K, V]) Delete(key K) error {
 	return nil
 }
 
-func (fm *Fake[K, V]) Iterate() *ebpf.MapIterator {
-	return nil
+func (fm *Fake[K, V]) Iterate() Iterator {
+	var pairs []KVPair[K, V]
+	fm.Range(func(_ string, v KVPair[K, V]) bool {
+		pairs = append(pairs, v)
+		return true
+	})
+	return &fakeIterator[K, V]{pairs: pairs}
 }
