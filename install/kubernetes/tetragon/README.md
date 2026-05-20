@@ -48,7 +48,7 @@ Helm chart for Tetragon Enterprise
 | podLabelsOverride | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | priorityClassName | string | `""` |  |
-| rthooks | object | `{"annotations":{},"enabled":false,"extraHookArgs":{},"extraLabels":{},"extraVolumeMounts":[],"failAllowNamespaces":"","failAllowNamespacesRegex":[],"image":{"override":null,"repository":"quay.io/cilium/tetragon-rthooks","tag":"v0.9"},"installDir":"/opt/tetragon","interface":"","nameOverride":"","nriHook":{"nriSocket":"/var/run/nri/nri.sock"},"ociHooks":{"hooksPath":"/usr/share/containers/oci/hooks.d"},"podAnnotations":{},"podSecurityContext":{},"priorityClassName":"","resources":{},"serviceAccount":{"name":""}}` | Method for installing Tetagon rthooks (tetragon-rthooks) daemonset The tetragon-rthooks daemonset is responsible for installing run-time hooks on the host. See: https://tetragon.io/docs/concepts/runtime-hooks |
+| rthooks | object | `{"annotations":{},"enabled":false,"extraHookArgs":{},"extraLabels":{},"extraVolumeMounts":[],"failAllowNamespaces":"","failAllowNamespacesRegex":[],"image":{"override":null,"repository":"artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-rthooks","tag":"v0.9"},"installDir":"/opt/tetragon","interface":"","nameOverride":"","nriHook":{"nriSocket":"/var/run/nri/nri.sock"},"ociHooks":{"hooksPath":"/usr/share/containers/oci/hooks.d"},"podAnnotations":{},"podSecurityContext":{},"priorityClassName":"","resources":{},"serviceAccount":{"name":""}}` | Method for installing Tetagon rthooks (tetragon-rthooks) daemonset The tetragon-rthooks daemonset is responsible for installing run-time hooks on the host. See: https://tetragon.io/docs/concepts/runtime-hooks |
 | rthooks.annotations | object | `{}` | Annotations for the Tetragon rthooks daemonset |
 | rthooks.enabled | bool | `false` | Enable the Tetragon rthooks daemonset |
 | rthooks.extraHookArgs | object | `{}` | extra args to pass to tetragon-oci-hook |
@@ -56,7 +56,7 @@ Helm chart for Tetragon Enterprise
 | rthooks.extraVolumeMounts | list | `[]` | Extra volume mounts to add to the oci-hook-setup init container |
 | rthooks.failAllowNamespaces | string | `""` | Comma-separated list of namespaces to allow Pod creation for, in case tetragon-oci-hook fails to reach Tetragon agent. The namespace Tetragon is deployed in is always added as an exception and must not be added again. |
 | rthooks.failAllowNamespacesRegex | list | `[]` | List of RE2 regex patterns for namespaces to allow Pod creation for, in case tetragon-oci-hook fails to reach Tetragon agent. Patterns perform substring matching by default; use ^ and $ anchors for full-string matching (e.g. '^kube-.*$' matches only namespaces starting with 'kube-'). Can be combined with failAllowNamespaces. Ignored if extraHookArgs sets fail-cel-expr. Example: ["^acme-.*$", "^dev-.*$"] |
-| rthooks.image | object | `{"override":null,"repository":"quay.io/cilium/tetragon-rthooks","tag":"v0.9"}` | image for the Tetragon rthooks pod |
+| rthooks.image | object | `{"override":null,"repository":"artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-rthooks","tag":"v0.9"}` | image for the Tetragon rthooks pod |
 | rthooks.installDir | string | `"/opt/tetragon"` | installDir is the host location where the tetragon-oci-hook binary will be installed |
 | rthooks.interface | string | `""` | Method to use for installing  rthooks. Values:     "oci-hooks":       Add an apppriate file to "/usr/share/containers/oci/hooks.d". Use this with CRI-O.       See https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md       for more details.       Specific configuration for this interface can be found under "ociHooks".     "nri-hook":      Install the hook via NRI. Use this with containerd. Requires NRI being enabled.      see: https://github.com/containerd/containerd/blob/main/docs/NRI.md.      Specific configuration for this interface can be found under "nriHook".  |
 | rthooks.nameOverride | string | `""` | tetragon-rthooks name override |
@@ -159,7 +159,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.healthGrpc.port | int | `6789` | The port at which to expose health gRPC. |
 | tetragon.hostProcPath | string | `"/proc"` | Location of the host proc filesystem in the runtime environment. If the runtime runs in the host, the path is /proc. Exceptions to this are environments like kind, where the runtime itself does not run on the host. |
 | tetragon.image.override | string | `nil` |  |
-| tetragon.image.repository | string | `"quay.io/isovalent/tetragon"` |  |
+| tetragon.image.repository | string | `"artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon"` |  |
 | tetragon.image.tag | string | `"v1.19.0-rc.1"` |  |
 | tetragon.k8sWatcher.policy.enabled | bool | `true` | Enable watching Kubernetes API server for policy resources. If true, Tetragon watches all supported policy resources: TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and TetragonNetworkPolicy(Namespaced), unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely. |
 | tetragon.layer3.icmp.enabled | bool | `false` |  |
@@ -209,7 +209,7 @@ Helm chart for Tetragon Enterprise
 | tetragonAggregator.extraPodLabels | object | `{}` | Extra labels to be added on the Tetragon Aggregator Deployment Pods. |
 | tetragonAggregator.extraVolumeMounts | list | `[]` |  |
 | tetragonAggregator.extraVolumes | list | `[]` | Extra volumes for the Tetragon Aggregator Deployment. |
-| tetragonAggregator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-aggregator","tag":"v1.19.0-rc.1"}` | tetragon-aggregator image. |
+| tetragonAggregator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-aggregator","tag":"v1.19.0-rc.1"}` | tetragon-aggregator image. |
 | tetragonAggregator.nodeSelector | object | `{}` | Steer the Tetragon Aggregator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonAggregator.podAnnotations | object | `{}` | Annotations for the Tetragon Aggregator Deployment Pods. |
 | tetragonAggregator.podSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | securityContext for the Tetragon Aggregator Deployment Pod container. |
@@ -235,7 +235,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.failoverLease.leaseRetryPeriod | string | `"2s"` | The timeout between retries if renewal fails |
 | tetragonOperator.failoverLease.namespace | string | `""` | Kubernetes Namespace in which the Lease resource is created. Defaults to the namespace where Tetragon is deployed in, if it's empty. |
 | tetragonOperator.forceUpdateCRDs | bool | `false` |  |
-| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.19.0-rc.1"}` | tetragon-operator image. |
+| tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-operator","tag":"v1.19.0-rc.1"}` | tetragon-operator image. |
 | tetragonOperator.nameOverride | string | `""` | The name of the Tetragon Operator deployment. |
 | tetragonOperator.nodeSelector | object | `{}` | Steer the Tetragon Operator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonOperator.podAnnotations | object | `{}` | Annotations for the Tetragon Operator Deployment Pods. |

@@ -50,7 +50,7 @@ tetragon:
   nameOverride: ""
   image:
     override: ~
-    repository: quay.io/isovalent/tetragon
+    repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon
     tag: v1.19.0-rc.1
   resources: {}
   extraArgs: {}
@@ -440,7 +440,7 @@ tetragonOperator:
   # -- tetragon-operator image.
   image:
     override: ~
-    repository: quay.io/isovalent/tetragon-operator
+    repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-operator
     tag: v1.19.0-rc.1
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Operator Deployment.
@@ -560,7 +560,7 @@ rthooks:
   # -- image for the Tetragon rthooks pod
   image:
     override: ~
-    repository: quay.io/cilium/tetragon-rthooks
+    repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-rthooks
     tag: v0.9
   # -- rthooks service account.
   serviceAccount:
@@ -604,7 +604,7 @@ tetragonAggregator:
   # -- tetragon-aggregator image.
   image:
     override: ~
-    repository: quay.io/isovalent/tetragon-aggregator
+    repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-aggregator
     tag: v1.19.0-rc.1
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Aggregator Deployment.
