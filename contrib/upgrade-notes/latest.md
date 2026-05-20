@@ -61,6 +61,8 @@ Depending on your setup, changes listed here might require a manual intervention
   Layer3 tracing policies will be removed in the next release. We recommend
   converting layer3 tracing policies to CLI switches or chart parameters now to
   prevent issues when upgrading in the future.
+* Application Model related exports (appmodel, telemetry and connections log) default values for MaxSizeMB and MaxBackups have been updated to 25M and 1; before, they were 10M and 5.
+* New flags to manage application model exports options: `--application-model-export-file-max-size-mb`, `--application-model-export-file-max-backups`, `--application-model-export-file-compress`.
 
 ### Helm Values
 
@@ -97,6 +99,8 @@ Depending on your setup, changes listed here might require a manual intervention
   * tetragon.layer3.dns.reportQuestions: false
   * tetragon.layer3.dns.metrics.enabled: true
   * tetragon.layer3.dns.metrics.labelFilter: []
+* Application Model related exports (appmodel, telemetry and connections log) default values for MaxSizeMB and MaxBackups have been updated to 25M and 1; before, they were 10M and 5.
+* New values to manage application model exports options: `tetragon.applicationModelExportFileMaxSizeMB`, `tetragon.applicationModelExportFileMaxBackups`, `tetragon.applicationModelExportFileCompress`.
 
 ### OLM manifests
 
