@@ -76,9 +76,34 @@ func CompareConnection(a, b *appModelV1.ApplicationConnection) int {
 	return cmp.Compare(int32(a.Protocol), int32(b.Protocol))
 }
 
+// Stable ordinals for each concrete Destination type variant, used to order
+// destinations of different types without allocating. The unset ordinal sorts
+// before all known types.
+const (
+	destinationOrdinalUnset = iota
+	destinationOrdinalDNS
+	destinationOrdinalIP
+	destinationOrdinalWorkload
+)
+
+// destinationTypeOrdinal returns a stable integer for each concrete Destination
+// type variant.
+func destinationTypeOrdinal(t any) int {
+	switch t.(type) {
+	case *appModelV1.Destination_Dns:
+		return destinationOrdinalDNS
+	case *appModelV1.Destination_Ip:
+		return destinationOrdinalIP
+	case *appModelV1.Destination_Workload:
+		return destinationOrdinalWorkload
+	default:
+		return destinationOrdinalUnset
+	}
+}
+
 // CompareDestination compares two [appModelV1.Destination].
 func CompareDestination(a, b *appModelV1.Destination) int {
-	res := cmp.Compare(fmt.Sprintf("%T", a.Type), fmt.Sprintf("%T", b.Type))
+	res := cmp.Compare(destinationTypeOrdinal(a.Type), destinationTypeOrdinal(b.Type))
 	if res != 0 {
 		return res
 	}
