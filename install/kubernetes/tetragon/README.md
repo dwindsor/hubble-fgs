@@ -110,7 +110,7 @@ Helm chart for Tetragon Enterprise
 | splunk_hec.token.secretKey | string | `"hec-token"` |  |
 | splunk_hec.token.secretName | string | `"splunk-hec"` |  |
 | tetragon.alerts.enabled | bool | `true` | Enable alerts. |
-| tetragon.alerts.exportDirectory | string | `"/var/run/cilium/tetragon"` | Directory for alert JSON export (filenames will be retrieved from alert rule names). |
+| tetragon.alerts.exportDirectory | string | `"/var/log/tetragon"` | Directory for alert JSON export (filenames will be retrieved from alert rule names). |
 | tetragon.alerts.exportFilename | string | `""` | Global filename for alert JSON export (instead of retrieving it from alert rule names). |
 | tetragon.applicationModelCacheSize | int | `65536` | Cache size for application model. |
 | tetragon.applicationModelExportFileCompress | bool | `false` |  |

@@ -46,7 +46,7 @@ tolerations: |
 nodeSelector:
   kubernetes.io/os: linux
 # exportDirectory specifies directory to put Tetragon JSON export files.
-exportDirectory: /var/run/cilium/tetragon
+exportDirectory: /var/log/tetragon
 # Configure tetragon's init container for setting up tetragon-oci-hook on the host
 # the following ociHook fields have been deprecated, please use runtime hooks instead
 ociHookSetupEnabled: false

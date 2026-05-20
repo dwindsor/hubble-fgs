@@ -302,7 +302,7 @@ func TestDaemonSet(t *testing.T) {
 									Name: "export-logs",
 									VolumeSource: corev1.VolumeSource{
 										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/var/run/cilium/tetragon",
+											Path: "/var/log/tetragon",
 											Type: &hostPathDirectoryOrCreateVolumeType,
 										},
 									},
@@ -374,7 +374,7 @@ func TestDaemonSet(t *testing.T) {
 										},
 										{
 											Name:      "export-logs",
-											MountPath: "/var/run/cilium/tetragon",
+											MountPath: "/var/log/tetragon",
 										},
 										{
 											Name:      "host-proc",
@@ -1338,7 +1338,7 @@ tetragonHealthGrpcPort: 6789`,
 						},
 						{
 							Name:      "export-logs",
-							MountPath: "/var/run/cilium/tetragon",
+							MountPath: "/var/log/tetragon",
 						},
 						{
 							Name:      "host-proc",
