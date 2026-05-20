@@ -41,6 +41,7 @@ jobs:
 
   build-tarballs:
     uses: ./.github/workflows/build-tarballs.yml
+    secrets: inherit
 
   # The ClusterServiceVersion part of the bundle is dependent on the previous builds as it needs to be updated with the image digests
   # produced during these builds.

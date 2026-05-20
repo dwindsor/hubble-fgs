@@ -24,6 +24,7 @@ jobs:
     uses: ./.github/workflows/build-tarballs.yml
     with:
       ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+    secrets: inherit
 
   upload-s3:
     needs: build-tarballs
