@@ -101,6 +101,8 @@ Depending on your setup, changes listed here might require a manual intervention
   * tetragon.layer3.dns.metrics.labelFilter: []
 * Application Model related exports (appmodel, telemetry and connections log) default values for MaxSizeMB and MaxBackups have been updated to 25M and 1; before, they were 10M and 5.
 * New values to manage application model exports options: `tetragon.applicationModelExportFileMaxSizeMB`, `tetragon.applicationModelExportFileMaxBackups`, `tetragon.applicationModelExportFileCompress`.
+* `exportDirectory` and `alerts.exportDirectory` have been updated to `/var/log/tetragon` from
+  `/var/run/cilium/tetragon/` to avoid writing to tmpfs.
 
 ### OLM manifests
 
