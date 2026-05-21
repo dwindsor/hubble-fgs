@@ -9,7 +9,6 @@ import (
 	"iter"
 	"maps"
 	"os"
-	"slices"
 	"sort"
 	"syscall"
 
@@ -20,8 +19,8 @@ import (
 )
 
 // TotalMemlockBytes iterates over the extend map info and sums the memlock field.
-func TotalMemlockBytes(infos []bpf.ExtendedMapInfo) int {
-	var sum int
+func TotalMemlockBytes(infos []bpf.ExtendedMapInfo) uint64 {
+	var sum uint64
 	for _, info := range infos {
 		sum += info.Memlock
 	}
@@ -206,28 +205,29 @@ type DiffMap struct {
 	ID           int    `json:"id,omitempty"`
 	Name         string `json:"name,omitempty"`
 	Type         string `json:"type,omitempty"`
-	KeySize      int    `json:"key_size,omitempty"`
-	ValueSize    int    `json:"value_size,omitempty"`
-	MaxEntries   int    `json:"max_entries,omitempty"`
-	MemlockBytes int    `json:"memlock_bytes,omitempty"`
+	KeySize      uint32 `json:"key_size,omitempty"`
+	ValueSize    uint32 `json:"value_size,omitempty"`
+	MaxEntries   uint32 `json:"max_entries,omitempty"`
+	MemlockBytes uint64 `json:"memlock_bytes,omitempty"`
 }
 
 type AggregatedMap struct {
 	Name              string  `json:"name,omitempty"`
 	Type              string  `json:"type,omitempty"`
-	KeySize           int     `json:"key_size,omitempty"`
-	ValueSize         int     `json:"value_size,omitempty"`
-	MaxEntries        int     `json:"max_entries,omitempty"`
-	Count             int     `json:"count,omitempty"`
-	TotalMemlockBytes int     `json:"total_memlock_bytes,omitempty"`
+	KeySize           uint32  `json:"key_size,omitempty"`
+	ValueSize         uint32  `json:"value_size,omitempty"`
+	MaxEntries        uint32  `json:"max_entries,omitempty"`
+	Count             uint64  `json:"count,omitempty"`
+	MemlockBytes      uint64  `json:"memlock_bytes,omitempty"`
+	TotalMemlockBytes uint64  `json:"total_memlock_bytes,omitempty"`
 	PercentOfTotal    float64 `json:"percent_of_total,omitempty"`
 }
 
 type MapsChecksOutput struct {
 	TotalMemlockBytes struct {
-		AllMaps         int `json:"all_maps,omitempty"`
-		PinnedProgsMaps int `json:"pinned_progs_maps,omitempty"`
-		PinnedMaps      int `json:"pinned_maps,omitempty"`
+		AllMaps         uint64 `json:"all_maps,omitempty"`
+		PinnedProgsMaps uint64 `json:"pinned_progs_maps,omitempty"`
+		PinnedMaps      uint64 `json:"pinned_maps,omitempty"`
 	} `json:"total_memlock_bytes"`
 
 	MapsStats struct {
@@ -302,6 +302,7 @@ func RunMapsChecks(path string) (*MapsChecksOutput, error) {
 	out.MapsStats.Diff = len(diff)
 
 	// details on diff maps
+	out.DiffMaps = make([]DiffMap, 0, len(diff))
 	for _, d := range diff {
 		id, ok := d.ID()
 		if !ok {
@@ -311,9 +312,9 @@ func RunMapsChecks(path string) (*MapsChecksOutput, error) {
 			ID:           int(id),
 			Name:         d.Name,
 			Type:         d.Type.String(),
-			KeySize:      int(d.KeySize),
-			ValueSize:    int(d.ValueSize),
-			MaxEntries:   int(d.MaxEntries),
+			KeySize:      d.KeySize,
+			ValueSize:    d.ValueSize,
+			MaxEntries:   d.MaxEntries,
 			MemlockBytes: d.Memlock,
 		})
 	}
@@ -321,9 +322,9 @@ func RunMapsChecks(path string) (*MapsChecksOutput, error) {
 	// aggregates maps total memory use
 	aggregatedMapsSet := map[string]struct {
 		bpf.ExtendedMapInfo
-		count int
+		count uint64
 	}{}
-	var total int
+	var total uint64
 	for _, m := range union {
 		total += m.Memlock
 		if e, exist := aggregatedMapsSet[m.Name]; exist {
@@ -333,27 +334,29 @@ func RunMapsChecks(path string) (*MapsChecksOutput, error) {
 		} else {
 			aggregatedMapsSet[m.Name] = struct {
 				bpf.ExtendedMapInfo
-				count int
+				count uint64
 			}{m, 1}
 		}
 	}
-	aggregatedMaps := slices.Collect(maps.Values(aggregatedMapsSet))
-	sort.Slice(aggregatedMaps, func(i, j int) bool {
-		return aggregatedMaps[i].Memlock > aggregatedMaps[j].Memlock
-	})
 
-	for _, m := range aggregatedMaps {
+	out.AggregatedMaps = make([]AggregatedMap, 0, len(aggregatedMapsSet))
+	for m := range maps.Values(aggregatedMapsSet) {
 		out.AggregatedMaps = append(out.AggregatedMaps, AggregatedMap{
 			Name:              m.Name,
 			Type:              m.Type.String(),
-			KeySize:           int(m.KeySize),
-			ValueSize:         int(m.ValueSize),
-			MaxEntries:        int(m.MaxEntries),
+			KeySize:           m.KeySize,
+			ValueSize:         m.ValueSize,
+			MaxEntries:        m.MaxEntries,
 			Count:             m.count,
-			TotalMemlockBytes: m.Memlock,
-			PercentOfTotal:    float64(m.Memlock) / float64(total) * 100,
+			MemlockBytes:      m.Memlock,
+			TotalMemlockBytes: m.Memlock * m.count,
+			PercentOfTotal:    float64(m.Memlock*m.count) / float64(total) * 100,
 		})
 	}
+
+	sort.Slice(out.AggregatedMaps, func(i, j int) bool {
+		return out.AggregatedMaps[i].TotalMemlockBytes > out.AggregatedMaps[j].TotalMemlockBytes
+	})
 
 	return &out, nil
 }
