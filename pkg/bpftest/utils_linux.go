@@ -32,7 +32,7 @@ import (
 // StartMinimalTetragonModel configures and start a minimal testing tetragon
 // instance to run with the application model, the DNS parser (and thus UDP),
 // and TCP. This is for example the minimum configuration for network policies.
-func StartMinimalTetragonModel(ctx context.Context, t *testing.T) *model.Server {
+func StartMinimalTetragonModel(ctx context.Context, t testing.TB) *model.Server {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountTraceFS()
