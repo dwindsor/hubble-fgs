@@ -54,7 +54,7 @@ require (
 	github.com/yalue/native_endian v1.0.2
 	go.opentelemetry.io/proto/otlp v1.10.0
 	golang.org/x/net v0.54.0
-	golang.org/x/sys v0.44.0
+	golang.org/x/sys v0.45.0
 	golang.org/x/time v0.15.0
 	google.golang.org/api v0.279.0
 	google.golang.org/grpc v1.81.1
@@ -258,7 +258,7 @@ require (
 	github.com/vladimirvivien/gexe v0.5.0 // indirect
 	go.mongodb.org/mongo-driver v1.17.6 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
