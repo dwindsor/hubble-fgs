@@ -5,7 +5,7 @@
 # copies all binaries and BPF objects into a UBI-minimal base, installs
 # runtime dependencies, and adds Red Hat certification labels.
 
-ARG SOURCE_IMAGE=quay.io/isovalent/tetragon:latest
+ARG SOURCE_IMAGE=artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon:latest
 ARG UBI_IMAGE=registry.redhat.io/ubi9/ubi-minimal:9.7@sha256:42c0bdc0534c1465e623a193929a66e9abeb214c61c80c360d99a2a491b0336b
 
 FROM ${SOURCE_IMAGE} AS source

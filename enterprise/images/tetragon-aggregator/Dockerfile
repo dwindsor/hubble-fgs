@@ -1,6 +1,6 @@
 # Copyright (C) Isovalent, Inc. - All Rights Reserved.
 
-ARG BASE_IMAGE=quay.io/isovalent/tetragon-aggregator:stage_1
+ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-aggregator:stage_1
 
 FROM ${BASE_IMAGE} AS release
 
