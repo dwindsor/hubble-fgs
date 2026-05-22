@@ -61,6 +61,7 @@ type EndpointCache interface {
 	AddEndpoint(ep Endpoint) (uint64, error)
 	LookupID(lookup uint64) (value Endpoint, ok bool)
 	LookupIP(ip net.IP) (uint64, error)
+	LookupIPv4Raw(addr uint32) (uint64, error)
 	DebugEndpointMap() ([]uint64, []*Endpoint)
 }
 
@@ -152,6 +153,18 @@ func (c *Cache) LookupIP(ip net.IP) (uint64, error) {
 	key.Addr[0] = uint64(binary.LittleEndian.Uint32(ip[0:]))
 	key.Addr[1] = 0
 
+	if err := c.endpointMap.Lookup(&key, &value); err != nil {
+		return 0, err
+	}
+	return value.Id, nil
+}
+
+func (c *Cache) LookupIPv4Raw(addr uint32) (uint64, error) {
+	var (
+		key   endpointKey
+		value endpointValue
+	)
+	key.Addr[0] = uint64(addr)
 	if err := c.endpointMap.Lookup(&key, &value); err != nil {
 		return 0, err
 	}
@@ -326,6 +339,10 @@ func (fc *FakeCache) LookupID(_ uint64) (value Endpoint, ok bool) {
 
 func (fc *FakeCache) LookupIP(_ net.IP) (uint64, error) {
 	return 0, fmt.Errorf("FakeCache: LookupIP not implemented")
+}
+
+func (fc *FakeCache) LookupIPv4Raw(_ uint32) (uint64, error) {
+	return 0, fmt.Errorf("FakeCache: LookupIPv4Raw not implemented")
 }
 
 func (fc *FakeCache) DebugEndpointMap() ([]uint64, []*Endpoint) {

@@ -513,8 +513,9 @@ func getProcessModel(namespaces []string,
 		workloadID uint64
 	}
 
-	dstList := make(map[dstListKey][]*types.Destination)
-	nsList := make(map[uint64][]*types.Destination)
+	dstMaxEntries := int(endpt.MaxEntries())
+	dstList := make(map[dstListKey][]*types.Destination, dstMaxEntries)
+	nsList := make(map[uint64][]*types.Destination, dstMaxEntries)
 
 	c := endpoint.MustGet()
 
@@ -541,34 +542,44 @@ func getProcessModel(namespaces []string,
 
 		switch dstKey.DestinationSource {
 		case types.DestinationSourceBPF:
-			ip := networkapi.GetIP(dstVal.AddrCreate, ops.MSG_OP_UNDEF, dstVal.IPv6 != 0)
-			// If the IP has resolved to a DNS or K8s object lets
-			// omit the duplicate individual IP. This can happen
-			// when the connect races with the watchers and/or DNS
-			// handler.
-			if id, err := c.LookupIP(ip); err == nil {
-				var ok bool
-
-				ep, ok = c.LookupID(id)
-				if !ok {
-					continue
+			if dstVal.IPv6 == 0 {
+				addr := uint32(dstVal.AddrCreate[0])
+				if id, err := c.LookupIPv4Raw(addr); err == nil {
+					var ok bool
+					ep, ok = c.LookupID(id)
+					if !ok {
+						continue
+					}
+					if ep.Type == tetragon.EndpointType_ENDPOINT_TYPE_DNS && debug {
+						ep.Dns = ep.Dns + "<promoted>"
+					}
+				} else {
+					b := [4]byte{byte(addr), byte(addr >> 8), byte(addr >> 16), byte(addr >> 24)}
+					ep = endpoint.Endpoint{
+						Type: tetragon.EndpointType_ENDPOINT_TYPE_IP,
+						CIDR: netip.PrefixFrom(netip.AddrFrom4(b), 32),
+					}
 				}
-				if ep.Type == tetragon.EndpointType_ENDPOINT_TYPE_DNS && debug {
-					ep.Dns = ep.Dns + "<promoted>"
-				}
-
 			} else {
-				addr, ok := netip.AddrFromSlice(ip)
-				if !ok {
-					return nil, fmt.Errorf("failed to convert net.IP to netip.Addr, this shouldn't happen")
-				}
-				prefixLen := 32
-				if addr.Is6() {
-					prefixLen = 128
-				}
-				ep = endpoint.Endpoint{
-					Type: tetragon.EndpointType_ENDPOINT_TYPE_IP,
-					CIDR: netip.PrefixFrom(addr, prefixLen),
+				ip := networkapi.GetIP(dstVal.AddrCreate, ops.MSG_OP_UNDEF, true)
+				if id, err := c.LookupIP(ip); err == nil {
+					var ok bool
+					ep, ok = c.LookupID(id)
+					if !ok {
+						continue
+					}
+					if ep.Type == tetragon.EndpointType_ENDPOINT_TYPE_DNS && debug {
+						ep.Dns = ep.Dns + "<promoted>"
+					}
+				} else {
+					addr, ok := netip.AddrFromSlice(ip)
+					if !ok {
+						return nil, fmt.Errorf("failed to convert net.IP to netip.Addr, this shouldn't happen")
+					}
+					ep = endpoint.Endpoint{
+						Type: tetragon.EndpointType_ENDPOINT_TYPE_IP,
+						CIDR: netip.PrefixFrom(addr, 128),
+					}
 				}
 			}
 		case types.DestinationSourceUser:
