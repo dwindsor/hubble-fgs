@@ -28,7 +28,7 @@ import (
 // added as needed.
 type SensorManager interface {
 	AddTracingPolicy(ctx context.Context, tp tracingpolicy.TracingPolicy) error
-	DeleteTracingPolicy(ctx context.Context, name string, namespace string) error
+	DeleteTracingPolicy(ctx context.Context, name, namespace, domain string) error
 	ConfigureTracingPolicy(_ context.Context, conf *tetragon.ConfigureTracingPolicyRequest) error
 }
 

@@ -160,7 +160,7 @@ func NewManager(
 func (m *manager) unloadPolicy(ctx context.Context, pol policy) error {
 	switch pol.ty {
 	case tracingPolTy:
-		return m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace)
+		return m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace, MandateDomain)
 	case alertPolTy:
 		if m.alertRuleMgr == nil {
 			return errors.New("alert manager disabled")
@@ -522,7 +522,7 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 		// NB: In certain situations, the sensor manager will fail to load a policy, but it
 		// will keep it under the load_error state. So, let's try to remove it here to not
 		// leave any leftovers
-		m.sensorMgr.DeleteTracingPolicy(ctx, ret.TpName(), "")
+		m.sensorMgr.DeleteTracingPolicy(ctx, ret.TpName(), "", ret.TpDomain())
 		return nil, err
 	}
 	return ret, nil

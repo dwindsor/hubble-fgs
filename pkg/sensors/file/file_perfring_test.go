@@ -279,7 +279,7 @@ func TestFileSuffixPattern(t *testing.T) {
 		}
 	}
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	assert.Equal(t, len(executedEvents), len(capturedEvents), "Got a different number of events compared to what expected")
@@ -390,7 +390,7 @@ func TestFileFsTypeMatch(t *testing.T) {
 
 	events := perfring.RunTestEvents(t, ctx, ops)
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	// make sure that all events are from "proc" and "sysfs" file systems
@@ -516,7 +516,7 @@ func TestFileGlobMatch(t *testing.T) {
 
 	assert.Greater(t, len(events), 0, "we expect to have some events")
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	capturedEvents := 0
@@ -628,7 +628,7 @@ func TestFileDigestMatch(t *testing.T) {
 
 	assert.Greater(t, len(events), 0, "we expect to have some events")
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	capturedEvents := 0
@@ -742,7 +742,7 @@ func TestMatchBinariesFollowChildren(t *testing.T) {
 
 	perfring.RunTest(t, ctx, ops, eventFn)
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	require.Equal(t, 1, numFileOpen)     // we expect one open call
@@ -836,7 +836,7 @@ func TestMatchExecAttributes(t *testing.T) {
 
 	perfring.RunTest(t, ctx, ops, eventFn)
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	require.Equal(t, 1, numFileExec)   // we expect one exec event
@@ -1011,7 +1011,7 @@ func TestMatchOpenrawOps(t *testing.T) {
 
 	perfring.RunTest(t, ctx, ops, eventFn)
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	for ev, cnt := range expectedEvents {
@@ -1230,11 +1230,11 @@ func TestUnixSockets(t *testing.T) {
 
 	perfring.RunTest(t, ctx, ops, eventFn)
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, inodeTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, inodeTracingPolicy.Metadata.Name, "", inodeTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	if supportPathBased {
-		err = sm.Manager.DeleteTracingPolicy(ctx, pathTracingPolicy.Metadata.Name, "")
+		err = sm.Manager.DeleteTracingPolicy(ctx, pathTracingPolicy.Metadata.Name, "", pathTracingPolicy.TpDomain())
 		assert.NoError(t, err)
 	}
 
@@ -1325,7 +1325,7 @@ func TestFileCreateEnforce(t *testing.T) {
 		assert.Error(t, cmd.Run()) // this should fail
 	})
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "", fileTracingPolicy.TpDomain())
 	assert.NoError(t, err)
 
 	fileEvents := []*grpc.MsgFileEventUnix{}
@@ -1477,7 +1477,7 @@ func TestExecBinaryPropertiesSetuidChanges(t *testing.T) {
 		}
 	})
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "", fileTracingPolicyBinaryProp.TpDomain())
 	assert.NoError(t, err)
 
 	matchedSuidnop := false
@@ -1587,7 +1587,7 @@ func TestExecBinaryPropertiesSetgidChanges(t *testing.T) {
 		}
 	})
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "", fileTracingPolicyBinaryProp.TpDomain())
 	assert.NoError(t, err)
 
 	matchedSuidnop := false
@@ -1669,7 +1669,7 @@ func TestExecBinaryPropertiesFileCapChanges(t *testing.T) {
 		}
 	})
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "", fileTracingPolicyBinaryProp.TpDomain())
 	assert.NoError(t, err)
 
 	matchedPing := false

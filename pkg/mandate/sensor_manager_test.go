@@ -74,7 +74,7 @@ func (tsm *TestSensorManager) AddTracingPolicy(_ context.Context, tp tracingpoli
 	return nil
 }
 
-func (tsm *TestSensorManager) DeleteTracingPolicy(_ context.Context, name, _ string) error {
+func (tsm *TestSensorManager) DeleteTracingPolicy(_ context.Context, name, _, _ string) error {
 	if _, exists := tsm.pols[name]; !exists {
 		return fmt.Errorf("policy named %q does not exists", name)
 	}

@@ -264,7 +264,7 @@ func TestICMPCLISwitchPerfRing(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		sm.Manager.DeleteTracingPolicy(ctx, "__base_layer3__", "")
+		sm.Manager.RemoveSensor(ctx, "__base_layer3__")
 		os.RemoveAll(option.Config.BpfDir)
 	})
 

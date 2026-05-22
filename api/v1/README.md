@@ -287,6 +287,8 @@
     - [GetInfoResponse.Probe](#tetragon-GetInfoResponse-Probe)
     - [GetVersionRequest](#tetragon-GetVersionRequest)
     - [GetVersionResponse](#tetragon-GetVersionResponse)
+    - [ListDomainsRequest](#tetragon-ListDomainsRequest)
+    - [ListDomainsResponse](#tetragon-ListDomainsResponse)
     - [ListSensorsRequest](#tetragon-ListSensorsRequest)
     - [ListSensorsResponse](#tetragon-ListSensorsResponse)
     - [ListTracingPoliciesRequest](#tetragon-ListTracingPoliciesRequest)
@@ -4674,6 +4676,7 @@ active ruleset
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | yaml | [string](#string) |  |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -4702,6 +4705,7 @@ active ruleset
 | namespace | [string](#string) |  |  |
 | enable | [bool](#bool) | optional |  |
 | mode | [TracingPolicyMode](#tetragon-TracingPolicyMode) | optional |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -4728,6 +4732,7 @@ active ruleset
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | namespace | [string](#string) |  |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -4779,6 +4784,7 @@ active ruleset
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | namespace | [string](#string) |  |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -4861,6 +4867,7 @@ active ruleset
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | namespace | [string](#string) |  |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -5014,6 +5021,31 @@ active ruleset
 
 
 
+<a name="tetragon-ListDomainsRequest"></a>
+
+### ListDomainsRequest
+
+
+
+
+
+
+
+<a name="tetragon-ListDomainsResponse"></a>
+
+### ListDomainsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| domains | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="tetragon-ListSensorsRequest"></a>
 
 ### ListSensorsRequest
@@ -5043,6 +5075,11 @@ active ruleset
 
 ### ListTracingPoliciesRequest
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| domain | [string](#string) |  | domain to be listed; empty to list all domains |
 
 
 
@@ -5230,6 +5267,7 @@ active ruleset
 | kernel_memory_bytes | [uint64](#uint64) |  | the amount of kernel memory in bytes used by policy&#39;s sensors non-shared BPF maps (memlock) |
 | mode | [TracingPolicyMode](#tetragon-TracingPolicyMode) |  | current mode of the tracing policy |
 | stats | [TracingPolicyStats](#tetragon-TracingPolicyStats) | optional | stats of the tracing policy |
+| domain | [string](#string) |  | domain of the policy |
 
 
 
@@ -5321,6 +5359,7 @@ For now, we only want to support debug-related config flags to be configurable.
 | EnableSensor | [EnableSensorRequest](#tetragon-EnableSensorRequest) | [EnableSensorResponse](#tetragon-EnableSensorResponse) |  |
 | DisableSensor | [DisableSensorRequest](#tetragon-DisableSensorRequest) | [DisableSensorResponse](#tetragon-DisableSensorResponse) |  |
 | RemoveSensor | [RemoveSensorRequest](#tetragon-RemoveSensorRequest) | [RemoveSensorResponse](#tetragon-RemoveSensorResponse) |  |
+| ListDomains | [ListDomainsRequest](#tetragon-ListDomainsRequest) | [ListDomainsResponse](#tetragon-ListDomainsResponse) |  |
 | GetVersion | [GetVersionRequest](#tetragon-GetVersionRequest) | [GetVersionResponse](#tetragon-GetVersionResponse) |  |
 | GetInfo | [GetInfoRequest](#tetragon-GetInfoRequest) | [GetInfoResponse](#tetragon-GetInfoResponse) |  |
 | RuntimeHook | [RuntimeHookRequest](#tetragon-RuntimeHookRequest) | [RuntimeHookResponse](#tetragon-RuntimeHookResponse) |  |

@@ -40,6 +40,10 @@ func (p *SandboxTracingPolicyNamespaced) spName() string {
 	return p.sp.Name
 }
 
+func (p *SandboxTracingPolicyNamespaced) TpDomain() string {
+	return SandboxDomain
+}
+
 func toTracingPolicyNamespaced(namespace string, name string, spec *v1alpha1.SandboxSpec) (*SandboxTracingPolicyNamespaced, error) {
 
 	if spec == nil {

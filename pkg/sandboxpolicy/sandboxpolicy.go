@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	tpNamePrefix = "tpsp+"
+	tpNamePrefix  = "tpsp+"
+	SandboxDomain = "sandbox"
 )
 
 type SandboxTracingPolicy struct {
@@ -45,6 +46,10 @@ func (p *SandboxTracingPolicy) spName() string {
 		return "unknown-sp-name"
 	}
 	return p.sp.Name
+}
+
+func (p *SandboxTracingPolicy) TpDomain() string {
+	return SandboxDomain
 }
 
 func sandboxHandler(

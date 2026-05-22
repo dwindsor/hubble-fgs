@@ -407,7 +407,7 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.8.0-pre.0.0.20260521143358-71eaaaba91d7 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.8.0-pre.0.0.20260522132619-f5d1d2f140cb => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -785,8 +785,8 @@ github.com/docker/docker/api/types/versions
 github.com/docker/docker/api/types/volume
 github.com/docker/docker/client
 github.com/docker/docker/pkg/jsonmessage
-# github.com/docker/go-connections v0.6.0
-## explicit; go 1.18
+# github.com/docker/go-connections v0.7.0
+## explicit; go 1.23
 github.com/docker/go-connections/nat
 github.com/docker/go-connections/sockets
 github.com/docker/go-connections/tlsconfig
@@ -1517,7 +1517,7 @@ golang.org/x/crypto/internal/poly1305
 ## explicit; go 1.24.0
 golang.org/x/exp/maps
 golang.org/x/exp/slices
-# golang.org/x/mod v0.35.0
+# golang.org/x/mod v0.36.0
 ## explicit; go 1.25.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module

@@ -12,7 +12,7 @@ require (
 	github.com/cilium/cilium v1.19.4
 	github.com/cilium/ebpf v0.21.1-0.20260501093402-9f87aafaeb37
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.8.0-pre.0.0.20260521143358-71eaaaba91d7
+	github.com/cilium/tetragon v1.8.0-pre.0.0.20260522132619-f5d1d2f140cb
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.3.0
@@ -210,7 +210,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/docker/go-connections v0.6.0 // indirect
+	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.0 // indirect
@@ -259,7 +259,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.6 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
-	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/term v0.43.0

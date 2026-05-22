@@ -41,12 +41,12 @@ func deleteSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors
 	case *v1alpha1.SandboxPolicy:
 		tpName := sandboxpolicy.TracingPolicyName(sp.Name)
 		log.Info("deleting sandbox policy", "sp-name", sp.Name, "tp-name", tpName)
-		err = s.DeleteTracingPolicy(ctx, tpName, "")
+		err = s.DeleteTracingPolicy(ctx, tpName, "", sandboxpolicy.SandboxDomain)
 
 	case *v1alpha1.SandboxPolicyNamespaced:
 		tpName := sandboxpolicy.TracingPolicyName(sp.Name)
 		log.Info("deleting sandbox policy", "sp-name", sp.Name, "tp-name", tpName, "namespace", sp.Namespace)
-		err = s.DeleteTracingPolicy(ctx, tpName, sp.Namespace)
+		err = s.DeleteTracingPolicy(ctx, tpName, sp.Namespace, sandboxpolicy.SandboxDomain)
 
 	default:
 		log.Warn("deleteSandboxPolicy: invalid type", "obj", obj, "obj-type", fmt.Sprintf("%T", obj))

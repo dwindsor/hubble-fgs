@@ -20,6 +20,8 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
+const MandateDomain = "mandate"
+
 //revive:disable:exported
 type MandatePolicy struct {
 	tp   tracingpolicy.TracingPolicy
@@ -82,4 +84,8 @@ func (mp *MandatePolicy) TpInfo() string {
 
 func (mp *MandatePolicy) TpNamespace() string {
 	return mp.tp.TpNamespace()
+}
+
+func (mp *MandatePolicy) TpDomain() string {
+	return MandateDomain
 }
