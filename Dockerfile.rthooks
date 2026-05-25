@@ -3,7 +3,7 @@
 
 # Chainguard go-dev image (includes shell, make, git via wolfi packages)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
-ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:1.26.2-dev@sha256:6851274232204ce3a89bef5f098d26bd75d16915372bbe321675bf2c7a98f190
+ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:1.26.2-dev
 
 # Chainguard static image (replaces alpine)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static
