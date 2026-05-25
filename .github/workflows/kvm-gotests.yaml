@@ -98,7 +98,9 @@ jobs:
           # Build a table of failed tests with file location, author, and kernels
           echo "| Test | File | Author | Kernels |" > /tmp/failed-tests-table
           echo "|------|------|--------|---------|" >> /tmp/failed-tests-table
+          > /tmp/unique-test-names
 
+          declare -A seen_locations
           while read -r test_name; do
             [ -z "$test_name" ] && continue
 
@@ -110,15 +112,25 @@ jobs:
             match=$(git grep -n "func ${search_name}(" -- '*.go' | head -1) || true
             if [ -z "$match" ]; then
               echo "| \`${test_name}\` | unknown | unknown | ${kernels} |" >> /tmp/failed-tests-table
+              echo "$test_name" >> /tmp/unique-test-names
               continue
             fi
 
-            # Find the author of the test. It will be the first person who wrote the funcition
             IFS=':' read -r file line rest <<< "$match"
+            location="${file}:${line}"
+
+            # Skip if we already emitted a row for this function definition
+            if [ -n "${seen_locations[$location]:-}" ]; then
+              continue
+            fi
+            seen_locations[$location]=true
+
+            # Find the author of the test. It will be the first person who wrote the funcition
             author=$(git log --reverse --format='%an' -s -L ":${search_name}:${file}" 2>/dev/null | head -n 1) || true
             author=${author:-unknown}
 
-            echo "| \`${test_name}\` | \`${file}:${line}\` | ${author} | ${kernels} |" >> /tmp/failed-tests-table
+            echo "| \`${test_name}\` | \`${location}\` | ${author} | ${kernels} |" >> /tmp/failed-tests-table
+            echo "$test_name" >> /tmp/unique-test-names
           done < /tmp/failed-test-names
 
           # Extract error details (20 lines before FAIL + 2 after) for each failed test
@@ -133,7 +145,7 @@ jobs:
             echo '```' >> /tmp/failed-tests-details
             echo "</details>" >> /tmp/failed-tests-details
             echo "" >> /tmp/failed-tests-details
-          done < /tmp/failed-test-names
+          done < /tmp/unique-test-names
 
       - name: Write Summary
         run: |
