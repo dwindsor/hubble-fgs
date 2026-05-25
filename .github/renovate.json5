@@ -43,6 +43,7 @@
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl",
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/static",
       ],
+      "pinDigests": false
     },
     {
       "enabled": true,
