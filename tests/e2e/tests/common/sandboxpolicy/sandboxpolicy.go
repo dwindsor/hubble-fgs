@@ -20,8 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
-
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
 	"github.com/cilium/tetragon/tests/e2e/helpers/grpc"
@@ -72,8 +70,7 @@ func Test(t *testing.T, runner *runners.Runner, testNamespace string) {
 		// NB(kkourt): This is buggy at the moment. We need to fix WaitForTracingPolicy in
 		// OSS for this to work, so skip it for now.
 		Assess("Wait for policy", func(ctx context.Context, _ *testing.T, _ *envconf.Config) context.Context {
-			tpName := sandboxpolicy.TracingPolicyName("getcpu")
-			if err := grpc.WaitForTracingPolicy(ctx, tpName); err != nil {
+			if err := grpc.WaitForTracingPolicy(ctx, "getcpu"); err != nil {
 				klog.ErrorS(err, "failed to wait for policy")
 				t.FailNow()
 			}

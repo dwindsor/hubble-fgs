@@ -101,19 +101,9 @@ func getAppModel(grpcer bugtoolpkg.GRPCer) error {
 }
 
 func listSandboxPolicies(grpcer bugtoolpkg.GRPCer) error {
-	res, err := common.ListTetragonPolicies()
+	res, err := common.ListTetragonPolicies(sandboxpolicypkg.SandboxDomain)
 	if err != nil {
 		return err
-	}
-	// keep only the sandbox policies in the list, and change their name
-	for i := 0; i < len(res.Policies); i++ {
-		pol := res.Policies[i]
-		name := sandboxpolicypkg.NameFromTPName(pol.Name)
-		if name == "" {
-			res.Policies = append(res.Policies[:i], res.Policies[i+1:]...)
-			i--
-		}
-		pol.Name = name
 	}
 	fname := "sandbox_policies.json"
 	return grpcer.TarAddJson(fname, res)

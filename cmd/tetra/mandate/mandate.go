@@ -81,7 +81,7 @@ func statusCmd() *cobra.Command {
 				if output == "text" {
 					fmt.Printf("policies:\n")
 				}
-				eecommon.ListPolicies(cmd, output, mandate.OrigPolName)
+				eecommon.ListPolicies(cmd, output, mandate.MandateDomain, mandate.OrigPolName)
 				if output == "text" {
 					fmt.Printf("alerts:\n")
 				}

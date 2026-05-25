@@ -96,7 +96,8 @@ func listCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tracingPolicies, err := common2.ListTetragonPolicies()
+			// List all domains policies
+			tracingPolicies, err := common2.ListTetragonPolicies("")
 			if err != nil {
 				return err
 			}
@@ -108,7 +109,7 @@ func listCmd() *cobra.Command {
 			}
 
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-			header := "ID\tKIND\tNAME\tNAMESPACE\tTAGS"
+			header := "ID\tKIND\tDOMAIN\tNAME\tNAMESPACE\tTAGS"
 			fmt.Fprintln(w, header)
 			for _, pol := range tracingPolicies.GetPolicies() {
 				namespace := pol.Namespace
@@ -117,14 +118,13 @@ func listCmd() *cobra.Command {
 				}
 				policyKind := tetragonv1alpha1.TPKindDefinition
 				policyName := pol.Name
-				name := sandboxpolicy.NameFromTPName(pol.Name)
-				if name != "" {
-					policyName = name
+				if pol.Domain == sandboxpolicy.SandboxDomain {
 					policyKind = "SandboxPolicy"
 				}
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
 					pol.Id,
 					policyKind,
+					pol.Domain,
 					policyName,
 					namespace,
 					"NONE",
@@ -132,9 +132,10 @@ func listCmd() *cobra.Command {
 			}
 
 			for _, pol := range networkPolicies.GetInfo() {
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
 					-1,
 					ipav1alpha1.TNPKindDefinition,
+					"",
 					pol.Name,
 					"NONE",
 					"NONE",
@@ -143,9 +144,10 @@ func listCmd() *cobra.Command {
 
 			for _, pol := range alertRules.GetRules() {
 				meta := pol.GetMeta()
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
 					-1,
 					"AlertRule",
+					"",
 					meta.Name,
 					"NONE",
 					strings.Join(meta.Tags, ","),

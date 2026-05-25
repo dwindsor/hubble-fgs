@@ -65,8 +65,7 @@ func ToTracingPolicyNamespaced(p *v1alpha1.SandboxPolicyNamespaced) (*SandboxTra
 		return nil, fmt.Errorf("sandboxpolicy is empty")
 	}
 
-	name := TracingPolicyName(p.Name)
-	pol, err := toTracingPolicyNamespaced(p.Namespace, name, &p.Spec)
+	pol, err := toTracingPolicyNamespaced(p.Namespace, p.Name, &p.Spec)
 	if err != nil {
 		return nil, err
 	}

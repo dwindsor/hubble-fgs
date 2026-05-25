@@ -46,10 +46,8 @@ func listCmd() *cobra.Command {
 			return eecommon.ListPolicies(
 				cmd,
 				spListOutputFlag,
-				func(name string) (string, bool) {
-					ret := sandboxpolicy.NameFromTPName(name)
-					return ret, ret != ""
-				},
+				sandboxpolicy.SandboxDomain,
+				nil,
 			)
 		},
 	}
