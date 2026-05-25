@@ -78,8 +78,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 h1:X+2YciYSxvMQK0UZ7sg45ZVabVZ
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7/go.mod h1:lW34nIZuQ8UDPdkon5fmfp2l3+ZkQ2me/+oecHYLOII=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/isovalent/ipa/k8s v1.19.0-rc.1 h1:/9dhmbRtZh2AC7u4Agb8k/gfHb0+kJ+sqcKZXQ6h7aQ=
-github.com/isovalent/ipa/k8s v1.19.0-rc.1/go.mod h1:as9ozJ9a90pPinjJv45kjSLE4CjyRsIoh177pArWXiw=
+github.com/isovalent/ipa/k8s v1.19.0 h1:3aKJO9bDRKJwj6N7nDawo2EMAjNhdLJC1YSSNq9qvOI=
+github.com/isovalent/ipa/k8s v1.19.0/go.mod h1:1+Vv0piTDYaqSkPGigHny6us3d3QASmSCunPEgC81CY=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=

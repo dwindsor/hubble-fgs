@@ -336,10 +336,10 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/isovalent/cilium v1.19.0-pre.2 h1:XKgGsj1mIS/wAflU4RGDonLiV/Dj/JOztoVbwFFVAJA=
 github.com/isovalent/cilium v1.19.0-pre.2/go.mod h1:F9+hGJlZYpgE0th3cuKkGiszu0qcC3so9xibD/pL0q4=
-github.com/isovalent/ipa v1.19.0-rc.1 h1:B05xouDZSlmxz5eh7kgToWtV/w6Au14zbYMAsFY4LJU=
-github.com/isovalent/ipa v1.19.0-rc.1/go.mod h1:zdALjBunN6HFUpdaJXaXDcnEtHQh9uZs6ecyihM4sw4=
-github.com/isovalent/ipa/k8s v1.19.0-rc.1 h1:/9dhmbRtZh2AC7u4Agb8k/gfHb0+kJ+sqcKZXQ6h7aQ=
-github.com/isovalent/ipa/k8s v1.19.0-rc.1/go.mod h1:as9ozJ9a90pPinjJv45kjSLE4CjyRsIoh177pArWXiw=
+github.com/isovalent/ipa v1.19.0 h1:n8+Y4RGWjYGc3+GACJGfE0NDquwugEItHbFhfempscI=
+github.com/isovalent/ipa v1.19.0/go.mod h1:zdALjBunN6HFUpdaJXaXDcnEtHQh9uZs6ecyihM4sw4=
+github.com/isovalent/ipa/k8s v1.19.0 h1:3aKJO9bDRKJwj6N7nDawo2EMAjNhdLJC1YSSNq9qvOI=
+github.com/isovalent/ipa/k8s v1.19.0/go.mod h1:1+Vv0piTDYaqSkPGigHny6us3d3QASmSCunPEgC81CY=
 github.com/isovalent/metricstool v0.1.4 h1:+73vMhYhB8uDWLV/nuvV81XA5smLvGefKRJ2KIDbXP0=
 github.com/isovalent/metricstool v0.1.4/go.mod h1:U29qioTLC+X+fOmlhIUecWs/dJkh3APyhwZuUDFXVc4=
 github.com/josharian/native v1.1.0 h1:uuaP0hAbW7Y4l0ZRQ6C9zfb7Mg1mbFKry/xzDAfmtLA=
