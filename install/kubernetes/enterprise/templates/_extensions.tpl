@@ -48,7 +48,6 @@ enable-syscall-tracking: "false"
 enable-tcp: {{ .Values.tetragon.layer3.tcp.enabled | quote }}
 enable-tcp-rtt: {{ .Values.tetragon.layer3.tcp.rtt.enabled | quote }}
 enable-udp: {{ .Values.tetragon.layer3.udp.enabled | quote }}
-enable-latency: {{ .Values.tetragon.layer3.latency.enabled | quote }}
 enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
 enable-igmp: {{ .Values.tetragon.layer3.igmp.enabled | quote }}
 enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
