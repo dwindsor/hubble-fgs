@@ -111,8 +111,6 @@ struct udp_info_value {
 	u64 pid_ktime;
 	u32 pid;
 	u32 sk_drops;
-	u64 buckets[8];
-	u64 latency_sum;
 	u64 create_time;
 	u64 ps_version; // pseudo-socket version
 	u64 mcast_seq_num; // the expected sequence number in multicast streams
@@ -247,11 +245,6 @@ udp_info_init(struct udp_info_value *v)
 	v->sk_drops = 0;
 	WRITE_ONCE(v->ktime, tg_get_ktime());
 	v->create_time = 0;
-#pragma unroll
-	for (int i = 0; i < 8; i++) {
-		v->buckets[i] = 0;
-	}
-	v->latency_sum = 0;
 	v->ps_version = pseudo_socket_inc_version();
 	v->mcast_seq_num = 0;
 }

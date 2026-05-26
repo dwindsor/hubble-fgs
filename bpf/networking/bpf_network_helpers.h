@@ -193,10 +193,6 @@ get_socket_stats(struct sock *sk,
 			stats->rtt_sum = 0;
 		}
 	}
-#pragma unroll
-	for (i = 0; i < 8; i++)
-		stats->latency_buckets[i] = socket->stats.latency_buckets[i];
-	stats->latency_sum = socket->stats.latency_sum;
 }
 
 struct ip_ver {

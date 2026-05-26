@@ -15,7 +15,6 @@
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
-#include "bpf_latency.h"
 #include "bpf_process_network_watermarks.h"
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"
@@ -88,41 +87,6 @@ tcp_check_fin_rx(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cooki
 	// been destroyed).
 	probe_read_kernel(&bytes_received, sizeof(bytes_received), _(&tcp->bytes_received));
 	map_update_elem(&tg_l3_tcp_finrx, &c, &bytes_received, 0);
-
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline)) int
-check_timestamp(void *ctx, struct timestamp_option *ts_opt, u64 *cookie)
-{
-	struct latency_protocol_config *tcp_latency = 0;
-	struct latency_config *latency_config = 0;
-	struct tcpsocketmap_value *socket = 0;
-	s64 latency = 0;
-	int zero = 0;
-
-	latency_config = (struct latency_config *)map_lookup_elem(&tg_l3_lat_cfg, &zero);
-	if (!latency_config || !latency_config->tcp.enable) {
-		return SK_PASS;
-	}
-
-	if (cookie) {
-		__u64 c = *cookie;
-
-		socket = lookup_tcpsocketmap(&c);
-	}
-
-	if (!socket) {
-		emit_ip_error_event(ctx, 0, cookie, false, 0, 0, 0, IP_ERROR_TCP_TIMESTAMP_NO_SOCKET);
-		return SK_PASS;
-	}
-
-	latency = calc_latency(latency_config->boot_ns,
-			       bpf_ntohl(ts_opt->timestamp_low),
-			       bpf_ntohl(ts_opt->timestamp_high));
-	tcp_latency = &latency_config->tcp;
-
-	add_latency(tcp_latency, socket->stats.latency_buckets, &socket->stats.latency_sum, latency);
 
 	return SK_PASS;
 }
@@ -222,26 +186,16 @@ int tcp_handler_send(struct __sk_buff *skb)
 
 int tcp_handler_ip4_recv(struct __sk_buff *skb)
 {
-	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
-	struct timestamp_option *ts_opt = 0, ts_opt_tmp;
-	void *data_end = (void *)(long)skb->data_end;
-	void *data = (long *)(long)skb->data;
-	struct handler_vars *vars;
-	struct iphdr *ip;
-	int zero = 0;
-	int err;
-
 #ifdef PROCESS_TREE
 	struct tcpsocketmap_value *socket;
+	struct handler_vars *vars;
+	int zero = 0;
 	__u64 c;
-#endif
 
 	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
-	ip = &vars->ip;
 
-#ifdef PROCESS_TREE
 	c = vars->cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (socket) {
@@ -252,29 +206,6 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 	}
 #endif
 
-	/* Packet has at least enough space for the Timestamp IP Option,
-	 * so check if the first option is the Timestamp option that we
-	 * add to detect TCP latency.
-	 */
-	if (ip->ihl >= ts_size / sizeof(u32)) {
-		if (data + ts_size <= data_end) {
-			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
-		} else {
-			err = skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt_tmp, sizeof(struct timestamp_option));
-			if (err < 0) {
-				emit_ip_error_event(
-					skb, &ip, &vars->cookie, false,
-					false, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			} else {
-				ts_opt = &ts_opt_tmp;
-			}
-		}
-
-		if (ts_opt && ts_opt->type == IPO_TYPE &&
-		    ts_opt->magic == bpf_ntohl(IPO_MAGIC_W) &&
-		    ts_opt->magic == ts_opt->magic2)
-			check_timestamp(skb, ts_opt, &vars->cookie);
-	}
 	return SK_PASS;
 }
 

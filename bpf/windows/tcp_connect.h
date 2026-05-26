@@ -70,8 +70,6 @@ struct msg_socket_stats {
 	uint32_t sk_drops;
 	uint64_t rtt_buckets[8];
 	uint64_t rtt_sum;
-	uint64_t latency_buckets[8];
-	uint64_t latency_sum;
 }; // All fields aligned so no 'packed' attribute.
 
 struct msg_ip_event {

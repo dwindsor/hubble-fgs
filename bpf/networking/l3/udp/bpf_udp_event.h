@@ -14,7 +14,6 @@
 #include "lib/iso_msg_types.h"
 #include "lib/networkmsg.h"
 #include "bpf_network_helpers.h"
-#include "bpf_latency.h"
 #include "bpf_tracing.h"
 #include "bpf_udp_info.h"
 #include "bpf_event_map.h"
@@ -37,7 +36,6 @@ struct udp_packet_details {
 		struct ipv6hdr ip6;
 	} ip;
 	struct udphdr udp;
-	struct timestamp_option ipopt;
 	u16 udp_off;
 	int payload_sz;
 	int payload_off;

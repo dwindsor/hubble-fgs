@@ -14,7 +14,6 @@ ICMPDIR := $(L3DIR)icmp/
 PINGDIR := $(L3DIR)ping/
 IGMPDIR := $(L3DIR)igmp/
 RAWSOCKDIR := $(NETWORKINGDIR)rawsock/
-TIMESTAMPDIR := $(NETWORKINGDIR)timestamp/
 ISOPROCESS := process/
 FILEDIR := file/
 PROCESSDIR := $(OSSBPFDIR)/process/
@@ -51,8 +50,6 @@ IGMP = bpf_igmp_kprobe.o bpf_igmp_fentry.o bpf_igmp_gr_kprobe.o bpf_igmp_gr_fent
 L3 = bpf_cgroup_net.o bpf_cgroup_net_pstree.o bpf_cgroup_net_pstree_timer.o
 
 RAWSOCK = bpf_rawsock_create.o bpf_rawsock_create_fentry.o
-
-TIMESTAMP =  bpf_timestamp.o
 
 # generic sensors
 PROCESS = bpf_loader.o \
@@ -182,14 +179,13 @@ PINGOBJ	      := $(addprefix $(OBJSDIR),$(PING))
 ICMPOBJ	      := $(addprefix $(OBJSDIR),$(ICMP))
 IGMPOBJ	      := $(addprefix $(OBJSDIR),$(IGMP))
 RAWSOCKOBJ    := $(addprefix $(OBJSDIR),$(RAWSOCK))
-TIMESTAMPOBJ  := $(addprefix $(OBJSDIR),$(TIMESTAMP))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 CGROUPOBJ    := $(addprefix $(OBJSDIR),$(CGROUP))
 FILEOBJ       := $(addprefix $(OBJSDIR),$(FILE))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 ALIGNCHECKEROBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKER))
 ALIGNCHECKEROSSOBJ := $(addprefix $(OBJSDIR),$(ALIGNCHECKEROSS))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(SOCKTRACKOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(IGMPOBJ) $(RAWSOCKOBJ) $(TIMESTAMPOBJ) $(PROCESSOBJ) $(CGROUPOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(SOCKTRACKOBJ) $(UDPOBJ) $(TCPOBJ) $(L2OBJ) $(L3OBJ) $(PINGOBJ) $(ICMPOBJ) $(IGMPOBJ) $(RAWSOCKOBJ) $(PROCESSOBJ) $(CGROUPOBJ) $(FILEOBJ) $(TESTOBJ) $(NOPOBJ) $(ALIGNCHECKEROBJ) $(ALIGNCHECKEROSSOBJ)
 DEPS          := $(patsubst $(OBJSDIR)%.o,$(DEPSDIR)%.d,$(OBJS))
 
 all: $(OBJS) $(DEPS)
@@ -346,10 +342,6 @@ objs/%.o: $(RAWSOCKDIR)%.c
 
 $(DEPSDIR)%.d: $(RAWSOCKDIR)%.c
 	$(rule_d)
-
-# TIMESTAMPDIR
-objs/%.o: $(TIMESTAMPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 $(DEPSDIR)%.d: $(TIMESTAMPDIR)%.c
 	$(rule_d)

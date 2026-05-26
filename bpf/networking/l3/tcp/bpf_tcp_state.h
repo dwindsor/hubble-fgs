@@ -56,12 +56,10 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	v->closed = 0;
 	v->stats.retransbytes = 0;
 	v->stats.rtt_sum = 0;
-	v->stats.latency_sum = 0;
 
 #pragma unroll
 	for (int i = 0; i < 8; i++) {
 		v->stats.rtt_buckets[i] = 0;
-		v->stats.latency_buckets[i] = 0;
 	}
 	if (tuple)
 		v->tuple = *tuple;

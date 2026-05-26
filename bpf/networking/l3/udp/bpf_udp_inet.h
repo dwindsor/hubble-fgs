@@ -17,7 +17,6 @@
 #include "bpf_task.h"
 #include "bpf_udp_event.h"
 #include "config.h"
-#include "bpf_latency.h"
 #include "bpf_process_network_watermarks.h"
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"
@@ -75,8 +74,7 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 
 static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
-	   s64 latency, struct udphdr *udp, int payload_off, int payload_sz,
-	   struct latency_protocol_config *latency_config, u64 egress,
+	   struct udphdr *udp, int payload_off, int payload_sz, u64 egress,
 	   struct socketmap_value *process)
 {
 	struct udp_info_value *value;
@@ -113,7 +111,6 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 #endif
 		} else {
 			update_rx_value(value, payload_sz);
-			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
 #ifdef PROCESS_TREE
 			recv(value->deny, &value->dst_key, payload_sz);
 #endif
@@ -136,10 +133,8 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	 */
 	if (egress)
 		udp_info_tx_reset(value, payload_sz);
-	else {
+	else
 		udp_info_rx_reset(value, payload_sz);
-		add_latency(latency_config, value->buckets, &value->latency_sum, latency);
-	}
 
 	/* socket create time is when we see the first datagram, as a socket can
 	 * support multiple pseudo-connections (using sendto()) and we shouldn't
@@ -188,31 +183,14 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
  */
 static inline __attribute__((always_inline)) int
 udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
-	 struct timestamp_option *ts_opt, struct udphdr *udp, u64 *cookie,
+	 struct udphdr *udp, u64 *cookie,
 	 int payload_off, int payload_sz, u64 send, bool dns_send_userspace)
 {
-	struct latency_protocol_config *udp_latency = 0;
-	struct latency_config *latency_config = 0;
 	struct socketmap_value *process = 0;
 	struct udp_info_value *value;
 	struct udp_info_key *key;
 	u64 cookie_ver = 0;
-	s64 latency = 0;
 	int zero = 0;
-
-	if (!send) {
-		latency_config = (struct latency_config *)map_lookup_elem(&tg_l3_lat_cfg, &zero);
-		if (!latency_config)
-			return 1;
-		if (latency_config->udp.enable) {
-			if (ts_opt) {
-				latency = calc_latency(latency_config->boot_ns,
-						       bpf_ntohl(ts_opt->timestamp_low),
-						       bpf_ntohl(ts_opt->timestamp_high));
-				udp_latency = &latency_config->udp;
-			}
-		}
-	}
 
 	if (*cookie) {
 		__u64 c = *cookie;
@@ -223,7 +201,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		return 1;
 	}
 
-	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_off, payload_sz, udp_latency, send, process);
+	value = __udp_send(skb, cookie, ip, ipv6, udp, payload_off, payload_sz, send, process);
 	if (!value)
 		return 1;
 
@@ -293,7 +271,6 @@ udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ip
 static inline __attribute__((always_inline)) void
 inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 {
-	struct timestamp_option *ts_opt = 0;
 	struct udp_packet_details *packet;
 	unsigned long int err = 0;
 	u8 proto, packetver = 0;
@@ -335,31 +312,6 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 
 		if (packet->ip.ip4.protocol != IPPROTO_UDP)
 			return;
-		if (packet->ip.ip4.ihl >=
-		    ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) /
-		     sizeof(u32))) {
-			/* Packet has at least enough space for the Timestamp IP Option,
-			 * so check if the first option is the Timestamp option that we
-			 * add to detect UDP latency.
-			 */
-			if (probe_read_kernel(&packet->ipopt,
-					      sizeof(struct timestamp_option),
-					      packet->skb_head +
-						      packet->network_header_off +
-						      sizeof(struct iphdr)) < 0) {
-				emit_ip_error_event(
-					ctx, &packet->ip, &cookie, false,
-					packet->ip.ip4.version, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			} else {
-				if (packet->ipopt.type == IPO_TYPE &&
-				    packet->ipopt.magic ==
-					    bpf_ntohl(IPO_MAGIC_W) &&
-				    packet->ipopt.magic ==
-					    packet->ipopt.magic2) {
-					ts_opt = &packet->ipopt;
-				}
-			}
-		}
 		if (!get_udp_header(&packet->udp, &packet->payload_off,
 				    packet->skb_head, skb)) {
 			err = IP_ERROR_INET_READ_UDP;
@@ -411,7 +363,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 	packet->payload_off = -1;
 
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
-	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
+	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz, send, true);
 	udp_watermarks(ctx, &cookie, &packet->ip.ip4, packet->payload_sz, packet->ipv6, send);
 	return;
@@ -422,19 +374,16 @@ inet_handler_lazy_kp_emit_error:
 
 int udp_handler_ip4(struct __sk_buff *skb, int send)
 {
-	size_t ipopts = sizeof(struct iphdr) + sizeof(struct timestamp_option);
 	void *data_end = (void *)(long)skb->data_end;
-	struct timestamp_option *ts_opt = 0, ipopt;
-	size_t ipopts_b = ipopts / sizeof(u32);
 	void *data = (long *)(long)skb->data;
 	bool dns_send_userspace = true;
 	int payload_sz, payload_off;
 	struct udphdr *udp, udptmp;
 	struct handler_vars *vars;
+	uint32_t zero = 0;
 	struct iphdr *ip;
 	u8 udp_off;
 	int err;
-	uint32_t zero = 0;
 #ifdef IN_KERNEL_DNS
 	struct cfg_value *l3cfg;
 #endif
@@ -451,29 +400,6 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	else
 		ip = (struct iphdr *)data;
 
-	if (ip->ihl >= ipopts_b) {
-		/* Packet has at least enough space for the Timestamp IP Option,
-		 * so check if the first option is the Timestamp option that we
-		 * add to detect UDP latency.
-		 */
-		if (data + ipopts <= data_end) {
-			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
-		} else {
-			err = skb_load_bytes(skb, sizeof(struct iphdr), &ipopt, sizeof(struct timestamp_option));
-			if (err < 0) {
-				emit_ip_error_event(
-					skb, &ip, &vars->cookie, false,
-					ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			} else {
-				ts_opt = &ipopt;
-			}
-		}
-
-		if (ts_opt && (ts_opt->type != IPO_TYPE ||
-			       ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
-			       ts_opt->magic != ts_opt->magic2))
-			ts_opt = 0;
-	}
 	udp_off = ip_payload_off(ip);
 	asm volatile("%[udp_off] &= 0xff;\n"
 		     : [udp_off] "+r"(udp_off)
@@ -496,9 +422,8 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	if (DNS_PARSER_ENABLED && l3cfg && dns_port_match(l3cfg->udp.dns_ports, bpf_htons(udp->source), bpf_htons(udp->dest)))
 		dns_send_userspace = !!parse_dns(skb, payload_off, send);
 #endif
-	udp_send(skb, 0, ip, false, ts_opt, udp, &vars->cookie,
-		 payload_off,
-		 payload_sz, send, dns_send_userspace);
+	udp_send(skb, 0, ip, false, udp, &vars->cookie,
+		 payload_off, payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, &vars->cookie, ip, payload_sz, false, send);
 	/* TODO: UDP enforcement is observability-only. udp_send() computes the
 	 * deny verdict and records it in stats, but the handler always returns
@@ -553,9 +478,8 @@ int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 	if (DNS_PARSER_ENABLED && l3cfg && dns_port_match(l3cfg->udp.dns_ports, bpf_htons(udp->source), bpf_htons(udp->dest)))
 		dns_send_userspace = !!parse_dns(skb, payload_off, send);
 #endif
-	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, &vars->cookie,
-		 payload_off,
-		 payload_sz, send, dns_send_userspace);
+	udp_send(skb, 0, (struct iphdr *)ip6, true, udp, &vars->cookie,
+		 payload_off, payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, &vars->cookie, (struct iphdr *)ip6, payload_sz, true, send);
 	/* TODO: UDP enforcement is observability-only. udp_send() computes the
 	 * deny verdict and records it in stats, but the handler always returns
