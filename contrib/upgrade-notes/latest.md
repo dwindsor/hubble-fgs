@@ -3,15 +3,15 @@
 Read the upgrade notes carefully before upgrading Tetragon.
 Depending on your setup, changes listed here might require a manual intervention.
 
-* TBD
+* TCP and UDP one-way latency (limited functionality) has been removed.
 
 ### Agent Options
 
-* TBD
+* The --enable-latency CLI switch has been removed.
 
 ### Helm Values
 
-* TBD
+* The tetragon.layer3.latency.enabled parameter was removed.
 
 ### OLM manifests
 
@@ -19,12 +19,12 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Kubernetes CRDs
 
-* TBD
+* The one-way latency configuration for TCP and UDP has been removed.
 
 ### Events (protobuf API)
 
-* TBD
+* The latency member of the SocketStats message has been deprecated.
 
 ### Metrics
 
-* TBD
+* The one-way latency metrics for TCP and UDP have been remvoed.
