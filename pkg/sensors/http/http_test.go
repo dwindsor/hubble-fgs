@@ -411,7 +411,7 @@ func TestLoadHttpSensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := layer3Testutil.ProgsAndMaps(false, false, false, false)
+	sensorProgs, sensorMaps := layer3Testutil.ProgsAndMaps(false, false, false)
 	ni := uint(len(sensorProgs)) // next index
 
 	sensorProgs = append(sensorProgs, []tus.SensorProg{

@@ -197,9 +197,6 @@ spec:
       cgroup: true
 `
 
-// Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
-// This is included to test UDP latency timestamps are NOT added
-// to any real UDP packets.
 const udpBasicConfig = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -211,11 +208,6 @@ spec:
       enable: true
       cgroup: true
       statsInterval: 2
-      latency:
-        enable: true
-        matchSubnets: [20.0.0.0/8]
-        min: 0
-        max: 10000
 `
 
 const udpBasicConfigWOEnable = `
@@ -229,33 +221,6 @@ spec:
       enable: false
       cgroup: true
       statsInterval: 2
-      latency:
-        enable: true
-        matchSubnets: [20.0.0.0/8]
-        min: 0
-        max: 10000
-`
-
-// Setting UDP latency max to 1,000,000 means 1% equates to
-// 10ms, which a packet across loopback should easily be
-// quicker than.
-const udpConfigWithLatencyDetection = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "udp"
-spec:
-  parser:
-    udp:
-      enable: true
-      cgroup: true
-      statsInterval: 2
-      latency:
-        enable: true
-        matchSubnets: [127.0.0.1/32]
-        matchPorts: [8081]
-        min: 0
-        max: 1000000
 `
 
 const UDPBUFSIZE, UDPBUFVAR = 1024, 256
@@ -580,10 +545,6 @@ func TestUdpWatermarks(t *testing.T) {
 //revive:disable:context-as-argument
 func getBasicUdpObserver(t *testing.T, ctx context.Context) *observer.Observer {
 	return getLayer3Observer(t, ctx, udpBasicConfig, true)
-}
-
-func getUdpObserverWithLatencyDetection(t *testing.T, ctx context.Context) *observer.Observer {
-	return getLayer3Observer(t, ctx, udpConfigWithLatencyDetection, true)
 }
 
 func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, CLISwitches bool, disableConnect bool, disableListen bool, disableClose bool, disableStats bool) *observer.Observer {
@@ -1127,105 +1088,6 @@ func (suite *UDPBasic) TestConnectAfterStartEvent4() {
 	suite.Assert().NoError(err)
 
 	killAndWaitCommand(suite.T(), cmdClient)
-}
-
-func TestUdpDetectLatency4(t *testing.T) {
-	// timing related tests are unreliable currently. In lieu of a solution, let's
-	// disable these tests.
-	t.Skipf("Test disabled due to unreliable timing in CI")
-	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
-		t.Skip("Test requires amd64 or kernel >=5.8")
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	server := getNCCommand(t, "nc.openbsd")
-	client := server
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8085 -s 0.0.0.0"))
-
-	ncCliChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-u 127.0.0.1 8085"))
-
-	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
-		WithProcess(ncCliChecker).
-		WithParent(selfChecker).
-		WithSocket(ec.NewSockInfoChecker().
-			WithProtocol(tetragon.SocketProtocol_UDP).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithDestinationPort(8085))
-
-	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
-		WithProcess(ncSrvChecker).
-		WithParent(selfChecker).
-		WithSocket(ec.NewSockInfoChecker().
-			WithProtocol(tetragon.SocketProtocol_UDP).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8085)).
-		WithStats(ec.NewSocketStatsChecker().
-			WithLatency(ec.NewHistogramChecker().
-				WithBuckets(ec.NewHistogramBucketListMatcher().
-					WithValues(ec.NewHistogramBucketChecker().
-						WithPercentile(1).
-						WithCount(1)))))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("serverExec").
-			WithProcess(ncSrvChecker).
-			WithParent(selfChecker),
-		ec.NewProcessExecChecker("clientExec").
-			WithProcess(ncCliChecker).
-			WithParent(selfChecker),
-		ec.NewProcessConnectChecker("serverConnect").
-			WithProcess(ncSrvChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8085).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(tetragon.SocketProtocol_UDP),
-		clientStatsChecker,
-		serverStatsChecker,
-	)
-
-	obs := getUdpObserverWithLatencyDetection(t, ctx)
-	option.Config.UsePerfRingBuffer = true
-	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8085", "-s", "0.0.0.0")
-	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8085, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
-
-	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8085")
-	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
-
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
 }
 
 func (suite *UDPBasic) TestUdpMulticast4() {

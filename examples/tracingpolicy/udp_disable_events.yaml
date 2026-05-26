@@ -14,17 +14,6 @@ spec:
         windowSize: 1000
         burstTriggerPercent: 50
         dipTriggerPercent: 20
-      latency:
-        enable: true
-        matchSubnets: [127.0.0.1/32]
-        matchPorts: [9955]
-        min: 0
-        max: 10000
-        clockCheckInterval: 1
-        clockMaxSkew: 5
-        interfaces: ["lo"]
-        maxPacketSize: 1500
-        interfacesCheckInterval: 1
       disableEvents:
         disableConnect: true
         disableListen: true

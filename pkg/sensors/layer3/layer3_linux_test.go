@@ -182,9 +182,6 @@ func getSocatCommand(t *testing.T, orig string) string {
 	return server
 }
 
-// Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
-// This is included to test latency timestamps are NOT added
-// to any real TCP packets.
 const layer3ConfigTcp = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -218,11 +215,6 @@ const layer3ConfigRemainder = `
         windowSize: 1000
         burstTriggerPercent: 50
         dipTriggerPercent: 10
-      latency:
-        enable: true
-        matchSubnets: [20.0.0.0/8]
-        min: 0
-        max: 10000
     networkWatermarksExitGen:
       enable: true
       interval: 1000
@@ -309,7 +301,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := testutil.ProgsAndMaps(utils.RTTHookAvailable(), true, utils.CGroupSKBAvailable(), rawHooksAvailable)
+	sensorProgs, sensorMaps := testutil.ProgsAndMaps(utils.RTTHookAvailable(), utils.CGroupSKBAvailable(), rawHooksAvailable)
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 

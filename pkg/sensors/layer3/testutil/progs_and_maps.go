@@ -88,11 +88,10 @@ const (
 	tcpSendCheck4Prog = "tg_event_tcp_v4_send_check"
 	tcpSendCheck6Prog = "tg_event_tcp_v6_send_check"
 
-	udpInetLazySendProg    = "tg_inet_lazy_send_kp"
-	udpBindProg            = "tg_udp_bind_sock"
-	udpBindDummy4Prog      = "tg_udp_bind_dummy4"
-	udpBindDummy6Prog      = "tg_udp_bind_dummy6"
-	udpEgressTimestampProg = "tg_egress_timestamp"
+	udpInetLazySendProg = "tg_inet_lazy_send_kp"
+	udpBindProg         = "tg_udp_bind_sock"
+	udpBindDummy4Prog   = "tg_udp_bind_dummy4"
+	udpBindDummy6Prog   = "tg_udp_bind_dummy6"
 
 	pingInitSockProg = "tg_ping_init_sock"
 	icmp4RcvProg     = "tg_icmp_rcv"
@@ -104,7 +103,7 @@ const (
 	fdLookupProg = "tg_proc_task_name"
 )
 
-func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
+func sockopsSensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_l3_sk", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
@@ -136,16 +135,6 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 		})...)
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpRttProg,
-		})...)
-	}
-
-	latencyConfigMap := tus.SensorMap{Name: "tg_l3_lat_cfg", Progs: []uint{}}
-	if withUdpLatency {
-		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpEgressTimestampProg,
-		})...)
-		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpEgressTimestampProg,
 		})...)
 	}
 
@@ -189,9 +178,6 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	})...)
 	tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
 		cgroupEgressProg, cgroupIngressProg, udpBindProg,
-	})...)
-	latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-		cgroupEgressProg, cgroupIngressProg,
 	})...)
 
 	if withIcmp {
@@ -270,7 +256,6 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 		tcpSocketMap,
 		execveMap,
 		tcpMonMap,
-		latencyConfigMap,
 		cfgMap,
 		verMap,
 		confMap,
@@ -281,7 +266,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	return sensorMaps
 }
 
-func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
+func kprobeOrFentrySensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_l3_sk", []string{
@@ -377,16 +362,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 	}
 
-	latencyConfigMap := tus.SensorMap{Name: "tg_l3_lat_cfg", Progs: []uint{}}
-	if withUdpLatency {
-		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpEgressTimestampProg,
-		})...)
-		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpEgressTimestampProg,
-		})...)
-	}
-
 	if !utils.CGroupSKBAvailable() { // 4.19 - <5.4
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
 			SensorMapByProgName(sensorProgs, "tg_l3_udpsk", []string{
@@ -406,9 +381,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			udpInetLazySendProg, udpBindProg,
-		})...)
-		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			udpInetLazySendProg,
 		})...)
 	} else { // 5.4+
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
@@ -444,9 +416,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			cgroupEgressProg, cgroupIngressProg, udpBindProg,
-		})...)
-		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg,
 		})...)
 	}
 
@@ -523,7 +492,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		tcpSocketMapStats,
 		execveMap,
 		tcpMonMap,
-		latencyConfigMap,
 		cfgMap,
 		verMap,
 		fdLookupConfigMap,
@@ -532,7 +500,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	return sensorMaps
 }
 
-func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
+func sockopsSensorProgs(withRTT bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
 	sensorProgs := []tus.SensorProg{
 		{Name: tcpSockopsProg, Type: ebpf.SockOps},
 		{Name: cgroupEgressProg, Type: ebpf.CGroupSKB},
@@ -571,10 +539,6 @@ func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRa
 		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Tracing})
 	} else {
 		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Kprobe})
-	}
-
-	if withUdpLatency {
-		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpEgressTimestampProg, Type: ebpf.SchedCLS})
 	}
 
 	if withIcmp {
@@ -623,7 +587,7 @@ func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRa
 	return sensorProgs, sockProgsOffset
 }
 
-func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
+func kprobeOrFentrySensorProgs(withRTT bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
 	var sensorProgs []tus.SensorProg
 
 	if utils.SupportFentry() {
@@ -685,10 +649,6 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 		}...)
 	}
 
-	if withUdpLatency {
-		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpEgressTimestampProg, Type: ebpf.SchedCLS})
-	}
-
 	if withIcmp && utils.CGroupSKBAvailable() {
 		if utils.SupportFentry() {
 			sensorProgs = append(sensorProgs, []tus.SensorProg{
@@ -735,17 +695,17 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 	return sensorProgs, sockProgsOffset
 }
 
-func ProgsAndMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
+func ProgsAndMaps(withRTT bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, []tus.SensorMap) {
 	var sensorProgs []tus.SensorProg
 	var sensorMaps []tus.SensorMap
 	var ni uint
 
 	if utils.SupportProcessTree() {
-		sensorProgs, ni = sockopsSensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
-		sensorMaps = sockopsSensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
+		sensorProgs, ni = sockopsSensorProgs(withRTT, withIcmp, withRaw)
+		sensorMaps = sockopsSensorMaps(withRTT, withIcmp, withRaw, sensorProgs, ni)
 	} else {
-		sensorProgs, ni = kprobeOrFentrySensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
-		sensorMaps = kprobeOrFentrySensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
+		sensorProgs, ni = kprobeOrFentrySensorProgs(withRTT, withIcmp, withRaw)
+		sensorMaps = kprobeOrFentrySensorMaps(withRTT, withIcmp, withRaw, sensorProgs, ni)
 	}
 
 	return sensorProgs, sensorMaps

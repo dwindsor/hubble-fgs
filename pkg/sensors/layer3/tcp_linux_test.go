@@ -84,9 +84,6 @@ spec:
       enable: true
 `
 
-// Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
-// This is included to test TCP latency timestamps are NOT added
-// to any real TCP packets.
 const tcpConfig = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -102,11 +99,6 @@ spec:
         windowSize: 1000
         burstTriggerPercent: 50
         dipTriggerPercent: 10
-      latency:
-        enable: true
-        matchSubnets: [20.0.0.0/8]
-        min: 0
-        max: 10000
     networkWatermarksExitGen:
       enable: true
       interval: 1000
@@ -154,26 +146,6 @@ spec:
         max: 1000000
 `
 
-// Setting TCP latency max to 1,000,000 means 1% equates to
-// 10ms, which a packet across loopback should easily be
-// quicker than.
-const tcpBasicConfigWithLatencyDetection = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "tcp"
-spec:
-  parser:
-    tcp:
-      enable: true
-      latency:
-        enable: true
-        matchSubnets: [127.0.0.1/32]
-        matchPorts: [8082]
-        min: 0
-        max: 1000000
-`
-
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
 //
@@ -184,10 +156,6 @@ func getBasicTcpObserver(t *testing.T, ctx context.Context, docker bool) *observ
 
 func getTcpObserverWithRTTDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
 	return getLayer3Observer(t, ctx, tcpBasicConfigWithRTTDetection, !docker)
-}
-
-func getTcpObserverWithLatencyDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
-	return getLayer3Observer(t, ctx, tcpBasicConfigWithLatencyDetection, !docker)
 }
 
 func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool, CLISwitches bool, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) *observer.Observer {
@@ -1405,94 +1373,6 @@ func TestNamespaces(t *testing.T) {
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-}
-
-// Note following test uses port 8082 instead of port 8081. This is primarily so that it
-// can be easily tracked for debugging.
-func TestDetectLatency4(t *testing.T) {
-	// timing related tests are unreliable currently. In lieu of a solution, let's
-	// disable these tests.
-	t.Skipf("Test disabled due to unreliable timing in CI")
-	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
-		t.Skip("Test requires amd64 or kernel >=5.8")
-	}
-
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	server := getNCCommand(t, "nc.openbsd")
-	client := server
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	ncChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8082 -s 0.0.0.0"))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("ncExec").
-			WithProcess(ncChecker).
-			WithParent(selfChecker),
-		ec.NewProcessListenChecker("ncListen").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8082).
-			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessAcceptChecker("ncAccept").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8082).
-			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker("ncClose").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8082).
-			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("accept")).
-			WithStats(ec.NewSocketStatsChecker().
-				WithLatency(ec.NewHistogramChecker().
-					WithBuckets(ec.NewHistogramBucketListMatcher().
-						WithValues(ec.NewHistogramBucketChecker().
-							WithPercentile(1))))), // Don't check count as it can vary unfortunately
-	)
-
-	obs := getTcpObserverWithLatencyDetection(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8082", "-s", "0.0.0.0")
-	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
-
-	cmdClient := exec.Command(client, "127.0.0.1", "8082")
-	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
-
-	killAndWaitCommand(t, cmdClient)
-	killAndWaitCommand(t, cmdServer)
-
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
