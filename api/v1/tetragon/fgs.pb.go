@@ -1198,6 +1198,8 @@ type SocketStats struct {
 	// TCP RTT Histogram:
 	Rtt *Histogram `protobuf:"bytes,15,opt,name=rtt,proto3" json:"rtt,omitempty"`
 	// TCP/UDP Latency Histogram:
+	//
+	// Deprecated: Marked as deprecated in tetragon/fgs.proto.
 	Latency       *Histogram `protobuf:"bytes,16,opt,name=latency,proto3" json:"latency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1338,6 +1340,7 @@ func (x *SocketStats) GetRtt() *Histogram {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in tetragon/fgs.proto.
 func (x *SocketStats) GetLatency() *Histogram {
 	if x != nil {
 		return x.Latency
@@ -5801,7 +5804,7 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x03pod\x18\v \x01(\v2\r.tetragon.PodR\x03pod\x12\x14\n" +
 	"\x05netns\x18\f \x01(\tR\x05netns\x12%\n" +
 	"\x0econtainer_name\x18\r \x01(\tR\rcontainerName\x12'\n" +
-	"\x04qlen\x18\x0e \x01(\v2\x13.tetragon.HistogramR\x04qlen\"\xd2\x04\n" +
+	"\x04qlen\x18\x0e \x01(\v2\x13.tetragon.HistogramR\x04qlen\"\xd6\x04\n" +
 	"\vSocketStats\x12\x1d\n" +
 	"\n" +
 	"bytes_sent\x18\x01 \x01(\x04R\tbytesSent\x12%\n" +
@@ -5819,8 +5822,8 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\rsegs_consumed\x18\f \x01(\rR\fsegsConsumed\x12%\n" +
 	"\x0esegs_submitted\x18\r \x01(\rR\rsegsSubmitted\x12,\n" +
 	"\x12skb_consume_misses\x18\x0e \x01(\rR\x10skbConsumeMisses\x12%\n" +
-	"\x03rtt\x18\x0f \x01(\v2\x13.tetragon.HistogramR\x03rtt\x12-\n" +
-	"\alatency\x18\x10 \x01(\v2\x13.tetragon.HistogramR\alatency\"\xf9\x01\n" +
+	"\x03rtt\x18\x0f \x01(\v2\x13.tetragon.HistogramR\x03rtt\x121\n" +
+	"\alatency\x18\x10 \x01(\v2\x13.tetragon.HistogramB\x02\x18\x01R\alatency\"\xf9\x01\n" +
 	"\aService\x12\x12\n" +
 	"\x04Name\x18\x01 \x01(\tR\x04Name\x12\x1c\n" +
 	"\tNamespace\x18\x02 \x01(\tR\tNamespace\x12N\n" +

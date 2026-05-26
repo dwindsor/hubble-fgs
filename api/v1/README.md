@@ -2680,7 +2680,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | segs_submitted | [uint32](#uint32) |  |  |
 | skb_consume_misses | [uint32](#uint32) |  |  |
 | rtt | [Histogram](#tetragon-Histogram) |  | TCP RTT Histogram: |
-| latency | [Histogram](#tetragon-Histogram) |  | TCP/UDP Latency Histogram: |
+| latency | [Histogram](#tetragon-Histogram) |  | **Deprecated.** TCP/UDP Latency Histogram: |
 
 
 

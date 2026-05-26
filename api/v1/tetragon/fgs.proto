@@ -77,7 +77,7 @@ message SocketStats {
   Histogram rtt = 15;
 
   // TCP/UDP Latency Histogram:
-  Histogram latency = 16;
+  Histogram latency = 16 [deprecated = true];
 }
 
 enum SocketProtocol {
