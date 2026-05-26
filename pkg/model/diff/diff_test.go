@@ -877,8 +877,8 @@ func TestTelemetryToConnection(t *testing.T) {
 				Destination: &graphV1.Vertex{
 					Family: &graphV1.Vertex_WorldEntity{
 						WorldEntity: &graphV1.VertexFamilyWorldEntity{
-							DnsName: "192.168.0.2",
-							Port:    443,
+							Ip:   "192.168.0.2",
+							Port: 443,
 						},
 					},
 				},

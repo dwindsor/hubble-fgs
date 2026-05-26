@@ -705,7 +705,7 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		destination = &graphV1.Vertex{
 			Family: &graphV1.Vertex_WorldEntity{
 				WorldEntity: &graphV1.VertexFamilyWorldEntity{
-					DnsName:    telemetry.DestinationName,
+					Ip:         telemetry.DestinationName,
 					Port:       telemetry.DestinationPort,
 					IpProtocol: telemetry.Protocol,
 				},
