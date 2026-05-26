@@ -240,7 +240,6 @@ type MsgSocketStats struct {
 	ZeroWindow      uint32    `align:"zero_window"`
 	SkDrops         uint32    `align:"sk_drops"`
 	Rtt             Histogram `align:"rtt_buckets"`
-	Latency         Histogram `align:"latency_buckets"`
 }
 
 type Histogram struct {
@@ -493,8 +492,6 @@ type UdpInfoValue struct {
 	PidKtime    uint64                 `align:"pid_ktime"`
 	Pid         uint32                 `align:"pid"`
 	SkDrops     uint32                 `align:"sk_drops"`
-	Buckets     [8]uint64              `align:"buckets"`
-	LatencySum  uint64                 `align:"latency_sum"`
 	CreateTime  uint64                 `align:"create_time"`
 	PsVersion   uint64                 `align:"ps_version"`
 	McastSeqNum uint64                 `align:"mcast_seq_num"`

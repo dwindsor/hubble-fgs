@@ -83,71 +83,6 @@ func GetSocketStats(stats *api.MsgSocketStats) *tetragon.SocketStats {
 		}
 	}
 
-	latencyHist := &tetragon.Histogram{
-		Sum: stats.Latency.Sum,
-	}
-
-	if stats.Latency.B99 > 0 ||
-		stats.Latency.B90 > 0 ||
-		stats.Latency.B75 > 0 ||
-		stats.Latency.B50 > 0 ||
-		stats.Latency.B25 > 0 ||
-		stats.Latency.B10 > 0 ||
-		stats.Latency.B01 > 0 ||
-		stats.Latency.B00 > 0 {
-		bucket99 := &tetragon.HistogramBucket{
-			Percentile: 99,
-			Size:       1,
-			Count:      stats.Latency.B99,
-		}
-		bucket90 := &tetragon.HistogramBucket{
-			Percentile: 90,
-			Size:       9,
-			Count:      stats.Latency.B90,
-		}
-		bucket75 := &tetragon.HistogramBucket{
-			Percentile: 75,
-			Size:       15,
-			Count:      stats.Latency.B75,
-		}
-		bucket50 := &tetragon.HistogramBucket{
-			Percentile: 50,
-			Size:       25,
-			Count:      stats.Latency.B50,
-		}
-		bucket25 := &tetragon.HistogramBucket{
-			Percentile: 25,
-			Size:       25,
-			Count:      stats.Latency.B25,
-		}
-		bucket10 := &tetragon.HistogramBucket{
-			Percentile: 10,
-			Size:       15,
-			Count:      stats.Latency.B10,
-		}
-		bucket01 := &tetragon.HistogramBucket{
-			Percentile: 1,
-			Size:       9,
-			Count:      stats.Latency.B01,
-		}
-		bucket00 := &tetragon.HistogramBucket{
-			Percentile: 0,
-			Size:       1,
-			Count:      stats.Latency.B00,
-		}
-
-		latencyHist.Buckets = []*tetragon.HistogramBucket{
-			bucket00,
-			bucket01,
-			bucket10,
-			bucket25,
-			bucket50,
-			bucket75,
-			bucket90,
-			bucket99,
-		}
-	}
-
 	return &tetragon.SocketStats{
 		BytesSubmitted:   stats.BytesSent,
 		BytesConsumed:    stats.BytesReceived,
@@ -163,7 +98,6 @@ func GetSocketStats(stats *api.MsgSocketStats) *tetragon.SocketStats {
 		ToZeroWindow:     stats.ZeroWindow,
 		SkDrop:           stats.SkDrops,
 		Rtt:              rttHist,
-		Latency:          latencyHist,
 	}
 }
 
