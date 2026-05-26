@@ -39,7 +39,19 @@ func StatsZero(a *appModelV1.ConnectionStats) bool {
 
 func StatsDiff(a, b *appModelV1.ConnectionStats) (*appModelV1.ConnectionStats, error) {
 	if b.TxBytes > a.TxBytes {
-		return nil, fmt.Errorf("stats diff underflow: %d - %d", a.TxBytes, b.TxBytes)
+		return nil, fmt.Errorf("stats diff underflow on TxBytes: %d - %d", a.TxBytes, b.TxBytes)
+	}
+	if b.RxBytes > a.RxBytes {
+		return nil, fmt.Errorf("stats diff underflow on RxBytes: %d - %d", a.RxBytes, b.RxBytes)
+	}
+	if b.TxDrops > a.TxDrops {
+		return nil, fmt.Errorf("stats diff underflow on TxDrops: %d - %d", a.TxDrops, b.TxDrops)
+	}
+	if b.DefaultDropBytes > a.DefaultDropBytes {
+		return nil, fmt.Errorf("stats diff underflow on DefaultDropBytes: %d - %d", a.DefaultDropBytes, b.DefaultDropBytes)
+	}
+	if b.DefaultAllowBytes > a.DefaultAllowBytes {
+		return nil, fmt.Errorf("stats diff underflow on DefaultAllowBytes: %d - %d", a.DefaultAllowBytes, b.DefaultAllowBytes)
 	}
 
 	return &appModelV1.ConnectionStats{
