@@ -86,7 +86,6 @@ const (
 	KeyEnableTCP                         = "enable-tcp"
 	keyEnableTCPRTT                      = "enable-tcp-rtt"
 	keyEnableUDP                         = "enable-udp"
-	keyEnableLatency                     = "enable-latency"
 	keyEnableICMP                        = "enable-icmp"
 	keyEnableIGMP                        = "enable-igmp"
 	keyEnableRawsock                     = "enable-rawsock"
@@ -223,7 +222,6 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableTCP, false, "Enable TCP observability")
 	flags.Bool(keyEnableTCPRTT, false, "Enable TCP RTT observability")
 	flags.Bool(keyEnableUDP, false, "Enable UDP observability")
-	flags.Bool(keyEnableLatency, false, fmt.Sprintf("Enable TCP and/or UDP latency observability (requires --%s and/or --%s)", KeyEnableTCP, keyEnableUDP))
 	flags.Bool(keyEnableICMP, false, "Enable ICMP observability")
 	flags.Bool(keyEnableIGMP, false, "Enable IGMP observability")
 	flags.Bool(keyEnableRawsock, false, "Enable raw socket observability")
@@ -315,7 +313,6 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableTCP = viper.GetBool(KeyEnableTCP)
 	Config.EnableTCPRTT = viper.GetBool(keyEnableTCPRTT)
 	Config.EnableUDP = viper.GetBool(keyEnableUDP)
-	Config.EnableLatency = viper.GetBool(keyEnableLatency)
 	Config.EnableICMP = viper.GetBool(keyEnableICMP)
 	Config.EnableIGMP = viper.GetBool(keyEnableIGMP)
 	Config.EnableRawsock = viper.GetBool(keyEnableRawsock)

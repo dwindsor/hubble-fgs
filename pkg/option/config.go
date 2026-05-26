@@ -104,7 +104,6 @@ type config struct {
 	EnableTCP       bool
 	EnableTCPRTT    bool
 	EnableUDP       bool
-	EnableLatency   bool
 	EnableICMP      bool
 	EnableIGMP      bool
 	EnableRawsock   bool

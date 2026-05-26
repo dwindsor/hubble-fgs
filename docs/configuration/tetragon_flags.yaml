@@ -158,10 +158,6 @@ options:
       default_value: "false"
       usage: |
         Access Kubernetes API to associate Tetragon events with Kubernetes pods
-    - name: enable-latency
-      default_value: "false"
-      usage: |
-        Enable TCP and/or UDP latency observability (requires --enable-tcp and/or --enable-udp)
     - name: enable-msg-handling-latency
       default_value: "false"
       usage: Enable metrics for message handling latency
