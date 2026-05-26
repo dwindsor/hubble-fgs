@@ -698,9 +698,6 @@ type TcpPolicySpec struct {
 	// Rtt Histogram
 	RttHistogram TcpRttHistogram `json:"histogram"`
 	// +kubebuilder:validation:Optional
-	// TCP latency observability policy specification
-	Latency LatencyPolicySpec `json:"latency"`
-	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
 	// Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns
 	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip
@@ -784,9 +781,6 @@ type UdpPolicySpec struct {
 	// Network policy specification
 	Watermarks UdpWatermarksPolicySpec `json:"watermarks"`
 	// +kubebuilder:validation:Optional
-	// UDP latency observability policy specification
-	Latency LatencyPolicySpec `json:"latency"`
-	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
 	// Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns, srcmcast, dstmcast
 	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip, srcmcast, dstmcast
@@ -825,40 +819,6 @@ type QuotaDestination struct {
 	Dns []string `json:"dns"`
 	// +kubebuilder:validation:Optional
 	Port []uint32 `json:"port,omitempty"`
-}
-
-type LatencyPolicySpec struct {
-	// Enable UDP latency observability
-	// +kubebuilder:default=false
-	// +kubebuilder:validation:Optional
-	Enable bool `json:"enable"`
-	// +kubebuilder:validation:Optional
-	// Configures the subnets to enable on
-	MatchSubnets []string `json:"matchSubnets,omitempty"`
-	// +kubebuilder:validation:Optional
-	// Configures the ports to enable on
-	MatchPorts []uint16 `json:"matchPorts,omitempty"`
-	// +kubebuilder:validation:Optional
-	// Configures the expected Max Latency value
-	Max uint32 `json:"max"`
-	// +kubebuilder:validation:Optional
-	// Configures the expected Min Latency value
-	Min uint32 `json:"min"`
-	// +kubebuilder:validation:Optional
-	// Configures the clock check interval in seconds
-	ClockCheckInterval uint32 `json:"clockCheckInterval"`
-	// +kubebuilder:validation:Optional
-	// Configures the maximum acceptable clock skew before updating in microseconds
-	ClockMaxSkew uint32 `json:"clockMaxSkew"`
-	// +kubebuilder:validation:Optional
-	// Configures the interfaces to enable on
-	Interfaces []string `json:"interfaces,omitempty"`
-	// +kubebuilder:validation:Optional
-	// Configures the maximum packet size
-	MaxPacketSize uint16 `json:"maxPacketSize"`
-	// +kubebuilder:validation:Optional
-	// Configures the interfaces check interval in seconds
-	InterfacesCheckInterval uint32 `json:"interfacesCheckInterval"`
 }
 
 type NetworkWatermarksExitGenPolicySpec struct {
