@@ -43,7 +43,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -58,7 +57,6 @@ var (
 	Config            networkapi.UdpConfigValue
 	udpGcInterval     time.Duration
 	WatermarksEnabled = false
-	TimestampEnabled  = false
 
 	DisableConnectEvents = false
 	DisableListenEvents  = false
@@ -130,8 +128,6 @@ var (
 	// UDP maps
 	UdpMapLazyKprobe      = program.MapBuilder(UdpMapName, InetSendRecvLazy)
 	UdpMapStatsLazyKprobe = program.MapBuilder(udpconfig.UdpMapStatsName, InetSendRecvLazy)
-
-	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
 )
 
 func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
@@ -250,8 +246,6 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 	// If we enabled via CLI switches, run the GC so it can reap idle
 	// pseudo-sockets.
 	StartIdleSocketGC()
-	TimestampEnabled = false
-	networklatency.Stop(syscall.IPPROTO_UDP)
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_UDP)
 		WatermarksEnabled = false
@@ -271,7 +265,7 @@ func bindProg() *program.Program {
 	return SkUdpBindKprobe
 }
 
-func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Program, []*program.Map) {
+func EnableUdp(cgroup bool) ([]*program.Program, []*program.Program, []*program.Map) {
 	var progsInitSock []*program.Program
 	var progsCollectStats []*program.Program
 	var maps []*program.Map
@@ -304,7 +298,6 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 		maps = append(maps,
 			UdpMapLazyKprobe,
 			UdpMapStatsLazyKprobe,
-			LatencyConfigMapLazyKprobe,
 		)
 	} else {
 		if !DisableListenEvents {
@@ -315,12 +308,6 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 				progsInitSock = append(progsInitSock, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
 			}
 		}
-	}
-
-	if timestampEnable {
-		logger.GetLogger().Info("Enabling UDP latency")
-		TimestampEnabled = true
-		progsInitSock = append(progsInitSock, networklatency.Timestamp)
 	}
 
 	logger.GetLogger().Info("Enable UDP",
@@ -336,7 +323,7 @@ func SetGcInterval(interval time.Duration) {
 	logger.GetLogger().Info("UDP configured", "statsInterval", interval)
 }
 
-func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error) {
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (time.Duration, error) {
 	if spec.Parser.Udp != nil && spec.Parser.Udp.Metrics != nil {
 		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
 		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
@@ -367,10 +354,8 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error
 	if !udpStatsEnable {
 		interval = UdpDeleteInterval
 	}
-	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
-	udpLatencyEnable := spec.Parser.Udp != nil && spec.Parser.Udp.Latency.Enable
-	logger.GetLogger().Debug("UDP Latency config", "enable", udpLatencyEnable)
-	return udpLatencyEnable, interval, nil
+	Config = ParseUdpSpec(spec)
+	return interval, nil
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {

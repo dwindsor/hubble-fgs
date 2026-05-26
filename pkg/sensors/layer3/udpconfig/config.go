@@ -14,8 +14,6 @@ import (
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/metrics"
-
-	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 
 const (
@@ -24,7 +22,6 @@ const (
 
 var (
 	MetricsEnabled = false
-	LatencyConfig  networklatency.ProtocolConfig
 	CurrentLabels  = DefaultLabelFilter()
 
 	UdpMapRemoves       = int64(0)

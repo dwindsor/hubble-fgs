@@ -12,12 +12,10 @@ package eventmetrics
 
 import (
 	"net"
-	"strconv"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 )
 
 func postUDPSocketStats(socketLabels *socketmetrics.SocketLabels, s *tetragon.SocketStats) {
@@ -43,38 +41,6 @@ func postUDPSocketStats(socketLabels *socketmetrics.SocketLabels, s *tetragon.So
 
 	c = float64(s.SkDrop)
 	socketmetrics.SocketStatsUDPDrops.WithLabelValues(socketLabels).Add(c)
-
-	// Post UDP Latency numbers
-	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
-	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
-	// "le" label value, so we always use (N+1)th bucket for that.
-	if s.Latency != nil && s.Latency.Buckets != nil {
-		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
-
-		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
-
-		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
-
-		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
-
-		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
-
-		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
-
-		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
-
-		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.UdpLatencyBucket.WithLabelValues(socketLabels, "+Inf").Add(c)
-		socketmetrics.UdpLatencyCount.WithLabelValues(socketLabels).Add(c)
-		socketmetrics.UdpLatencySum.WithLabelValues(socketLabels).Add(float64(s.Latency.Sum))
-	}
 }
 
 func postUDPMulticastSocketStats(res *tetragon.ProcessSockStats) {
@@ -102,36 +68,4 @@ func postUDPMulticastSocketStats(res *tetragon.ProcessSockStats) {
 
 	c = float64(s.SkDrop)
 	socketmetrics.SocketStatsUDPMulticastDrops.WithLabelValues(multicastLabels).Add(c)
-
-	// Post UDP Multicast Latency numbers
-	// Prometheus buckets are cumulative, so we keep adding the values for higher buckets.
-	// Bucket values in ProtocolConfig are lower limits, while metrics need upper limits as
-	// "le" label value, so we always use (N+1)th bucket for that.
-	if s.Latency != nil && s.Latency.Buckets != nil {
-		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket01))).Add(c)
-
-		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket10))).Add(c)
-
-		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket25))).Add(c)
-
-		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket50))).Add(c)
-
-		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket75))).Add(c)
-
-		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket90))).Add(c)
-
-		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, strconv.Itoa(int(udpconfig.LatencyConfig.LatBucket99))).Add(c)
-
-		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, "+Inf").Add(c)
-		socketmetrics.UdpMulticastLatencyCount.WithLabelValues(multicastLabels).Add(c)
-		socketmetrics.UdpMulticastLatencySum.WithLabelValues(multicastLabels).Add(float64(s.Latency.Sum))
-	}
 }

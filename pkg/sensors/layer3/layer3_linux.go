@@ -31,8 +31,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -50,7 +48,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -187,14 +184,11 @@ var (
 	dispatcherProcessTreeProgs      = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
 	dispatcherProcessTreeTimerProgs = []*program.Program{EgressDispatcherProcessTreeTimer, IngressDispatcherProcessTreeTimer}
 
-	// Dispatcher Latency maps; could be problematic from an ownership perspective. Solve another day.
-	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer)
-
 	// Dispatcher UDP maps, built here because they are only used by the dispatcher
 	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
 	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
 	udpTimerMap = program.MapBuilder(udp.UdpTimerMapName, EgressDispatcherProcessTreeTimer)
-	udpMaps     = []*program.Map{udpMap, udpMapStats, latencyConfigMap, protoCfgMap}
+	udpMaps     = []*program.Map{udpMap, udpMapStats, protoCfgMap}
 
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.14
@@ -239,7 +233,7 @@ var (
 		}...)
 )
 
-func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {
+func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 	ReportFunctionality()
 
 	needDispatcher := false
@@ -255,14 +249,14 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 	}
 
 	if tcpEnabled {
-		tcpProgsInit, tcpProgsStats, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
+		tcpProgsInit, tcpProgsStats, tcpMaps := tcp.EnableTcp()
 		progsInitSock = append(progsInitSock, tcpProgsInit...)
 		progsCollectStats = append(progsCollectStats, tcpProgsStats...)
 		maps = append(maps, tcpMaps...)
 		needDispatcher = true
 	}
 	if udpEnabled {
-		udpProgsInit, udpProgsStats, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable)
+		udpProgsInit, udpProgsStats, udpMaps := udp.EnableUdp(cgroup)
 		progsInitSock = append(progsInitSock, udpProgsInit...)
 		progsCollectStats = append(progsCollectStats, udpProgsStats...)
 		maps = append(maps, udpMaps...)
@@ -373,7 +367,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 	return append(progsInitSock, progsCollectStats...), maps
 }
 
-func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup, udpTimestampEnable bool,
+func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, cgroup bool,
 	udpInterval time.Duration) *sensors.Sensor {
 	spec := policy.TpSpec()
 
@@ -385,7 +379,7 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestam
 	var maps []*program.Map
 
 	if !enterpriseOption.Config.Layer3CLIEnable {
-		progs, maps = ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable)
+		progs, maps = ProgsAndMaps(cgroup)
 	} else {
 		// If we are loading programs (!Layer3CLIEnable) then the sensor will be configured at the
 		// appropriate point. As we're not, configure the sensor now.
@@ -471,19 +465,17 @@ func (l3 *l3Sensor) PolicyHandler(
 		udpCgroup = false
 		dnsEnabled = false
 	}
-	tcpTimestampEnable := false
 	var err error
 	if spec.Parser.Tcp != nil && tcpEnabled {
-		tcpTimestampEnable, err = tcp.PolicyHandler(spec)
+		err = tcp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("tcp.PolicyHandler error: %w", err)
 		}
 	}
 
-	udpTimestampEnable := false
 	var udpInterval time.Duration
 	if spec.Parser.Udp != nil && udpEnabled {
-		udpTimestampEnable, udpInterval, err = udp.PolicyHandler(spec)
+		udpInterval, err = udp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("udp.PolicyHandler error: %w", err)
 		}
@@ -503,8 +495,7 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	return l3.enableLayer3(policy, tcpTimestampEnable,
-		udpCgroup, udpTimestampEnable, udpInterval), nil
+	return l3.enableLayer3(policy, udpCgroup, udpInterval), nil
 }
 
 func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
@@ -595,24 +586,9 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 func (l3 *l3Sensor) configureSensor() error {
 	if tcpEnabled {
 		tcp.ConfigureSensor()
-		logger.GetLogger().Debug("TCP Loader", "timestampEnabled", tcp.TimestampEnabled)
-		if tcp.TimestampEnabled {
-			if err := networklatency.ConfigureLatency(unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
-				logger.GetLogger().Warn("ConfigureLatency TCP", logfields.Error, err)
-				return err
-			}
-			networklatency.Start()
-		}
 	}
 	if udpEnabled {
 		udp.ConfigureSensor()
-		logger.GetLogger().Debug("UDP Loader", "timestampEnabled", udp.TimestampEnabled)
-		if udp.TimestampEnabled {
-			if err := networklatency.ConfigureLatency(unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
-				return err
-			}
-			networklatency.Start()
-		}
 	}
 	if icmpEnabled {
 		icmp.ConfigureSensor()
@@ -671,12 +647,6 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
 			logger.GetLogger().Warn("CGRP", logfields.Error, err)
-			return err
-		}
-	case "tc_egress":
-		err := networklatency.AttachTc(args)
-		if err != nil {
-			logger.GetLogger().Warn("TC_EGRESS", logfields.Error, err)
 			return err
 		}
 	case "tcp_fentry", "udp_fentry", "icmp_fentry", "rawsock_fentry", "socktrack_fentry", "igmp_fentry":
@@ -823,7 +793,7 @@ func EnableLayer3Progs() error {
 
 func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	// By default, enable CGroup/SKB.
-	progs, maps := ProgsAndMaps(enterpriseOption.Config.EnableLatency, udpCGroup, enterpriseOption.Config.EnableLatency)
+	progs, maps := ProgsAndMaps(udpCGroup)
 	var mgr *sensors.Manager
 	if sm != nil {
 		mgr = sm

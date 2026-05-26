@@ -194,7 +194,6 @@ func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	if tcpconfig.RttHistogramMax > 0 {
 		s.Rtt = t.Stats.Rtt
 	}
-	s.Latency = t.Stats.Latency
 
 	return s
 }
@@ -250,11 +249,6 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats) (networkapi.MsgSocketS
 			joinedErr = errors.Join(joinedErr, err)
 		}
 	}
-	latencyHist, err := tcpDiffHistogram(&last.Latency, &curr.Latency, "Latency")
-	if err != nil {
-		joinedErr = errors.Join(joinedErr, err)
-	}
-
 	if joinedErr != nil {
 		return *last, joinedErr
 	}
@@ -270,7 +264,6 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats) (networkapi.MsgSocketS
 		ZeroWindow:      curr.ZeroWindow - last.ZeroWindow,
 		SkDrops:         curr.SkDrops - last.SkDrops,
 		Rtt:             rttHist,
-		Latency:         latencyHist,
 		CreateTime:      curr.CreateTime,
 	}, nil
 }

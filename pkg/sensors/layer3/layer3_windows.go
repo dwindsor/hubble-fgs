@@ -20,7 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 )
 
-func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {
+func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 	return nil, nil
 }
 

@@ -35,7 +35,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/dnsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 
 const (
@@ -142,18 +141,14 @@ func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, 
 
 // ParseUdpSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP options.
-func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (networkapi.UdpConfigValue, networklatency.ProtocolConfig) {
+func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) networkapi.UdpConfigValue {
 	config := networkapi.UdpConfigValue{}
 	ParseOptions(&config)
 	ParseDnsSpec(&config, spec)
 	ParseUdpWatermarksSpec(&config, spec)
-	latencyConfig := networklatency.ProtocolConfig{}
-	if spec.Parser.Udp != nil {
-		latencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, syscall.IPPROTO_UDP)
-	}
 	ParseDisableSpec(&config, spec)
 
-	return config, latencyConfig
+	return config
 }
 
 // ParseOptions parses the command line options into the config

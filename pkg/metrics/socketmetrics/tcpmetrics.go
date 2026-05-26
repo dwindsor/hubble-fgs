@@ -119,23 +119,6 @@ var (
 		Help:      "Histogram sum for TCP socket rtt in microseconds",
 	}, nil)
 )
-var (
-	TcpLatencyBucket = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
-		Name:      "tcp_latency_microseconds_bucket",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram bucket for TCP socket latency in microseconds",
-	}, []string{"le"})
-	TcpLatencyCount = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
-		Name:      "tcp_latency_microseconds_count",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram count for TCP socket latency",
-	}, nil)
-	TcpLatencySum = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
-		Name:      "tcp_latency_microseconds_sum",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram sum for TCP socket latency in microseconds",
-	}, nil)
-)
 
 // TCP LRU Cache size
 var (

@@ -110,17 +110,6 @@ func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.D
 		SegsIn:        uint32(v.SegsIn),
 		SegsOut:       uint32(v.SegsOut),
 		SkDrops:       v.SkDrops,
-		Latency: api.Histogram{
-			B00: v.Buckets[0],
-			B01: v.Buckets[1],
-			B10: v.Buckets[2],
-			B25: v.Buckets[3],
-			B50: v.Buckets[4],
-			B75: v.Buckets[5],
-			B90: v.Buckets[6],
-			B99: v.Buckets[7],
-			Sum: v.LatencySum,
-		},
 	}
 	unix.Duration = duration
 	return &unix
@@ -169,21 +158,6 @@ func emitStatEvent(k *api.UdpInfoKey, v *api.UdpInfoValue) {
 	}
 }
 
-func latencyResetEvent(curr, last *[8]uint64, currSum, lastSum uint64) bool {
-	if curr[0] < last[0] ||
-		curr[1] < last[1] ||
-		curr[2] < last[2] ||
-		curr[3] < last[3] ||
-		curr[4] < last[4] ||
-		curr[5] < last[5] ||
-		curr[6] < last[6] ||
-		curr[7] < last[7] ||
-		currSum < lastSum {
-		return true
-	}
-	return false
-}
-
 func udpResetEvent(curr, last *api.UdpInfoValue) bool {
 	// If we have fewer bytes or segs than last measurement this is a
 	// sure sign we had a data race. Counters in BPF side are monotonic
@@ -191,8 +165,7 @@ func udpResetEvent(curr, last *api.UdpInfoValue) bool {
 	if curr.SegsIn < last.SegsIn ||
 		curr.RXBytes < last.RXBytes ||
 		curr.SegsOut < last.SegsOut ||
-		curr.TXBytes < last.TXBytes ||
-		latencyResetEvent(&curr.Buckets, &last.Buckets, curr.LatencySum, last.LatencySum) {
+		curr.TXBytes < last.TXBytes {
 		return true
 	}
 
@@ -213,19 +186,6 @@ func udpResetEvent(curr, last *api.UdpInfoValue) bool {
 	// by receiving multiple packets on the same socket on the same
 	// core.
 	return false
-}
-
-func udpDiffLatency(last, curr *[8]uint64) [8]uint64 {
-	return [8]uint64{
-		curr[0] - last[0],
-		curr[1] - last[1],
-		curr[2] - last[2],
-		curr[3] - last[3],
-		curr[4] - last[4],
-		curr[5] - last[5],
-		curr[6] - last[6],
-		curr[7] - last[7],
-	}
 }
 
 func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpInfoValue, error) {
@@ -261,16 +221,14 @@ func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpIn
 	}
 
 	return api.UdpInfoValue{
-		TXBytes:    curr.TXBytes - last.TXBytes,
-		RXBytes:    curr.RXBytes - last.RXBytes,
-		SegsIn:     curr.SegsIn - last.SegsIn,
-		SegsOut:    curr.SegsOut - last.SegsOut,
-		SkDrops:    curr.SkDrops - last.SkDrops,
-		Ktime:      curr.Ktime,
-		PidKtime:   curr.PidKtime,
-		Pid:        curr.Pid,
-		Buckets:    udpDiffLatency(&last.Buckets, &curr.Buckets),
-		LatencySum: curr.LatencySum - last.LatencySum,
+		TXBytes:  curr.TXBytes - last.TXBytes,
+		RXBytes:  curr.RXBytes - last.RXBytes,
+		SegsIn:   curr.SegsIn - last.SegsIn,
+		SegsOut:  curr.SegsOut - last.SegsOut,
+		SkDrops:  curr.SkDrops - last.SkDrops,
+		Ktime:    curr.Ktime,
+		PidKtime: curr.PidKtime,
+		Pid:      curr.Pid,
 	}, nil
 }
 

@@ -11,12 +11,9 @@
 package eventmetrics
 
 import (
-	"strconv"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 )
 
 func postTCPSocketStats(socketLabels *socketmetrics.SocketLabels, s *tetragon.SocketStats) {
@@ -75,33 +72,5 @@ func postTCPSocketStats(socketLabels *socketmetrics.SocketLabels, s *tetragon.So
 
 		socketmetrics.TcpRttCount.WithLabelValues(socketLabels).Add(c)
 		socketmetrics.TcpRttSum.WithLabelValues(socketLabels).Add(float64(s.Rtt.Sum))
-	}
-
-	if s.Latency != nil && s.Latency.Buckets != nil {
-		c = float64(s.Latency.Buckets[0].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket01))).Add(c)
-
-		c += float64(s.Latency.Buckets[1].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket10))).Add(c)
-
-		c += float64(s.Latency.Buckets[2].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket25))).Add(c)
-
-		c += float64(s.Latency.Buckets[3].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket50))).Add(c)
-
-		c += float64(s.Latency.Buckets[4].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket75))).Add(c)
-
-		c += float64(s.Latency.Buckets[5].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket90))).Add(c)
-
-		c += float64(s.Latency.Buckets[6].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, strconv.Itoa(int(tcpconfig.LatencyConfig.LatBucket99))).Add(c)
-
-		c += float64(s.Latency.Buckets[7].Count)
-		socketmetrics.TcpLatencyBucket.WithLabelValues(socketLabels, "+Inf").Add(c)
-		socketmetrics.TcpLatencyCount.WithLabelValues(socketLabels).Add(c)
-		socketmetrics.TcpLatencySum.WithLabelValues(socketLabels).Add(float64(s.Latency.Sum))
 	}
 }

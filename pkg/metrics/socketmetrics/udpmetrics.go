@@ -161,54 +161,6 @@ var (
 	))
 )
 
-// UDP Latency Histogram
-// It emulates an OpenMetrics histogram:
-//   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
-//     limit of the bucket
-//   - a "_count" metric, identical to the highest ("+Inf") bucket metric
-//   - a "_sum" metric, reporting the sum of all observed values
-var (
-	UdpLatencyBucket = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
-		Name:      "udp_latency_microseconds_bucket",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram bucket for UDP socket latency in microseconds",
-	}, []string{"le"})
-	UdpLatencyCount = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
-		Name:      "udp_latency_microseconds_count",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram count for UDP socket latency",
-	}, nil)
-	UdpLatencySum = metrics.MustNewGranularCounter[SocketLabels](prometheus.CounterOpts{
-		Name:      "udp_latency_microseconds_sum",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram sum for UDP socket latency in microseconds",
-	}, nil)
-)
-
-// UDP Multicast Latency Histogram
-// It emulates an OpenMetrics histogram:
-//   - a set of "_bucket"-suffixed counters with a "le" label (less or equal), which is the upper
-//     limit of the bucket
-//   - a "_count" metric, identical to the highest ("+Inf") bucket metric
-//   - a "_sum" metric, reporting the sum of all observed values
-var (
-	UdpMulticastLatencyBucket = metrics.MustNewGranularCounter[MulticastSocketLabels](prometheus.CounterOpts{
-		Name:      "udp_mcast_latency_microseconds_bucket",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram bucket for UDP socket multicast latency in microseconds",
-	}, []string{"le"})
-	UdpMulticastLatencyCount = metrics.MustNewGranularCounter[MulticastSocketLabels](prometheus.CounterOpts{
-		Name:      "udp_mcast_latency_microseconds_count",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram count for UDP socket multicast latency",
-	}, nil)
-	UdpMulticastLatencySum = metrics.MustNewGranularCounter[MulticastSocketLabels](prometheus.CounterOpts{
-		Name:      "udp_mcast_latency_microseconds_sum",
-		Namespace: consts.MetricsNamespace,
-		Help:      "Histogram sum for UDP socket multicast latency in microseconds",
-	}, nil)
-)
-
 // UDP Sequence Check errors
 // NB: This metric is specific to a proprietary protocol transmitting sequence
 // numbers on top of UDP. It shouldn't be registered by default.

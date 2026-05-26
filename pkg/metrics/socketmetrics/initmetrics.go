@@ -40,11 +40,6 @@ func InitTCPEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(TcpRttBucket)
 	registry.MustRegister(TcpRttCount)
 	registry.MustRegister(TcpRttSum)
-
-	// TCP Latency Histograms
-	registry.MustRegister(TcpLatencyBucket)
-	registry.MustRegister(TcpLatencyCount)
-	registry.MustRegister(TcpLatencySum)
 }
 
 func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
@@ -82,12 +77,9 @@ func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
 	// We might consider improving docs for histograms, both Prometheus and Tetragon.
 	for _, b := range enterpriseMetrics.ExampleLatencyBuckets {
 		TcpRttBucket.WithLabelValues(socketLabels, b).Add(0)
-		TcpLatencyBucket.WithLabelValues(socketLabels, b).Add(0)
 	}
 	TcpRttCount.WithLabelValues(socketLabels).Add(0)
 	TcpRttSum.WithLabelValues(socketLabels).Add(0)
-	TcpLatencyCount.WithLabelValues(socketLabels).Add(0)
-	TcpLatencySum.WithLabelValues(socketLabels).Add(0)
 }
 
 func InitHealthMetrics(registry *prometheus.Registry) {
@@ -134,16 +126,6 @@ func InitUDPEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(SocketStatsUDPMulticastRxSegs)
 	registry.MustRegister(SocketStatsUDPMulticastDrops)
 	registry.MustRegister(SocketStatsUDPMulticastConsumeMisses)
-
-	// UDP Latency Histogram
-	registry.MustRegister(UdpLatencyBucket)
-	registry.MustRegister(UdpLatencyCount)
-	registry.MustRegister(UdpLatencySum)
-
-	// UDP Multicast Latency Histogram
-	registry.MustRegister(UdpMulticastLatencyBucket)
-	registry.MustRegister(UdpMulticastLatencyCount)
-	registry.MustRegister(UdpMulticastLatencySum)
 }
 
 func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
@@ -190,18 +172,6 @@ func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
 	SocketStatsUDPMulticastRxSegs.WithLabelValues(multicastLabels).Add(0)
 	SocketStatsUDPMulticastDrops.WithLabelValues(multicastLabels).Add(0)
 	SocketStatsUDPMulticastConsumeMisses.WithLabelValues(multicastLabels).Add(0)
-
-	// Histograms. They are defined not with Prometheus histogram struct, but as sets of counters.
-	// This means they are rendered differently than "regular" histograms in the metrics docs.
-	// We might consider improving docs for histograms, both Prometheus and Tetragon.
-	for _, b := range enterpriseMetrics.ExampleLatencyBuckets {
-		UdpLatencyBucket.WithLabelValues(socketLabels, b).Add(0)
-		UdpMulticastLatencyBucket.WithLabelValues(multicastLabels, b).Add(0)
-	}
-	UdpLatencyCount.WithLabelValues(socketLabels).Add(0)
-	UdpLatencySum.WithLabelValues(socketLabels).Add(0)
-	UdpMulticastLatencyCount.WithLabelValues(multicastLabels).Add(0)
-	UdpMulticastLatencySum.WithLabelValues(multicastLabels).Add(0)
 }
 
 func InitRawSocketEventsMetrics(registry *prometheus.Registry) {

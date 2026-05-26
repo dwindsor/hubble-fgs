@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
@@ -36,7 +35,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -51,8 +49,6 @@ var (
 	WatermarksBurstTriggerMult uint64
 	WatermarksDipTriggerMult   uint64
 	WatermarksEnabled          = false
-
-	TimestampEnabled = false
 
 	DisableConnect = false
 	DisableClose   = false
@@ -91,10 +87,8 @@ func ConfigureSensor() error {
 }
 
 func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
-	TimestampEnabled = false
 	var err error
 
-	networklatency.Stop(unix.IPPROTO_TCP)
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 		WatermarksEnabled = false
@@ -128,9 +122,7 @@ func processModelMapsEnable() []*program.Map {
 	return maps
 }
 
-func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []*program.Map) {
-	TimestampEnabled = false
-
+func EnableTcp() ([]*program.Program, []*program.Program, []*program.Map) {
 	progsInitSock := []*program.Program{}
 	progsCollectStats := []*program.Program{}
 
@@ -206,14 +198,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		progsCollectStats = append(progsCollectStats, tcpconfig.SendCheck6)
 	}
 
-	if utils.CGroupSKBAvailable() {
-		if timestampEnable {
-			logger.GetLogger().Info("Enabling TCP latency")
-			TimestampEnabled = true
-			progsInitSock = append(progsInitSock, networklatency.Timestamp)
-		}
-	}
-
 	logger.GetLogger().Info("Enable TCP",
 		"statsInterval", StatsInterval,
 		"watermarksEnable", WatermarksEnable,
@@ -225,7 +209,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	return progsInitSock, progsCollectStats, maps
 }
 
-func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
+func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	model.DefaultNewServer()
 
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Metrics != nil {
@@ -267,12 +251,11 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 
 		if tcpconfig.RttHistogramMax < tcpconfig.RttHistogramMin {
 			tcpconfig.RttHistogramMax = 0
-			return false, fmt.Errorf("misconfigured Rtt Histogram: Min value must be less than Max")
+			return fmt.Errorf("misconfigured Rtt Histogram: Min value must be less than Max")
 		}
 	} else {
 		tcpconfig.RttHistogramMax = 0
 	}
-	tcpconfig.LatencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Tcp.Latency, unix.IPPROTO_TCP)
 
 	if spec.Parser.Tcp != nil {
 		DisableConnect = spec.Parser.Tcp.DisableEvents.DisableConnect
@@ -280,11 +263,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		DisableAccept = spec.Parser.Tcp.DisableEvents.DisableAccept
 		DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
 	}
-	tcpLatencyEnable := false
-	if spec.Parser.Tcp != nil {
-		tcpLatencyEnable = spec.Parser.Tcp.Latency.Enable
-	}
-	return tcpLatencyEnable, nil
+	return nil
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {

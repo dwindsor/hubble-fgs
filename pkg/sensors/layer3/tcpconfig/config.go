@@ -15,7 +15,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 
 var (
@@ -200,7 +199,6 @@ var (
 
 var (
 	MetricsEnabled  = false
-	LatencyConfig   networklatency.ProtocolConfig
 	RttHistogramMax uint32
 	RttHistogramMin uint32
 	CurrentLabels   = DefaultLabelFilter()
@@ -226,7 +224,6 @@ func DefaultLabelFilter() metrics.LabelFilter {
 
 func ClearConfig() {
 	MetricsEnabled = false
-	LatencyConfig.Enable = 0
 	RttHistogramMax = 0
 	RttHistogramMin = 0
 	CurrentLabels = DefaultLabelFilter()
