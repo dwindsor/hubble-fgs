@@ -35,7 +35,7 @@ jobs:
           path: go/src/github.com/isovalent/tetragon/
           submodules: true
       - name: Install Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           # renovate: datasource=golang-version depName=go
           go-version: '1.26.3'
@@ -63,7 +63,7 @@ jobs:
           cd go/src/github.com/isovalent/
           tar cz --exclude='tetragon/.git' -f /tmp/tetragon-${{ inputs.arch }}.tar ./tetragon
       - name: Upload Base build
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: tetragon-build-${{ inputs.arch }}
           path: /tmp/tetragon-${{ inputs.arch }}.tar
@@ -84,7 +84,7 @@ jobs:
           tar cz --exclude='tetragon/.git' -f /tmp/tetragon-${{ inputs.arch }}.tar ./tetragon
       - name: Upload build
         if: ${{ inputs.arch == 'amd64' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: tetragon-build-lseg-${{ inputs.arch }}
           path: /tmp/tetragon-${{ inputs.arch }}.tar
@@ -188,7 +188,7 @@ jobs:
 
       - name: Provision LVH VM and run tests
         id: provision-lvh-vm
-        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
+        uses: cilium/little-vm-helper@5ae749011735fd77f30f38add52f1a53a5568671 # v0.0.30
         with:
           install-dependencies: true
           test-name: tetragon-unit-tests
@@ -259,7 +259,7 @@ jobs:
 
       - name: Upload unit test logs
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: tetragon-unit-tests-${{ matrix.kernel }}-${{ inputs.arch }}-${{ matrix.variation }}
           path: logs/unit-tests
@@ -267,7 +267,7 @@ jobs:
 
       - name: Upload modeltest dumps
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: modeltest-json-${{ matrix.kernel }}-${{ inputs.arch }}-${{ matrix.variation }}
           path: logs/model-test-dumps

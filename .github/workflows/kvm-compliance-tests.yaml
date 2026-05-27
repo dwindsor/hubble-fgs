@@ -65,7 +65,7 @@ jobs:
           submodules: true
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
+        uses: cilium/little-vm-helper@5ae749011735fd77f30f38add52f1a53a5568671 # v0.0.30
         with:
           test-name: tetragon-compliance-tests
           host-mount: ./
@@ -95,7 +95,7 @@ jobs:
             ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
+        uses: cilium/little-vm-helper@5ae749011735fd77f30f38add52f1a53a5568671 # v0.0.30
         id: runTests
         with:
           test-name: tetragon-compliance-tests

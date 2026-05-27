@@ -63,7 +63,7 @@ jobs:
           sed -i "s/^[ ]*name: tetragon-operator\.v.*$/  name: tetragon-operator.${{ steps.tag.outputs.tag }}/" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
 
       - name: CI Bundle Build
-        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: ./install/olm
           file: ./install/olm/bundle.Dockerfile
@@ -80,7 +80,7 @@ jobs:
           sed -i "s|quay.io/isovalent-dev/tetragon-ci|${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci|g" ./install/olm/catalog-ci/index.yaml
 
       - name: CI Catalog Index Build
-        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: ./install/olm
           file: ./install/olm/catalog-ci.Dockerfile

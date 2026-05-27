@@ -145,7 +145,7 @@ jobs:
           docker run -i --rm -v "${PWD}"/hubble-fgs:/workdir -u "$(id -u)" mikefarah/yq:${yq_version} e -i ".spec.image = \"${{ steps.vars.outputs.olmIndexImage }}\"" /workdir/tests/e2e/olm/catalogsource.yaml
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
+        uses: cilium/little-vm-helper@5ae749011735fd77f30f38add52f1a53a5568671 # v0.0.30
         with:
           install-dependencies: true
           test-name: tetragon-e2e
@@ -211,7 +211,7 @@ jobs:
           fi
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
+        uses: cilium/little-vm-helper@5ae749011735fd77f30f38add52f1a53a5568671 # v0.0.30
         env:
           OLM_INDEX_IMAGE: ${{ steps.vars.outputs.olmIndexImage }}
           OLM_BUNDLE_IMAGE: ${{ steps.vars.outputs.olmBundleImage }}
@@ -273,7 +273,7 @@ jobs:
 
       - name: Upload end-to-end test logs
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: tetragon-e2e-${{ matrix.kernel }}-${{ matrix.testDir }}
           path: logs/e2e

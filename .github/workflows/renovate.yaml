@@ -39,7 +39,7 @@ jobs:
       # transfer the docker CLI plugin binary.
       - name: Cache Buildx CLI plugin download
         id: cache-buildx
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: /tmp/docker-buildx
           key: ${{ runner.os }}-${{ env.buildx_version }}-buildx
@@ -68,7 +68,7 @@ jobs:
         uses: ./.github/actions/disk-cleanup
 
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@abd08c7549b2a864af5df4a2e369c43f035a6a9d # v46.1.5
+        uses: renovatebot/github-action@693b9ef15eec82123529a37c782242f091365961 # v46.1.14
         env:
           LOG_LEVEL: ${{ github.event.inputs.renovate_log_level_debug == 'false' && 'INFO' || 'DEBUG' }}
           RENOVATE_SECRETS: "{APP_TOKEN: \"${{ steps.get_token.outputs.app_token }}\"}"
