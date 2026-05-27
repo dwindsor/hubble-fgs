@@ -12,6 +12,7 @@
 #include "bpf_rate.h"
 #include "lib/common.h"
 
+#define MAX_SELECTORS 5
 #include "policy_filter.h"
 #include "process_tree.h"
 

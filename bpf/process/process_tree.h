@@ -28,6 +28,7 @@
 #include "networking/bpf_cookie.h"
 #include "bpf_tracing.h"
 
+#define MAX_SELECTORS 5
 #include "policy_filter.h"
 #include "process_endpoint.h"
 #include "lpm.h"

@@ -145,6 +145,7 @@ var mapTypes = map[string]MapType{
 	"tg_cgtracker_map":   BaseMap,
 	"tg_conf_map":        BaseMap,
 	"tg_stats_map":       BaseMap,
+	"tg_errmetrics_map":  BaseMap,
 
 	// the following maps are use as heap
 	"buffer_heap_map":          PinnedMap, // for d_path_local
