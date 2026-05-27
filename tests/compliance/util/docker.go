@@ -16,20 +16,20 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/docker/docker/api/types/container"
-	docker "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/jsonstream"
+	docker "github.com/moby/moby/client"
 
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 	"github.com/isovalent/hubble-fgs/tests/compliance/testcontext"
 )
 
-func ReadMessageStreamUntilError(reader io.Reader) ([]*jsonmessage.JSONMessage, error) {
-	var msgs = []*jsonmessage.JSONMessage{}
+func ReadMessageStreamUntilError(reader io.Reader) ([]*jsonstream.Message, error) {
+	var msgs = []*jsonstream.Message{}
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		msg := new(jsonmessage.JSONMessage)
+		msg := new(jsonstream.Message)
 		bytes := scanner.Bytes()
 		if err := json.Unmarshal(bytes, msg); err != nil {
 			return msgs, fmt.Errorf("failed to deserialize message `%s`: %w", bytes, err)
@@ -47,16 +47,18 @@ func ReadMessageStreamUntilError(reader io.Reader) ([]*jsonmessage.JSONMessage, 
 }
 
 func WaitForContainer(ctx *testcontext.TestContext) (*container.WaitResponse, error) {
-	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	client, err := docker.New(docker.FromEnv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
 
-	waitResChan, errChan := client.ContainerWait(ctx.Ctx, ctx.ContainerId, container.WaitConditionNotRunning)
+	waitRes := client.ContainerWait(ctx.Ctx, ctx.ContainerId, docker.ContainerWaitOptions{
+		Condition: container.WaitConditionNotRunning,
+	})
 	select {
-	case res := <-waitResChan:
+	case res := <-waitRes.Result:
 		return &res, nil
-	case err := <-errChan:
+	case err := <-waitRes.Error:
 		return nil, fmt.Errorf("failed to wait for container: %w", err)
 	}
 }
@@ -64,13 +66,13 @@ func WaitForContainer(ctx *testcontext.TestContext) (*container.WaitResponse, er
 func RunCommandInContainerWithEnvironment(ctx *testcontext.TestContext, env []string, cmd ...string) ([]string, error) {
 	out := []string{}
 
-	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	client, err := docker.New(docker.FromEnv)
 	if err != nil {
 		return []string{}, fmt.Errorf("failed to create docker client: %w", err)
 	}
 
-	res, err := client.ContainerExecCreate(ctx.Ctx, ctx.ContainerId, container.ExecOptions{
-		Tty:          true,
+	res, err := client.ExecCreate(ctx.Ctx, ctx.ContainerId, docker.ExecCreateOptions{
+		TTY:          true,
 		AttachStderr: true,
 		AttachStdout: true,
 		Cmd:          cmd,
@@ -81,9 +83,8 @@ func RunCommandInContainerWithEnvironment(ctx *testcontext.TestContext, env []st
 	}
 	execID := res.ID
 
-	execRes, err := client.ContainerExecAttach(ctx.Ctx, execID, container.ExecStartOptions{
-		Detach: false,
-		Tty:    true,
+	execRes, err := client.ExecAttach(ctx.Ctx, execID, docker.ExecAttachOptions{
+		TTY: true,
 	})
 	if err != nil {
 		return out, fmt.Errorf("failed to exec: %w", err)

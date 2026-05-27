@@ -20,11 +20,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/docker/docker/api/types/build"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
 	"github.com/moby/go-archive"
+	"github.com/moby/moby/client"
 
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
@@ -37,7 +34,7 @@ func Pull(tag string, useExisting bool) ImageSource {
 	return func(ctx context.Context) (string, error) {
 		FixDockerAPIVersion()
 
-		cli, err := client.NewClientWithOpts(client.FromEnv)
+		cli, err := client.New(client.FromEnv)
 		if err != nil {
 			return tag, err
 		}
@@ -50,7 +47,7 @@ func Pull(tag string, useExisting bool) ImageSource {
 		res, err := cli.ImagePull(
 			ctx,
 			tag,
-			image.PullOptions{},
+			client.ImagePullOptions{},
 		)
 		if err != nil {
 			return tag, fmt.Errorf("failed to pull image %q: %w", tag, err)
@@ -72,7 +69,7 @@ func Build(dockerfile, tag string, useExisting bool) ImageSource {
 	return func(ctx context.Context) (string, error) {
 		FixDockerAPIVersion()
 
-		cli, err := client.NewClientWithOpts(client.FromEnv)
+		cli, err := client.New(client.FromEnv)
 		if err != nil {
 			return tag, err
 		}
@@ -96,7 +93,7 @@ func Build(dockerfile, tag string, useExisting bool) ImageSource {
 		res, err := cli.ImageBuild(
 			ctx,
 			buildCtx,
-			build.ImageBuildOptions{
+			client.ImageBuildOptions{
 				Context:    buildCtx,
 				Dockerfile: path.Base(dockerfile),
 				Remove:     true,
@@ -118,10 +115,10 @@ func Build(dockerfile, tag string, useExisting bool) ImageSource {
 }
 
 func exists(ctx context.Context, cli client.APIClient, tag string) bool {
-	images, _ := cli.ImageList(ctx, image.ListOptions{
-		Filters: filters.NewArgs(filters.Arg("reference", tag)),
+	images, _ := cli.ImageList(ctx, client.ImageListOptions{
+		Filters: make(client.Filters).Add("reference", tag),
 	})
-	return len(images) > 0
+	return len(images.Items) > 0
 }
 
 func FixDockerAPIVersion() {

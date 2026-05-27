@@ -23,8 +23,7 @@ import (
 
 	containerdV2 "github.com/containerd/containerd/v2/client"
 	crTypes "github.com/cri-o/cri-o/pkg/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 )
 
 // we support containerd, docker, and cri-o engines
@@ -138,21 +137,21 @@ func ContainerdIdToRootFs(cid, endpoint string) (string, error) {
 func DockerIdToRootFs(cid string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return "", err
 	}
 	defer cli.Close()
 
-	cnts, err := cli.ContainerList(ctx, container.ListOptions{})
+	cnts, err := cli.ContainerList(ctx, client.ContainerListOptions{})
 	if err != nil {
 		return "", err
 	}
 
-	for _, c := range cnts {
+	for _, c := range cnts.Items {
 		if c.ID == cid {
-			if j, err := cli.ContainerInspect(ctx, c.ID); err == nil {
-				return fmt.Sprintf("/proc/%d/root/", j.State.Pid), nil
+			if j, err := cli.ContainerInspect(ctx, c.ID, client.ContainerInspectOptions{}); err == nil {
+				return fmt.Sprintf("/proc/%d/root/", j.Container.State.Pid), nil
 			}
 		}
 	}

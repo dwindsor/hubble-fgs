@@ -28,11 +28,10 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/docker/docker/api/types/build"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	docker "github.com/docker/docker/client"
 	"github.com/moby/go-archive"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	docker "github.com/moby/moby/client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/yaml"
@@ -140,11 +139,10 @@ func (ct *Test) maybeListenForEvents(t *testing.T, ctx *testcontext.TestContext)
 }
 
 func (ct *Test) createTestContainer(t *testing.T, ctx context.Context, cmd ...string) (*testcontext.TestContext, error) {
-	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	client, err := docker.New(docker.FromEnv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
-	client.NegotiateAPIVersion(ctx)
 
 	containerCfg := &container.Config{
 		AttachStdout: true,
@@ -154,7 +152,12 @@ func (ct *Test) createTestContainer(t *testing.T, ctx context.Context, cmd ...st
 		Cmd:          cmd,
 	}
 
-	res, err := client.ContainerCreate(ctx, containerCfg, &container.HostConfig{}, &network.NetworkingConfig{}, &v1.Platform{}, "")
+	res, err := client.ContainerCreate(ctx, docker.ContainerCreateOptions{
+		Config:           containerCfg,
+		HostConfig:       &container.HostConfig{},
+		NetworkingConfig: &network.NetworkingConfig{},
+		Platform:         &v1.Platform{},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create test container: %w", err)
 	}
@@ -171,18 +174,17 @@ func (ct *Test) createTestContainer(t *testing.T, ctx context.Context, cmd ...st
 }
 
 func (ct *Test) startTestContainer(t *testing.T, ctx *testcontext.TestContext) error {
-	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	client, err := docker.New(docker.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
-	client.NegotiateAPIVersion(ctx.Ctx)
 
-	err = client.ContainerStart(ctx.Ctx, ctx.ContainerId, container.StartOptions{})
+	_, err = client.ContainerStart(ctx.Ctx, ctx.ContainerId, docker.ContainerStartOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to start test container: %w", err)
 	}
 
-	logReader, err := client.ContainerLogs(ctx.Ctx, ctx.ContainerId, container.LogsOptions{
+	logReader, err := client.ContainerLogs(ctx.Ctx, ctx.ContainerId, docker.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Since:      "",
@@ -212,18 +214,17 @@ func (ct *Test) startTestContainer(t *testing.T, ctx *testcontext.TestContext) e
 }
 
 func (ct *Test) stopTestContainer(ctx *testcontext.TestContext) error {
-	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	client, err := docker.New(docker.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
-	client.NegotiateAPIVersion(ctx.Ctx)
 
-	if err := client.ContainerStop(ctx.Ctx, ctx.ContainerId, container.StopOptions{}); err != nil {
+	if _, err := client.ContainerStop(ctx.Ctx, ctx.ContainerId, docker.ContainerStopOptions{}); err != nil {
 		return fmt.Errorf("failed to stop container: %w", err)
 	}
 
 	if config.Config().RemoveContainer {
-		if err := client.ContainerRemove(ctx.Ctx, ctx.ContainerId, container.RemoveOptions{
+		if _, err := client.ContainerRemove(ctx.Ctx, ctx.ContainerId, docker.ContainerRemoveOptions{
 			RemoveVolumes: true,
 			RemoveLinks:   false,
 			Force:         true,
@@ -270,13 +271,12 @@ func (ct *Test) Build(t *testing.T, ctx context.Context) error {
 		return fmt.Errorf("failed to open build context as tar archive")
 	}
 
-	client, err := docker.NewClientWithOpts(docker.FromEnv)
+	client, err := docker.New(docker.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
-	client.NegotiateAPIVersion(ctx)
 
-	res, err := client.ImageBuild(ctx, tar, build.ImageBuildOptions{
+	res, err := client.ImageBuild(ctx, tar, docker.ImageBuildOptions{
 		Tags:       []string{ct.Tag()},
 		Dockerfile: "Dockerfile",
 		Remove:     true,
