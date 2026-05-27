@@ -42,7 +42,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Third builder (cross-)compile a stripped gops
 # Chainguard go-dev image
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
-FROM --platform=$BUILDPLATFORM artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:1.26.2-dev AS gops
+FROM --platform=$BUILDPLATFORM artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:v1.26.3-dev AS gops
 ARG TARGETARCH
 # Chainguard go-dev uses wolfi, install binutils and git via apk
 RUN apk add --no-cache binutils git \
