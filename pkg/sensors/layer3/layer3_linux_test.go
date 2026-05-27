@@ -105,6 +105,8 @@ func TestMain(m *testing.M) {
 			runUdpMulticastRTPClient(multicastTestRTPConnID)
 		case "rtpseq":
 			runUdpMulticastRTPClient(multicastTestRTPSeq)
+		case "rtpsample":
+			runUdpMulticastRTPClient(multicastTestRTPSample)
 		}
 		os.Exit(0)
 	}

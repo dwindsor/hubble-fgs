@@ -15,6 +15,7 @@ package layer3_test
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -53,10 +54,15 @@ type ipAndPort struct {
 }
 
 const (
-	numRTPSeqPackets = 12
+	numRTPSeqPackets    = 12
+	numRTPSamplePackets = 5
 )
 
 var (
+	// The following values come from sample data. The second should hash to a value under our .01 threshold.
+	// These are to be stored in MSB in the packets in two parts: the upper 4 bytes should be written to the start of the packet;
+	// and the lower 4 bytes to packet offset 8.
+	RTPSampleData      = []uint64{0x80005779f5d6285e, 0x8000577af5d6285e, 0x8000577bf5d6285e, 0x8000577cf5d6285e, 0x8000577df5d6285e}
 	udpMulticastRTPIP4 = map[multicastTest]ipAndPort{
 		multicastTestRTPConnID: {"225.3.3.3", 8858},
 		multicastTestRTPSeq:    {"225.4.4.4", 9858},
@@ -81,6 +87,12 @@ func getDefaultInterfaceAddress() (string, error) {
 	defaultRouteFields := strings.Fields(string(defaultRoute))
 	ifAddr := defaultRouteFields[8]
 	return ifAddr, nil
+}
+
+func htonll(v uint64) uint64 {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, v)
+	return binary.LittleEndian.Uint64(b)
 }
 
 func TestUdpMulticastRTPConnID(t *testing.T) {
@@ -382,9 +394,160 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUdpMulticastRTPSampling(t *testing.T) {
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	if !kernels.MinKernelVersion("5.15.0") {
+		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
+	}
+
+	ipAndPort, ok := udpMulticastRTPIP4[multicastTestRTPSample]
+	require.True(t, ok)
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
+
+	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
+	enterpriseOption.Config.EnableNetworkEvents = true
+	oldMulticastAppID := enterpriseOption.Config.MulticastAppID
+	enterpriseOption.Config.MulticastAppID = enterpriseOption.MulticastAppRTP
+	oldMulticastPorts := enterpriseOption.Config.MulticastPorts
+	enterpriseOption.Config.MulticastPorts = []int{udpMulticastPort}
+	oldMulticastSamplePercent := enterpriseOption.Config.MulticastSamplePercent
+	enterpriseOption.Config.MulticastSamplePercent = .01
+	t.Cleanup(func() {
+		enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
+		enterpriseOption.Config.MulticastAppID = oldMulticastAppID
+		enterpriseOption.Config.MulticastPorts = oldMulticastPorts
+		enterpriseOption.Config.MulticastSamplePercent = oldMulticastSamplePercent
+	})
+
+	server := getSocatCommand(t, "socat")
+	ifAddr, err := getDefaultInterfaceAddress()
+	require.NoError(t, err)
+
+	socatArg1 := "-"
+	socatArg2 := fmt.Sprintf("UDP4-RECVFROM:%d,ip-add-membership=%s:%s,fork", udpMulticastPort, udpMulticastIP4, ifAddr)
+	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
+	socatSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full(socatArgs))
+
+	clientProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
+		WithArguments(sm.Full("-udpMulticastClient rtpsample"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(clientProcess),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(socatSrvChecker),
+		ec.NewProcessMulticastSampleChecker("clientSample").
+			WithProcess(clientProcess).
+			WithDestinationPort(uint32(udpMulticastPort)).
+			WithData(htonll(RTPSampleData[1])).
+			WithDirection(tetragon.Direction_SEND),
+		ec.NewProcessMulticastSampleChecker("serverSample").
+			WithProcess(socatSrvChecker).
+			WithSourcePort(uint32(udpMulticastPort)).
+			WithData(htonll(RTPSampleData[1])).
+			WithDirection(tetragon.Direction_RECEIVE),
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(socatSrvChecker).
+			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0 * time.Second)},
+				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
+		ec.NewProcessExitChecker("serverExit").
+			WithProcess(socatSrvChecker),
+	)
+
+	unexpectedSamplesCheckers := []*ec.UnorderedEventChecker{
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample0").
+				WithData(htonll(RTPSampleData[0]))),
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample2").
+				WithData(htonll(RTPSampleData[2]))),
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample3").
+				WithData(htonll(RTPSampleData[3]))),
+		ec.NewUnorderedEventChecker(
+			ec.NewProcessMulticastSampleChecker("sample4").
+				WithData(htonll(RTPSampleData[4]))),
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfigBasic); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	base := base.GetInitialSensorTest(t)
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	layer3.StartLayer3Progs(ctx, nil)
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	cmdServer := exec.Command(server, socatArg1, socatArg2)
+	serverStdout, err := cmdServer.StdoutPipe()
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(udpMulticastPort), syscall.IPPROTO_UDP, syscall.AF_INET)
+	require.NoError(t, err)
+
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpsample")
+	clientCmd.Stdout = os.Stderr
+	clientCmd.Stderr = os.Stderr
+	err = clientCmd.Run()
+	require.NoError(t, err, "cannot start client")
+
+	// Wait for the data to arrive.
+	serverData := make([]byte, UDPBUFSIZE+UDPBUFVAR)
+	packetsReceived := 0
+	for packetsReceived < numRTPSamplePackets {
+		numBytesRead, err := serverStdout.Read(serverData)
+		require.NoError(t, err, "cannot read from server stdout")
+		if numBytesRead > 0 {
+			packetsReceived++
+		}
+	}
+
+	killAndWaitCommand(t, cmdServer)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	require.NoError(t, err)
+
+	// Check we didn't receive samples for the other packets.
+	for _, c := range unexpectedSamplesCheckers {
+		err = jsonchecker.JsonTestCheckExpect(t, c, true)
+		require.NoError(t, err)
+	}
+}
+
 func sendRTPSeqData(socket net.Conn, buf []byte, ssrc uint, seqNum uint) {
 	storeMSB(buf, 2, 2, uint64(seqNum))
 	storeMSB(buf, 8, 4, uint64(ssrc))
+	_, err := socket.Write(buf)
+	if err != nil {
+		fmt.Printf("ERROR writing to socket\n")
+		panic(err)
+	}
+	time.Sleep(10 * time.Millisecond)
+}
+
+func sendRTPSampleData(socket net.Conn, buf []byte, data uint64) {
+	storeMSB(buf, 0, 4, data>>32)        // upper u32
+	storeMSB(buf, 8, 4, data&0xFFFFFFFF) // lower u32
 	_, err := socket.Write(buf)
 	if err != nil {
 		fmt.Printf("ERROR writing to socket\n")
@@ -456,5 +619,9 @@ func runUdpMulticastRTPClient(ty multicastTest) {
 		sendRTPSeqData(socket, buf, 46, 3)
 		sendRTPSeqData(socket, buf, 46, 5)
 		sendRTPSeqData(socket, buf, 46, 6)
+	case multicastTestRTPSample:
+		for _, d := range RTPSampleData {
+			sendRTPSampleData(socket, buf, d)
+		}
 	}
 }
