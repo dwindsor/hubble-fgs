@@ -47,13 +47,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type ipAndPort struct {
+	IP   string
+	port int
+}
+
 const (
-	localhostIP4            = "127.0.0.1"
-	numRTPSeqPackets        = 12
-	udpMulticastRTPConnIP4  = "225.3.3.3"
-	udpMulticastRTPConnPort = 8858
-	udpMulticastRTPSeqIP4   = "225.4.4.4"
-	udpMulticastRTPSeqPort  = 9858
+	numRTPSeqPackets = 12
+)
+
+var (
+	udpMulticastRTPIP4 = map[multicastTest]ipAndPort{
+		multicastTestRTPConnID: {"225.3.3.3", 8858},
+		multicastTestRTPSeq:    {"225.4.4.4", 9858},
+		multicastTestRTPSample: {"225.6.6.6", 8058},
+	}
 )
 
 func storeMSB(buf []byte, index uint, size uint, value uint64) {
@@ -84,8 +92,11 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
-	udpMulticastIP4 := udpMulticastRTPConnIP4
-	udpMulticastPort := udpMulticastRTPConnPort
+	ipAndPort, ok := udpMulticastRTPIP4[multicastTestRTPConnID]
+	require.True(t, ok)
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
 
 	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
 	enterpriseOption.Config.EnableNetworkEvents = true
@@ -248,8 +259,11 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
-	udpMulticastIP4 := udpMulticastRTPSeqIP4
-	udpMulticastPort := udpMulticastRTPSeqPort
+	ipAndPort, ok := udpMulticastRTPIP4[multicastTestRTPSeq]
+	require.True(t, ok)
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
 
 	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
 	enterpriseOption.Config.EnableNetworkEvents = true
@@ -380,16 +394,14 @@ func sendRTPSeqData(socket net.Conn, buf []byte, ssrc uint, seqNum uint) {
 }
 
 func runUdpMulticastRTPClient(ty multicastTest) {
-	var udpMulticastIP4 string
-	var udpMulticastPort int
-	switch ty {
-	case multicastTestRTPConnID:
-		udpMulticastIP4 = udpMulticastRTPConnIP4
-		udpMulticastPort = udpMulticastRTPConnPort
-	case multicastTestRTPSeq:
-		udpMulticastIP4 = udpMulticastRTPSeqIP4
-		udpMulticastPort = udpMulticastRTPSeqPort
+	ipAndPort, ok := udpMulticastRTPIP4[ty]
+	if !ok {
+		fmt.Printf("ERROR invalid test")
+		panic("ERROR invalid test")
 	}
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
 
 	ifAddr, err := getDefaultInterfaceAddress()
 	if err != nil {

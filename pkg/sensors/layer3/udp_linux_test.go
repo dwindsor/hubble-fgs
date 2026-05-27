@@ -236,6 +236,7 @@ const (
 	multicastTestLSEGSample
 	multicastTestRTPConnID
 	multicastTestRTPSeq
+	multicastTestRTPSample
 )
 
 func runUdpServer() {

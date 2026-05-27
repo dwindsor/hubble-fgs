@@ -51,21 +51,19 @@ import (
 )
 
 const (
-	numLSEGSeqPackets        = 33
-	udpMulticastLSEGConnIP4  = "225.1.1.1"
-	udpMulticastLSEGConnPort = 6858
-	udpMulticastLSEGSeqIP4   = "225.2.2.2"
-	udpMulticastLSEGSeqPort  = 7858
-
-	numLSEGSamplePackets       = 5
-	udpMulticastLSEGSampleIP4  = "225.5.5.5"
-	udpMulticastLSEGSamplePort = 7958
+	numLSEGSeqPackets    = 33
+	numLSEGSamplePackets = 5
 )
 
 var (
 	// The following values come from sample data. The second should hash to a value under our .01 threshold.
 	// These are to be stored in MSB in the packets.
-	LSEGSampleData = []uint64{0x4ae42904b1251302, 0x4aa42915e5c60100, 0x4a4422c867541503, 0x0a4422c867550000, 0x4aa42915dc1a0501}
+	LSEGSampleData      = []uint64{0x4ae42904b1251302, 0x4aa42915e5c60100, 0x4a4422c867541503, 0x0a4422c867550000, 0x4aa42915dc1a0501}
+	udpMulticastLSEGIP4 = map[multicastTest]ipAndPort{
+		multicastTestLSEGConnID: {"225.1.1.1", 6858},
+		multicastTestLSEGSeq:    {"225.2.2.2", 7858},
+		multicastTestLSEGSample: {"225.5.5.5", 7958},
+	}
 )
 
 func TestUdpMulticastLSEGConnID(t *testing.T) {
@@ -77,8 +75,11 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
-	udpMulticastIP4 := udpMulticastLSEGConnIP4
-	udpMulticastPort := udpMulticastLSEGConnPort
+	ipAndPort, ok := udpMulticastLSEGIP4[multicastTestLSEGConnID]
+	require.True(t, ok)
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
 
 	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
 	enterpriseOption.Config.EnableNetworkEvents = true
@@ -241,8 +242,11 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
-	udpMulticastIP4 := udpMulticastLSEGSeqIP4
-	udpMulticastPort := udpMulticastLSEGSeqPort
+	ipAndPort, ok := udpMulticastLSEGIP4[multicastTestLSEGSeq]
+	require.True(t, ok)
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
 
 	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
 	enterpriseOption.Config.EnableNetworkEvents = true
@@ -391,8 +395,11 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
-	udpMulticastIP4 := udpMulticastLSEGSampleIP4
-	udpMulticastPort := udpMulticastLSEGSamplePort
+	ipAndPort, ok := udpMulticastLSEGIP4[multicastTestLSEGSample]
+	require.True(t, ok)
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
 
 	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
 	enterpriseOption.Config.EnableNetworkEvents = true
@@ -553,19 +560,14 @@ func sendLSEGSampleData(socket net.Conn, buf []byte, data uint64) {
 }
 
 func runUdpMulticastLSEGClient(ty multicastTest) {
-	var udpMulticastIP4 string
-	var udpMulticastPort int
-	switch ty {
-	case multicastTestLSEGConnID:
-		udpMulticastIP4 = udpMulticastLSEGConnIP4
-		udpMulticastPort = udpMulticastLSEGConnPort
-	case multicastTestLSEGSeq:
-		udpMulticastIP4 = udpMulticastLSEGSeqIP4
-		udpMulticastPort = udpMulticastLSEGSeqPort
-	case multicastTestLSEGSample:
-		udpMulticastIP4 = udpMulticastLSEGSampleIP4
-		udpMulticastPort = udpMulticastLSEGSamplePort
+	ipAndPort, ok := udpMulticastLSEGIP4[ty]
+	if !ok {
+		fmt.Printf("ERROR invalid test")
+		panic("ERROR invalid test")
 	}
+
+	udpMulticastIP4 := ipAndPort.IP
+	udpMulticastPort := ipAndPort.port
 
 	ifAddr, err := getDefaultInterfaceAddress()
 	if err != nil {
