@@ -359,11 +359,11 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 // Remove the provided Process Tree Key from anything used by the Application Model, including:
 // - the process tree map
 // - the destination endpoint map
-// - the syscall map
+// - the syscall map (if syscall tracking is enabled)
 func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, endpt *ebpf.Map, sm *ebpf.Map) {
 
 	// Shouldn't really ever happen, but give up if any of the maps/key are nil
-	if key == nil || tree == nil || endpt == nil || sm == nil {
+	if key == nil || tree == nil || endpt == nil || (sm == nil && option.Config.EnableSyscallTracking) {
 		logger.GetLogger().Warn("nil argument provided to removeProcessTreeKeyFromModel", "key", key, "tree", tree, "endpt", endpt, "sm", sm)
 		return
 	}
