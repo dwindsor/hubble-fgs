@@ -155,6 +155,14 @@ udp_sample_multicast(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		}
 		break;
 #endif
+	case MULTICAST_APP_RTP:
+		data = udp_sample_rtp(skb, payload_off, payload_sz);
+		if (!data) {
+			emit_ip_error_event(skb, ip, cookie, ipv6,
+					    ip->version, send + 1, 0, IP_ERROR_UDP_SAMPLE_READ_PAYLOAD_DATA);
+			return;
+		}
+		break;
 	default:
 		return;
 	}

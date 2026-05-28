@@ -19,9 +19,15 @@
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
 #include "config.h"
+#include "bpf_udp_mcast.h"
+#include "jhash.h"
 
 #define RTP_SEQNUM_OFFSET 2
 #define RTP_SSRC_OFFSET	  8
+
+// For packet sampling, we hash the first 4 bytes of the UDP payload (RTP header) as this
+// contains the sequence number, and 4 bytes from offset 8 as this contains the SSRC.
+// jhash distributes these fairly evenly across the 32 bit space.
 
 // We return 0 in the case of errors. We might improve this in time.
 static inline __attribute__((always_inline)) u64
@@ -112,6 +118,26 @@ udp_seq_err_check_rtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 	e->seq_num_expected = expected_seq_num;
 	e->seq_num_received = seq_num;
 	perf_event_output_metric(skb, ISO_MSG_OP_UDP_SEQ_ERROR, &tcpmon_map, BPF_F_CURRENT_CPU, e, sizeof(struct msg_udp_seq_error_event));
+}
+
+__attribute__((noinline)) u64
+udp_sample_rtp(struct __sk_buff *skb, int payload_off, int payload_sz)
+{
+	u64 ssrc = 0;
+	u64 sn = 0;
+	u64 data;
+
+	if (payload_sz < RTP_SSRC_OFFSET + sizeof(u32))
+		return 0;
+
+	if (skb_load_bytes(skb, payload_off, &sn, sizeof(u32)) < 0)
+		return 0;
+	if (skb_load_bytes(skb, payload_off + RTP_SSRC_OFFSET, &ssrc, sizeof(u32)) < 0)
+		return 0;
+	// Appeasing the verifier.
+	data = (ssrc << 32) | sn;
+
+	return data;
 }
 
 #endif // __BPF_UDP_RTP_H__
