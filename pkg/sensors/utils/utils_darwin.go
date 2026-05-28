@@ -8,22 +8,36 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-//go:build linux
+package utils
 
-package file
+func SkSkbParserRequired() bool {
+	return false
+}
 
-import (
-	"syscall"
+func EnableV511Progs() bool {
+	return false
+}
 
-	iouring "github.com/iceber/iouring-go/syscall"
-)
+func SupportProcessTree() bool {
+	return false
+}
 
-func SupportIoUring() bool {
-	params := iouring.IOURingParams{}
-	fd, err := iouring.IOURingSetup(8, &params)
-	if err != nil || fd == -1 {
-		return false
-	}
-	syscall.Close(fd)
+func SupportCGroupSKBProbeRead() bool {
+	return false
+}
+
+func CGroupSKBAvailable() bool {
+	return false
+}
+
+func UDPBindNeedsDummies() bool {
 	return true
+}
+
+func RawHooksAvailable() bool {
+	return false
+}
+
+func RTTHookAvailable() bool {
+	return false
 }

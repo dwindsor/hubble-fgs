@@ -8,22 +8,24 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-//go:build linux
+package utils
 
-package file
-
-import (
-	"syscall"
-
-	iouring "github.com/iceber/iouring-go/syscall"
-)
-
-func SupportIoUring() bool {
-	params := iouring.IOURingParams{}
-	fd, err := iouring.IOURingSetup(8, &params)
-	if err != nil || fd == -1 {
-		return false
-	}
-	syscall.Close(fd)
+func SupportEnforcement() bool {
 	return true
+}
+
+func SupportFentry() bool {
+	return false
+}
+
+func SupportFmodRet() bool {
+	return false
+}
+
+func SupportLSM() bool {
+	return false
+}
+
+func SockopsSupportsCgroupAncestorHelper() bool {
+	return false
 }

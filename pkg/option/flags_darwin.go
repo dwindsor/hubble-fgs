@@ -8,22 +8,15 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-//go:build linux
-
-package file
+package option
 
 import (
-	"syscall"
-
-	iouring "github.com/iceber/iouring-go/syscall"
+	"github.com/spf13/pflag"
 )
 
-func SupportIoUring() bool {
-	params := iouring.IOURingParams{}
-	fd, err := iouring.IOURingSetup(8, &params)
-	if err != nil || fd == -1 {
-		return false
-	}
-	syscall.Close(fd)
-	return true
+func AddOSSpecificFlags(_ *pflag.FlagSet) {
+}
+
+func platformValidateConfig(_ config) error {
+	return nil
 }
