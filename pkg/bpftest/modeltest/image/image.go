@@ -19,6 +19,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/moby/go-archive"
 	"github.com/moby/moby/client"
@@ -47,7 +50,11 @@ func Pull(tag string, useExisting bool) ImageSource {
 		res, err := cli.ImagePull(
 			ctx,
 			tag,
-			client.ImagePullOptions{},
+			client.ImagePullOptions{
+				// Pull only the host platform to avoid multi-platform manifest
+				// issues when loading into kind (kubernetes-sigs/kind#3795).
+				Platforms: []ocispec.Platform{{OS: "linux", Architecture: runtime.GOARCH}},
+			},
 		)
 		if err != nil {
 			return tag, fmt.Errorf("failed to pull image %q: %w", tag, err)
