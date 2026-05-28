@@ -11,6 +11,8 @@
 #ifndef __BPF_UDP_MCAST_H__
 #define __BPF_UDP_MCAST_H__
 
+#define SAMPLE_BYTES_TO_HASH 8
+
 #include "vmlinux.h"
 #include "lib/bpf_helpers.h"
 #include "lib/networkmsg.h"
@@ -20,6 +22,7 @@
 #include "config.h"
 #include "bpf_udp_lseg_mtp.h"
 #include "bpf_udp_rtp.h"
+#include "jhash.h"
 
 // We include a string here that we don't expect to be found elsewhere in the code base,
 // so that we can grep for it and convince ourselves (in CI) that the string here was
@@ -136,15 +139,56 @@ udp_sample_multicast(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		     struct udp_info_key *k, struct udp_info_value *v,
 		     u64 multicast_app_id, u32 sample_threshold)
 {
+	struct msg_ip_event *e;
+	int zero = 0;
+	u64 data;
+	u32 hash;
+
 	switch (multicast_app_id) {
 #ifdef LSEG
 	case MULTICAST_APP_LSEGMTP:
-		udp_sample_lseg(skb, ip, ipv6, cookie,
-				payload_off, payload_sz, send, process, k, v,
-				sample_threshold);
-		return;
+		data = udp_sample_lseg(skb, payload_off, payload_sz);
+		if (!data) {
+			emit_ip_error_event(skb, ip, cookie, ipv6,
+					    ip->version, send + 1, 0, IP_ERROR_UDP_SAMPLE_READ_PAYLOAD_DATA);
+			return;
+		}
+		break;
 #endif
+	default:
+		return;
 	}
+
+	hash = jhash(&data, SAMPLE_BYTES_TO_HASH, 0);
+
+	if (hash > sample_threshold)
+		return;
+
+	// Create event.
+	e = (struct msg_ip_event *)map_lookup_elem(&tg_h_event, &zero);
+	if (!e)
+		return;
+
+	e->common.op = ISO_MSG_OP_MULTICAST_SAMPLE;
+	e->common.size = sizeof(struct msg_ip_event);
+	e->common.ktime = tg_get_ktime();
+	if (process) {
+		e->key.pid = process->key.pid;
+		e->key.ktime = process->key.ktime;
+	} else {
+		e->key.pid = 0;
+		e->key.ktime = 0;
+	}
+	e->tuple = k->tuple;
+	e->socket_cookie = k->cookie;
+	e->version = k->version;
+	e->ps_version = v->ps_version;
+	e->socket_flags = send;
+	e->create_time = 0;
+	e->close_time = 0;
+	// add the 8 bytes that we've hashed for later comparison.
+	e->ret = data;
+	perf_event_output_metric(skb, ISO_MSG_OP_MULTICAST_SAMPLE, &tcpmon_map, BPF_F_CURRENT_CPU, e, sizeof(struct msg_ip_event));
 }
 
 static inline __attribute__((always_inline)) void
