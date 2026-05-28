@@ -237,8 +237,8 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
-	if !kernels.MinKernelVersion("5.15.0") {
-		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
+	if !kernels.MinKernelVersion("6.12") {
+		t.Skip("Test requires kernel >=6.12 as it requires multicast sequence checking")
 	}
 
 	ipAndPort, ok := udpMulticastLSEGIP4[multicastTestLSEGSeq]
@@ -390,8 +390,8 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
-	if !kernels.MinKernelVersion("5.15.0") {
-		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
+	if !kernels.MinKernelVersion("6.12") {
+		t.Skip("Test requires kernel >=6.12 as it requires packet sampling")
 	}
 
 	ipAndPort, ok := udpMulticastLSEGIP4[multicastTestLSEGSample]
