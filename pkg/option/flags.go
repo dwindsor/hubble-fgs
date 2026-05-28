@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/defaults"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -408,6 +409,10 @@ func validateConfig(config config) error {
 	// if multicast sample percent is specified, but the app or ports weren't specified
 	if config.MulticastSamplePercent > 0 && (config.MulticastAppID == MulticastNoApp || len(config.MulticastPorts) == 0) {
 		return fmt.Errorf("multicast observability requires the app to be specified with --%s and the ports to be specified with --%s", keyMulticastApp, keyMulticastPorts)
+	}
+	// multicast inspection (sequence checking and packet sampling) only available from kernel >=v6.12
+	if (config.MulticastSeqCheck || config.MulticastSamplePercent > 0) && !kernels.MinKernelVersion("6.12") {
+		return fmt.Errorf("multicast sequence checking and packet sampling require kernel >=v6.12")
 	}
 
 	// Network policies can be loaded via the k8s resource watcher as well

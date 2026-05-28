@@ -20,6 +20,8 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
+volatile __CONST bool TG_MULTICAST_INSPECTION = false;
+
 __attribute__((section("cgroup_skb/ingress"), used)) int
 tg_cgroup_ingress(struct __sk_buff *skb)
 {

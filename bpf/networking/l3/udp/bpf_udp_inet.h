@@ -33,6 +33,7 @@
 #endif
 
 extern volatile __CONST bool CGROUP_PROBE_READ;
+extern volatile __CONST bool TG_MULTICAST_INSPECTION;
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
@@ -210,8 +211,9 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		return 1;
 
 #ifndef IS_KPROBE
-	udp_check_multicast(skb, ip, ipv6, cookie, payload_off,
-			    payload_sz, send, process, key, value);
+	if (TG_MULTICAST_INSPECTION)
+		udp_check_multicast(skb, ip, ipv6, cookie, payload_off,
+				    payload_sz, send, process, key, value);
 #endif
 
 	cookie_ver = process->version;
