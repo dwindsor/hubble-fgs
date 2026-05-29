@@ -1,6 +1,6 @@
 module github.com/isovalent/hubble-fgs
 
-go 1.26.2
+go 1.26.3
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
@@ -15,7 +15,7 @@ require (
 	github.com/cilium/tetragon v1.8.0-pre.0.0.20260527083911-10f8f11a3755
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
-	github.com/containerd/containerd/v2 v2.3.0
+	github.com/containerd/containerd/v2 v2.3.1
 	github.com/containernetworking/plugins v1.9.1
 	github.com/cri-o/cri-o v1.36.0
 	github.com/dustin/go-humanize v1.0.1
@@ -103,7 +103,7 @@ require (
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/cloudflare/cfssl v1.6.5 // indirect
 	github.com/containerd/cgroups/v3 v3.1.3 // indirect
-	github.com/containerd/containerd/api v1.11.0 // indirect
+	github.com/containerd/containerd/api v1.11.1 // indirect
 	github.com/containerd/continuity v0.5.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
