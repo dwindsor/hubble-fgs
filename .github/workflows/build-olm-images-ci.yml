@@ -63,14 +63,21 @@ jobs:
           sed -i "s/^[ ]*name: tetragon-operator\.v.*$/  name: tetragon-operator.${{ steps.tag.outputs.tag }}/" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
 
       - name: CI Bundle Build
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: ./install/olm
-          file: ./install/olm/bundle.Dockerfile
-          push: true
-          provenance: false
-          tags: |
-            ${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-bundle-ci:${{ steps.tag.outputs.tag }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if docker buildx build \
+              --file ./install/olm/bundle.Dockerfile \
+              --provenance false \
+              --tag ${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-bundle-ci:${{ steps.tag.outputs.tag }} \
+              --push ./install/olm; then
+              exit 0
+            fi
+            [ $attempt -lt 5 ] || break
+            echo "Attempt ${attempt} failed, retrying in $((attempt * 30))s..."
+            sleep $((attempt * 30))
+          done
+          echo "Build failed after 5 attempts"
+          exit 1
 
       - name: Update catalog index references
         run: |
@@ -80,11 +87,18 @@ jobs:
           sed -i "s|quay.io/isovalent-dev/tetragon-ci|${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci|g" ./install/olm/catalog-ci/index.yaml
 
       - name: CI Catalog Index Build
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: ./install/olm
-          file: ./install/olm/catalog-ci.Dockerfile
-          push: true
-          provenance: false
-          tags: |
-            ${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-index-ci:${{ steps.tag.outputs.tag }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if docker buildx build \
+              --file ./install/olm/catalog-ci.Dockerfile \
+              --provenance false \
+              --tag ${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-index-ci:${{ steps.tag.outputs.tag }} \
+              --push ./install/olm; then
+              exit 0
+            fi
+            [ $attempt -lt 5 ] || break
+            echo "Attempt ${attempt} failed, retrying in $((attempt * 30))s..."
+            sleep $((attempt * 30))
+          done
+          echo "Build failed after 5 attempts"
+          exit 1

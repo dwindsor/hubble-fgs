@@ -42,7 +42,18 @@ jobs:
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_TOKEN }}
       - name: Pull Docker image
-        run: docker pull ${{ matrix.registry || format('{0}/isovalent-eng-docker', vars.ARTIFACTORY_HOST) }}/${{ matrix.image }}:${{ matrix.branch }}-latest
+        run: |
+          image="${{ matrix.registry || format('{0}/isovalent-eng-docker', vars.ARTIFACTORY_HOST) }}/${{ matrix.image }}:${{ matrix.branch }}-latest"
+          for attempt in 1 2 3 4 5; do
+            if docker pull "${image}"; then
+              exit 0
+            fi
+            [ $attempt -lt 5 ] || break
+            echo "Attempt ${attempt} failed, retrying in $((attempt * 10))s..."
+            sleep $((attempt * 10))
+          done
+          echo "Failed to pull ${image} after 5 attempts"
+          exit 1
       - name: Checkout latest VEX data
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

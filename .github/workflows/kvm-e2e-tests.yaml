@@ -183,14 +183,19 @@ jobs:
             done
 
       - name: Pull Docker Images
-        run: |
-          set -e
-          docker pull ${{ steps.vars.outputs.agentImage }}
-          docker pull ${{ steps.vars.outputs.operatorImage }}
-          if [ "${{ matrix.testDir }}" = "olm" ]; then
-            docker pull ${{ steps.vars.outputs.olmIndexImage }}
-            docker pull ${{ steps.vars.outputs.olmBundleImage }}
-          fi
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
+        with:
+          timeout_minutes: 2
+          max_attempts: 5
+          retry_wait_seconds: 30
+          command: |
+            set -e
+            docker pull ${{ steps.vars.outputs.agentImage }}
+            docker pull ${{ steps.vars.outputs.operatorImage }}
+            if [ "${{ matrix.testDir }}" = "olm" ]; then
+              docker pull ${{ steps.vars.outputs.olmIndexImage }}
+              docker pull ${{ steps.vars.outputs.olmBundleImage }}
+            fi
 
       - name: Fetch Helm subcharts
         uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4

@@ -129,18 +129,35 @@ jobs:
       # - self_contained (tetragon): build with default Alpine base (no BASE_IMAGE override)
       # - thin wrapper (aggregator/operator): build with BASE_IMAGE=UBI
       - name: Build and Push stage image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         id: build-and-push-stage
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          target: ${{ matrix.target }}
-          push: true
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            ${{ !matrix.self_contained && format('BASE_IMAGE={0}', matrix.ubi_image) || '' }}
-          tags: |
-            ${{ steps.tags.outputs.stage_tags }}
+        run: |
+          # Build --tag flags from multi-line tags output
+          tag_flags=""
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && tag_flags="${tag_flags} --tag ${tag}"
+          done <<< "${{ steps.tags.outputs.stage_tags }}"
+
+          build_arg_flags=""
+          build_arg="${{ !matrix.self_contained && format('BASE_IMAGE={0}', matrix.ubi_image) || '' }}"
+          [ -n "${build_arg}" ] && build_arg_flags="--build-arg ${build_arg}"
+
+          for attempt in 1 2 3 4 5; do
+            if docker buildx build \
+              --file ${{ matrix.dockerfile }} \
+              --target ${{ matrix.target }} \
+              --platform linux/amd64,linux/arm64 \
+              --attest type=provenance,mode=min,inline-only=true,builder-id=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }} \
+              ${build_arg_flags} \
+              ${tag_flags} \
+              --push .; then
+              exit 0
+            fi
+            [ $attempt -lt 5 ] || break
+            echo "Attempt ${attempt} failed, retrying in $((attempt * 30))s..."
+            sleep $((attempt * 30))
+          done
+          echo "Build failed after 5 attempts"
+          exit 1
 
       - name: Get first tag for subsequent steps
         id: first-tag
@@ -154,20 +171,45 @@ jobs:
       # - self_contained (tetragon): copies binaries from source into UBI base
       # - thin wrapper (aggregator/operator): layers labels and LICENSE on top
       - name: Build and Push UBI image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         id: build-and-push
-        with:
-          context: .
-          file: ${{ matrix.wrapper_dockerfile }}
-          push: true
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            ${{ matrix.self_contained && format('SOURCE_IMAGE={0}', steps.first-tag.outputs.stage_tag) || format('BASE_IMAGE={0}', steps.first-tag.outputs.stage_tag) }}
-            ${{ matrix.self_contained && format('UBI_IMAGE={0}', matrix.ubi_image) || '' }}
-            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            VERSION=${{ inputs.tag || inputs.sha }}
-          tags: |
-            ${{ steps.tags.outputs.tags }}
+        run: |
+          # Build --tag flags from multi-line tags output
+          tag_flags=""
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && tag_flags="${tag_flags} --tag ${tag}"
+          done <<< "${{ steps.tags.outputs.tags }}"
+
+          # Build --build-arg flags
+          build_arg_flags=""
+          if ${{ matrix.self_contained }}; then
+            build_arg_flags="--build-arg SOURCE_IMAGE=${{ steps.first-tag.outputs.stage_tag }}"
+            build_arg_flags="${build_arg_flags} --build-arg UBI_IMAGE=${{ matrix.ubi_image }}"
+          else
+            build_arg_flags="--build-arg BASE_IMAGE=${{ steps.first-tag.outputs.stage_tag }}"
+          fi
+          build_arg_flags="${build_arg_flags} --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          build_arg_flags="${build_arg_flags} --build-arg VERSION=${{ inputs.tag || inputs.sha }}"
+
+          metadata_file=$(mktemp)
+          for attempt in 1 2 3 4 5; do
+            if docker buildx build \
+              --file ${{ matrix.wrapper_dockerfile }} \
+              --platform linux/amd64,linux/arm64 \
+              --attest type=provenance,mode=min,inline-only=true,builder-id=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }} \
+              ${build_arg_flags} \
+              ${tag_flags} \
+              --metadata-file "${metadata_file}" \
+              --push .; then
+              digest=$(jq -r '."containerimage.digest"' "${metadata_file}")
+              echo "digest=${digest}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            [ $attempt -lt 5 ] || break
+            echo "Attempt ${attempt} failed, retrying in $((attempt * 30))s..."
+            sleep $((attempt * 30))
+          done
+          echo "Build failed after 5 attempts"
+          exit 1
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
