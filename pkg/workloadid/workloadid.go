@@ -52,6 +52,11 @@ type State struct {
 	client.Client
 	// The cgroupIDResolver is used to resolve cgroup IDs from pod UIDs.
 	cgroupIDResolver fscgroupid.Resolver
+	// The reconciler is registered from the layer3 sensor in configureMaps
+	// and can be technically called multiple times because of legacy
+	// TracingPolicy l3 configs. Once the layer3 sensor will be guaranteed
+	// to be loaded only at start, we will be able to remove this.
+	reconcilerRegistered bool
 
 	// workloadIDCounter is the userspace counter used to generate new
 	// workload IDs. The counter should be initialized at 1 at construction.

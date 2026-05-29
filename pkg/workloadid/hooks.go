@@ -22,6 +22,14 @@ import (
 )
 
 func (s *State) SetupWithManager(mgr ctrl.Manager) error {
+	s.mu.Lock()
+	if s.reconcilerRegistered {
+		s.mu.Unlock()
+		return nil
+	}
+	s.reconcilerRegistered = true
+	s.mu.Unlock()
+
 	s.Client = mgr.GetClient()
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
