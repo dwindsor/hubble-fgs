@@ -127,6 +127,7 @@ func NewPodReconciler(client client.Client, ipToIDMaps ipToIDMapsInterface) (Pod
 func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
+		Named("dnsparser-pod").
 		Complete(r)
 }
 

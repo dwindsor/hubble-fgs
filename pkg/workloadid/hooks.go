@@ -25,6 +25,7 @@ func (s *State) SetupWithManager(mgr ctrl.Manager) error {
 	s.Client = mgr.GetClient()
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
+		Named("workloadid-pod").
 		Complete(s)
 }
 
