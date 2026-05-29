@@ -102,7 +102,7 @@ RUN curl -L https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_TAG}/b
 # retrieves (cross-)compiled binaries from builders
 # Chainguard glibc-openssl image (replaces alpine)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl
-FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev AS base-build
+FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v16.1-dev AS base-build
 USER root
 RUN apk add --no-cache iproute2
 RUN addgroup -S hubble	       && \

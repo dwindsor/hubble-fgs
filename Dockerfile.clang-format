@@ -1,6 +1,6 @@
 # Chainguard glibc-openssl image (wolfi-based, includes apk)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl
-ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev
+ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v16.1-dev
 
 FROM ${BASE_IMAGE}
 USER root

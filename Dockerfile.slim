@@ -51,7 +51,7 @@ RUN apk add --no-cache binutils git \
 # retrieves (cross-)compiled binaries from builders
 # Chainguard glibc-openssl image (replaces alpine)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl
-FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev AS release
+FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v16.1-dev AS release
 USER root
 RUN addgroup -S hubble	       && \
     mkdir /var/lib/tetragon/ && \
