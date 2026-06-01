@@ -565,6 +565,8 @@ func configureDisableSwitchesAndConfig(t *testing.T, CLISwitches bool, disableCo
 
 type UDPBasic struct {
 	suite.Suite
+	useCLI          bool
+	switches        []cli.SwitchSettings
 	doneWG, readyWG sync.WaitGroup
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -574,12 +576,37 @@ func TestUDPBasic(t *testing.T) {
 	suite.Run(t, new(UDPBasic))
 }
 
+func TestUDPBasicCLI(t *testing.T) {
+	suite.Run(t, &UDPBasic{useCLI: true})
+}
+
 func (suite *UDPBasic) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 
 	suite.startExistingUDPServices()
 
-	obs := getBasicUdpObserver(suite.T(), suite.ctx)
+	if suite.useCLI {
+		var err error
+		suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: utils.CGroupSKBAvailable()},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPMetrics, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 2 * time.Second},
+		})
+		suite.Require().NoError(err)
+	}
+	obs := getNoConfigObserver(suite.T(), suite.ctx, true)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
+
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
@@ -592,8 +619,9 @@ func (suite *UDPBasic) HandleStats(_ string, stats *suite.SuiteInformation) {
 }
 
 func (suite *UDPBasic) TearDownSuite() {
-	suite.stopExistingUDPServices()
 	suite.cancel()
+	suite.stopExistingUDPServices()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 var (
