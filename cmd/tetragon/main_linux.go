@@ -17,8 +17,10 @@ import (
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/checkprocfs"
 	ossconfig "github.com/cilium/tetragon/pkg/config"
+	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
+	"github.com/cilium/tetragon/pkg/server"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/grpc"
 
@@ -31,6 +33,23 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
+
+// resolveUnixSocketPath returns the in-pod unix socket path for listenAddr:
+// "unix://X" yields X, a TCP address yields the default socket path, an empty
+// or invalid address yields none.
+func resolveUnixSocketPath(listenAddr string) (string, bool) {
+	if listenAddr == "" {
+		return "", false
+	}
+	proto, addr, err := server.SplitListenAddr(listenAddr)
+	if err != nil {
+		return "", false
+	}
+	if proto == "unix" {
+		return addr, true
+	}
+	return defaults.DefaultUnixSocket, true
+}
 
 func logCurrentSecurityContext() {
 	proc.LogCurrentSecurityContext()

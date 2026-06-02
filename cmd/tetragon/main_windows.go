@@ -49,6 +49,11 @@ func checkStructAlignments() error {
 func setNetNSDir() {
 }
 
+// resolveUnixSocketPath: Windows has no unix socket sidecar listener.
+func resolveUnixSocketPath(_ string) (string, bool) {
+	return "", false
+}
+
 func detachTetragonCgroups(_, _ bool) error {
 	return nil
 }

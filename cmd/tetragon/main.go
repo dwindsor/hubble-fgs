@@ -53,6 +53,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/bugtool"
+	"github.com/cilium/tetragon/pkg/certloader"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/exporter"
 	"github.com/cilium/tetragon/pkg/fileutils"
@@ -77,6 +78,7 @@ import (
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -123,13 +125,19 @@ func setRedactionFilters() error {
 	return err
 }
 
+// saveInitInfo writes daemon info read by tetra and bugtool, advertising the
+// unix listener so in-pod tooling avoids the (possibly TLS-gated) TCP listener.
 func saveInitInfo() error {
+	addr := ""
+	if sockPath, ok := resolveUnixSocketPath(option.Config.ServerAddress); ok {
+		addr = "unix://" + sockPath
+	}
 	info := bugtool.InitInfo{
 		ExportFname: option.Config.ExportFilename,
 		LibDir:      option.Config.HubbleLib,
 		BTFFname:    option.Config.BTF,
 		MetricsAddr: option.Config.MetricsServer,
-		ServerAddr:  option.Config.ServerAddress,
+		ServerAddr:  addr,
 		GopsAddr:    option.Config.GopsAddr,
 		MapDir:      bpf.MapPrefixPath(),
 		PID:         os.Getpid(),
@@ -801,41 +809,88 @@ func getExporter(ctx context.Context, server *server.Server) (*exporter.Exporter
 
 func Serve(
 	ctx context.Context, listenAddr string,
-	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server, eventlogSrv *eventlog.Server) error {
-	grpcServer := grpc.NewServer()
-	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
-	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
-	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
-	tetragon.RegisterRuleServiceServer(grpcServer, rule)
-	tetragon.RegisterNetworkPolicyServiceServer(grpcServer, netpol)
-	tetragon.RegisterEventLogServiceServer(grpcServer, eventlogSrv)
-
-	if model != nil {
-		registerApplicationModelServiceServer(grpcServer, model)
-		registerProcessModelServiceServer(grpcServer, model)
+	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server, eventlogSrv *eventlog.Server,
+	extraOpts ...grpc.ServerOption) error {
+	if listenAddr == "" {
+		return nil
 	}
+	register := func(s *grpc.Server) {
+		tetragon.RegisterFineGuidanceSensorsServer(s, srv)
+		tetragon.RegisterMandateServiceServer(s, mandate)
+		tetragon.RegisterAlertServiceServer(s, alerter)
+		tetragon.RegisterRuleServiceServer(s, rule)
+		tetragon.RegisterNetworkPolicyServiceServer(s, netpol)
+		tetragon.RegisterEventLogServiceServer(s, eventlogSrv)
 
+		if model != nil {
+			registerApplicationModelServiceServer(s, model)
+			registerProcessModelServiceServer(s, model)
+		}
+	}
 	proto, addr, err := server.SplitListenAddr(listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to parse listen address: %w", err)
 	}
-	go func(proto, addr string) {
-		var listener net.Listener
-		var err error
-		if proto == "unix" {
-			listener, err = unixlisten.ListenWithRename(addr, 0660)
-		} else {
-			listener, err = net.Listen(proto, addr)
+
+	if proto == "unix" {
+		if err := serveOne(ctx, "unix", addr, extraOpts, register); err != nil {
+			return fmt.Errorf("starting unix gRPC listener: %w", err)
 		}
-		if err != nil {
-			logger.Fatal(log, "Failed to start gRPC server", "address", addr, "protocol", proto, logfields.Error, err)
+		return nil
+	}
+
+	if sockPath, ok := resolveUnixSocketPath(listenAddr); ok {
+		if err := serveOne(ctx, "unix", sockPath, extraOpts, register); err != nil {
+			return fmt.Errorf("starting unix gRPC listener: %w", err)
 		}
-		log.Info("Starting gRPC server", "address", addr, "protocol", proto)
-		if err = grpcServer.Serve(listener); err != nil {
-			log.Error("Failed to close gRPC server", logfields.Error, err)
+	}
+
+	tlsOpts, tlsEnabled, err := buildServerTLSOptions(ctx)
+	if err != nil {
+		return err
+	}
+	if !tlsEnabled {
+		log.Warn("Tetragon gRPC TCP listener is exposing the API without TLS; configure --"+
+			option.KeyServerTLSCertFile+" and --"+
+			option.KeyServerTLSKeyFile+" to enable it",
+			"address", addr)
+	}
+	grpcOpts := append([]grpc.ServerOption{}, extraOpts...)
+	grpcOpts = append(grpcOpts, tlsOpts...)
+	if err := serveOne(ctx, proto, addr, grpcOpts, register); err != nil {
+		return fmt.Errorf("starting TCP gRPC listener: %w", err)
+	}
+	return nil
+}
+
+// serveOne binds a listener synchronously (so bind errors are returned to the
+// caller) and serves it in the background until ctx is canceled.
+func serveOne(
+	ctx context.Context,
+	proto, addr string,
+	grpcOpts []grpc.ServerOption,
+	register func(*grpc.Server),
+) error {
+	var listener net.Listener
+	var err error
+	if proto == "unix" {
+		listener, err = unixlisten.ListenWithRename(addr, 0660)
+	} else {
+		listener, err = net.Listen(proto, addr)
+	}
+	if err != nil {
+		return fmt.Errorf("listen %s://%s: %w", proto, addr, err)
+	}
+	grpcServer := grpc.NewServer(grpcOpts...)
+	register(grpcServer)
+
+	go func() {
+		log.Info("Starting gRPC server", "protocol", proto, "address", addr)
+		if err := grpcServer.Serve(listener); err != nil {
+			log.Error("gRPC Serve returned", logfields.Error, err)
 		}
-	}(proto, addr)
-	go func(proto, addr string) {
+	}()
+	go func() {
 		<-ctx.Done()
 		grpcServer.Stop()
 		// if proto is unix, ListenWithRename() creates the socket
@@ -843,8 +898,43 @@ func Serve(
 		if proto == "unix" {
 			os.Remove(addr)
 		}
-	}(proto, addr)
+	}()
 	return nil
+}
+
+// buildServerTLSOptions returns grpc.Creds for the TCP listener, or nil when
+// TLS is disabled. The boolean reports whether TLS is active.
+func buildServerTLSOptions(ctx context.Context) ([]grpc.ServerOption, bool, error) {
+	cfg := certloader.Config{
+		CertFile:          option.Config.ServerTLSCertFile,
+		KeyFile:           option.Config.ServerTLSKeyFile,
+		ClientCAFiles:     option.Config.ServerTLSClientCAFiles,
+		RequireClientCert: option.Config.ServerTLSRequireClientCert,
+	}
+	if !cfg.Enabled() {
+		return nil, false, nil
+	}
+	// Lazy load: cert material may be provisioned after startup; Watch
+	// promotes the reloader to ready once the files appear.
+	reloader, err := certloader.NewReloaderLazy(cfg)
+	if err != nil {
+		return nil, false, fmt.Errorf("preparing gRPC TLS: %w", err)
+	}
+	certloader.Watch(ctx, reloader)
+	log.Info("gRPC TLS enabled",
+		"mtls", cfg.RequireClientCert,
+		"cert", cfg.CertFile,
+		"key", cfg.KeyFile,
+		"client-ca-files", len(cfg.ClientCAFiles),
+		"ready", reloader.Ready(),
+	)
+	if !reloader.Ready() {
+		log.Warn("gRPC TLS material not yet on disk; handshakes will fail until files appear at the configured paths",
+			"cert", cfg.CertFile,
+			"key", cfg.KeyFile,
+		)
+	}
+	return []grpc.ServerOption{grpc.Creds(credentials.NewTLS(reloader.ServerConfig()))}, true, nil
 }
 
 func startGopsServer() error {
