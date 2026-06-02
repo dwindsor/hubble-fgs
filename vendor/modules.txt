@@ -583,6 +583,7 @@ github.com/cilium/tetragon/tests/e2e/flags
 github.com/cilium/tetragon/tests/e2e/helpers
 github.com/cilium/tetragon/tests/e2e/helpers/gops
 github.com/cilium/tetragon/tests/e2e/helpers/grpc
+github.com/cilium/tetragon/tests/e2e/helpers/grpctls
 github.com/cilium/tetragon/tests/e2e/install/tetragon
 github.com/cilium/tetragon/tests/e2e/runners
 github.com/cilium/tetragon/tests/e2e/state
