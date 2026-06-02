@@ -91,7 +91,11 @@ This section shows the controlling settings that administrators can set.
       --procfs string                             Location of procfs to consume existing PIDs (default "/proc/")
       --protocol-shift string                     Shfit the socket protocol field (true) or not (false), or discover automatically (auto) (default "auto")
       --release-pinned-bpf                        Release all pinned BPF programs and maps in Tetragon BPF directory. Enabled by default. Set to false to disable (default true)
-      --server-address string                     gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock') (default "localhost:54321")
+      --server-address string                     gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'). An empty address disables the gRPC server (default "localhost:54321")
+      --server-tls-cert-file string               Path to a PEM-encoded server certificate. When set, TLS is enabled on the TCP gRPC listener.
+      --server-tls-client-ca-files strings        Paths to PEM-encoded CA bundles used to verify client certificates. Required when --server-tls-require-client-cert is true.
+      --server-tls-key-file string                Path to the PEM-encoded private key matching --server-tls-cert-file. Required when --server-tls-cert-file is set.
+      --server-tls-require-client-cert            Require and verify client certificates (mTLS). Requires --server-tls-client-ca-files.
       --verbose int                               set verbosity level
 ```
 
@@ -150,6 +154,50 @@ Then to access the gRPC API with Tetragon client, set the `--server-address`:
    ```
    sudo hubble-enterprise --server-address unix:///var/run/tetragon/tetragon.sock getevents
    ```
+
+Note: when `--server-address` points at a TCP address (the default), the agent also serves an
+always-on plaintext unix socket at `/var/run/tetragon/tetragon.sock` for local clients, so
+in-host tooling keeps working without TLS material.
+
+### Secure the gRPC API with TLS (mTLS)
+
+TLS only applies to the TCP listener configured by `--server-address`; the agent refuses to
+start when `--server-tls-*` settings are combined with a `unix://` address. The local unix
+socket listener stays plaintext and is protected by file permissions.
+
+1. Enable TLS on the TCP listener using "drop-ins":
+
+   ```
+   echo "0.0.0.0:54321"                > /etc/hubble-fgs/hubble-fgs.conf.d/server-address
+   echo "/etc/hubble-fgs/tls/tls.crt"  > /etc/hubble-fgs/hubble-fgs.conf.d/server-tls-cert-file
+   echo "/etc/hubble-fgs/tls/tls.key"  > /etc/hubble-fgs/hubble-fgs.conf.d/server-tls-key-file
+   chmod 0600 /etc/hubble-fgs/tls/tls.key
+   ```
+
+2. To require and verify client certificates (mTLS), also set:
+
+   ```
+   echo "true"                         > /etc/hubble-fgs/hubble-fgs.conf.d/server-tls-require-client-cert
+   echo "/etc/hubble-fgs/tls/ca.crt"   > /etc/hubble-fgs/hubble-fgs.conf.d/server-tls-client-ca-files
+   ```
+
+Then connect with the `tetra` client, passing the CA bundle and, for mTLS, the client
+certificate and key:
+
+   ```
+   tetra --server-address localhost:54321 \
+     --tls-ca-cert-files ca.crt \
+     --tls-cert-file client.crt \
+     --tls-key-file client.key \
+     getevents
+   ```
+
+The agent watches the configured TLS files and reloads them atomically when their contents
+change, so certificates can be rotated without restarting Tetragon Enterprise.
+
+For Kubernetes deployments, certificate provisioning and rotation are handled by the Helm
+chart — see the `tetragon.grpc.tls.*` values in the
+[Helm chart README](../../install/kubernetes/tetragon/README.md).
 
 ### Tracing Policy
 
