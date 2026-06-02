@@ -16,8 +16,9 @@ RUN apt-get update && apt-get install -y linux-libc-dev ccache
 COPY . ./
 ARG TARGETARCH
 ARG DEBUG
+ARG LSEG
 RUN --mount=type=cache,target=/root/.cache/ccache \ 
-    make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH DEBUG=$DEBUG CLANG="ccache clang"
+    make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH DEBUG=$DEBUG LSEG=$LSEG CLANG="ccache clang"
 
 # Second builder (cross-)compile:
 # - tetragon-fs-scanner (this one compiles a C program, so a gcc cross compiler is needed)
@@ -27,6 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.4@sha256:68cb6d68bed024785b69195b89af7ac7a444f27791435f98647edff595aa0479 AS tetragon-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
+ARG LSEG
 RUN apt-get update
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then apt-get install -y libelf-dev zlib1g-dev crossbuild-essential-$TARGETARCH; \
@@ -36,8 +38,8 @@ COPY . ./
 RUN --mount=type=cache,target=/go/pkg/mod \ 
     --mount=type=cache,target=/root/.cache/go-build \
     if [ $BUILDARCH != $TARGETARCH ]; \
-    then make tetragon tetra tetragon-fs-scanner TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
-    else make tetragon tetra tetragon-fs-scanner TARGET_ARCH=$TARGETARCH; fi
+    then make tetragon tetra tetragon-fs-scanner TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc LSEG=$LSEG; \
+    else make tetragon tetra tetragon-fs-scanner TARGET_ARCH=$TARGETARCH LSEG=$LSEG; fi
 
 # Third builder (cross-)compile a stripped gops
 # Chainguard go-dev image

@@ -237,7 +237,7 @@ compile-commands:
 
 .PHONY: image
 image: ## Build the Tetragon agent container image.
-	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --build-arg DEBUG=${DEBUG} --target release --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} .
+	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --build-arg DEBUG=${DEBUG} --build-arg LSEG=$(LSEG) --target release --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push ${TETRAGON_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
