@@ -84,6 +84,8 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitHTTPEventsMetricsForDocs(reg)
 	case "icmp":
 		enterpriseMetricsConfig.InitICMPEventsMetricsForDocs(reg)
+	case "igmp":
+		enterpriseMetricsConfig.InitIGMPEventsMetricsForDocs(reg)
 	case "interface":
 		enterpriseMetricsConfig.InitInterfaceEventsMetricsForDocs(reg)
 	case "tcp":

@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/icmpmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/igmpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
@@ -90,6 +91,14 @@ func initAllICMPEventsMetrics(registry *prometheus.Registry) {
 
 func InitICMPEventsMetricsForDocs(registry *prometheus.Registry) {
 	icmpmetrics.InitMetricsForDocs(registry)
+}
+
+func initAllIGMPEventsMetrics(registry *prometheus.Registry) {
+	igmpmetrics.InitMetrics(registry)
+}
+
+func InitIGMPEventsMetricsForDocs(registry *prometheus.Registry) {
+	igmpmetrics.InitMetricsForDocs(registry)
 }
 
 func initAllInterfaceEventsMetrics(registry *prometheus.Registry) {
@@ -218,6 +227,7 @@ func InitAllEEEventMetrics(registry *prometheus.Registry) {
 	initAllFileEventsMetrics(registry)
 	initAllHTTPEventsMetrics(registry)
 	initAllICMPEventsMetrics(registry)
+	initAllIGMPEventsMetrics(registry)
 	initAllInterfaceEventsMetrics(registry)
 	initAllTCPEventsMetrics(registry)
 	initAllUDPEventsMetrics(registry)
