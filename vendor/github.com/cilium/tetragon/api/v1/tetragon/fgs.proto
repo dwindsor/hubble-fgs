@@ -279,6 +279,8 @@ message IgmpMembershipReport {
 enum Direction {
   RECEIVE = 0;
   SEND = 1;
+  INGRESS = 2;
+  EGRESS = 3;
 }
 
 message ProcessMulticastSample {

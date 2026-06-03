@@ -325,6 +325,8 @@ type Direction int32
 const (
 	Direction_RECEIVE Direction = 0
 	Direction_SEND    Direction = 1
+	Direction_INGRESS Direction = 2
+	Direction_EGRESS  Direction = 3
 )
 
 // Enum value maps for Direction.
@@ -332,10 +334,14 @@ var (
 	Direction_name = map[int32]string{
 		0: "RECEIVE",
 		1: "SEND",
+		2: "INGRESS",
+		3: "EGRESS",
 	}
 	Direction_value = map[string]int32{
 		"RECEIVE": 0,
 		"SEND":    1,
+		"INGRESS": 2,
+		"EGRESS":  3,
 	}
 )
 
@@ -6299,10 +6305,13 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x1bIGMP_HOST_MEMBERSHIP_REPORT\x10\x12\x12!\n" +
 	"\x1dIGMPV2_HOST_MEMBERSHIP_REPORT\x10\x16\x12\x1b\n" +
 	"\x17IGMP_HOST_LEAVE_MESSAGE\x10\x17\x12!\n" +
-	"\x1dIGMPV3_HOST_MEMBERSHIP_REPORT\x10\"*\"\n" +
+	"\x1dIGMPV3_HOST_MEMBERSHIP_REPORT\x10\"*;\n" +
 	"\tDirection\x12\v\n" +
 	"\aRECEIVE\x10\x00\x12\b\n" +
-	"\x04SEND\x10\x01*\xdc\x02\n" +
+	"\x04SEND\x10\x01\x12\v\n" +
+	"\aINGRESS\x10\x02\x12\n" +
+	"\n" +
+	"\x06EGRESS\x10\x03*\xdc\x02\n" +
 	"\n" +
 	"FileAction\x12\x10\n" +
 	"\fFILE_INVALID\x10\x00\x12\x0e\n" +

@@ -2804,6 +2804,8 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | ---- | ------ | ----------- |
 | RECEIVE | 0 |  |
 | SEND | 1 |  |
+| INGRESS | 2 |  |
+| EGRESS | 3 |  |
 
 
 
