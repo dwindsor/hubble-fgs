@@ -608,6 +608,11 @@ func GetProcessMulticastSample(event *MsgIPEventUnix) *tetragon.ProcessMulticast
 		}
 	}
 
+	direction := tetragon.Direction_INGRESS
+	if event.Msg.SocketFlags == 1 {
+		direction = tetragon.Direction_EGRESS
+	}
+
 	fgsEvent := &tetragon.ProcessMulticastSample{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
@@ -618,7 +623,7 @@ func GetProcessMulticastSample(event *MsgIPEventUnix) *tetragon.ProcessMulticast
 		SockCookie:      event.Msg.SockCookie,
 		ConnectionId:    event.Msg.Tuple.ConnId,
 		Data:            uint64(event.Msg.Return),
-		Direction:       tetragon.Direction(event.Msg.SocketFlags),
+		Direction:       direction,
 	}
 
 	ec := eventcache.Get()
