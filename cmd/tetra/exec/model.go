@@ -29,8 +29,6 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -319,7 +317,6 @@ func runBrowserTree(enableS3 bool, bucket string) error {
 
 func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEvent, error) {
 	var err error
-	ctx := context.Background()
 	appModel := &appModelV1.ApplicationModelEvent{}
 	fi, _ := os.Stdin.Stat()
 	if fi.Mode()&os.ModeNamedPipe != 0 {
@@ -329,21 +326,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 			return nil, err
 		}
 	} else if enableS3 {
-		config, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			return nil, err
-		}
-		client := s3.NewFromConfig(config, func(o *s3.Options) {
-			o.DisableLogOutputChecksumValidationSkipped = true
-		})
-		last, err := s3GetLastKey(ctx, client, bucket, "")
-		if err != nil {
-			return nil, err
-		}
-		appModel, err = getS3Model(ctx, client, bucket, last, namespaces)
-		if err != nil {
-			return nil, err
-		}
+		return s3FetchAppModel(bucket, namespaces)
 	} else if appModelFilename != "" {
 		appModel, err = readAppModelFromFile(appModelFilename)
 		if err != nil {

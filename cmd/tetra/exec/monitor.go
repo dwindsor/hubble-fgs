@@ -21,9 +21,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
@@ -35,74 +32,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 )
-
-func s3Monitor(bucket string, interval time.Duration, namespaces []string) error {
-	ctx := context.Background()
-
-	sdkConfig, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		fmt.Println("Couldn't load default configuration. Have you set up your AWS account?")
-		fmt.Println(err)
-		return nil
-	}
-
-	s3Client := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
-		o.DisableLogOutputChecksumValidationSkipped = true
-	})
-	_, err = s3Client.HeadBucket(ctx, &s3.HeadBucketInput{
-		Bucket: aws.String(bucket),
-	})
-	if err != nil {
-		fmt.Printf("s3Client bucket lookup error: %s\n", err)
-		return err
-	}
-
-	lastKey, err := s3GetLastKey(ctx, s3Client, bucket, "")
-	if err != nil {
-		fmt.Printf("s3GetLastKey failed: %s\n", err)
-		return err
-	}
-
-	currentModel, err := getS3Model(ctx, s3Client, bucket, lastKey, namespaces)
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(interval)
-	for range ticker.C {
-		key, err := s3GetLastKey(ctx, s3Client, bucket, lastKey)
-		if err != nil {
-			fmt.Printf("s3GetLastKey error: %s\n", err)
-			continue
-		}
-		// If last key is empty then we failed to find a new object.
-		if key == "" {
-			continue
-		}
-
-		if lastKey != key {
-			newModel, err := getS3Model(ctx, s3Client, bucket, lastKey, namespaces)
-			if err != nil {
-				fmt.Printf("getS3Model error: %s\n", err)
-				continue
-			}
-
-			currentnmd := model.NetworkMonitorData{}
-			currentpmd := model.ProcessMonitorData{}
-			newnmd := model.NetworkMonitorData{}
-			newpmd := model.ProcessMonitorData{}
-			model.ToMonitorData(currentnmd, currentpmd, currentModel.GetApplicationModel())
-			model.ToMonitorData(newnmd, newpmd, newModel.GetApplicationModel())
-
-			diffnmd := model.Diff(currentnmd, newnmd)
-			diffnmd.Print()
-
-			currentModel = newModel
-			lastKey = key
-		}
-	}
-	return nil
-}
 
 func monitor(namespaces []string, host bool) error {
 	var buf bytes.Buffer
@@ -168,46 +97,6 @@ func monitorStdin() error {
 			return err
 		}
 		fmt.Println(s)
-	}
-	return nil
-}
-
-func s3MonitorAlert(bucket string, interval time.Duration, _ []string) error {
-	ctx := context.Background()
-	config, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return err
-	}
-	client := s3.NewFromConfig(config, func(o *s3.Options) {
-		o.DisableLogOutputChecksumValidationSkipped = true
-	})
-	if bucket == "" {
-		bucket = DefaultAlertsBucket
-	}
-	last, err := s3GetLastKey(ctx, client, bucket, "")
-	if err != nil {
-		return err
-	}
-	ticker := time.NewTicker(interval)
-	for range ticker.C {
-		key, err := s3GetLastKey(ctx, client, bucket, last)
-		if err != nil {
-			continue
-		}
-		// If last key is empty then we failed to find a new object.
-		if key == "" {
-			continue
-		}
-
-		if last != key {
-			alertSingleton, alertCount, err := getS3Alerts(ctx, client, bucket, last)
-			if err != nil {
-				fmt.Printf("gets3Alerts error: %s", err)
-				return err
-			}
-			prettyPrintAlert(alertSingleton, alertCount)
-			last = key
-		}
 	}
 	return nil
 }

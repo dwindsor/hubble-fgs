@@ -8,6 +8,10 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+// The nok8s tag isn't a perfect fit (it means "no Kubernetes"), but it's
+// reused here to gate the AWS SDK out of the slim tetrabox binary.
+//go:build !nok8s
+
 package exec
 
 import (
@@ -19,14 +23,60 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+
+	"github.com/isovalent/hubble-fgs/pkg/model"
 )
+
+// newS3Client loads the default AWS configuration and returns an S3 client.
+func newS3Client(ctx context.Context) (*s3.Client, error) {
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.DisableLogOutputChecksumValidationSkipped = true
+	}), nil
+}
+
+// s3FetchAlerts retrieves the latest alerts from the given S3 bucket.
+func s3FetchAlerts(bucket string) (map[string][]*tetragon.Alert, map[string]int, error) {
+	ctx := context.Background()
+	client, err := newS3Client(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	if bucket == "" {
+		bucket = DefaultAlertsBucket
+	}
+	last, err := s3GetLastKey(ctx, client, bucket, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	return getS3Alerts(ctx, client, bucket, last)
+}
+
+// s3FetchAppModel retrieves the latest application model from the given S3 bucket.
+func s3FetchAppModel(bucket string, namespaces []string) (*appModelV1.ApplicationModelEvent, error) {
+	ctx := context.Background()
+	client, err := newS3Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	last, err := s3GetLastKey(ctx, client, bucket, "")
+	if err != nil {
+		return nil, err
+	}
+	return getS3Model(ctx, client, bucket, last, namespaces)
+}
 
 func getS3Alerts(ctx context.Context, s3Client *s3.Client, bucket, lastKey string) (map[string][]*tetragon.Alert, map[string]int, error) {
 	alertBin := make(map[string][]*tetragon.Alert)
@@ -150,4 +200,105 @@ func s3GetLastKey(ctx context.Context, s3Client *s3.Client, bucket, lastKey stri
 		return objKeys[len(objKeys)-1], nil
 	}
 	return "", fmt.Errorf("bucket empty, no objects found")
+}
+
+func s3Monitor(bucket string, interval time.Duration, namespaces []string) error {
+	ctx := context.Background()
+	client, err := newS3Client(ctx)
+	if err != nil {
+		fmt.Println("Couldn't load default configuration. Have you set up your AWS account?")
+		fmt.Println(err)
+		return nil
+	}
+
+	_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{
+		Bucket: aws.String(bucket),
+	})
+	if err != nil {
+		fmt.Printf("s3Client bucket lookup error: %s\n", err)
+		return err
+	}
+
+	lastKey, err := s3GetLastKey(ctx, client, bucket, "")
+	if err != nil {
+		fmt.Printf("s3GetLastKey failed: %s\n", err)
+		return err
+	}
+
+	currentModel, err := getS3Model(ctx, client, bucket, lastKey, namespaces)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(interval)
+	for range ticker.C {
+		key, err := s3GetLastKey(ctx, client, bucket, lastKey)
+		if err != nil {
+			fmt.Printf("s3GetLastKey error: %s\n", err)
+			continue
+		}
+		// If last key is empty then we failed to find a new object.
+		if key == "" {
+			continue
+		}
+
+		if lastKey != key {
+			newModel, err := getS3Model(ctx, client, bucket, lastKey, namespaces)
+			if err != nil {
+				fmt.Printf("getS3Model error: %s\n", err)
+				continue
+			}
+
+			currentnmd := model.NetworkMonitorData{}
+			currentpmd := model.ProcessMonitorData{}
+			newnmd := model.NetworkMonitorData{}
+			newpmd := model.ProcessMonitorData{}
+			model.ToMonitorData(currentnmd, currentpmd, currentModel.GetApplicationModel())
+			model.ToMonitorData(newnmd, newpmd, newModel.GetApplicationModel())
+
+			diffnmd := model.Diff(currentnmd, newnmd)
+			diffnmd.Print()
+
+			currentModel = newModel
+			lastKey = key
+		}
+	}
+	return nil
+}
+
+func s3MonitorAlert(bucket string, interval time.Duration, _ []string) error {
+	ctx := context.Background()
+	client, err := newS3Client(ctx)
+	if err != nil {
+		return err
+	}
+	if bucket == "" {
+		bucket = DefaultAlertsBucket
+	}
+	last, err := s3GetLastKey(ctx, client, bucket, "")
+	if err != nil {
+		return err
+	}
+	ticker := time.NewTicker(interval)
+	for range ticker.C {
+		key, err := s3GetLastKey(ctx, client, bucket, last)
+		if err != nil {
+			continue
+		}
+		// If last key is empty then we failed to find a new object.
+		if key == "" {
+			continue
+		}
+
+		if last != key {
+			alertSingleton, alertCount, err := getS3Alerts(ctx, client, bucket, last)
+			if err != nil {
+				fmt.Printf("gets3Alerts error: %s", err)
+				return err
+			}
+			prettyPrintAlert(alertSingleton, alertCount)
+			last = key
+		}
+	}
+	return nil
 }

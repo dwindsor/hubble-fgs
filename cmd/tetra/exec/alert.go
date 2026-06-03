@@ -13,7 +13,6 @@ package exec
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,8 +20,6 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cilium/tetragon/cmd/tetra/getevents"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -141,25 +138,7 @@ func getAlertModel(enableS3 bool, bucket string) (map[string][]*tetragon.Alert, 
 			alertCount[alert.Rule.Name]++
 		}
 	} else if enableS3 {
-		ctx := context.Background()
-		config, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			return alertBin, alertCount, err
-		}
-		client := s3.NewFromConfig(config, func(o *s3.Options) {
-			o.DisableLogOutputChecksumValidationSkipped = true
-		})
-		if bucket == "" {
-			bucket = DefaultAlertsBucket
-		}
-		last, err := s3GetLastKey(ctx, client, bucket, "")
-		if err != nil {
-			return alertBin, alertCount, err
-		}
-		alertBin, alertCount, err = getS3Alerts(ctx, client, bucket, last)
-		if err != nil {
-			return alertBin, alertCount, err
-		}
+		return s3FetchAlerts(bucket)
 	}
 	return alertBin, alertCount, nil
 }
