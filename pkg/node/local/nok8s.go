@@ -4,19 +4,14 @@ package local
 
 import (
 	"context"
-
-	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type MetadataService interface {
 	GetLabels(ctx context.Context) (map[string]string, error)
 }
 
+// The slim nok8s build drops the AWS SDK, so AWS instance metadata is
+// unavailable here; all environments fall back to the no-op service.
 func GetMetadataService() (MetadataService, error) {
-	switch {
-	case option.Config.Environment == option.EnvironmentAWS:
-		return NewAWSMetadataService()
-	default:
-		return &NoopMetadataService{}, nil
-	}
+	return &NoopMetadataService{}, nil
 }
