@@ -10,6 +10,7 @@ serviceAccount:
   annotations: {}
   name: ""
 podAnnotations: {}
+serviceAnnotations: {}
 podSecurityContext: {}
 nodeSelector: {}
 tolerations:
@@ -21,6 +22,7 @@ daemonSetAnnotations: {}
 extraVolumes: []
 updateStrategy: {}
 podLabels: {}
+serviceLabels: {}
 daemonSetLabelsOverride: {}
 selectorLabelsOverride: {}
 podLabelsOverride: {}
@@ -634,7 +636,7 @@ certgen:
     override: ~
     repository: quay.io/cilium/certgen
     # renovate: datasource=docker depName=quay.io/cilium/certgen
-    tag: v0.4.4
+    tag: v0.4.5
     pullPolicy: IfNotPresent
   # -- Whether the certgen invocation should generate a CA when one isn't
   # found in the configured CA Secret.

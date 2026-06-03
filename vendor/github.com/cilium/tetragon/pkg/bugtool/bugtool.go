@@ -184,6 +184,7 @@ func doTarAddBuff(tarWriter *tar.Writer, fname string, buff *bytes.Buffer) error
 
 	if err := tarWriter.WriteHeader(&logHdr); err != nil {
 		logger.GetLogger().Error("failed to write log buffer tar header")
+		return err
 	}
 
 	_, err := io.Copy(tarWriter, buff)
@@ -490,7 +491,7 @@ func (s *bugtoolInfo) addMetrics() error {
 
 	buff := new(bytes.Buffer)
 	if _, err = buff.ReadFrom(resp.Body); err != nil {
-		s.multiLog.Warn("error in reading metrics server response: %s", err)
+		s.multiLog.WithError(err).Warn("error in reading metrics server response")
 	}
 	return s.tarAddBuff("metrics", buff)
 }
@@ -606,6 +607,7 @@ func (s *bugtoolInfo) getPProf(file string, gopsSignal byte) error {
 		s.multiLog.WithField("gops-address", s.info.GopsAddr).WithError(err).Warn("Failed to contact gops server")
 		return err
 	}
+	defer conn.Close()
 
 	buf := []byte{gopsSignal}
 	if _, err := conn.Write(buf); err != nil {
@@ -881,10 +883,10 @@ func (s bugtoolInfo) addMemCgroupStats() error {
 			return fmt.Errorf("failed to read file %s: %w", file, err)
 		}
 		err = s.tarAddBuff(file, bytes.NewBuffer(buf))
-		if err == nil {
-			s.multiLog.WithField("file", file).Info("cgroup file added")
+		if err != nil {
 			return fmt.Errorf("failed to add buffer: %w", err)
 		}
+		s.multiLog.WithField("file", file).Info("cgroup file added")
 		return nil
 	}
 
