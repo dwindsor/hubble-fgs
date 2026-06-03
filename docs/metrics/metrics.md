@@ -1552,6 +1552,18 @@ UDP socket RX segment statistics
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
+### `tetragon_socket_stats_udp_sequence_check_errors_total`
+
+UDP socket sequence check errors statistics
+
+| label | values |
+| ----- | ------ |
+| `binary` | `example-binary` |
+| `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
+| `pod  ` | `example-pod` |
+| `workload` | `example-workload` |
+
 ### `tetragon_socket_stats_udp_stack_rxbytes_total`
 
 UDP stack RX bytes statistics

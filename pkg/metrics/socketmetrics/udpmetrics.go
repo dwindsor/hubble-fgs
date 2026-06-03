@@ -140,6 +140,11 @@ var (
 		Namespace: consts.MetricsNamespace,
 		Help:      "UDP socket consume packet misses",
 	}, nil)
+	SocketStatsUDPSeqCheckErrors = metrics.MustNewGranularCounter[metrics.ProcessLabels](prometheus.CounterOpts{
+		Name:      "socket_stats_udp_sequence_check_errors_total",
+		Namespace: consts.MetricsNamespace,
+		Help:      "UDP socket sequence check errors statistics",
+	}, nil)
 )
 
 // UDP metrics collection errors
@@ -159,17 +164,6 @@ var (
 		"The total number of in-use entries in the UDP socket map.",
 		nil, nil, nil,
 	))
-)
-
-// UDP Sequence Check errors
-// NB: This metric is specific to a proprietary protocol transmitting sequence
-// numbers on top of UDP. It shouldn't be registered by default.
-var (
-	SocketStatsUDPSeqCheckErrors = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
-		Name:      "socket_stats_udp_sequence_check_errors_total",
-		Namespace: consts.MetricsNamespace,
-		Help:      "UDP socket sequence check errors statistics",
-	}, []string{"namespace", "workload", "pod", "binary"})
 )
 
 type UDPGCType int

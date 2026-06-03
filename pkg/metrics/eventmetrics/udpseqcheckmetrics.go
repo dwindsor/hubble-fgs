@@ -11,16 +11,15 @@
 package eventmetrics
 
 import (
-	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 )
 
 func postProcessUdpSeqCheckErrors(res *tetragon.ProcessUdpSeqCheckError) {
-	binary, pod, workload, ns := oss.GetProcessInfo(res.Process)
-	socketmetrics.SocketStatsUDPSeqCheckErrors.WithLabelValues(ns, workload, pod, binary).Inc()
+	l := createProcessLabels(udpconfig.CurrentLabels, res.Process)
+	socketmetrics.SocketStatsUDPSeqCheckErrors.WithLabelValues(l).Inc()
 }
 
 func HandleProcessUdpSeqCheckError(res *tetragon.ProcessUdpSeqCheckError) {

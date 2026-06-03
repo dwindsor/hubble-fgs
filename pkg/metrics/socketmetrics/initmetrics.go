@@ -126,6 +126,7 @@ func InitUDPEventsMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(SocketStatsUDPMulticastRxSegs)
 	registry.MustRegister(SocketStatsUDPMulticastDrops)
 	registry.MustRegister(SocketStatsUDPMulticastConsumeMisses)
+	registry.MustRegister(SocketStatsUDPSeqCheckErrors)
 }
 
 func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
@@ -166,12 +167,16 @@ func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
 		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod,
 		enterpriseMetrics.ExampleIPLabel,
 	)
+	udpSeqCheckLabels := metrics.NewProcessLabels(
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary, consts.ExampleNodeName,
+	)
 	SocketStatsUDPMulticastTxBytes.WithLabelValues(multicastLabels).Add(0)
 	SocketStatsUDPMulticastTxSegs.WithLabelValues(multicastLabels).Add(0)
 	SocketStatsUDPMulticastRxBytes.WithLabelValues(multicastLabels).Add(0)
 	SocketStatsUDPMulticastRxSegs.WithLabelValues(multicastLabels).Add(0)
 	SocketStatsUDPMulticastDrops.WithLabelValues(multicastLabels).Add(0)
 	SocketStatsUDPMulticastConsumeMisses.WithLabelValues(multicastLabels).Add(0)
+	SocketStatsUDPSeqCheckErrors.WithLabelValues(udpSeqCheckLabels).Add(0)
 }
 
 func InitRawSocketEventsMetrics(registry *prometheus.Registry) {
