@@ -13,6 +13,9 @@ permissions:
   # Required for the GitHub Action to authenticate to Vault
   id-token: write
 
+env:
+  ARTIFACTORY_ORGANIZATION_PROD: ${{ vars.ARTIFACTORY_ORGANIZATION_PROD || 'isovalent-iep-docker' }}
+
 jobs:
   build-and-push:
     name: Build and Push Release ${{ matrix.is_lseg && 'LSEG' || '' }} Images
@@ -50,11 +53,8 @@ jobs:
     uses: ./.github/workflows/build-tarballs.yml
     secrets: inherit
 
-  # The ClusterServiceVersion part of the bundle is dependent on the previous builds as it needs to be updated with the image digests
-  # produced during these builds.
-  # The bundle is just a bunch of manifests, no binary, there is no need for a multi-arch build. It is already platform independent.
-  # The context needs to be passed to the build.
-  # => hence a separate job
+  # The ClusterServiceVersion is dependent on the previous builds as it needs to be updated with the image digests
+  # produced during these builds. The bundle is platform-independent, so it does not need a multi-arch build.
   bundle-build-and-push:
     needs: build-and-push
     runs-on: ubuntu-24.04
@@ -81,12 +81,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
-      - name: Login to quay.io
+      - name: Login to Artifactory
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_TOKEN }}
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Download digests of all images built
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -100,7 +100,10 @@ jobs:
           # renovate: datasource=github-releases depName=mikefarah/yq
           yq_version: 4.53.3
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACTORY_HOST: ${{ vars.ARTIFACTORY_HOST }}
         run: |
+          csv_file=install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          yq_image="mikefarah/yq:${yq_version}"
           lower_tag="${{ steps.tag.outputs.tag }}"
           lower_tag="${lower_tag,,}"
           git checkout ${{ steps.tag.outputs.branch }}
@@ -111,27 +114,37 @@ jobs:
           echo "tetragon-aggregator image: ${tetragon_aggregator_img}"
           tetragon_operator_img="$(cat digests/tetragon-operator.txt | grep isovalent)"
           echo "tetragon-operator image: ${tetragon_operator_img}"
-          hubble_enterprise_metadata_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/isovalent/hubble-enterprise-metadata:current | jq -r '.Digest')
+          hubble_enterprise_metadata_repo="${ARTIFACTORY_HOST}/${ARTIFACTORY_ORGANIZATION_PROD}/hubble-enterprise-metadata"
+          hubble_enterprise_metadata_digest="$(
+            set -o pipefail
+            docker buildx imagetools inspect "${hubble_enterprise_metadata_repo}:current" --format '{{json .}}' | jq -er '.manifest.digest'
+          )"
+          hubble_enterprise_metadata_img="${hubble_enterprise_metadata_repo}:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}"
+          echo "hubble-enterprise-metadata image: ${hubble_enterprise_metadata_img}"
           tetragon_rthooks_img="$(cat digests/tetragon-rthooks.txt | grep isovalent)"
           echo "tetragon-rthooks image: ${tetragon_rthooks_img}"
-          # sed commands seem fragile. Templating or yq may be better.
-          sed -i "s/quay.io\/isovalent\/tetragon[:@].*\"$/${tetragon_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/isovalent\/tetragon[:@].*[^\"]$/${tetragon_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/isovalent\/tetragon-aggregator[:@].*\"$/${tetragon_aggregator_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/isovalent\/tetragon-aggregator[:@].*[^\"]$/${tetragon_aggregator_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*\"$/${tetragon_operator_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*[^\"]$/${tetragon_operator_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/cilium\/tetragon-rthooks[:@].*\"$/${tetragon_rthooks_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/cilium\/tetragon-rthooks[:@].*[^\"]$/${tetragon_rthooks_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*\"$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/quay.io\/isovalent\/hubble-enterprise-metadata[:@].*[^\"]$/quay.io\/isovalent\/hubble-enterprise-metadata:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          docker run -i --rm \
+            -e TETRAGON_IMG="${tetragon_img}" \
+            -e TETRAGON_AGGREGATOR_IMG="${tetragon_aggregator_img}" \
+            -e TETRAGON_OPERATOR_IMG="${tetragon_operator_img}" \
+            -e TETRAGON_RTHOOKS_IMG="${tetragon_rthooks_img}" \
+            -e HUBBLE_ENTERPRISE_METADATA_IMG="${hubble_enterprise_metadata_img}" \
+            -v "${PWD}":/workdir \
+            -u "$(id -u)" \
+            "${yq_image}" e -i '
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_IMAGE") | .value) = strenv(TETRAGON_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_AGGREGATOR_IMAGE") | .value) = strenv(TETRAGON_AGGREGATOR_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_RTHOOKS_IMAGE") | .value) = strenv(TETRAGON_RTHOOKS_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_METADATA_IMAGE") | .value) = strenv(HUBBLE_ENTERPRISE_METADATA_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .image) = strenv(TETRAGON_OPERATOR_IMG)
+            ' "/workdir/${csv_file}"
           # TODO: the value in the olm.skipRange annotation may need to be replaced when the annotation has been added.
-          name_of_previous_csv=$(docker run -i --rm -v "${PWD}":/workdir -u "$(id -u)" mikefarah/yq:${yq_version} '.metadata.name' /workdir/install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml)
-          docker run -i --rm -v "${PWD}":/workdir -u "$(id -u)" mikefarah/yq:${yq_version} e -i ".spec.replaces = \"${name_of_previous_csv}\"" /workdir/install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          name_of_previous_csv=$(docker run -i --rm -v "${PWD}":/workdir -u "$(id -u)" "${yq_image}" '.metadata.name' "/workdir/${csv_file}")
+          docker run -i --rm -v "${PWD}":/workdir -u "$(id -u)" "${yq_image}" e -i ".spec.replaces = \"${name_of_previous_csv}\"" "/workdir/${csv_file}"
           version="${lower_tag:1}"
-          sed -i "s/^[ ]*name: tetragon-operator\.v.*$/  name: tetragon-operator.${lower_tag}/" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          sed -i "s/^[ ]*version: .*$/  version: ${version}/" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          git add ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/^[ ]*name: tetragon-operator\.v.*$/  name: tetragon-operator.${lower_tag}/" "${csv_file}"
+          sed -i "s/^[ ]*version: .*$/  version: ${version}/" "${csv_file}"
+          git add "${csv_file}"
           git config --global user.email "isovalent-bot@isovalent.com"
           git config --global user.name "isovalent-bot"
           git remote set-url origin https://isovalent-bot:${GITHUB_TOKEN}@github.com/isovalent/hubble-fgs.git
@@ -148,7 +161,7 @@ jobs:
           file: ./install/olm/bundle.Dockerfile
           push: true
           tags: |
-            quay.io/${{ github.repository_owner }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
+            ${{ vars.ARTIFACTORY_HOST }}/${{ env.ARTIFACTORY_ORGANIZATION_PROD }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
 
       - name: Get Readonly Github App Credentials
         uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4
@@ -182,6 +195,7 @@ jobs:
           git checkout master
           git checkout -b pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
           export DOCKER_IMAGE_TAG=${{ steps.tag.outputs.tag }}
+          export DOCKER_DEV_ACCOUNT="${{ vars.ARTIFACTORY_HOST }}/${ARTIFACTORY_ORGANIZATION_PROD}"
           make olm-index-add
           git add install/olm/catalog/index.yaml
           git commit -m "chore: Update the OLM catalog with the latest bundle: ${{ steps.tag.outputs.tag }}"

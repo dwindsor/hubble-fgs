@@ -7,6 +7,9 @@ on:
     paths:
       - 'install/olm/catalog/index.yaml'
 
+env:
+  ARTIFACTORY_ORGANIZATION_PROD: ${{ vars.ARTIFACTORY_ORGANIZATION_PROD || 'isovalent-iep-docker' }}
+
 jobs:
   build-and-push-catalog:
     runs-on: ubuntu-24.04
@@ -17,12 +20,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
-      - name: Login to quay.io
+      - name: Login to Artifactory
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_TOKEN }}
+          registry: ${{ vars.ARTIFACTORY_HOST }}
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
       
       - name: Checkout Source Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -34,6 +37,4 @@ jobs:
       - name: Build and push
         shell: bash
         run: |
-          make olm-index-build olm-index-push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_DEV_ACCOUNT="${{ vars.ARTIFACTORY_HOST }}/${ARTIFACTORY_ORGANIZATION_PROD}" make olm-index-build olm-index-push

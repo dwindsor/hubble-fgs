@@ -132,7 +132,7 @@ Issues found when validating the release in tetragon-staging might not block the
 
 - [ ] The push of the release tag, triggers the creation of a pull request against the release branch with title "chore: Update CSV image to $RELEASE". Review the PR: the image digests, the `name`, `version` and `replaces` fields are updates with the release specific values. Merge the PR if it looks alright and if it is not for a release candidate. Close it otherwise.
 - [ ] Another pull request gets created against the master branch for the addition of the new release to the OLM catalog index. Its title is "chore: Add bundle $RELEASE to the OLM catalog". Review the PR and merge it if it looks alright and if it is not for a release candidate. The merge of the PR triggers the publication of the new version of the OLM catalog index.
-- [ ] Validate the publication of the bundle and catalog images under `https://quay.io/repository/isovalent/tetragon-operator-bundle` and `https://quay.io/repository/isovalent/tetragon-operator-index`.
+- [ ] Validate the publication of the bundle and catalog images under `${ARTIFACTORY_HOST}/${ARTIFACTORY_ORGANIZATION_PROD}/tetragon-operator-bundle` and `${ARTIFACTORY_HOST}/${ARTIFACTORY_ORGANIZATION_PROD}/tetragon-operator-index`.
 
 ### Documentation
 
