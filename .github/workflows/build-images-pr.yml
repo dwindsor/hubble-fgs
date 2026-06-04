@@ -12,13 +12,20 @@ on:
 
 jobs:
   build-and-push:
+    name: Build and Push CI ${{ matrix.is_lseg && 'LSEG' || '' }} Images
     uses: ./.github/workflows/build-images-base.yml
+    strategy:
+      matrix:
+        include:
+          - is_lseg: true
+          - is_lseg: false
     permissions:
       contents: read
       actions: read
       # Required to generate OIDC tokens for `sigstore/cosign-installer` authentication
       id-token: write
     with:
+      is_lseg: ${{ matrix.is_lseg }}
       sha: "${{ github.event.pull_request.head.sha }}"
     secrets: inherit
 

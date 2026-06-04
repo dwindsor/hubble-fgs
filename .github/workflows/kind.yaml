@@ -3,6 +3,10 @@ on:
   pull_request:
     paths-ignore:
       - "**.md"
+
+env:
+  HELM_CHART_REPOSITORY: oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/charts/tetragon
+
 jobs:
   kind-integration-test:
     runs-on: ubuntu-latest
@@ -58,7 +62,7 @@ jobs:
       timeout-minutes: 15
       shell: bash
       run: |
-        until helm pull oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon --version ${{ steps.version.outputs.version }}; do sleep 30s; done
+        until helm pull ${{ env.HELM_CHART_REPOSITORY }} --version ${{ steps.version.outputs.version }}; do sleep 30s; done
 
     - name: Pre-load CI images into Kind cluster
       timeout-minutes: 5
@@ -77,7 +81,7 @@ jobs:
 
     - name: Run go integration tests
       run: |
-        helm install tetragon -n tetragon --create-namespace oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon \
+        helm install tetragon -n tetragon --create-namespace ${{ env.HELM_CHART_REPOSITORY }} \
           --version ${{ steps.version.outputs.version }} \
           --set tetragonOperator.podInfo.enabled=true
         go test --tags=integration -v ./pkg/manager

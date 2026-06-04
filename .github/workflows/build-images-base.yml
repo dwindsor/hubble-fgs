@@ -13,6 +13,8 @@ on:
       # Release images are pushed to isovalent Quay org, non-release to isovalent-dev.
       is_release:
         type: boolean
+      is_lseg:
+        type: boolean
 
 jobs:
   build-and-push:
@@ -72,12 +74,17 @@ jobs:
         id: tags
         run: |
           repo="${{ matrix.name }}"
+
           # CI images go to isovalent-eng-docker, release images go to isovalent-iep-docker
           if ${{ inputs.is_release }}; then
             registry_path="isovalent-iep-docker"
           else
             registry_path="isovalent-eng-docker"
             repo="$repo-ci"
+          fi
+
+          if ${{ inputs.is_lseg }}; then
+            registry_path="isovalent-lseg-private-docker"
           fi
 
           echo "tags<<EOF" >> $GITHUB_OUTPUT
@@ -97,6 +104,8 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            LSEG=${{ inputs.is_lseg && '1' || '0' }}
           tags: |
             ${{ steps.tags.outputs.tags }}
 
@@ -219,6 +228,19 @@ jobs:
         run: |
           echo "chart_version=$(make chart-version)" >> $GITHUB_OUTPUT
 
+      - name: Set registry path
+        id: registry
+        run: |
+          REGISTRY_PATH="isovalent-eng-docker"
+
+          if ${{ inputs.is_lseg }}; then
+            REGISTRY_PATH="isovalent-lseg-private-docker"
+          elif ${{ inputs.is_release }}; then
+            REGISTRY_PATH="isovalent-iep-docker"
+          fi
+
+          echo "path=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
+
       - name: Push OCI Helm dev chart
         uses: cilium/reusable-workflows/.github/actions/push-helm-chart@6ae27958f2f37545bf48e44106b73df05b1f6d12 # v0.1.0
         with:
@@ -227,22 +249,30 @@ jobs:
           version: ${{ steps.version.outputs.chart_version }}
           values_file_changes: |
             {
-              "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-ci",
-              "tetragon.image.tag": "${{ inputs.sha }}",
-              "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-aggregator-ci",
-              "tetragonAggregator.image.tag": "${{ inputs.sha }}",
-              "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-operator-ci",
-              "tetragonOperator.image.tag": "${{ inputs.sha }}",
-              "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon-rthooks-ci",
-              "rthooks.image.tag": "${{ inputs.sha }}",
+              "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon${{
+                inputs.is_release && '' || '-ci'
+              }}",
+              "tetragon.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
+              "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon-aggregator${{
+                inputs.is_release && '' || '-ci'
+              }}",
+              "tetragonAggregator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
+              "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon-operator${{
+                inputs.is_release && '' || '-ci'
+              }}",
+              "tetragonOperator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
+              "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon-rthooks${{
+                inputs.is_release && '' || '-ci'
+              }}",
+              "rthooks.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
             }
           registry: ${{ vars.ARTIFACTORY_HOST }}
-          registry_namespace: isovalent-eng-docker
+          registry_namespace: ${{ steps.registry.outputs.path }}/charts
           registry_username: ${{ vars.ARTIFACTORY_USERNAME }}
           registry_password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Print helm command
         run: |
           echo "Example commands:"
-          echo helm template -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon --version ${{ steps.version.outputs.chart_version }}
-          echo helm install tetragon -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/tetragon --version ${{ steps.version.outputs.chart_version }}
+          echo helm template -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/charts/tetragon --version ${{ steps.version.outputs.chart_version }}
+          echo helm install tetragon -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/charts/tetragon --version ${{ steps.version.outputs.chart_version }}

@@ -11,10 +11,16 @@ permissions:
   # For creating a PR to update the OLM catalog
   pull-requests: write
   # Required for the GitHub Action to authenticate to Vault
-  id-token: write 
- 
+  id-token: write
+
 jobs:
   build-and-push:
+    name: Build and Push Release ${{ matrix.is_lseg && 'LSEG' || '' }} Images
+    strategy:
+      matrix:
+        include:
+          - is_lseg: true
+          - is_lseg: false
     uses: ./.github/workflows/build-images-base.yml
     permissions:
       contents: read
@@ -25,6 +31,7 @@ jobs:
       sha: "${{ github.sha }}"
       tag: "${{ github.ref_name }}"
       is_release: true
+      is_lseg: ${{ matrix.is_lseg }}
     secrets: inherit
 
   build-and-push-ubi:
@@ -87,7 +94,7 @@ jobs:
           path: digests/
           pattern: image-digest-*
           merge-multiple: true
-      
+
       - name: Update ClusterServiceVersion
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
@@ -133,7 +140,7 @@ jobs:
           # Create a PR with the updated ClusterServiceVersion against the release branch
           gh pr create -B ${{ steps.tag.outputs.branch }} --title "chore: Update CSV images to ${{ steps.tag.outputs.tag }}" --body 'Created by GitHub action: Image CI Releases.'
 
-      - name: Bundle build 
+      - name: Bundle build
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         id: bundle_build
         with:
@@ -152,7 +159,7 @@ jobs:
           secrets: |
             secret/data/org/${{ github.repository_owner }} github_app_id | GH_READONLY_APP_ID;
             secret/data/org/${{ github.repository_owner }} github_app_pem | GH_READONLY_APP_PEM;
-          
+
       - id: generate-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -169,7 +176,7 @@ jobs:
              git config --global \
                url."https://x-access-token::${READONLY_GH_TOKEN}@github.com/isovalent".insteadOf \
                "https://github.com/isovalent"
-          
+
       - name: Catalog update PR
         run: |
           git checkout master
@@ -258,7 +265,7 @@ jobs:
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
           JF_USER: ${{ vars.ARTIFACTORY_USERNAME }}
           JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
-      
+
       - name: Download Tetragon Tarball artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
