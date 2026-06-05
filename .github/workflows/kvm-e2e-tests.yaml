@@ -79,25 +79,25 @@ jobs:
       matrix:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "rhel8.10-20260525.014435"
+          - "rhel8.10-20260603.072225"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "bpf-next-20260525.014435"
+          - "bpf-next-20260603.072225"
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '6.18-20260525.014435'
+          - '6.18-20260603.072225'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '6.12-20260525.014435'
+          - '6.12-20260603.072225'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20260525.014435"
+          - "6.6-20260603.072225"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20260525.014435"
+          - "6.1-20260603.072225"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20260525.014435"
+          - "5.15-20260603.072225"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20260525.014435"
+          - "5.10-20260603.072225"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.4-20260525.014435"
+          - "5.4-20260603.072225"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20260525.014435"
+          - "4.19-20260603.072225"
         testDir:
           # Tests run after Tetragon has been deployed with helm
           - "helm"
