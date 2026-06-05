@@ -14,4 +14,4 @@ BUF ?= buf
 BUF_BREAKING_AGAINST_BRANCH ?= origin/master
 
 # renovate: datasource=docker
-BUILDER_IMAGE ?= quay.io/isovalent-dev/ipa-builder:v1.20.0-dev.21-20260522070541@sha256:472cac9fa6b48e66cb6a40ba205900431849fc5ee480ebfd3d70c0dbdf653fa6
+BUILDER_IMAGE ?= quay.io/isovalent-dev/ipa-builder:v1.20.0-dev.30-20260601095848@sha256:eda15c86c850fffdb647ba376b6e8f3e96547778a32abccc98984ac52ea46f4d
