@@ -155,7 +155,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p image-digest/
-          job_name=${{ inputs.is_release && matrix.name || format('{0}-ci', matrix.name) }}
+          job_name=${{ matrix.name }}${{ inputs.is_lseg && '-lseg' || '' }}${{ inputs.is_release && '' || '-ci' }}
           job_name_capital=${job_name^^}
           job_name_underscored=${job_name_capital//-/_}
           echo "${job_name_underscored}_DIGEST := \"${{ steps.build-and-push.outputs.digest }}\"" > image-digest/makefile-digest.txt
@@ -168,7 +168,7 @@ jobs:
       - name: Upload artifact digests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: image-digest-${{ inputs.is_release && matrix.name || format('{0}-ci', matrix.name) }}
+          name: image-digest-${{ matrix.name }}${{ inputs.is_lseg && '-lseg' || '' }}${{ inputs.is_release && '' || '-ci' }}
           path: image-digest
           retention-days: ${{ inputs.is_release && 90 || 7 }}
 
@@ -213,14 +213,14 @@ jobs:
       - name: Upload artifact digests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: image-digest-output.txt-${{ steps.tag.outputs.tag }}
+          name: image-digest-output.txt-${{ steps.tag.outputs.tag }}${{ inputs.is_lseg && '-lseg' || '' }}
           path: image-digest-output.txt
           retention-days: ${{ inputs.is_release && 90 || 7 }}
 
       - name: Upload artifact digests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Makefile.digests-${{ steps.tag.outputs.tag }}
+          name: Makefile.digests-${{ steps.tag.outputs.tag }}${{ inputs.is_lseg && '-lseg' || '' }}
           path: Makefile.digests
           retention-days: ${{ inputs.is_release && 90 || 7 }}
 
