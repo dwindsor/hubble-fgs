@@ -13,13 +13,23 @@ if [ -z "$1" ] || [[ ! $1 =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
 fi
 
 version=$1
+
 # Drop the leading "v" for Helm chart version.
 semver="${version:1}"
+
+repository="${IMAGE_REPOSITORY:-artifactory.devhub-cloud.cisco.com/isovalent-iep-docker}"
+
+# Update image repositories
+yq -i ".tetragon.image.repository = \"$repository/tetragon\"" install/kubernetes/enterprise/values.yaml
+yq -i ".tetragonOperator.image.repository = \"$repository/tetragon-operator\"" install/kubernetes/enterprise/values.yaml
+yq -i ".tetragonAggregator.image.repository = \"$repository/tetragon-aggregator\"" install/kubernetes/enterprise/values.yaml
+yq -i ".rthooks.image.repository = \"$repository/tetragon-rthooks\"" install/kubernetes/enterprise/values.yaml
 
 # Update image tags
 yq -i ".tetragon.image.tag = \"$version\"" install/kubernetes/enterprise/values.yaml
 yq -i ".tetragonOperator.image.tag = \"$version\"" install/kubernetes/enterprise/values.yaml
 yq -i ".tetragonAggregator.image.tag = \"$version\"" install/kubernetes/enterprise/values.yaml
+yq -i ".rthooks.image.tag = \"$version\"" install/kubernetes/enterprise/values.yaml
 # Update version label in default policies
 find "install/kubernetes/enterprise/default-policies" -type f -name "*.yaml" -exec \
   yq ".metadata.labels.\"app.kubernetes.io/version\" = \"$semver\"" -i {} \;
