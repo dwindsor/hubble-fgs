@@ -30,6 +30,7 @@ jobs:
     secrets: inherit
 
   build-and-push-ubi:
+    name: Build and Push CI UBI Images
     uses: ./.github/workflows/build-images-ubi-base.yml
     permissions:
       contents: read

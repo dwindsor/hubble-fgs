@@ -142,20 +142,21 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
-          artifact-name: sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json
-          output-file: ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json
+          artifact-name: sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}${{ inputs.is_lseg && '_lseg' || '' }}_${{ inputs.tag || inputs.sha }}.spdx.json
+          output-file: ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}${{ inputs.is_lseg && '_lseg' || '' }}_${{ inputs.tag || inputs.sha }}.spdx.json
           image: ${{ steps.first-tag.outputs.tag }}
           upload-release-assets: false
 
       - name: Attach SBOM attestation to container image
         run: |
-          cosign attest -y --predicate ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
+          cosign attest -y --type spdxjson "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}" \
+            --predicate ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}${{ inputs.is_lseg && '_lseg' || '' }}_${{ inputs.tag || inputs.sha }}.spdx.json
 
       - name: Image Release Digest
         shell: bash
         run: |
           mkdir -p image-digest/
-          job_name=${{ matrix.name }}${{ inputs.is_lseg && '-lseg' || '' }}${{ inputs.is_release && '' || '-ci' }}
+          job_name=${{ matrix.name }}
           job_name_capital=${job_name^^}
           job_name_underscored=${job_name_capital//-/_}
           echo "${job_name_underscored}_DIGEST := \"${{ steps.build-and-push.outputs.digest }}\"" > image-digest/makefile-digest.txt
@@ -190,7 +191,7 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: image-digest/
-          pattern: image-digest-*
+          pattern: image-digest*${{ inputs.is_lseg && '-lseg' || '' }}-*
 
       - name: Image Digests Output
         shell: bash
@@ -213,14 +214,14 @@ jobs:
       - name: Upload artifact digests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: image-digest-output.txt-${{ steps.tag.outputs.tag }}${{ inputs.is_lseg && '-lseg' || '' }}
+          name: image-digest-output${{ inputs.is_lseg && '-lseg' || '' }}.txt-${{ steps.tag.outputs.tag }}
           path: image-digest-output.txt
           retention-days: ${{ inputs.is_release && 90 || 7 }}
 
       - name: Upload artifact digests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Makefile.digests-${{ steps.tag.outputs.tag }}${{ inputs.is_lseg && '-lseg' || '' }}
+          name: Makefile.digests${{ inputs.is_lseg && '.lseg' || '' }}-${{ steps.tag.outputs.tag }}
           path: Makefile.digests
           retention-days: ${{ inputs.is_release && 90 || 7 }}
 
