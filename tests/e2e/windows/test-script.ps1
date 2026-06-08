@@ -7,6 +7,9 @@
 # The script will throw an error if any of the expected patterns are not found in the JSON file.
 $jsonFilePath = "C:\Program Files\Tetragon\events.json"
 
+# Wait for 10 seconds before starting tests 
+Start-Sleep -Seconds 10
+
 $notepad = Start-Process -FilePath "C:\Windows\System32\notepad.exe" -PassThru
 $notepadPID = $notepad.Id
 Write-Host "Process launched with PID: $notepadPID"
