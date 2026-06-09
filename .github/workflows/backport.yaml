@@ -1,0 +1,50 @@
+name: Backport merged pull requests
+on:
+  pull_request_target:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to backport'
+        required: true
+
+permissions: {}
+
+jobs:
+  backport:
+    name: Backport pull request
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 10
+    # Don't run on closed unmerged pull requests
+    if: ${{ github.event.pull_request.merged || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.ISOVALENT_BACKPORTER_TOKEN }}
+      - name: Create backport pull requests
+        uses: isovalent/backport-action@7841e9b4aca996cbaca3e1b0a6972747ca1ec38d # v1.0.0
+        with:
+          github_token: ${{ secrets.ISOVALENT_BACKPORTER_TOKEN }}
+          branch_name: backport/${target_branch}/${pull_number}
+          copy_assignees: true
+          copy_labels_pattern: '^(kind|area|release-note)\/.*$'
+          copy_milestone: false # Reviewer should set this manually
+          copy_requested_reviewers: false # Previous reviewers may not be available for review
+          label_pattern: '^needs-backport\/([\w\.]+)$'
+          pull_title: '[${target_branch}] ${pull_title}'
+          pull_description: |
+            Backport of #${pull_number} to `${target_branch}`.
+
+            ## Upstream pull request description:
+
+            ${pull_description}
+          add_labels: 'kind/backport,release-blocker'
+          source_pr_number: ${{ inputs.pr_number }}
+          target_branch_prefix: v
+          experimental: |
+            {
+              "conflict_resolution": "draft_commit_conflicts"
+            }
