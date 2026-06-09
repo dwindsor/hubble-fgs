@@ -215,7 +215,7 @@ func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpIn
 		ipDst := api.GetIP(key.Tuple.DAddr, ops.MSG_OP_UDPSTATS, key.Tuple.IPv6 != 0)
 		ipSrc := api.GetIP(key.Tuple.SAddr, ops.MSG_OP_UDPSTATS, key.Tuple.IPv6 != 0)
 		logger.GetLogger().Warn("UDP stats underflow",
-			"source", ipSrc, "dest", ipDst, "curr", curr, "last", last, "key", key,
+			"sourceIP", ipSrc, "destIP", ipDst, "curr", curr, "last", last, "key", key,
 			"pid", curr.Pid, "pidktime", curr.PidKtime)
 		return api.UdpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
 	}
@@ -266,7 +266,7 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 
 	t, err := ktime.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
-		logger.GetLogger().Warn("UDP NanoTimeSince failed.", logfields.Error, err, "time", udpValue.Ktime)
+		logger.GetLogger().Warn("UDP NanoTimeSince failed.", logfields.Error, err, "Ktime", udpValue.Ktime)
 		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeNanoTimeSinceFailure)
 		return
 	}

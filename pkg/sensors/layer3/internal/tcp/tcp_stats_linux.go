@@ -342,7 +342,7 @@ func ConfigureSockStatSampler(cfg *networkapi.Layer3ConfigValue, sampleRate time
 		RttBucket6:                 uint32((rttRange * .90) + fRttMin),
 		RttBucket7:                 uint32((rttRange * .99) + fRttMin),
 	}
-	logger.GetLogger().Info("Configured TCP sock statistic sampler", "time", sampleRate)
+	logger.GetLogger().Info("Configured TCP sock statistic sampler", "sampleRate", sampleRate)
 	logger.GetLogger().Info("Configured TCP watermarks",
 		"enable", watermarksEnable,
 		"windowSize", watermarksAvgWindowSize,

@@ -1450,7 +1450,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 	numPods, numContainers := addFileMonitoringSensorK8s(policy, kprobes, mode, sel, allInodes, allDigestMaps, e)
 
 	logger.GetLogger().Info(fmt.Sprintf("Completed path scanning for %s.", e.TpName),
-		"time", time.Since(t0).String(),
+		"duration", time.Since(t0).String(),
 		"total-inodes", len(allInodes),
 		"host-inodes", numHostInodes,
 		"num-pods", numPods,
