@@ -18,10 +18,8 @@ jobs:
     strategy:
       matrix:
         image: [tetragon-ci, tetragon-operator-ci]
-        branch: [v1.16, v1.17, v1.18, v1.19]
+        branch: [v1.17, v1.18, v1.19]
         include:
-          - branch: v1.16
-            registry: quay.io/isovalent-dev
           - branch: v1.17
             registry: quay.io/isovalent-dev
           - branch: v1.18
@@ -71,7 +69,7 @@ jobs:
           ${{ steps.grype.outputs.cmd }} ${{ matrix.registry || format('{0}/isovalent-eng-docker', vars.ARTIFACTORY_HOST) }}/${{ matrix.image }}:${{ matrix.branch }}-latest \
             --output json=results.json --output table=results.txt --fail-on medium \
             --vex vex/.github/.openvex.json \
-            --config vex/.github/.grype.yaml        
+            --config vex/.github/.grype.yaml
       - name: Set failure flag if necessary
         id: failure-flag
         if: ${{ failure() }}
@@ -117,4 +115,4 @@ jobs:
               exit 1
             else
               echo "All container scans succeeded."
-            fi        
+            fi
