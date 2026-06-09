@@ -39,7 +39,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		Host: model.Binaries{
 			{
 				Cmd:  "/usr/bin/bash",
-				Args: []string{"-c", "echo hello world"},
+				Args: []string{"-c", "echo hello basicmodel"},
 			},
 		},
 		Namespaces: model.Namespaces{
@@ -49,8 +49,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"test-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},
@@ -100,8 +101,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"present-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},
@@ -123,8 +125,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"present-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},
@@ -148,8 +151,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"present-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},
@@ -177,8 +181,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"present-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},
@@ -211,8 +216,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"present-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},
@@ -467,7 +473,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		Host: model.Binaries{
 			{
 				Cmd:  "/usr/bin/bash",
-				Args: []string{"-c", "echo hello world"},
+				Args: []string{"-c", "echo hello garbagecollectionhostprocesses"},
 				Dependencies: []deps.Dependency{
 					deps.NewProcessRunningPatternMustCompile("sleep infinity"),
 				},
@@ -485,8 +491,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"test-garbage-collection-host-workloads-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},
@@ -508,7 +515,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				tc.NotInModel.Host = model.Binaries{
 					{
 						Cmd:  "/usr/bin/bash",
-						Args: []string{"-c", "echo hello world"},
+						Args: []string{"-c", "echo hello garbagecollectionhostprocesses"},
 					},
 				}
 			},
@@ -523,8 +530,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"short-lived-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"5"},
+								Cmd:                "/bin/sleep",
+								Args:               []string{"5"},
+								SkipExecExitCounts: true, // There is a race between checking the model and the process exiting, so skip checking counts.
 							},
 						},
 					},
@@ -534,8 +542,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"long-lived-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"7200"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"7200"},
+								LongLived: true, // In the sense that it should be running through all model checks
 							},
 						},
 					},
@@ -545,8 +554,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"killed-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/bin/sleep",
-								Args: []string{"infinity"},
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
 							},
 						},
 					},

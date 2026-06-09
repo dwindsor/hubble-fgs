@@ -188,6 +188,20 @@ func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.A
 			}
 			if process.Name == binary && process.Arguments == expectedArgs {
 				found = true
+
+				if !check.SkipExecExitCounts {
+					// By default every program runs once and exits once
+					var execCount uint64 = 1
+					var exitCount uint64 = 1
+
+					if check.LongLived {
+						exitCount = 0
+					}
+
+					assert.Equal(tb, execCount, process.ExecutionCount, "Unexpected exec count for process %q: expected %d, got %d", check.String(), execCount, process.ExecutionCount)
+					assert.Equal(tb, exitCount, process.ExitCount, "Unexpected exit count for process %q: expected %d, got %d", check.String(), exitCount, process.ExitCount)
+				}
+
 				assert.True(tb, check.CheckConnections(tb, process.Connections))
 			}
 		}

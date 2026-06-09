@@ -82,6 +82,8 @@ type Binary struct {
 	LongLived bool
 	// If non-empty, pipe this string to the command's stdin
 	Stdin string
+	// If true, skip checking exec/exit counts
+	SkipExecExitCounts bool
 }
 
 func (b Binary) String() string {
