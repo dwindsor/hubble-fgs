@@ -211,25 +211,6 @@ jobs:
           echo "Build failed after 5 attempts"
           exit 1
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-
-      - name: Sign Container Image
-        run: |
-          cosign sign -y "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
-
-      - name: Generate SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          artifact-name: sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.image_repo }}_${{ inputs.tag || inputs.sha }}.spdx.json
-          output-file: ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.image_repo }}_${{ inputs.tag || inputs.sha }}.spdx.json
-          image: ${{ steps.first-tag.outputs.tag }}
-          upload-release-assets: false
-
-      - name: Attach SBOM attestation to container image
-        run: |
-          cosign attest -y --predicate sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.image_repo }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
-
       - name: Image Release Digest
         shell: bash
         run: |
