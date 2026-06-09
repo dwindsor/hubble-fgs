@@ -33,6 +33,11 @@ TETRAGON_TAGS_ARG := $(if $(TETRAGON_TAGS),-tags $(TETRAGON_TAGS),)
 TETRAGON_NOK8S_TAGS := $(TETRAGON_TAGS)$(if $(TETRAGON_TAGS),$(comma))nok8s
 TETRAGON_NOK8S_TAGS_ARG := -tags $(TETRAGON_NOK8S_TAGS)
 
+# The slim build additionally drops cloud-provider code (AWS SDK, etc.) via the
+# nocloud tag, on top of nok8s.
+TETRAGON_SLIM_TAGS := $(TETRAGON_NOK8S_TAGS)$(comma)nocloud
+TETRAGON_SLIM_TAGS_ARG := -tags $(TETRAGON_SLIM_TAGS)
+
 # Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
 # or let uname detect the appropriate arch for native build
 UNAME_M := $(shell uname -m)
@@ -158,7 +163,7 @@ tetra-nok8s: ## Compile the Tetragon gRPC client (nok8s build)
 
 .PHONY: tetrabox
 tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
-	$(GO_BUILD_SLIM) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetrabox
+	$(GO_BUILD_SLIM) -o $@ $(TETRAGON_SLIM_TAGS_ARG) ./cmd/bin/tetrabox
 	# set up symlinks so that things work
 	rm -f tetra tetragon $(FS_SCANNER_BIN)
 	ln -s tetrabox tetra

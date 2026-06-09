@@ -8,6 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+//go:build !nocloud
+
 package local
 
 // VMData is following https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service?tabs=linux

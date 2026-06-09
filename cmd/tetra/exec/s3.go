@@ -8,9 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-// The nok8s tag isn't a perfect fit (it means "no Kubernetes"), but it's
-// reused here to gate the AWS SDK out of the slim tetrabox binary.
-//go:build !nok8s
+// The nocloud tag gates the AWS SDK out of the slim tetrabox binary.
+//go:build !nocloud
 
 package exec
 

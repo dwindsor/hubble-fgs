@@ -170,9 +170,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Build tetrabox (nok8s)
+      # Build the slim tetrabox binary, which strips both Kubernetes (nok8s)
+      # and cloud-provider/AWS SDK (nocloud) code.
+      - name: Build tetrabox (nok8s,nocloud)
         run: |
           make tetrabox
+
+      # Verify the nok8s and nocloud tags compile independently: this build
+      # keeps cloud-provider code (nok8s without nocloud), exercising the code
+      # paths the slim tetrabox build excludes.
+      - name: Build nok8s (with cloud)
+        run: |
+          go build -tags nok8s ./cmd/bin/tetragon ./cmd/bin/tetra
 
   errmetrics-fileids-check:
     runs-on: ubuntu-latest

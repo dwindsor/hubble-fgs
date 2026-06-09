@@ -22,9 +22,6 @@ import (
 )
 
 var (
-	_ MetadataService = (*AWSMetadataService)(nil)
-	_ MetadataService = (*GCloudMetadataService)(nil)
-	_ MetadataService = (*AzureMetadataService)(nil)
 	_ MetadataService = (*KubernetesMetadataService)(nil)
 	_ MetadataService = (*GenericMetadataService)(nil)
 	_ MetadataService = (*NoopMetadataService)(nil)
@@ -41,13 +38,10 @@ type MetadataService interface {
 }
 
 func GetMetadataService() (MetadataService, error) {
+	if svc, ok, err := getCloudMetadataService(); ok {
+		return svc, err
+	}
 	switch {
-	case option.Config.Environment == option.EnvironmentAWS:
-		return NewAWSMetadataService()
-	case option.Config.Environment == option.EnvironmentGCloud:
-		return NewGCloudMetadataService()
-	case option.Config.Environment == option.EnvironmentAzure:
-		return NewAzureMetadataService()
 	case option.Config.Environment == option.EnvironmentKubernetes || ossOption.Config.EnableK8s:
 		return NewKubernetesMetadataService(manager.Get())
 	case option.K8SControlPlaneEnabled():
