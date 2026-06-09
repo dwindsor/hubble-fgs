@@ -843,6 +843,7 @@ func getProcessModel(namespaces []string,
 		ktimeLastExec   uint64
 		ktimeLatestExit uint64
 		execCount       uint64
+		exitCount       uint64
 	}
 
 	// Pass 1: iterate the BPF map, collect per-entry state, and populate
@@ -1008,6 +1009,7 @@ func getProcessModel(namespaces []string,
 			ktimeLastExec:   val.KtimeLastExec,
 			ktimeLatestExit: val.KtimeLatestExit,
 			execCount:       val.ExecCount,
+			exitCount:       val.ExitCount,
 		})
 	}
 
@@ -1050,6 +1052,7 @@ func getProcessModel(namespaces []string,
 			LatestStartTime: ktimeToTime(e.ktimeLastExec),
 			LatestExitTime:  ktimeToTime(e.ktimeLatestExit),
 			ExecCount:       e.execCount,
+			ExitCount:       e.exitCount,
 		})
 
 		logger.GetLogger().Debug("Added process model", "process", *processModel[len(processModel)-1])
