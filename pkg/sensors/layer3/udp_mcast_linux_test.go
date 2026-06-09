@@ -448,12 +448,12 @@ func TestUdpMulticastRTPSampling(t *testing.T) {
 			WithProcess(clientProcess).
 			WithDestinationPort(uint32(udpMulticastPort)).
 			WithData(htonll(RTPSampleData[1])).
-			WithDirection(tetragon.Direction_SEND),
+			WithDirection(tetragon.Direction_EGRESS),
 		ec.NewProcessMulticastSampleChecker("serverSample").
 			WithProcess(socatSrvChecker).
 			WithSourcePort(uint32(udpMulticastPort)).
 			WithData(htonll(RTPSampleData[1])).
-			WithDirection(tetragon.Direction_RECEIVE),
+			WithDirection(tetragon.Direction_INGRESS),
 		ec.NewProcessCloseChecker("serverClose").
 			WithProcess(socatSrvChecker).
 			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0 * time.Second)},
