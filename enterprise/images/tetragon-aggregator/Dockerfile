@@ -24,5 +24,7 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}"
 ARG VERSION=0.0.0
 LABEL version=${VERSION}
 
+USER root
 COPY LICENSE /usr/share/licenses/isovalent/
 RUN ln -s /usr/share/licenses /licenses
+USER 65532

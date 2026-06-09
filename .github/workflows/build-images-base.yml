@@ -132,6 +132,27 @@ jobs:
           first_tag=$(echo "${{ steps.tags.outputs.tags }}" | head -n1)
           echo "tag=${first_tag}" >> $GITHUB_OUTPUT
 
+      - name: Check image for embedded APK metadata or credentials
+        shell: bash
+        run: |
+          image="${{ steps.first-tag.outputs.tag }}"
+          docker pull "${image}"
+          image_archive="$(mktemp)"
+          rootfs_archive="$(mktemp)"
+          container_id=""
+          trap 'rm -f "${image_archive}" "${rootfs_archive}"; [ -z "${container_id}" ] || docker rm -f "${container_id}" >/dev/null 2>&1 || true' EXIT
+          docker save -o "${image_archive}" "${image}"
+          if grep -aqE "apk\.cgr\.dev|virtualapk\.cgr\.dev" "${image_archive}"; then
+            echo "Found APK repository reference in ${image}"
+            exit 1
+          fi
+          container_id="$(docker create "${image}" /bin/true)"
+          docker export -o "${rootfs_archive}" "${container_id}"
+          if tar -tf "${rootfs_archive}" | grep -Eq '(^|/)etc/apk(/|$)|(^|/)etc/apko\.json$'; then
+            echo "Found APK metadata in ${image}"
+            exit 1
+          fi
+
       - name: Image Release Digest
         shell: bash
         run: |

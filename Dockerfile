@@ -9,6 +9,11 @@
 # For help on Docker cross compilation see the following blogpost:
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
 
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/chainguard-base
+ARG APK_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/chainguard-base:v20230214-2026.03.24
+# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static
+ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static:latest@sha256:48c180801990daf592c37a9cdea8f64f8fcd7aca365a6ca0352b73e2de098548
+
 # First builder (cross-)compile the BPF programs
 FROM --platform=$BUILDPLATFORM quay.io/cilium/clang:b97f5b3d5c38da62fb009f21a53cd42aefd54a2f@sha256:e1c8ed0acd2e24ed05377f2861d8174af28e09bef3bbc79649c8eba165207df0 AS bpf-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
@@ -100,13 +105,31 @@ ARG TARGETARCH
 ARG BPFTOOL_TAG=v7.2.0-snapshot.0
 RUN curl -L https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_TAG}/bpftool-${BPFTOOL_TAG}-${TARGETARCH}.tar.gz | tar xz && chmod +x bpftool
 
+# Install runtime APK dependencies into a clean rootfs so APK repository
+# credentials from the builder image are not copied into final images.
+FROM ${BASE_IMAGE} AS static-base
+FROM ${APK_IMAGE} AS runtime-deps
+COPY --from=static-base / /rootfs
+RUN apk add --no-cache --no-commit-hooks --root /rootfs \
+    bash \
+    busybox \
+    ca-certificates \
+    glibc \
+    iproute2 \
+    ld-linux \
+    libgcc \
+    libstdc++ \
+    openssl \
+    && rm -rf /rootfs/etc/apk /rootfs/etc/apko.json \
+    && rm -rf /rootfs/var/cache/apk/*
+
 # Almost final step runs on target platform (might need emulation) and
 # retrieves (cross-)compiled binaries from builders
-# Chainguard glibc-openssl image (replaces alpine)
-# renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl
-FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v16.1-dev AS base-build
+FROM scratch AS base-build
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 USER root
-RUN apk add --no-cache iproute2
+COPY --from=runtime-deps /rootfs/ /
 RUN addgroup -S hubble	       && \
     mkdir /var/lib/tetragon/ && \
     mkdir /var/run/tetragon/ && \

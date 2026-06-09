@@ -15,8 +15,17 @@ RUN --mount=type=bind,readwrite,target=/go/src/github.com/isovalent/hubble-fgs -
     make GOARCH=${TARGETARCH} tetragon-aggregator \
     && mkdir -p /out/${TARGETOS}/${TARGETARCH}/usr/bin && mv tetragon-aggregator /out/${TARGETOS}/${TARGETARCH}/usr/bin
 
-FROM ${BASE_IMAGE} AS release
+FROM ${BASE_IMAGE} AS static-base
+FROM ${GOLANG_IMAGE} AS rootfs-cleaner
+COPY --from=static-base / /rootfs
+RUN rm -rf /rootfs/etc/apk /rootfs/etc/apko.json /rootfs/var/cache/apk
+
+FROM scratch AS release
 ARG TARGETOS
 ARG TARGETARCH
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+COPY --from=rootfs-cleaner /rootfs/ /
 COPY --from=builder /out/${TARGETOS}/${TARGETARCH}/usr/bin/tetragon-aggregator /usr/bin/tetragon-aggregator
+USER 65532
 CMD ["/usr/bin/tetragon-aggregator", "aggregate"]

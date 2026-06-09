@@ -37,15 +37,24 @@ RUN mkdir -p /tmp/symlinks && ln -s /usr/bin/tetragon-operator /tmp/symlinks/hub
 FROM --platform=${BUILDPLATFORM} ${ALPINE_IMAGE} AS certs
 RUN apk --update add ca-certificates
 
-FROM ${BASE_IMAGE} AS release
+FROM ${BASE_IMAGE} AS static-base
+FROM ${GOLANG_IMAGE} AS rootfs-cleaner
+COPY --from=static-base / /rootfs
+RUN rm -rf /rootfs/etc/apk /rootfs/etc/apko.json /rootfs/var/cache/apk
+
+FROM scratch AS release
 # TARGETOS is an automatic platform ARG enabled by Docker BuildKit.
 ARG TARGETOS
 # TARGETARCH is an automatic platform ARG enabled by Docker BuildKit.
 ARG TARGETARCH
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 LABEL maintainer="maintainer@cilium.io"
+COPY --from=rootfs-cleaner /rootfs/ /
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /out/${TARGETOS}/${TARGETARCH}/usr/bin/tetragon-operator /usr/bin/tetragon-operator
 COPY --from=builder /tmp/symlinks /usr/bin/
 WORKDIR /
 ENV GOPS_CONFIG_DIR=/
+USER 65532
 ENTRYPOINT ["/usr/bin/tetragon-operator"]
