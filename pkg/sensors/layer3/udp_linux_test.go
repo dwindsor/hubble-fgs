@@ -1787,7 +1787,7 @@ func udpGcMetricGet(ty socketmetrics.UDPGCType) float64 {
 	return testutil.ToFloat64(counter)
 }
 
-func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns int) {
+func testGC(t *testing.T, CLISwitches, defaultInterval bool, interval int, numExpectedGCRuns int) {
 	t.Skip("Disabled due to unstable timing on CI runners.")
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -1798,18 +1798,32 @@ func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
-	GCTestConfig := udpConfigBasic
-	if !defaultInterval {
-		GCTestConfig += "\n      statsInterval: " + strconv.Itoa(interval)
+	var err error
+	if CLISwitches {
+		switches := []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: utils.CGroupSKBAvailable()},
+		}
+		if !defaultInterval {
+			switches = append(switches, cli.SwitchSettings{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: time.Duration(interval) * time.Second})
+		}
+		cli.SetSwitches(t, switches)
 	}
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, GCTestConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		GCTestConfig := udpConfigBasic
+		if !defaultInterval {
+			GCTestConfig += "\n      statsInterval: " + strconv.Itoa(interval)
+		}
+		tp, err := tracingpolicy.FromYAML(GCTestConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
 
 	option.Config.UsePerfRingBuffer = true
@@ -1856,11 +1870,19 @@ func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns 
 }
 
 func TestGCDefaultInterval(t *testing.T) {
-	testGC(t, true, 60, 2)
+	testGC(t, false, true, 60, 2)
 }
 
 func TestGCWithNonzeroInterval(t *testing.T) {
-	testGC(t, false, 5, 4)
+	testGC(t, false, false, 5, 4)
+}
+
+func TestGCDefaultIntervalCLI(t *testing.T) {
+	testGC(t, true, true, 60, 2)
+}
+
+func TestGCWithNonzeroIntervalCLI(t *testing.T) {
+	testGC(t, true, false, 5, 4)
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
