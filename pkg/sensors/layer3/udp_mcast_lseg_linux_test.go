@@ -41,6 +41,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	"github.com/stretchr/testify/assert"
@@ -80,20 +81,12 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	udpMulticastIP4 := ipAndPort.IP
 	udpMulticastPort := ipAndPort.port
 
-	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
-	enterpriseOption.Config.EnableNetworkEvents = true
-	oldMulticastAppID := enterpriseOption.Config.MulticastAppID
-	enterpriseOption.Config.MulticastAppID = enterpriseOption.MulticastAppLSEGMTP
-	oldMulticastPorts := enterpriseOption.Config.MulticastPorts
-	enterpriseOption.Config.MulticastPorts = []int{udpMulticastPort}
-	oldMulticastSeqCheck := enterpriseOption.Config.MulticastSeqCheck
-	enterpriseOption.Config.MulticastSeqCheck = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
-		enterpriseOption.Config.MulticastAppID = oldMulticastAppID
-		enterpriseOption.Config.MulticastPorts = oldMulticastPorts
-		enterpriseOption.Config.MulticastSeqCheck = oldMulticastSeqCheck
-	})
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppLSEGMTP},
+		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{udpMulticastPort}},
+		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
+	}))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -189,7 +182,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	layer3.StartLayer3Progs(ctx, nil)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
@@ -247,20 +240,12 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	udpMulticastIP4 := ipAndPort.IP
 	udpMulticastPort := ipAndPort.port
 
-	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
-	enterpriseOption.Config.EnableNetworkEvents = true
-	oldMulticastAppID := enterpriseOption.Config.MulticastAppID
-	enterpriseOption.Config.MulticastAppID = enterpriseOption.MulticastAppLSEGMTP
-	oldMulticastPorts := enterpriseOption.Config.MulticastPorts
-	enterpriseOption.Config.MulticastPorts = []int{udpMulticastPort}
-	oldMulticastSeqCheck := enterpriseOption.Config.MulticastSeqCheck
-	enterpriseOption.Config.MulticastSeqCheck = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
-		enterpriseOption.Config.MulticastAppID = oldMulticastAppID
-		enterpriseOption.Config.MulticastPorts = oldMulticastPorts
-		enterpriseOption.Config.MulticastSeqCheck = oldMulticastSeqCheck
-	})
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppLSEGMTP},
+		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{udpMulticastPort}},
+		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
+	}))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -340,7 +325,7 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	layer3.StartLayer3Progs(ctx, nil)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
@@ -400,20 +385,12 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 	udpMulticastIP4 := ipAndPort.IP
 	udpMulticastPort := ipAndPort.port
 
-	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
-	enterpriseOption.Config.EnableNetworkEvents = true
-	oldMulticastAppID := enterpriseOption.Config.MulticastAppID
-	enterpriseOption.Config.MulticastAppID = enterpriseOption.MulticastAppLSEGMTP
-	oldMulticastPorts := enterpriseOption.Config.MulticastPorts
-	enterpriseOption.Config.MulticastPorts = []int{udpMulticastPort}
-	oldMulticastSamplePercent := enterpriseOption.Config.MulticastSamplePercent
-	enterpriseOption.Config.MulticastSamplePercent = .01
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
-		enterpriseOption.Config.MulticastAppID = oldMulticastAppID
-		enterpriseOption.Config.MulticastPorts = oldMulticastPorts
-		enterpriseOption.Config.MulticastSamplePercent = oldMulticastSamplePercent
-	})
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppLSEGMTP},
+		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{udpMulticastPort}},
+		{KeyPtr: &enterpriseOption.Config.MulticastSamplePercent, Value: .01},
+	}))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -483,7 +460,7 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	layer3.StartLayer3Progs(ctx, nil)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)

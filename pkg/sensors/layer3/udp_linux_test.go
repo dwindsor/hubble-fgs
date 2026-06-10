@@ -865,17 +865,12 @@ func TestUDPCLISwitch(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	oldEnableUDPValue := enterpriseOption.Config.EnableUDP
-	enterpriseOption.Config.EnableUDP = true
-	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
-	enterpriseOption.Config.Layer3CLIEnable = true
-	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
-	enterpriseOption.Config.EnableNetworkEvents = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableICMP = oldEnableUDPValue
-		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
-		enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
-	})
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: utils.CGroupSKBAvailable()},
+	}))
 
 	server := getNCCommand(t, "nc.openbsd")
 
@@ -902,7 +897,7 @@ func TestUDPCLISwitch(t *testing.T) {
 	)
 
 	obs := getNoConfigObserver(t, ctx, true)
-	layer3.StartLayer3Progs(ctx, nil)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
