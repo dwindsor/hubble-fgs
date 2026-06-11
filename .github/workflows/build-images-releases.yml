@@ -289,6 +289,6 @@ jobs:
 
       - name: Upload to Artifactory
         env:
-          ARTIFACTORY_PATH: "isovalent-staging-generic/tetragon/${{ github.ref_name }}"
+          ARTIFACTORY_PATH: "${{ vars.ARTIFACTORY_REPO_GENERIC }}/tetragon/${{ github.ref_name }}"
         run: |
           jf rt u --flat "release/*" "${ARTIFACTORY_PATH}/"
