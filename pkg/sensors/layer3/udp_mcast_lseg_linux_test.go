@@ -58,13 +58,16 @@ var (
 	// These are to be stored in MSB in the packets.
 	LSEGSampleData      = []uint64{0x4ae42904b1251302, 0x4aa42915e5c60100, 0x4a4422c867541503, 0x0a4422c867550000, 0x4aa42915dc1a0501}
 	udpMulticastLSEGIP4 = map[multicastTest]l3TestDest{
-		multicastTestLSEGConnID: {"225.1.1.1", 6858},
-		multicastTestLSEGSeq:    {"225.2.2.2", 7858},
-		multicastTestLSEGSample: {"225.5.5.5", 7958},
+		multicastTestLSEGConnID:    {"225.1.1.1", 7810},
+		multicastTestLSEGConnIDCLI: {"225.1.1.2", 7812},
+		multicastTestLSEGSeq:       {"225.1.1.3", 7814},
+		multicastTestLSEGSeqCLI:    {"225.1.1.4", 7816},
+		multicastTestLSEGSample:    {"225.1.1.5", 7818},
+		multicastTestLSEGSampleCLI: {"225.1.1.6", 7820},
 	}
 )
 
-func TestUdpMulticastLSEGConnID(t *testing.T) {
+func testUdpMulticastLSEGConnID(t *testing.T, CLISwitches bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -73,15 +76,30 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
+	lsegconnParam := "lsegconn"
 	dest, ok := udpMulticastLSEGIP4[multicastTestLSEGConnID]
+	if CLISwitches {
+		lsegconnParam = "lsegconncli"
+		dest, ok = udpMulticastLSEGIP4[multicastTestLSEGConnIDCLI]
+	}
 	require.True(t, ok)
 
-	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+	switches := []cli.SwitchSettings{
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppLSEGMTP},
 		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
 		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
-	}))
+	}
+	if CLISwitches {
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
+		}...)
+	}
+	require.NoError(t, cli.SetSwitches(t, switches))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -99,7 +117,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient lsegconn"))
+		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", lsegconnParam)))
 
 	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
 		WithProcess(clientProcess).
@@ -169,10 +187,12 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 
 	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	tp, err := tracingpolicy.FromYAML(udpConfig)
-	require.NoError(t, err)
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -186,7 +206,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegconn")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", lsegconnParam)
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -206,7 +226,15 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
+func TestUdpMulticastLSEGConnIDCLI(t *testing.T) {
+	testUdpMulticastLSEGConnID(t, true)
+}
+
+func TestUdpMulticastLSEGConnID(t *testing.T) {
+	testUdpMulticastLSEGConnID(t, false)
+}
+
+func testUdpMulticastLSEGSeqCheck(t *testing.T, CLISwitches bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -215,15 +243,30 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 		t.Skip("Test requires kernel >=6.12 as it requires multicast sequence checking")
 	}
 
+	lsegseqParam := "lsegseq"
 	dest, ok := udpMulticastLSEGIP4[multicastTestLSEGSeq]
+	if CLISwitches {
+		lsegseqParam = "lsegseqcli"
+		dest, ok = udpMulticastLSEGIP4[multicastTestLSEGSeqCLI]
+	}
 	require.True(t, ok)
 
-	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+	switches := []cli.SwitchSettings{
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppLSEGMTP},
 		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
 		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
-	}))
+	}
+	if CLISwitches {
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
+		}...)
+	}
+	require.NoError(t, cli.SetSwitches(t, switches))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -238,7 +281,7 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient lsegseq"))
+		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", lsegseqParam)))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("clientExec").
@@ -296,10 +339,12 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 
 	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	tp, err := tracingpolicy.FromYAML(udpConfig)
-	require.NoError(t, err)
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -313,7 +358,7 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegseq")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", lsegseqParam)
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -336,7 +381,15 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestUdpMulticastLSEGSampling(t *testing.T) {
+func TestUdpMulticastLSEGSeqCheckCLI(t *testing.T) {
+	testUdpMulticastLSEGSeqCheck(t, true)
+}
+
+func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
+	testUdpMulticastLSEGSeqCheck(t, false)
+}
+
+func testUdpMulticastLSEGSampling(t *testing.T, CLISwitches bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -345,15 +398,30 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 		t.Skip("Test requires kernel >=6.12 as it requires packet sampling")
 	}
 
+	lsegsampleParam := "lsegsample"
 	dest, ok := udpMulticastLSEGIP4[multicastTestLSEGSample]
+	if CLISwitches {
+		lsegsampleParam = "lsegsamplecli"
+		dest, ok = udpMulticastLSEGIP4[multicastTestLSEGSampleCLI]
+	}
 	require.True(t, ok)
 
-	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+	switches := []cli.SwitchSettings{
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppLSEGMTP},
 		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
 		{KeyPtr: &enterpriseOption.Config.MulticastSamplePercent, Value: .01},
-	}))
+	}
+	if CLISwitches {
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
+		}...)
+	}
+	require.NoError(t, cli.SetSwitches(t, switches))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -368,7 +436,7 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient lsegsample"))
+		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", lsegsampleParam)))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("clientExec").
@@ -416,10 +484,12 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 
 	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	tp, err := tracingpolicy.FromYAML(udpConfig)
-	require.NoError(t, err)
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -433,7 +503,7 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegsample")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", lsegsampleParam)
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -460,6 +530,14 @@ func TestUdpMulticastLSEGSampling(t *testing.T) {
 		err = jsonchecker.JsonTestCheckExpect(t, c, true)
 		require.NoError(t, err)
 	}
+}
+
+func TestUdpMulticastLSEGSamplingCLI(t *testing.T) {
+	testUdpMulticastLSEGSampling(t, true)
+}
+
+func TestUdpMulticastLSEGSampling(t *testing.T) {
+	testUdpMulticastLSEGSampling(t, false)
 }
 
 func sendLSEGSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqNumSize uint, seqNum uint) {
@@ -534,9 +612,9 @@ func runUdpMulticastLSEGClient(ty multicastTest) {
 	}
 
 	switch ty {
-	case multicastTestLSEGConnID:
+	case multicastTestLSEGConnID, multicastTestLSEGConnIDCLI:
 		sendLSEGSeqData(socket, buf, 2, 7, 2, 3)
-	case multicastTestLSEGSeq:
+	case multicastTestLSEGSeq, multicastTestLSEGSeqCLI:
 		sendLSEGSeqData(socket, buf, 1, 5, 2, 0)
 		sendLSEGSeqData(socket, buf, 1, 6, 2, 0)
 		sendLSEGSeqData(socket, buf, 1, 6, 2, 1)
@@ -570,7 +648,7 @@ func runUdpMulticastLSEGClient(ty multicastTest) {
 		sendLSEGSeqData(socket, buf, 0, 0, 3, 10)
 		sendLSEGSeqData(socket, buf, 0, 0, 3, 11)
 		sendLSEGSeqData(socket, buf, 0, 0, 3, 12)
-	case multicastTestLSEGSample:
+	case multicastTestLSEGSample, multicastTestLSEGSampleCLI:
 		for _, d := range LSEGSampleData {
 			sendLSEGSampleData(socket, buf, d)
 		}

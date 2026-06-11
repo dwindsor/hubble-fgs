@@ -98,16 +98,30 @@ func TestMain(m *testing.M) {
 		switch udpMulticastClient {
 		case "lsegconn":
 			runUdpMulticastLSEGClient(multicastTestLSEGConnID)
+		case "lsegconncli":
+			runUdpMulticastLSEGClient(multicastTestLSEGConnIDCLI)
 		case "lsegseq":
 			runUdpMulticastLSEGClient(multicastTestLSEGSeq)
+		case "lsegseqcli":
+			runUdpMulticastLSEGClient(multicastTestLSEGSeqCLI)
 		case "lsegsample":
 			runUdpMulticastLSEGClient(multicastTestLSEGSample)
+		case "lsegsamplecli":
+			runUdpMulticastLSEGClient(multicastTestLSEGSampleCLI)
 		case "rtpconn":
 			runUdpMulticastRTPClient(multicastTestRTPConnID)
+		case "rtpconncli":
+			runUdpMulticastRTPClient(multicastTestRTPConnIDCLI)
 		case "rtpseq":
 			runUdpMulticastRTPClient(multicastTestRTPSeq)
+		case "rtpseqcli":
+			runUdpMulticastRTPClient(multicastTestRTPSeqCLI)
 		case "rtpsample":
 			runUdpMulticastRTPClient(multicastTestRTPSample)
+		case "rtpsamplecli":
+			runUdpMulticastRTPClient(multicastTestRTPSampleCLI)
+		default:
+			panic("unrecognised parameter passed to multicast client")
 		}
 		os.Exit(0)
 	}

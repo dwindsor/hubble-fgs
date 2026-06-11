@@ -220,12 +220,18 @@ const udpProtocol = "udp4"
 type multicastTest int
 
 const (
-	multicastTestLSEGConnID = iota
+	multicastTestLSEGConnID multicastTest = iota
+	multicastTestLSEGConnIDCLI
 	multicastTestLSEGSeq
+	multicastTestLSEGSeqCLI
 	multicastTestLSEGSample
+	multicastTestLSEGSampleCLI
 	multicastTestRTPConnID
+	multicastTestRTPConnIDCLI
 	multicastTestRTPSeq
+	multicastTestRTPSeqCLI
 	multicastTestRTPSample
+	multicastTestRTPSampleCLI
 )
 
 func runUdpServer() {

@@ -64,9 +64,12 @@ var (
 	// and the lower 4 bytes to packet offset 8.
 	RTPSampleData      = []uint64{0x80005779f5d6285e, 0x8000577af5d6285e, 0x8000577bf5d6285e, 0x8000577cf5d6285e, 0x8000577df5d6285e}
 	udpMulticastRTPIP4 = map[multicastTest]l3TestDest{
-		multicastTestRTPConnID: {"225.3.3.3", 8858},
-		multicastTestRTPSeq:    {"225.4.4.4", 9858},
-		multicastTestRTPSample: {"225.6.6.6", 8058},
+		multicastTestRTPConnID:    {"225.2.2.1", 8810},
+		multicastTestRTPConnIDCLI: {"225.2.2.2", 8812},
+		multicastTestRTPSeq:       {"225.2.2.3", 8814},
+		multicastTestRTPSeqCLI:    {"225.2.2.4", 8816},
+		multicastTestRTPSample:    {"225.2.2.5", 8818},
+		multicastTestRTPSampleCLI: {"225.2.2.6", 8820},
 	}
 )
 
@@ -95,7 +98,7 @@ func htonll(v uint64) uint64 {
 	return binary.LittleEndian.Uint64(b)
 }
 
-func TestUdpMulticastRTPConnID(t *testing.T) {
+func testUdpMulticastRTPConnID(t *testing.T, CLISwitches bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -104,15 +107,32 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 		t.Skip("Test requires kernel >=5.15 as it requires loopback multicast")
 	}
 
+	rtpconnParam := "rtpconn"
 	dest, ok := udpMulticastRTPIP4[multicastTestRTPConnID]
+	if CLISwitches {
+		rtpconnParam = "rtpconncli"
+		dest, ok = udpMulticastRTPIP4[multicastTestRTPConnIDCLI]
+	}
 	require.True(t, ok)
 
-	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+	switches := []cli.SwitchSettings{
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppRTP},
 		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
 		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
-	}))
+		{KeyPtr: &option.Config.Debug, Value: true},
+		{KeyPtr: &option.Config.Verbosity, Value: 4},
+	}
+	if CLISwitches {
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
+		}...)
+	}
+	require.NoError(t, cli.SetSwitches(t, switches))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -130,7 +150,7 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient rtpconn"))
+		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", rtpconnParam)))
 
 	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
 		WithProcess(clientProcess).
@@ -200,10 +220,12 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 
 	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	tp, err := tracingpolicy.FromYAML(udpConfig)
-	require.NoError(t, err)
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -217,7 +239,7 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpconn")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", rtpconnParam)
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -237,7 +259,15 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestUdpMulticastRTPSeqCheck(t *testing.T) {
+func TestUdpMulticastRTPConnID(t *testing.T) {
+	testUdpMulticastRTPConnID(t, false)
+}
+
+func TestUdpMulticastRTPConnIDCLI(t *testing.T) {
+	testUdpMulticastRTPConnID(t, true)
+}
+
+func testUdpMulticastRTPSeqCheck(t *testing.T, CLISwitches bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -246,15 +276,30 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 		t.Skip("Test requires kernel >=6.12 as it requires multicast sequence checking")
 	}
 
+	rtpseqParam := "rtpseq"
 	dest, ok := udpMulticastRTPIP4[multicastTestRTPSeq]
+	if CLISwitches {
+		rtpseqParam = "rtpseqcli"
+		dest, ok = udpMulticastRTPIP4[multicastTestRTPSeqCLI]
+	}
 	require.True(t, ok)
 
-	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+	switches := []cli.SwitchSettings{
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppRTP},
 		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
 		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
-	}))
+	}
+	if CLISwitches {
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
+		}...)
+	}
+	require.NoError(t, cli.SetSwitches(t, switches))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -269,7 +314,7 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient rtpseq"))
+		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", rtpseqParam)))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("clientExec").
@@ -306,10 +351,12 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 
 	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	tp, err := tracingpolicy.FromYAML(udpConfig)
-	require.NoError(t, err)
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -323,7 +370,7 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpseq")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", rtpseqParam)
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -346,7 +393,15 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestUdpMulticastRTPSampling(t *testing.T) {
+func TestUdpMulticastRTPSeqCheck(t *testing.T) {
+	testUdpMulticastRTPSeqCheck(t, false)
+}
+
+func TestUdpMulticastRTPSeqCheckCLI(t *testing.T) {
+	testUdpMulticastRTPSeqCheck(t, true)
+}
+
+func testUdpMulticastRTPSampling(t *testing.T, CLISwitches bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -355,15 +410,30 @@ func TestUdpMulticastRTPSampling(t *testing.T) {
 		t.Skip("Test requires kernel >=6.12 as it requires packet sampling")
 	}
 
+	rtpsampleParam := "rtpsample"
 	dest, ok := udpMulticastRTPIP4[multicastTestRTPSample]
+	if CLISwitches {
+		rtpsampleParam = "rtpsamplecli"
+		dest, ok = udpMulticastRTPIP4[multicastTestRTPSampleCLI]
+	}
 	require.True(t, ok)
 
-	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+	switches := []cli.SwitchSettings{
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppRTP},
 		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
 		{KeyPtr: &enterpriseOption.Config.MulticastSamplePercent, Value: .01},
-	}))
+	}
+	if CLISwitches {
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
+		}...)
+	}
+	require.NoError(t, cli.SetSwitches(t, switches))
 
 	server := getSocatCommand(t, "socat")
 	ifAddr, err := getDefaultInterfaceAddress()
@@ -378,7 +448,7 @@ func TestUdpMulticastRTPSampling(t *testing.T) {
 
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpMulticastClient rtpsample"))
+		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", rtpsampleParam)))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("clientExec").
@@ -426,10 +496,12 @@ func TestUdpMulticastRTPSampling(t *testing.T) {
 
 	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	tp, err := tracingpolicy.FromYAML(udpConfig)
-	require.NoError(t, err)
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -443,7 +515,7 @@ func TestUdpMulticastRTPSampling(t *testing.T) {
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
 
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpsample")
+	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", rtpsampleParam)
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
@@ -470,6 +542,14 @@ func TestUdpMulticastRTPSampling(t *testing.T) {
 		err = jsonchecker.JsonTestCheckExpect(t, c, true)
 		require.NoError(t, err)
 	}
+}
+
+func TestUdpMulticastRTPSampling(t *testing.T) {
+	testUdpMulticastRTPSampling(t, false)
+}
+
+func TestUdpMulticastRTPSamplingCLI(t *testing.T) {
+	testUdpMulticastRTPSampling(t, true)
 }
 
 func sendRTPSeqData(socket net.Conn, buf []byte, ssrc uint, seqNum uint) {
@@ -539,9 +619,9 @@ func runUdpMulticastRTPClient(ty multicastTest) {
 	}
 
 	switch ty {
-	case multicastTestRTPConnID:
+	case multicastTestRTPConnID, multicastTestRTPConnIDCLI:
 		sendRTPSeqData(socket, buf, 42, 15)
-	case multicastTestRTPSeq:
+	case multicastTestRTPSeq, multicastTestRTPSeqCLI:
 		sendRTPSeqData(socket, buf, 45, 0)
 		sendRTPSeqData(socket, buf, 46, 0)
 		sendRTPSeqData(socket, buf, 46, 1)
@@ -554,7 +634,7 @@ func runUdpMulticastRTPClient(ty multicastTest) {
 		sendRTPSeqData(socket, buf, 46, 3)
 		sendRTPSeqData(socket, buf, 46, 5)
 		sendRTPSeqData(socket, buf, 46, 6)
-	case multicastTestRTPSample:
+	case multicastTestRTPSample, multicastTestRTPSampleCLI:
 		for _, d := range RTPSampleData {
 			sendRTPSampleData(socket, buf, d)
 		}
