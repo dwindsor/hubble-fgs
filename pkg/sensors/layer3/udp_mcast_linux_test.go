@@ -33,13 +33,13 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
@@ -198,17 +198,13 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
+	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	tp, err := tracingpolicy.FromYAML(udpConfig)
+	require.NoError(t, err)
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
+
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
@@ -318,16 +314,13 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfigBasic); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	tp, err := tracingpolicy.FromYAML(udpConfig)
+	require.NoError(t, err)
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
+
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
@@ -450,16 +443,13 @@ func TestUdpMulticastRTPSampling(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfigBasic); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	obs := getNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	tp, err := tracingpolicy.FromYAML(udpConfig)
+	require.NoError(t, err)
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
+
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
