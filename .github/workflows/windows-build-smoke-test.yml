@@ -25,7 +25,7 @@ env:
 jobs:
   windows-ebpfsvc-build:
     name: Patch and Build ebpf-for-windows-service
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 30
 
     permissions:
@@ -113,7 +113,7 @@ jobs:
 
   windows-ebpf-prog-build:
     name: Build Windows ebpf programs
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 25
 
     permissions:
