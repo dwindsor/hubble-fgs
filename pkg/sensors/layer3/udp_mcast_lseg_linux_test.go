@@ -44,7 +44,6 @@ import (
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
@@ -187,17 +186,17 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 
 	cmdServer := exec.Command(server, socatArg1, socatArg2)
 	serverStdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegconn")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	assert.NoError(t, err, "cannot start client")
+	require.NoError(t, err, "cannot start client")
 
 	// Wait for some data to arrive.
 	serverData := make([]byte, 16)
@@ -219,7 +218,7 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	}
 
 	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
@@ -327,17 +326,17 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 
 	cmdServer := exec.Command(server, socatArg1, socatArg2)
 	serverStdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegseq")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	assert.NoError(t, err, "cannot start client")
+	require.NoError(t, err, "cannot start client")
 
 	// Wait for the data to arrive.
 	serverData := make([]byte, UDPBUFSIZE+UDPBUFVAR)
@@ -361,7 +360,7 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestUdpMulticastLSEGSampling(t *testing.T) {

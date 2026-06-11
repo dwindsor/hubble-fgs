@@ -45,7 +45,6 @@ import (
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -217,17 +216,17 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 
 	cmdServer := exec.Command(server, socatArg1, socatArg2)
 	serverStdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpconn")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	assert.NoError(t, err, "cannot start client")
+	require.NoError(t, err, "cannot start client")
 
 	// Wait for some data to arrive.
 	serverData := make([]byte, 16)
@@ -249,7 +248,7 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 	}
 
 	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestUdpMulticastRTPSeqCheck(t *testing.T) {
@@ -336,17 +335,17 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 
 	cmdServer := exec.Command(server, socatArg1, socatArg2)
 	serverStdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
+	require.NoError(t, err)
+	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpseq")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	assert.NoError(t, err, "cannot start client")
+	require.NoError(t, err, "cannot start client")
 
 	// Wait for the data to arrive.
 	serverData := make([]byte, UDPBUFSIZE+UDPBUFVAR)
@@ -370,7 +369,7 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestUdpMulticastRTPSampling(t *testing.T) {
