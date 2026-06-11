@@ -216,7 +216,6 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
-	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpconn")
 	clientCmd.Stdout = os.Stderr
@@ -233,15 +232,6 @@ func TestUdpMulticastRTPConnID(t *testing.T) {
 	}
 
 	killAndWaitCommand(t, cmdServer)
-
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	require.NoError(t, err)
@@ -332,7 +322,6 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
-	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "rtpseq")
 	clientCmd.Stdout = os.Stderr
@@ -353,14 +342,6 @@ func TestUdpMulticastRTPSeqCheck(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 	err = jsonchecker.JsonTestCheck(t, checker)
 	require.NoError(t, err)
 }

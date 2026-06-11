@@ -185,7 +185,6 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
-	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegconn")
 	clientCmd.Stdout = os.Stderr
@@ -202,15 +201,6 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 	}
 
 	killAndWaitCommand(t, cmdServer)
-
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	require.NoError(t, err)
@@ -322,7 +312,6 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 	require.NoError(t, cmdServer.Start())
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
 	require.NoError(t, err)
-	serverPid := uint32(cmdServer.Process.Pid)
 
 	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", "lsegseq")
 	clientCmd.Stdout = os.Stderr
@@ -343,14 +332,6 @@ func TestUdpMulticastLSEGSeqCheck(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 	err = jsonchecker.JsonTestCheck(t, checker)
 	require.NoError(t, err)
 }
