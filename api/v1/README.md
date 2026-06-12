@@ -4238,10 +4238,14 @@ Determins the behaviour of a field filter
 | destination_id | [uint64](#uint64) |  |  |
 | destination_source | [uint64](#uint64) |  |  |
 | destination_port | [uint64](#uint64) |  |  |
-| tx_drops | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  | **Deprecated.** Deprecated: holds a byte count, not a packet count. Superseded by tx_drop_bytes (bytes) and tx_drop_packets (packets). |
 | default_allow_bytes | [uint64](#uint64) |  |  |
 | default_deny_bytes | [uint64](#uint64) |  |  |
 | policy | [string](#string) |  |  |
+| tx_drop_bytes | [uint64](#uint64) |  | Number of transmit bytes dropped. |
+| tx_drop_packets | [uint64](#uint64) |  | Number of transmit packets dropped. |
+| default_allow_packets | [uint64](#uint64) |  | Number of packets allowed by the default policy rule. |
+| default_deny_packets | [uint64](#uint64) |  | Number of packets denied by the default policy rule. |
 
 
 
@@ -4258,9 +4262,13 @@ Determins the behaviour of a field filter
 | ----- | ---- | ----- | ----------- |
 | TxBytes | [uint64](#uint64) |  |  |
 | RxBytes | [uint64](#uint64) |  |  |
-| TxDrops | [uint64](#uint64) |  |  |
+| TxDrops | [uint64](#uint64) |  | **Deprecated.** Deprecated: holds a byte count, not a packet count. Superseded by TxDropBytes (bytes) and TxDropPackets (packets). |
 | DefaultAllowBytes | [uint64](#uint64) |  |  |
 | DefaultDenyBytes | [uint64](#uint64) |  |  |
+| TxDropBytes | [uint64](#uint64) |  | Number of transmit bytes dropped. |
+| TxDropPackets | [uint64](#uint64) |  | Number of transmit packets dropped. |
+| DefaultAllowPackets | [uint64](#uint64) |  | Number of packets allowed by the default policy rule. |
+| DefaultDenyPackets | [uint64](#uint64) |  | Number of packets denied by the default policy rule. |
 
 
 

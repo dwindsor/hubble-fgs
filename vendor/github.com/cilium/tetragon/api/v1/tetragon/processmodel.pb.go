@@ -210,14 +210,26 @@ func (x *Workload) GetKind() string {
 }
 
 type DestinationStats struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	TxBytes           uint64                 `protobuf:"varint,1,opt,name=TxBytes,proto3" json:"TxBytes,omitempty"`
-	RxBytes           uint64                 `protobuf:"varint,2,opt,name=RxBytes,proto3" json:"RxBytes,omitempty"`
-	TxDrops           uint64                 `protobuf:"varint,3,opt,name=TxDrops,proto3" json:"TxDrops,omitempty"`
-	DefaultAllowBytes uint64                 `protobuf:"varint,8,opt,name=DefaultAllowBytes,proto3" json:"DefaultAllowBytes,omitempty"`
-	DefaultDenyBytes  uint64                 `protobuf:"varint,9,opt,name=DefaultDenyBytes,proto3" json:"DefaultDenyBytes,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	TxBytes uint64                 `protobuf:"varint,1,opt,name=TxBytes,proto3" json:"TxBytes,omitempty"`
+	RxBytes uint64                 `protobuf:"varint,2,opt,name=RxBytes,proto3" json:"RxBytes,omitempty"`
+	// Deprecated: holds a byte count, not a packet count. Superseded by
+	// TxDropBytes (bytes) and TxDropPackets (packets).
+	//
+	// Deprecated: Marked as deprecated in tetragon/processmodel.proto.
+	TxDrops           uint64 `protobuf:"varint,3,opt,name=TxDrops,proto3" json:"TxDrops,omitempty"`
+	DefaultAllowBytes uint64 `protobuf:"varint,8,opt,name=DefaultAllowBytes,proto3" json:"DefaultAllowBytes,omitempty"`
+	DefaultDenyBytes  uint64 `protobuf:"varint,9,opt,name=DefaultDenyBytes,proto3" json:"DefaultDenyBytes,omitempty"`
+	// Number of transmit bytes dropped.
+	TxDropBytes uint64 `protobuf:"varint,10,opt,name=TxDropBytes,proto3" json:"TxDropBytes,omitempty"`
+	// Number of transmit packets dropped.
+	TxDropPackets uint64 `protobuf:"varint,11,opt,name=TxDropPackets,proto3" json:"TxDropPackets,omitempty"`
+	// Number of packets allowed by the default policy rule.
+	DefaultAllowPackets uint64 `protobuf:"varint,12,opt,name=DefaultAllowPackets,proto3" json:"DefaultAllowPackets,omitempty"`
+	// Number of packets denied by the default policy rule.
+	DefaultDenyPackets uint64 `protobuf:"varint,13,opt,name=DefaultDenyPackets,proto3" json:"DefaultDenyPackets,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *DestinationStats) Reset() {
@@ -264,6 +276,7 @@ func (x *DestinationStats) GetRxBytes() uint64 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in tetragon/processmodel.proto.
 func (x *DestinationStats) GetTxDrops() uint64 {
 	if x != nil {
 		return x.TxDrops
@@ -281,6 +294,34 @@ func (x *DestinationStats) GetDefaultAllowBytes() uint64 {
 func (x *DestinationStats) GetDefaultDenyBytes() uint64 {
 	if x != nil {
 		return x.DefaultDenyBytes
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetTxDropBytes() uint64 {
+	if x != nil {
+		return x.TxDropBytes
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetTxDropPackets() uint64 {
+	if x != nil {
+		return x.TxDropPackets
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.DefaultAllowPackets
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetDefaultDenyPackets() uint64 {
+	if x != nil {
+		return x.DefaultDenyPackets
 	}
 	return 0
 }
@@ -928,12 +969,24 @@ type DestinationEndpointDebug struct {
 	DestinationId     uint64                 `protobuf:"varint,3,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty"`
 	DestinationSource uint64                 `protobuf:"varint,4,opt,name=destination_source,json=destinationSource,proto3" json:"destination_source,omitempty"`
 	DestinationPort   uint64                 `protobuf:"varint,5,opt,name=destination_port,json=destinationPort,proto3" json:"destination_port,omitempty"`
-	TxDrops           uint64                 `protobuf:"varint,8,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
-	DefaultAllowBytes uint64                 `protobuf:"varint,9,opt,name=default_allow_bytes,json=defaultAllowBytes,proto3" json:"default_allow_bytes,omitempty"`
-	DefaultDenyBytes  uint64                 `protobuf:"varint,10,opt,name=default_deny_bytes,json=defaultDenyBytes,proto3" json:"default_deny_bytes,omitempty"`
-	Policy            string                 `protobuf:"bytes,11,opt,name=policy,proto3" json:"policy,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Deprecated: holds a byte count, not a packet count. Superseded by
+	// tx_drop_bytes (bytes) and tx_drop_packets (packets).
+	//
+	// Deprecated: Marked as deprecated in tetragon/processmodel.proto.
+	TxDrops           uint64 `protobuf:"varint,8,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
+	DefaultAllowBytes uint64 `protobuf:"varint,9,opt,name=default_allow_bytes,json=defaultAllowBytes,proto3" json:"default_allow_bytes,omitempty"`
+	DefaultDenyBytes  uint64 `protobuf:"varint,10,opt,name=default_deny_bytes,json=defaultDenyBytes,proto3" json:"default_deny_bytes,omitempty"`
+	Policy            string `protobuf:"bytes,11,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Number of transmit bytes dropped.
+	TxDropBytes uint64 `protobuf:"varint,12,opt,name=tx_drop_bytes,json=txDropBytes,proto3" json:"tx_drop_bytes,omitempty"`
+	// Number of transmit packets dropped.
+	TxDropPackets uint64 `protobuf:"varint,13,opt,name=tx_drop_packets,json=txDropPackets,proto3" json:"tx_drop_packets,omitempty"`
+	// Number of packets allowed by the default policy rule.
+	DefaultAllowPackets uint64 `protobuf:"varint,14,opt,name=default_allow_packets,json=defaultAllowPackets,proto3" json:"default_allow_packets,omitempty"`
+	// Number of packets denied by the default policy rule.
+	DefaultDenyPackets uint64 `protobuf:"varint,15,opt,name=default_deny_packets,json=defaultDenyPackets,proto3" json:"default_deny_packets,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *DestinationEndpointDebug) Reset() {
@@ -1001,6 +1054,7 @@ func (x *DestinationEndpointDebug) GetDestinationPort() uint64 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in tetragon/processmodel.proto.
 func (x *DestinationEndpointDebug) GetTxDrops() uint64 {
 	if x != nil {
 		return x.TxDrops
@@ -1027,6 +1081,34 @@ func (x *DestinationEndpointDebug) GetPolicy() string {
 		return x.Policy
 	}
 	return ""
+}
+
+func (x *DestinationEndpointDebug) GetTxDropBytes() uint64 {
+	if x != nil {
+		return x.TxDropBytes
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetTxDropPackets() uint64 {
+	if x != nil {
+		return x.TxDropPackets
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.DefaultAllowPackets
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetDefaultDenyPackets() uint64 {
+	if x != nil {
+		return x.DefaultDenyPackets
+	}
+	return 0
 }
 
 type GetDestinationMapResponse struct {
@@ -1121,13 +1203,18 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\x05debug\x18\x02 \x01(\bR\x05debug\"2\n" +
 	"\bWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind\"\x82\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\"\xb0\x03\n" +
 	"\x10DestinationStats\x12\x18\n" +
 	"\aTxBytes\x18\x01 \x01(\x04R\aTxBytes\x12\x18\n" +
-	"\aRxBytes\x18\x02 \x01(\x04R\aRxBytes\x12\x18\n" +
-	"\aTxDrops\x18\x03 \x01(\x04R\aTxDrops\x12,\n" +
+	"\aRxBytes\x18\x02 \x01(\x04R\aRxBytes\x12\x1c\n" +
+	"\aTxDrops\x18\x03 \x01(\x04B\x02\x18\x01R\aTxDrops\x12,\n" +
 	"\x11DefaultAllowBytes\x18\b \x01(\x04R\x11DefaultAllowBytes\x12*\n" +
-	"\x10DefaultDenyBytes\x18\t \x01(\x04R\x10DefaultDenyBytesJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\aTxLimitR\aTxQuotaR\x0eKtimeLastResetR\fKtimeTxReset\"\xfc\x01\n" +
+	"\x10DefaultDenyBytes\x18\t \x01(\x04R\x10DefaultDenyBytes\x12 \n" +
+	"\vTxDropBytes\x18\n" +
+	" \x01(\x04R\vTxDropBytes\x12$\n" +
+	"\rTxDropPackets\x18\v \x01(\x04R\rTxDropPackets\x120\n" +
+	"\x13DefaultAllowPackets\x18\f \x01(\x04R\x13DefaultAllowPackets\x12.\n" +
+	"\x12DefaultDenyPackets\x18\r \x01(\x04R\x12DefaultDenyPacketsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\aTxLimitR\aTxQuotaR\x0eKtimeLastResetR\fKtimeTxReset\"\xfc\x01\n" +
 	"\vDestination\x12+\n" +
 	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\x126\n" +
 	"\x0fdestination_pod\x18\x02 \x01(\v2\r.tetragon.PodR\x0edestinationPod\x12\x12\n" +
@@ -1176,18 +1263,22 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\aprocess\x18\x01 \x03(\v2\x15.tetragon.ProcessUUIDR\aprocess\"?\n" +
 	"\x15GetProcessMapResponse\x12&\n" +
 	"\x03map\x18\x01 \x01(\v2\x14.tetragon.ProcessMapR\x03map\"\x16\n" +
-	"\x14GetProcessMapRequest\"\x87\x03\n" +
+	"\x14GetProcessMapRequest\"\xbd\x04\n" +
 	"\x18DestinationEndpointDebug\x12\x19\n" +
 	"\blocal_id\x18\x01 \x01(\x04R\alocalId\x12\x1e\n" +
 	"\vlocal_ns_id\x18\x02 \x01(\x04R\tlocalNsId\x12%\n" +
 	"\x0edestination_id\x18\x03 \x01(\x04R\rdestinationId\x12-\n" +
 	"\x12destination_source\x18\x04 \x01(\x04R\x11destinationSource\x12)\n" +
-	"\x10destination_port\x18\x05 \x01(\x04R\x0fdestinationPort\x12\x19\n" +
-	"\btx_drops\x18\b \x01(\x04R\atxDrops\x12.\n" +
+	"\x10destination_port\x18\x05 \x01(\x04R\x0fdestinationPort\x12\x1d\n" +
+	"\btx_drops\x18\b \x01(\x04B\x02\x18\x01R\atxDrops\x12.\n" +
 	"\x13default_allow_bytes\x18\t \x01(\x04R\x11defaultAllowBytes\x12,\n" +
 	"\x12default_deny_bytes\x18\n" +
 	" \x01(\x04R\x10defaultDenyBytes\x12\x16\n" +
-	"\x06policy\x18\v \x01(\tR\x06policyJ\x04\b\x06\x10\aJ\x04\b\a\x10\bR\btx_quotaR\btx_limit\"c\n" +
+	"\x06policy\x18\v \x01(\tR\x06policy\x12\"\n" +
+	"\rtx_drop_bytes\x18\f \x01(\x04R\vtxDropBytes\x12&\n" +
+	"\x0ftx_drop_packets\x18\r \x01(\x04R\rtxDropPackets\x122\n" +
+	"\x15default_allow_packets\x18\x0e \x01(\x04R\x13defaultAllowPackets\x120\n" +
+	"\x14default_deny_packets\x18\x0f \x01(\x04R\x12defaultDenyPacketsJ\x04\b\x06\x10\aJ\x04\b\a\x10\bR\btx_quotaR\btx_limit\"c\n" +
 	"\x19GetDestinationMapResponse\x12F\n" +
 	"\fdestinations\x18\x01 \x03(\v2\".tetragon.DestinationEndpointDebugR\fdestinations\"\x1a\n" +
 	"\x18GetDestinationMapRequest*\xed\x01\n" +

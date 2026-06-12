@@ -40,9 +40,19 @@ message DestinationStats {
 
   uint64 TxBytes = 1;
   uint64 RxBytes = 2;
-  uint64 TxDrops = 3;
+  // Deprecated: holds a byte count, not a packet count. Superseded by
+  // TxDropBytes (bytes) and TxDropPackets (packets).
+  uint64 TxDrops = 3 [deprecated = true];
   uint64 DefaultAllowBytes = 8;
   uint64 DefaultDenyBytes = 9;
+  // Number of transmit bytes dropped.
+  uint64 TxDropBytes = 10;
+  // Number of transmit packets dropped.
+  uint64 TxDropPackets = 11;
+  // Number of packets allowed by the default policy rule.
+  uint64 DefaultAllowPackets = 12;
+  // Number of packets denied by the default policy rule.
+  uint64 DefaultDenyPackets = 13;
 }
 
 message Destination {
@@ -139,10 +149,20 @@ message DestinationEndpointDebug {
   uint64 destination_id = 3;
   uint64 destination_source = 4;
   uint64 destination_port = 5;
-  uint64 tx_drops = 8;
+  // Deprecated: holds a byte count, not a packet count. Superseded by
+  // tx_drop_bytes (bytes) and tx_drop_packets (packets).
+  uint64 tx_drops = 8 [deprecated = true];
   uint64 default_allow_bytes = 9;
   uint64 default_deny_bytes = 10;
   string policy = 11;
+  // Number of transmit bytes dropped.
+  uint64 tx_drop_bytes = 12;
+  // Number of transmit packets dropped.
+  uint64 tx_drop_packets = 13;
+  // Number of packets allowed by the default policy rule.
+  uint64 default_allow_packets = 14;
+  // Number of packets denied by the default policy rule.
+  uint64 default_deny_packets = 15;
 }
 
 message GetDestinationMapResponse {

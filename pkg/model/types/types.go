@@ -69,21 +69,24 @@ func (v DestinationEndpointKey) String() string {
 const DestFlagPolicyTemplateOnly uint64 = 0x1
 
 type DestinationEndpointValue struct {
-	TxDrops           uint64
-	AllowDefaultBytes uint64
-	DenyDefaultBytes  uint64
-	TxAction          uint64
-	TxBytes           uint64
-	RxBytes           uint64
-	Policy            uint64
-	RuleID            uint64
-	IPv6              uint64
-	KtimeCreate       uint64
-	AddrCreate        [2]uint64
-	Port              uint32
-	Protocol          uint32
-	Flags             uint64
-	Sessions          uint64
+	TxDropBytes         uint64
+	AllowDefaultBytes   uint64
+	DenyDefaultBytes    uint64
+	TxAction            uint64
+	TxBytes             uint64
+	RxBytes             uint64
+	Policy              uint64
+	RuleID              uint64
+	IPv6                uint64
+	KtimeCreate         uint64
+	AddrCreate          [2]uint64
+	Port                uint32
+	Protocol            uint32
+	Flags               uint64
+	Sessions            uint64
+	TxDropPackets       uint64
+	DenyDefaultPackets  uint64
+	AllowDefaultPackets uint64
 }
 
 type TreeId struct {

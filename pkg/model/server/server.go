@@ -164,15 +164,19 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 	for iter.Next(&k, &v) {
 		title, _ := library.GetRepository().GetName(v.Policy)
 		d := &tetragon.DestinationEndpointDebug{
-			LocalId:           k.LocalId,
-			LocalNsId:         k.LocalWLID,
-			DestinationId:     k.DestinationId,
-			DestinationSource: k.DestinationSource,
-			DestinationPort:   uint64(k.DestinationPort),
-			TxDrops:           v.TxDrops,
-			DefaultAllowBytes: v.AllowDefaultBytes,
-			DefaultDenyBytes:  v.DenyDefaultBytes,
-			Policy:            title,
+			LocalId:             k.LocalId,
+			LocalNsId:           k.LocalWLID,
+			DestinationId:       k.DestinationId,
+			DestinationSource:   k.DestinationSource,
+			DestinationPort:     uint64(k.DestinationPort),
+			TxDrops:             v.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+			TxDropBytes:         v.TxDropBytes,
+			TxDropPackets:       v.TxDropPackets,
+			DefaultAllowBytes:   v.AllowDefaultBytes,
+			DefaultDenyBytes:    v.DenyDefaultBytes,
+			DefaultAllowPackets: v.AllowDefaultPackets,
+			DefaultDenyPackets:  v.DenyDefaultPackets,
+			Policy:              title,
 		}
 		dests = append(dests, d)
 	}
@@ -629,12 +633,15 @@ func getProcessModel(namespaces []string,
 		}
 
 		stats := &types.DestinationStats{
-			TxBytes:           dstVal.TxBytes,
-			RxBytes:           dstVal.RxBytes,
-			TxDrops:           dstVal.TxDrops,
-			DefaultAllowBytes: dstVal.AllowDefaultBytes,
-			DefaultDenyBytes:  dstVal.DenyDefaultBytes,
-			Sessions:          dstVal.Sessions,
+			TxBytes:             dstVal.TxBytes,
+			RxBytes:             dstVal.RxBytes,
+			TxDropBytes:         dstVal.TxDropBytes,
+			DefaultAllowBytes:   dstVal.AllowDefaultBytes,
+			DefaultDenyBytes:    dstVal.DenyDefaultBytes,
+			Sessions:            dstVal.Sessions,
+			TxDropPackets:       dstVal.TxDropPackets,
+			DefaultAllowPackets: dstVal.AllowDefaultPackets,
+			DefaultDenyPackets:  dstVal.DenyDefaultPackets,
 		}
 		if dstVal.Policy != 0 {
 			policy, ok := library.GetRepository().GetName(dstVal.Policy)

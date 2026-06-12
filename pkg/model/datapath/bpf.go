@@ -210,16 +210,19 @@ func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error 
 	}
 
 	value := types.DestinationEndpointValue{
-		TxDrops:     0,
-		TxAction:    r.Action.Action,
-		TxBytes:     0,
-		RxBytes:     0,
-		Policy:      id,
-		RuleID:      ruleID,
-		IPv6:        0,
-		KtimeCreate: 0,
-		AddrCreate:  addr,
-		Port:        r.Endpoint.Port,
+		TxDropBytes:         0,
+		TxDropPackets:       0,
+		DenyDefaultPackets:  0,
+		AllowDefaultPackets: 0,
+		TxAction:            r.Action.Action,
+		TxBytes:             0,
+		RxBytes:             0,
+		Policy:              id,
+		RuleID:              ruleID,
+		IPv6:                0,
+		KtimeCreate:         0,
+		AddrCreate:          addr,
+		Port:                r.Endpoint.Port,
 		// Mark as policy template - BPF will clear this flag when real traffic flows
 		Flags: types.DestFlagPolicyTemplateOnly,
 	}
@@ -316,16 +319,19 @@ func (p *bpfRecordBackend) removeRecord(r record.DatapathRecord) error {
 	}
 
 	value := types.DestinationEndpointValue{
-		TxDrops:     0,
-		TxAction:    0,
-		TxBytes:     0,
-		RxBytes:     0,
-		Policy:      0,
-		RuleID:      0,
-		IPv6:        0,
-		KtimeCreate: 0,
-		AddrCreate:  addr,
-		Port:        0,
+		TxDropBytes:         0,
+		TxDropPackets:       0,
+		DenyDefaultPackets:  0,
+		AllowDefaultPackets: 0,
+		TxAction:            0,
+		TxBytes:             0,
+		RxBytes:             0,
+		Policy:              0,
+		RuleID:              0,
+		IPv6:                0,
+		KtimeCreate:         0,
+		AddrCreate:          addr,
+		Port:                0,
 	}
 
 	// We can't delete this just because the policy is lost we still want to kep stats.

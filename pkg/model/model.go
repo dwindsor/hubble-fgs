@@ -112,7 +112,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 			RxBytes:           bc.GetRxBytes(),
 			DefaultAllowBytes: bc.GetAllowDefaultBytes(),
 			DefaultDropBytes:  bc.GetDenyDefaultBytes(),
-			TxDrops:           bc.GetTxDrops(),
+			TxDrops:           bc.GetTxDropBytes(),
 			Sessions:          bc.GetSessions(),
 		},
 		Policy: &appModelV1.NetworkPolicy{

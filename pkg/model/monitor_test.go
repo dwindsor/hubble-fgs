@@ -40,11 +40,12 @@ func TestNetworkMonitorKey_String(t *testing.T) {
 
 func TestNetworkMonitorValue_String(t *testing.T) {
 	val := NetworkMonitorValue{
-		TXBytes: 24 * 1024 * 1024,
-		RXBytes: 145 * 1024 * 1024 * 1024,
-		TXDrops: 12 * 1024 * 1024,
+		TXBytes:       24 * 1024 * 1024,
+		RXBytes:       145 * 1024 * 1024 * 1024,
+		TXDropBytes:   12 * 1024 * 1024,
+		TXDropPackets: 9000,
 	}
-	assert.Equal(t, "24MB sent 145GB received 12MB dropped", val.String())
+	assert.Equal(t, "24MB sent 145GB received 12MB/9000pkts dropped", val.String())
 }
 
 func TestConvertToNetworkMonitorData(t *testing.T) {
