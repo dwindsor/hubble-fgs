@@ -57,7 +57,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 				{
 					DestinationNames: []string{"cisco.com."},
 					Port:             443,
-					Stats:            &types.DestinationStats{TxBytes: 10, RxBytes: 20},
+					Stats:            &types.DestinationStats{TxBytes: 10, RxBytes: 20, TxDropBytes: 1000, TxDropPackets: 2},
 				},
 			},
 		},
@@ -68,7 +68,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 				{
 					DestinationNames: []string{"cisco.com."},
 					Port:             443,
-					Stats:            &types.DestinationStats{TxBytes: 30, RxBytes: 40},
+					Stats:            &types.DestinationStats{TxBytes: 30, RxBytes: 40, TxDropBytes: 1500, TxDropPackets: 3},
 				},
 			},
 		},
@@ -122,8 +122,10 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			DestinationNames: "cisco.com.",
 			DestinationPort:  443,
 		}: NetworkMonitorValue{
-			TXBytes: 40,
-			RXBytes: 60,
+			TXBytes:       40,
+			RXBytes:       60,
+			TXDropBytes:   2500,
+			TXDropPackets: 5,
 		},
 		NetworkKey{
 			SourceNamespace:  HostNamespace,
@@ -183,8 +185,11 @@ func TestDiff(t *testing.T) {
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
-			TXBytes: 100,
-			RXBytes: 200,
+			TXBytes:             100,
+			RXBytes:             200,
+			TXDropPackets:       2,
+			AllowDefaultPackets: 1,
+			DenyDefaultPackets:  2,
 		},
 	}
 	newData := NetworkMonitorData{
@@ -207,8 +212,11 @@ func TestDiff(t *testing.T) {
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
-			TXBytes: 1000,
-			RXBytes: 2000,
+			TXBytes:             1000,
+			RXBytes:             2000,
+			TXDropPackets:       10,
+			AllowDefaultPackets: 5,
+			DenyDefaultPackets:  8,
 		},
 		// new entry
 		NetworkKey{
@@ -233,8 +241,11 @@ func TestDiff(t *testing.T) {
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
-			TXBytes: 900,
-			RXBytes: 1800,
+			TXBytes:             900,
+			RXBytes:             1800,
+			TXDropPackets:       8,
+			AllowDefaultPackets: 4,
+			DenyDefaultPackets:  6,
 		},
 		NetworkKey{
 			SourceNamespace:    "client",

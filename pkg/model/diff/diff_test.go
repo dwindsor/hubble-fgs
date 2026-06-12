@@ -12,6 +12,7 @@ package diff
 
 import (
 	"context"
+	"math"
 	"slices"
 	"testing"
 	"time"
@@ -30,43 +31,58 @@ import (
 
 func connStatsA() *appModelV1.ConnectionStats {
 	return &appModelV1.ConnectionStats{
-		TxBytes:           10,
-		RxBytes:           20,
-		TxDrops:           30,
-		DefaultDropBytes:  15,
-		DefaultAllowBytes: 25,
-		Sessions:          7,
+		TxBytes:             10,
+		RxBytes:             20,
+		TxDrops:             30, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:         30,
+		TxDropPackets:       3,
+		DefaultDropBytes:    15,
+		DefaultAllowBytes:   25,
+		DefaultDropPackets:  5,
+		DefaultAllowPackets: 7,
+		Sessions:            7,
 	}
 }
 
 func connStatsB() *appModelV1.ConnectionStats {
 	return &appModelV1.ConnectionStats{
-		TxBytes:           1,
-		RxBytes:           2,
-		TxDrops:           3,
-		DefaultDropBytes:  1,
-		DefaultAllowBytes: 2,
-		Sessions:          2,
+		TxBytes:             1,
+		RxBytes:             2,
+		TxDrops:             3, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:         3,
+		TxDropPackets:       1,
+		DefaultDropBytes:    1,
+		DefaultAllowBytes:   2,
+		DefaultDropPackets:  1,
+		DefaultAllowPackets: 2,
+		Sessions:            2,
 	}
 }
 
 func connStatsDiff() *appModelV1.ConnectionStats {
 	return &appModelV1.ConnectionStats{
-		TxBytes:           9,
-		RxBytes:           18,
-		TxDrops:           27,
-		DefaultDropBytes:  14,
-		DefaultAllowBytes: 23,
-		Sessions:          5,
+		TxBytes:             9,
+		RxBytes:             18,
+		TxDrops:             27, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:         27,
+		TxDropPackets:       2,
+		DefaultDropBytes:    14,
+		DefaultAllowBytes:   23,
+		DefaultDropPackets:  4,
+		DefaultAllowPackets: 5,
+		Sessions:            5,
 	}
 }
 
 func connStatsEqual(t *testing.T, a, b *appModelV1.ConnectionStats) {
 	assert.Equal(t, a.TxBytes, b.TxBytes)
 	assert.Equal(t, a.RxBytes, b.RxBytes)
-	assert.Equal(t, a.TxDrops, b.TxDrops)
+	assert.Equal(t, a.TxDropBytes, b.TxDropBytes)
+	assert.Equal(t, a.TxDropPackets, b.TxDropPackets)
 	assert.Equal(t, a.DefaultDropBytes, b.DefaultDropBytes)
 	assert.Equal(t, a.DefaultAllowBytes, b.DefaultAllowBytes)
+	assert.Equal(t, a.DefaultDropPackets, b.DefaultDropPackets)
+	assert.Equal(t, a.DefaultAllowPackets, b.DefaultAllowPackets)
 	assert.Equal(t, a.Sessions, b.Sessions)
 }
 
@@ -78,6 +94,38 @@ func TestStatsDiff(t *testing.T) {
 	diff, err := StatsDiff(a, b)
 	assert.NoError(t, err)
 	connStatsEqual(t, diff, abResult)
+}
+
+// TestStatsDiffUnderflow checks that every counter StatsDiff subtracts is
+// guarded: a snapshot pair where the older value exceeds the newer one must be
+// rejected rather than wrapping around.
+func TestStatsDiffUnderflow(t *testing.T) {
+	tests := []struct {
+		name string
+		bump func(*appModelV1.ConnectionStats, uint64)
+	}{
+		{name: "TxBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.TxBytes = v }},
+		{name: "RxBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.RxBytes = v }},
+		{name: "TxDropBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.TxDropBytes = v }},
+		{name: "DefaultDropBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.DefaultDropBytes = v }},
+		{name: "DefaultAllowBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.DefaultAllowBytes = v }},
+		{name: "TxDropPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.TxDropPackets = v }},
+		{name: "DefaultDropPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.DefaultDropPackets = v }},
+		{name: "DefaultAllowPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.DefaultAllowPackets = v }},
+		{name: "Sessions", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.Sessions = v }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a, b := connStatsA(), connStatsB()
+			// b is the older snapshot, so pushing one of its counters above a's
+			// is the underflow the guards exist to catch.
+			tt.bump(b, math.MaxUint64)
+
+			diff, err := StatsDiff(a, b)
+			assert.Error(t, err)
+			assert.Nil(t, diff)
+		})
+	}
 }
 
 func destA() *appModelV1.Destination {
@@ -656,6 +704,10 @@ func TestToNetworkFlat(t *testing.T) {
 	bModel := appModel()
 	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxBytes = 1
 	bModel.Namespaces[1].Workloads[1].Containers[1].Processes[1].Connections[1].Stats.RxBytes = 1
+	// Drop the byte and packet baselines by different amounts so the flattened
+	// values distinguish the two units.
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxDropBytes = 10
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxDropPackets = 1
 
 	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
@@ -685,6 +737,10 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Equal(t, uint64(0), f[1].TxBytes)
 	assert.Equal(t, uint64(0), f[0].RxBytes)
 	assert.Equal(t, uint64(1), f[1].RxBytes)
+	assert.Equal(t, uint64(20), f[0].TxDropBytes)
+	assert.Equal(t, uint64(2), f[0].TxDropPackets)
+	// TxDrops is deprecated and still mirrors the byte count.
+	assert.Equal(t, uint64(20), f[0].TxDrops) //nolint:staticcheck
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
 	assert.Equal(t, aModel.Id, f[1].ApplicationModelId)
 
@@ -725,6 +781,10 @@ func TestToNetworkFlatHost(t *testing.T) {
 	aHost := hostModel()
 	bHost := hostModel()
 	bHost.Processes[1].Connections[0].Stats.TxBytes = 1
+	// Drop the byte and packet baselines by different amounts so the flattened
+	// values distinguish the two units.
+	bHost.Processes[1].Connections[0].Stats.TxDropBytes = 10
+	bHost.Processes[1].Connections[0].Stats.TxDropPackets = 1
 
 	aModel := &appModelV1.ApplicationModel{
 		Namespaces: []*appModelV1.ApplicationNamespace{},
@@ -751,6 +811,10 @@ func TestToNetworkFlatHost(t *testing.T) {
 	assert.Equal(t, uint32(80), f[0].DestinationPort)
 	assert.Equal(t, uint64(9), f[0].TxBytes)
 	assert.Equal(t, uint64(0), f[0].RxBytes)
+	assert.Equal(t, uint64(20), f[0].TxDropBytes)
+	assert.Equal(t, uint64(2), f[0].TxDropPackets)
+	// TxDrops is deprecated and still mirrors the byte count.
+	assert.Equal(t, uint64(20), f[0].TxDrops) //nolint:staticcheck
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
 
 	// Verify Id field is populated
@@ -992,6 +1056,35 @@ func TestTelemetryToConnection(t *testing.T) {
 			assert.EqualExportedValues(t, tt.expected, connection)
 		})
 	}
+}
+
+// TestTelemetryToConnectionDropPackets guards against regressing the bug
+// fixed by issue #8210: network_transmit_drop_total is documented as a packet
+// count, so it must be fed TxDropPackets and not the byte count TxDrops.
+func TestTelemetryToConnectionDropPackets(t *testing.T) {
+	// All three drop fields hold distinct values, so reading any of the two
+	// byte-denominated ones instead of the packet count is detectable.
+	const (
+		deprecatedBytes = 4400
+		explicitBytes   = 5500
+	)
+	telemetry := &appModelV1.NetworkConnectTelemetry{
+		EventType:       appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+		DestinationName: "192.168.0.2",
+		DestinationType: appModelV1.DestinationType_DESTINATION_TYPE_CIDR,
+		DestinationPort: 443,
+		TxBytes:         1234,
+		TxDrops:         deprecatedBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:     explicitBytes,
+		TxDropPackets:   7,
+	}
+
+	connection := TelemetryToConnection(telemetry)
+	edge := connection.Links[0].GetNetworkTelemetry()
+	assert.Equal(t, uint64(7), edge.NetworkTransmitDropTotal, "must report packet count")
+	assert.NotEqual(t, uint64(deprecatedBytes), edge.NetworkTransmitDropTotal, "must not report deprecated byte count")
+	assert.NotEqual(t, uint64(explicitBytes), edge.NetworkTransmitDropTotal, "must not report byte count")
+	assert.Equal(t, uint64(1234), edge.NetworkTransmitBytesTotal)
 }
 
 func TestApplicationModelToProcessFlat(t *testing.T) {
