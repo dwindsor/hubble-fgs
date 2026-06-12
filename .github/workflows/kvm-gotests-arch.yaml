@@ -100,59 +100,59 @@ jobs:
           - ${{ inputs.arch }}
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "bpf-next-20260603.072225"
+          - "bpf-next-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "rhel8.10-20260603.072225"
+          - "rhel8.10-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.18-20260603.072225"
+          - "6.18-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.12-20260603.072225"
+          - "6.12-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20260603.072225"
+          - "6.6-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20260603.072225"
+          - "6.1-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20260603.072225"
+          - "5.15-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20260603.072225"
+          - "5.10-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.4-20260603.072225"
+          - "5.4-20260608.014906"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20260603.072225"
+          - "4.19-20260608.014906"
         exclude:
           - arch: arm64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "rhel8.10-20260603.072225"
+            kernel: "rhel8.10-20260608.014906"
           - variation: LSEG # LSEG are not running on ARM
             arch: arm64
           - variation: LSEG # LSEG only need kernels >=v6.12
             arch: amd64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "rhel8.10-20260603.072225"
+            kernel: "rhel8.10-20260608.014906"
           - variation: LSEG # LSEG only need kernels >=v6.12
             arch: amd64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "6.6-20260603.072225"
+            kernel: "6.6-20260608.014906"
           - variation: LSEG # LSEG only need kernels >=v6.12
             arch: amd64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "6.1-20260603.072225"
+            kernel: "6.1-20260608.014906"
           - variation: LSEG # LSEG only need kernels >=v6.12
             arch: amd64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "5.15-20260603.072225"
+            kernel: "5.15-20260608.014906"
           - variation: LSEG # LSEG only need kernels >=v6.12
             arch: amd64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "5.10-20260603.072225"
+            kernel: "5.10-20260608.014906"
           - variation: LSEG # LSEG only need kernels >=v6.12
             arch: amd64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "5.4-20260603.072225"
+            kernel: "5.4-20260608.014906"
           - variation: LSEG # LSEG only need kernels >=v6.12
             arch: amd64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "4.19-20260603.072225"
+            kernel: "4.19-20260608.014906"
     runs-on: ${{ inputs.runner_label }}
     needs: [build]
     timeout-minutes: 120
