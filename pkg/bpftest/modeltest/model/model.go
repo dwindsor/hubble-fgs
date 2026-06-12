@@ -418,10 +418,11 @@ func (check *WorkloadConnectionCheck) CheckConnection(connection *v1alpha.Applic
 }
 
 type StatsCheck struct {
-	TxBytes  UInt64Checker
-	RxBytes  UInt64Checker
-	TxDrops  UInt64Checker
-	Sessions UInt64Checker
+	TxBytes       UInt64Checker
+	RxBytes       UInt64Checker
+	TxDropBytes   UInt64Checker
+	TxDropPackets UInt64Checker
+	Sessions      UInt64Checker
 }
 
 func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
@@ -435,9 +436,14 @@ func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
 			return fmt.Errorf("rxBytes check failed: %w", err)
 		}
 	}
-	if check.TxDrops != nil {
-		if err := check.TxDrops(stats.TxDrops); err != nil {
-			return fmt.Errorf("txDrops check failed: %w", err)
+	if check.TxDropBytes != nil {
+		if err := check.TxDropBytes(stats.TxDropBytes); err != nil {
+			return fmt.Errorf("TxDropBytes check failed: %w", err)
+		}
+	}
+	if check.TxDropPackets != nil {
+		if err := check.TxDropPackets(stats.TxDropPackets); err != nil {
+			return fmt.Errorf("TxDropPackets check failed: %w", err)
 		}
 	}
 	if check.Sessions != nil {
