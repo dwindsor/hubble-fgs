@@ -30,9 +30,10 @@ import (
 )
 
 func StatsZero(a *appModelV1.ConnectionStats) bool {
-	if a.TxBytes == 0 && a.RxBytes == 0 && a.TxDrops == 0 &&
+	if a.TxBytes == 0 && a.RxBytes == 0 && a.TxDropBytes == 0 &&
 		a.DefaultDropBytes == 0 && a.DefaultAllowBytes == 0 &&
-		a.Sessions == 0 {
+		a.TxDropPackets == 0 && a.DefaultDropPackets == 0 &&
+		a.DefaultAllowPackets == 0 && a.Sessions == 0 {
 		return true
 	}
 	return false
@@ -45,8 +46,8 @@ func StatsDiff(a, b *appModelV1.ConnectionStats) (*appModelV1.ConnectionStats, e
 	if b.RxBytes > a.RxBytes {
 		return nil, fmt.Errorf("stats diff underflow on RxBytes: %d - %d", a.RxBytes, b.RxBytes)
 	}
-	if b.TxDrops > a.TxDrops {
-		return nil, fmt.Errorf("stats diff underflow on TxDrops: %d - %d", a.TxDrops, b.TxDrops)
+	if b.TxDropBytes > a.TxDropBytes {
+		return nil, fmt.Errorf("stats diff underflow on TxDropBytes: %d - %d", a.TxDropBytes, b.TxDropBytes)
 	}
 	if b.DefaultDropBytes > a.DefaultDropBytes {
 		return nil, fmt.Errorf("stats diff underflow on DefaultDropBytes: %d - %d", a.DefaultDropBytes, b.DefaultDropBytes)
@@ -54,17 +55,31 @@ func StatsDiff(a, b *appModelV1.ConnectionStats) (*appModelV1.ConnectionStats, e
 	if b.DefaultAllowBytes > a.DefaultAllowBytes {
 		return nil, fmt.Errorf("stats diff underflow on DefaultAllowBytes: %d - %d", a.DefaultAllowBytes, b.DefaultAllowBytes)
 	}
+	if b.TxDropPackets > a.TxDropPackets {
+		return nil, fmt.Errorf("stats diff underflow on TxDropPackets: %d - %d", a.TxDropPackets, b.TxDropPackets)
+	}
+	if b.DefaultDropPackets > a.DefaultDropPackets {
+		return nil, fmt.Errorf("stats diff underflow on DefaultDropPackets: %d - %d", a.DefaultDropPackets, b.DefaultDropPackets)
+	}
+	if b.DefaultAllowPackets > a.DefaultAllowPackets {
+		return nil, fmt.Errorf("stats diff underflow on DefaultAllowPackets: %d - %d", a.DefaultAllowPackets, b.DefaultAllowPackets)
+	}
 	if b.Sessions > a.Sessions {
 		return nil, fmt.Errorf("stats diff underflow on Sessions: %d - %d", a.Sessions, b.Sessions)
 	}
 
+	txDropBytes := a.TxDropBytes - b.TxDropBytes
 	return &appModelV1.ConnectionStats{
-		TxBytes:           a.TxBytes - b.TxBytes,
-		RxBytes:           a.RxBytes - b.RxBytes,
-		TxDrops:           a.TxDrops - b.TxDrops,
-		DefaultDropBytes:  a.DefaultDropBytes - b.DefaultDropBytes,
-		DefaultAllowBytes: a.DefaultAllowBytes - b.DefaultAllowBytes,
-		Sessions:          a.Sessions - b.Sessions,
+		TxBytes:             a.TxBytes - b.TxBytes,
+		RxBytes:             a.RxBytes - b.RxBytes,
+		TxDrops:             txDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:         txDropBytes,
+		TxDropPackets:       a.TxDropPackets - b.TxDropPackets,
+		DefaultDropBytes:    a.DefaultDropBytes - b.DefaultDropBytes,
+		DefaultAllowBytes:   a.DefaultAllowBytes - b.DefaultAllowBytes,
+		DefaultDropPackets:  a.DefaultDropPackets - b.DefaultDropPackets,
+		DefaultAllowPackets: a.DefaultAllowPackets - b.DefaultAllowPackets,
+		Sessions:            a.Sessions - b.Sessions,
 	}, nil
 }
 
@@ -535,7 +550,7 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 }
 
 func policyVerdict(s *appModelV1.ConnectionStats) appModelV1.PolicyVerdict {
-	if s.TxDrops > 0 {
+	if s.TxDropBytes > 0 {
 		return appModelV1.PolicyVerdict_POLICY_VERDICT_DROP
 	}
 	if s.DefaultDropBytes > 0 {
@@ -603,7 +618,9 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							DestinationKubernetesResourceKind: dres,
 							TxBytes:                           c.Stats.TxBytes,
 							RxBytes:                           c.Stats.RxBytes,
-							TxDrops:                           c.Stats.TxDrops,
+							TxDrops:                           c.Stats.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+							TxDropBytes:                       c.Stats.TxDropBytes,
+							TxDropPackets:                     c.Stats.TxDropPackets,
 							Sessions:                          c.Stats.Sessions,
 							NodeLabels:                        labels,
 							PolicyName:                        c.Policy.PolicyName,
@@ -647,7 +664,9 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					DestinationKubernetesResourceKind: dres,
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,
-					TxDrops:                           c.Stats.TxDrops,
+					TxDrops:                           c.Stats.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+					TxDropBytes:                       c.Stats.TxDropBytes,
+					TxDropPackets:                     c.Stats.TxDropPackets,
 					Sessions:                          c.Stats.Sessions,
 					NodeLabels:                        labels,
 					PolicyName:                        c.Policy.PolicyName,
@@ -733,9 +752,10 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		Type: &graphV1.Edge_NetworkTelemetry{
 			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
 				NetworkTransmitBytesTotal: telemetry.TxBytes,
-				NetworkTransmitDropTotal:  telemetry.TxDrops,
-				NetworkReceiveBytesTotal:  telemetry.RxBytes,
-				NetworkReceiveDropTotal:   0,
+				// network_transmit_drop_total is documented as a packet count.
+				NetworkTransmitDropTotal: telemetry.TxDropPackets,
+				NetworkReceiveBytesTotal: telemetry.RxBytes,
+				NetworkReceiveDropTotal:  0,
 			},
 		},
 	}

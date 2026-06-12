@@ -86,10 +86,11 @@ func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) {
 					binaryBranch := contTree.AddBranch(bin)
 
 					for _, conn := range p.Connections {
-						childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
+						childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d/%dpkts defaultDrop: %d/%dpkts defaultAllow: %d/%dpkts)",
 							model.DestinationNameAppModel(conn.Destination),
-							conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
-							conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
+							conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDropBytes, conn.Stats.TxDropPackets,
+							conn.Stats.DefaultDropBytes, conn.Stats.DefaultDropPackets,
+							conn.Stats.DefaultAllowBytes, conn.Stats.DefaultAllowPackets)
 						binaryBranch.AddBranch(childName)
 					}
 				}
@@ -106,10 +107,11 @@ func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) {
 		binaryBranch := hostTree.AddBranch(bin)
 
 		for _, conn := range p.Connections {
-			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
+			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d/%dpkts defaultDrop: %d/%dpkts defaultAllow: %d/%dpkts)",
 				model.DestinationNameAppModel(conn.Destination),
-				conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
-				conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
+				conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDropBytes, conn.Stats.TxDropPackets,
+				conn.Stats.DefaultDropBytes, conn.Stats.DefaultDropPackets,
+				conn.Stats.DefaultAllowBytes, conn.Stats.DefaultAllowPackets)
 			binaryBranch.AddBranch(childName)
 		}
 	}
@@ -218,10 +220,11 @@ func selected(node *tview.TreeNode) {
 		addProcessNodes(node, val.GetProcesses())
 	case *appModelV1.ApplicationProcessGroup:
 		for _, conn := range val.GetConnections() {
-			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
+			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d/%dpkts defaultDrop: %d/%dpkts defaultAllow: %d/%dpkts)",
 				model.DestinationNameAppModel(conn.Destination),
-				conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
-				conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
+				conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDropBytes, conn.Stats.TxDropPackets,
+				conn.Stats.DefaultDropBytes, conn.Stats.DefaultDropPackets,
+				conn.Stats.DefaultAllowBytes, conn.Stats.DefaultAllowPackets)
 			child := tview.NewTreeNode(childName).
 				SetReference(conn).
 				SetSelectable(true).
@@ -798,7 +801,7 @@ func printDestinationDebug() error {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "LocalNSID\tLocalID\tDest ID:Src(Port)[Src]\tTxDrop\tDefaultDrop\tDefaultAllow\tPolicy")
+	fmt.Fprintln(w, "LocalNSID\tLocalID\tDest ID:Src(Port)[Src]\tTxDropBytes\tTxDropPkts\tDefaultDrop\tDefaultDropPkts\tDefaultAllow\tDefaultAllowPkts\tPolicy")
 
 	// Implementing a full Stringer on a proper type is more annoying that helpful
 	// for this simple uint64, let's just use a custom local stringer for this
@@ -816,16 +819,19 @@ func printDestinationDebug() error {
 	}
 
 	for _, d := range res.Destinations {
-		fmt.Fprintf(w, "%d\t%d\t%d:%d(%d)[%s]\t%d\t%d\t%d\t%s\n",
+		fmt.Fprintf(w, "%d\t%d\t%d:%d(%d)[%s]\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n",
 			d.LocalNsId,
 			d.LocalId,
 			d.DestinationId,
 			d.DestinationSource,
 			d.DestinationPort,
 			destinationSourceStringer(d.DestinationSource),
-			d.TxDrops,
+			d.TxDropBytes,
+			d.TxDropPackets,
 			d.DefaultDenyBytes,
+			d.DefaultDenyPackets,
 			d.DefaultAllowBytes,
+			d.DefaultAllowPackets,
 			d.Policy,
 		)
 	}
