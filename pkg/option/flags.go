@@ -85,7 +85,17 @@ const (
 	KeyMandateURL                        = "mandate-url"
 	KeyMandateRefreshPeriod              = "mandate-refresh-period"
 	KeyEnableTCP                         = "enable-tcp"
+	keyTCPStatsInterval                  = "tcp-stats-interval"
+	keyEnableTCPWatermarks               = "enable-tcp-watermarks"
+	keyTCPWatermarksWindowSizeMs         = "tcp-watermarks-window-size-ms"
+	keyTCPWatermarksBurstTriggerPercent  = "tcp-watermarks-burst-trigger-percent"
+	keyTCPWatermarksDipTriggerPercent    = "tcp-watermarks-dip-trigger-percent"
 	keyEnableTCPRTT                      = "enable-tcp-rtt"
+	keyTCPRTTHistMin                     = "tcp-rtt-min"
+	keyTCPRTTHistMax                     = "tcp-rtt-max"
+	keyEnableTCPMetrics                  = "enable-tcp-metrics"
+	keyTCPMetricsLabelFilter             = "tcp-metrics-label-filter"
+	keyTCPDisableEvents                  = "tcp-disable-events"
 	keyEnableUDP                         = "enable-udp"
 	KeyEnableUDPCgroup                   = "enable-udp-cgroup"
 	keyUDPStatsInterval                  = "udp-stats-interval"
@@ -238,7 +248,17 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.String(KeyMandateURL, "", "Set a URL for a Tetragon Mandate file")
 	flags.Duration(KeyMandateRefreshPeriod, 1*time.Minute, "Refresh period for the Mandate file")
 	flags.Bool(KeyEnableTCP, false, "Enable TCP observability")
+	flags.Duration(keyTCPStatsInterval, 0, fmt.Sprintf("Enable and specify interval for TCP statistics (requires --%s)", KeyEnableTCP))
+	flags.Bool(keyEnableTCPWatermarks, false, fmt.Sprintf("Enable TCP watermarks detection (requires --%s)", KeyEnableTCP))
+	flags.Uint32(keyTCPWatermarksWindowSizeMs, 0, fmt.Sprintf("TCP watermarks window size in milliseconds (requires --%s and --%s)", KeyEnableTCP, keyEnableTCPWatermarks))
+	flags.Uint32(keyTCPWatermarksBurstTriggerPercent, 0, fmt.Sprintf("TCP watermarks burst trigger percent (requires --%s and --%s)", KeyEnableTCP, keyEnableTCPWatermarks))
+	flags.Uint32(keyTCPWatermarksDipTriggerPercent, 0, fmt.Sprintf("TCP watermarks dip trigger percent (requires --%s and --%s)", KeyEnableTCP, keyEnableTCPWatermarks))
 	flags.Bool(keyEnableTCPRTT, false, "Enable TCP RTT observability")
+	flags.Uint32(keyTCPRTTHistMin, 0, fmt.Sprintf("Set the minimum value for the RTT histograms (requires --%s and --%s)", KeyEnableTCP, keyEnableTCPRTT))
+	flags.Uint32(keyTCPRTTHistMax, 0, fmt.Sprintf("Set the maximum value for the RTT histograms (requires --%s and --%s)", KeyEnableTCP, keyEnableTCPRTT))
+	flags.Bool(keyEnableTCPMetrics, true, fmt.Sprintf("Enable TCP metrics (requires --%s)", KeyEnableTCP))
+	flags.StringSlice(keyTCPMetricsLabelFilter, []string{}, fmt.Sprintf("TCP metrics label filter (requires --%s and --%s)", KeyEnableTCP, keyEnableTCPMetrics))
+	flags.StringSlice(keyTCPDisableEvents, []string{}, fmt.Sprintf("specify TCP events to disable, from listen, connect, stats, and close (requires --%s)", KeyEnableTCP))
 	flags.Bool(keyEnableUDP, false, "Enable UDP observability")
 	flags.Bool(KeyEnableUDPCgroup, true, fmt.Sprintf("Use Cgroups for UDP (requires --%s)", keyEnableUDP))
 	flags.Duration(keyUDPStatsInterval, 0, fmt.Sprintf("Enable and specify interval for UDP statistics (requires --%s)", keyEnableUDP))
@@ -345,7 +365,29 @@ func readAndSetEnterpriseFlags() {
 	Config.MandateConf.URL = viper.GetString(KeyMandateURL)
 	Config.MandateConf.RefreshPeriod = viper.GetDuration(KeyMandateRefreshPeriod)
 	Config.EnableTCP = viper.GetBool(KeyEnableTCP)
+	Config.TCPStatsInterval = viper.GetDuration(keyTCPStatsInterval)
+	Config.EnableTCPWatermarks = viper.GetBool(keyEnableTCPWatermarks)
+	Config.TCPWatermarksWindowSizeMs = viper.GetUint32(keyTCPWatermarksWindowSizeMs)
+	Config.TCPWatermarksBurstTriggerPercent = viper.GetUint32(keyTCPWatermarksBurstTriggerPercent)
+	Config.TCPWatermarksDipTriggerPercent = viper.GetUint32(keyTCPWatermarksDipTriggerPercent)
 	Config.EnableTCPRTT = viper.GetBool(keyEnableTCPRTT)
+	Config.TCPRTTHistMin = viper.GetUint32(keyTCPRTTHistMin)
+	Config.TCPRTTHistMax = viper.GetUint32(keyTCPRTTHistMax)
+	Config.EnableTCPMetrics = viper.GetBool(keyEnableTCPMetrics)
+	Config.TCPMetricsLabelFilter = viper.GetStringSlice(keyTCPMetricsLabelFilter)
+	Config.TCPDisableEvents = viper.GetStringSlice(keyTCPDisableEvents)
+	for _, e := range Config.TCPDisableEvents {
+		switch e {
+		case "listen":
+			Config.TCPDisableListenEvents = true
+		case "connect":
+			Config.TCPDisableConnectEvents = true
+		case "accept":
+			Config.TCPDisableAcceptEvents = true
+		case "close":
+			Config.TCPDisableCloseEvents = true
+		}
+	}
 	Config.EnableUDP = viper.GetBool(keyEnableUDP)
 	Config.EnableUDPCGroup = viper.GetBool(KeyEnableUDPCgroup)
 	Config.UDPStatsInterval = viper.GetDuration(keyUDPStatsInterval)
@@ -402,6 +444,39 @@ func validateConfig(config config) error {
 
 	if err := platformValidateConfig(config); err != nil {
 		return err
+	}
+
+	if !config.EnableTCP {
+		if config.EnableTCPWatermarks || config.EnableTCPRTT {
+			return fmt.Errorf("TCP observability requires --%s", KeyEnableTCP)
+		}
+	}
+
+	if config.EnableTCPWatermarks {
+		if config.TCPWatermarksWindowSizeMs == 0 {
+			return fmt.Errorf("TCP watermarks observability requires a window size > 0, set with --%s", keyTCPWatermarksWindowSizeMs)
+		}
+		if config.TCPWatermarksBurstTriggerPercent == 0 && config.TCPWatermarksDipTriggerPercent == 0 {
+			return fmt.Errorf("TCP watermarks requires a burst trigger percent > 0 or a dip trigger percent > 0, specify them with --%s or --%s", keyTCPWatermarksBurstTriggerPercent, keyTCPWatermarksDipTriggerPercent)
+		}
+	}
+
+	if !config.EnableTCPRTT {
+		if config.TCPRTTHistMin > 0 || config.TCPRTTHistMax > 0 {
+			return fmt.Errorf("TCP RTT observability requires --%s", keyEnableTCPRTT)
+		}
+	}
+
+	if !config.EnableTCP && len(config.TCPDisableEvents) > 0 {
+		return fmt.Errorf("TCP events disabled but TCP observability not enabled")
+	}
+
+	for _, e := range config.TCPDisableEvents {
+		switch e {
+		case "listen", "connect", "accept", "close":
+		default:
+			return fmt.Errorf("invalid TCP disabled event %s; valid events are listen, connect, accept, and close", e)
+		}
 	}
 
 	if !config.EnableUDP {

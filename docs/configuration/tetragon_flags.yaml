@@ -226,9 +226,15 @@ options:
     - name: enable-tcp
       default_value: "false"
       usage: Enable TCP observability
+    - name: enable-tcp-metrics
+      default_value: "true"
+      usage: Enable TCP metrics (requires --enable-tcp)
     - name: enable-tcp-rtt
       default_value: "false"
       usage: Enable TCP RTT observability
+    - name: enable-tcp-watermarks
+      default_value: "false"
+      usage: Enable TCP watermarks detection (requires --enable-tcp)
     - name: enable-tracing-policy-crd
       default_value: "true"
       usage: |
@@ -528,6 +534,38 @@ options:
       default_value: "32768"
       usage: |
         Set the size of the internal TCP cache. Higher values enable Tetragon to keep track of more concurrent TCP sessions before evicting old ones
+    - name: tcp-disable-events
+      default_value: '[]'
+      usage: |
+        specify TCP events to disable, from listen, connect, stats, and close (requires --enable-tcp)
+    - name: tcp-metrics-label-filter
+      default_value: '[]'
+      usage: |
+        TCP metrics label filter (requires --enable-tcp and --enable-tcp-metrics)
+    - name: tcp-rtt-max
+      default_value: "0"
+      usage: |
+        Set the maximum value for the RTT histograms (requires --enable-tcp and --enable-tcp-rtt)
+    - name: tcp-rtt-min
+      default_value: "0"
+      usage: |
+        Set the minimum value for the RTT histograms (requires --enable-tcp and --enable-tcp-rtt)
+    - name: tcp-stats-interval
+      default_value: 0s
+      usage: |
+        Enable and specify interval for TCP statistics (requires --enable-tcp)
+    - name: tcp-watermarks-burst-trigger-percent
+      default_value: "0"
+      usage: |
+        TCP watermarks burst trigger percent (requires --enable-tcp and --enable-tcp-watermarks)
+    - name: tcp-watermarks-dip-trigger-percent
+      default_value: "0"
+      usage: |
+        TCP watermarks dip trigger percent (requires --enable-tcp and --enable-tcp-watermarks)
+    - name: tcp-watermarks-window-size-ms
+      default_value: "0"
+      usage: |
+        TCP watermarks window size in milliseconds (requires --enable-tcp and --enable-tcp-watermarks)
     - name: telemetry-export-filename
       usage: |
         Filename for telemetry JSON export. Set to "" to disable. To enable telemetry export, --enable-application-model flag must be set to true. Telemetry export uses the export interval specified by --application-model-export-interval flag.

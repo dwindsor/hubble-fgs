@@ -103,7 +103,6 @@ type config struct {
 	MandateConf mandateconf.ManagerConf
 
 	EnableTCP       bool
-	EnableTCPRTT    bool
 	EnableUDP       bool
 	EnableICMP      bool
 	ICMPV6Info      bool
@@ -115,6 +114,26 @@ type config struct {
 	RawsockReportClose        bool
 	EnableRawsockMetrics      bool
 	RawsockMetricsLabelFilter []string
+
+	TCPStatsInterval time.Duration
+
+	EnableTCPWatermarks              bool
+	TCPWatermarksWindowSizeMs        uint32
+	TCPWatermarksBurstTriggerPercent uint32
+	TCPWatermarksDipTriggerPercent   uint32
+
+	EnableTCPRTT  bool
+	TCPRTTHistMin uint32
+	TCPRTTHistMax uint32
+
+	EnableTCPMetrics      bool
+	TCPMetricsLabelFilter []string
+
+	TCPDisableEvents        []string
+	TCPDisableListenEvents  bool
+	TCPDisableConnectEvents bool
+	TCPDisableAcceptEvents  bool
+	TCPDisableCloseEvents   bool
 
 	EnableUDPCGroup      bool
 	UDPStatsInterval     time.Duration
@@ -188,6 +207,7 @@ var (
 		EnableNetworkEvents:               true,
 		UDPInKernelManaged:                false,
 		ApplicationModelSplitMaxHostProcs: 100,
+		EnableTCPMetrics:                  true,
 		EnableUDPCGroup:                   true,
 		EnableUDPMetrics:                  true,
 		EnableNetworkWatermarksExitGen:    true,

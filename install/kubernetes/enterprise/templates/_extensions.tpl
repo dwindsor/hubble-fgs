@@ -46,7 +46,17 @@ enable-syscall-tracking: "true"
 enable-syscall-tracking: "false"
 {{- end }}
 enable-tcp: {{ .Values.tetragon.layer3.tcp.enabled | quote }}
+tcp-stats-interval: {{ .Values.tetragon.layer3.tcp.statsInterval | quote }}
+enable-tcp-watermarks: {{ .Values.tetragon.layer3.tcp.watermarks.enabled | quote }}
+tcp-watermarks-window-size-ms: {{ .Values.tetragon.layer3.tcp.watermarks.windowSizeMs | quote }}
+tcp-watermarks-burst-trigger-percent: {{ .Values.tetragon.layer3.tcp.watermarks.burstTriggerPercent | quote }}
+tcp-watermarks-dip-trigger-percent: {{ .Values.tetragon.layer3.tcp.watermarks.dipTriggerPercent | quote }}
 enable-tcp-rtt: {{ .Values.tetragon.layer3.tcp.rtt.enabled | quote }}
+tcp-rtt-min: {{ .Values.tetragon.layer3.tcp.rtt.min | quote }}
+tcp-rtt-max: {{ .Values.tetragon.layer3.tcp.rtt.max | quote }}
+enable-tcp-metrics: {{ .Values.tetragon.layer3.tcp.metrics.enabled | quote }}
+tcp-metrics-label-filter: {{ .Values.tetragon.layer3.tcp.metrics.labelFilter | quote }}
+tcp-disable-events: {{ .Values.tetragon.layer3.tcp.disableEvents | quote }}
 enable-udp: {{ .Values.tetragon.layer3.udp.enabled | quote }}
 enable-udp-cgroup: {{ .Values.tetragon.layer3.udp.cgroup | quote }}
 udp-stats-interval: {{ .Values.tetragon.layer3.udp.statsInterval | quote }}

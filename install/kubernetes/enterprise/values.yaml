@@ -75,8 +75,20 @@ tetragon:
   layer3:
     tcp:
       enabled: false
+      statsInterval: 0s
+      watermarks:
+        enabled: false
+        windowSizeMs: 0
+        burstTriggerPercent: 0
+        dipTriggerPercent: 0
       rtt:
         enabled: false
+        min: 0
+        max: 0
+      metrics:
+        enabled: true
+        labelFilter: []
+      disableEvents: []
     udp:
       enabled: false
       cgroup: true
