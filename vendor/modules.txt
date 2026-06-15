@@ -406,7 +406,7 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.8.0-pre.0.0.20260603110236-b03416be5e33 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.8.0-pre.0.0.20260615144038-8f6a9f6fb1e0 => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -2278,7 +2278,7 @@ k8s.io/component-base/metrics/prometheus/feature
 k8s.io/component-base/metrics/prometheusextension
 k8s.io/component-base/version
 k8s.io/component-base/zpages/features
-# k8s.io/cri-api v0.36.1
+# k8s.io/cri-api v0.36.2
 ## explicit; go 1.26.0
 k8s.io/cri-api/pkg/apis/runtime/v1
 # k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b

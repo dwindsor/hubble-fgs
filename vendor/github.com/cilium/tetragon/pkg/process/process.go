@@ -49,9 +49,15 @@ type ProcessInternal struct {
 	// will be constructed on the fly when returning these extra fields
 	// about the binary during the corresponding ProcessExec only.
 	apiBinaryProp *tetragon.BinaryProperties
-	// garbage collector metadata
-	color  int // Writes should happen only inside gc select channel
+	// garbage collector metadata. color is accessed from the GC goroutine and
+	// concurrently read by dump()/getEntries() and the LRU eviction callback, so
+	// it is stored as an atomic and must only be touched via getColor/setColor.
+	color  atomic.Int32
 	refcnt atomic.Uint32
+	// parentRefcntDecreased tracks whether the parent reference count has been
+	// decreased for this process. This is used to avoid double parent-- when
+	// a process is evicted by the LRU and then handled by the exit handler.
+	parentRefcntDecreased bool
 	// refcntOps is a map of operations to refcnt change
 	// keys can be:
 	// - "process++": process increased refcnt (i.e. this process starts)
@@ -230,6 +236,26 @@ func (pi *ProcessInternal) RefInc(reason string) {
 
 func (pi *ProcessInternal) RefGet() uint32 {
 	return pi.refcnt.Load()
+}
+
+func (pi *ProcessInternal) SetParentRefcntDecreased(val bool) {
+	pi.mu.Lock()
+	defer pi.mu.Unlock()
+	pi.parentRefcntDecreased = val
+}
+
+func (pi *ProcessInternal) GetParentRefcntDecreased() bool {
+	pi.mu.Lock()
+	defer pi.mu.Unlock()
+	return pi.parentRefcntDecreased
+}
+
+func (pi *ProcessInternal) getColor() processColor {
+	return processColor(pi.color.Load())
+}
+
+func (pi *ProcessInternal) setColor(c processColor) {
+	pi.color.Store(int32(c))
 }
 
 func (pi *ProcessInternal) NeededAncestors() bool {

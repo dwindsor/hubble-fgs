@@ -163,7 +163,7 @@ jobs:
             (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
 
             # FIXME: remove this line when we have updated kind version upstream in LVH
-            go install sigs.k8s.io/kind@v0.27.0
+            go install sigs.k8s.io/kind@v0.32.0
 
             cd /host/hubble-fgs
 
