@@ -96,7 +96,10 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 	tcpconfig.ClearConfig()
 	if StatsEnabled() {
 		stats.disable()
-		StatsInterval = 0
+		StatsInterval = enterpriseOption.Config.TCPStatsInterval
+		if StatsInterval > 0 {
+			stats.enable(StatsInterval)
+		}
 	}
 
 	DisableConnect = false
@@ -209,6 +212,11 @@ func EnableTcp() ([]*program.Program, []*program.Program, []*program.Map) {
 	return progsInitSock, progsCollectStats, maps
 }
 
+func SetStatsInterval(interval time.Duration) {
+	StatsInterval = interval
+	logger.GetLogger().Info("TCP configured", "StatsInterval", interval)
+}
+
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	model.DefaultNewServer()
 
@@ -223,8 +231,10 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.StatsInterval > 0 {
 		StatsInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	} else {
-		stats.disable()
-		StatsInterval = 0
+		StatsInterval = enterpriseOption.Config.TCPStatsInterval
+		if StatsInterval == 0 {
+			stats.disable()
+		}
 	}
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
 		WatermarksEnabled = true
