@@ -70,7 +70,7 @@ END
 # Event from the client socket
 EVENT HTTP
   ## Common
-  $ 10 00 00 00 # op + pad
+  $ 8f 00 00 00 # op + pad
   h4 1124       # size
   NZ 8          # ktime
 
@@ -98,7 +98,7 @@ END
 # Event from the server socket
 EVENT HTTP
   ## Common
-  $ 10 00 00 00 # op + pad
+  $ 8f 00 00 00 # op + pad
   h4 1156       # size
   ? 8           # ktime
 
@@ -125,7 +125,7 @@ END
 # Event from the server socket
 EVENT HTTP
   ## Common
-  $ 10 00 00 00 # op + pad
+  $ 8f 00 00 00 # op + pad
   h4 1084       # size
   NZ 8          # ktime
 
@@ -139,7 +139,7 @@ END
 # Event from the client socket
 EVENT HTTP
   ## Common
-  $ 10 00 00 00 # op + pad
+  $ 8f 00 00 00 # op + pad
   h4 1084       # size
   NZ 8          # ktime
 

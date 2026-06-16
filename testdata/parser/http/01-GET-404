@@ -11,8 +11,8 @@ END
 
 # Event from the client socket.
 EVENT http
-  $ 10 00 00 00 # op + pad
-  h4 167        # size
+  $ 8f 00 00 00 # op + pad
+  h4 175        # size
   ? 8           # ktime
 
   ## socket cookie
@@ -51,8 +51,8 @@ END
 
 # Event from the server socket.
 EVENT http
-  $ 10 00 00 00 # op + pad
-  h4 167        # size
+  $ 8f 00 00 00 # op + pad
+  h4 175        # size
   ? 8           # ktime
 
   ## socket cookie
@@ -98,8 +98,8 @@ INGRESS
 END
 
 EVENT http
-  $ 10 00 00 00 # op + pad
-  h4 200        # size
+  $ 8f 00 00 00 # op + pad
+  h4 208        # size
   ? 8           # ktime
 
   ## socket cookie
@@ -145,8 +145,8 @@ EVENT http
 END
 
 EVENT http
-  $ 10 00 00 00 # op + pad
-  h4 200        # size
+  $ 8f 00 00 00 # op + pad
+  h4 208        # size
   ? 8           # ktime
 
   ## socket cookie

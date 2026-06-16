@@ -36,8 +36,8 @@ EVENTS
   # Event from the client socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 225        # size
+    $ 8f 00 00 00 # op + pad
+    h4 233        # size
     NZ 8          # ktime
 
     ## socket cookie
@@ -74,8 +74,8 @@ EVENTS
   # Event from the server socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 225        # size
+    $ 8f 00 00 00 # op + pad
+    h4 233        # size
     NZ 8          # ktime
 
     ## socket cookie
@@ -130,8 +130,8 @@ EVENTS
   # Event from the server socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 194        # size
+    $ 8f 00 00 00 # op + pad
+    h4 202        # size
     NZ 8          # ktime
 
     ## socket cookie
@@ -169,8 +169,8 @@ EVENTS
   # Event from the client socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 194        # size
+    $ 8f 00 00 00 # op + pad
+    h4 202        # size
     NZ 8          # ktime
 
     ## socket cookie
@@ -254,8 +254,8 @@ EVENTS
   # Event from the client socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 210        # size
+    $ 8f 00 00 00 # op + pad
+    h4 218        # size
     NZ 8          # ktime
 
     ## socket cookie
@@ -292,8 +292,8 @@ EVENTS
   # Event from the server socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 210        # size
+    $ 8f 00 00 00 # op + pad
+    h4 218        # size
     NZ 8          # ktime
 
     ## socket cookie
@@ -359,8 +359,8 @@ EVENTS
   # Event from the server socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 203        # size
+    $ 8f 00 00 00 # op + pad
+    h4 211        # size
     NZ 8          # ktime
 
     ## socket cookie
@@ -398,8 +398,8 @@ EVENTS
   # Event from the client socket
   EVENT HTTP
     ## Common
-    $ 10 00 00 00 # op + pad
-    h4 203        # size
+    $ 8f 00 00 00 # op + pad
+    h4 211        # size
     NZ 8          # ktime
 
     ## socket cookie
