@@ -56,7 +56,6 @@ import (
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -1168,7 +1167,7 @@ func runTcpClient() {
 	socket.Close()
 }
 
-func testTcpWatermarks(t *testing.T, legacy bool) {
+func testTcpWatermarks(t *testing.T, CLISwitches, legacy bool) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
@@ -1289,35 +1288,48 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if legacy {
-		if err := observertesthelper.WriteConfigFile(testConfigFile, tcpConfigLegacy); err != nil {
-			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-		}
-	} else {
-		if err := observertesthelper.WriteConfigFile(testConfigFile, tcpConfig); err != nil {
-			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-		}
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TCPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.EnableTCPWatermarks, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TCPWatermarksWindowSizeMs, Value: uint32(1000)},
+			{KeyPtr: &enterpriseOption.Config.TCPWatermarksBurstTriggerPercent, Value: uint32(50)},
+			{KeyPtr: &enterpriseOption.Config.TCPWatermarksDipTriggerPercent, Value: uint32(10)},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkWatermarksExitGen, Value: true},
+			{KeyPtr: &enterpriseOption.Config.NetworkWatermarksExitGenInterval, Value: 1000 * time.Millisecond},
+		}))
 	}
 
-	dfltBase := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		var configYaml string
+		if legacy {
+			configYaml = tcpConfigLegacy
+		} else {
+			configYaml = tcpConfig
+		}
+		tp, err := tracingpolicy.FromYAML(configYaml)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	serverCmd := exec.Command(os.Args[0], "-tcpServer")
 	serverOutput, err := serverCmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("ERROR Could not connect to server output pipe: '%s'", err)
-	}
+	require.NoError(t, err, "could not connect to server output pipe")
 	serverCmd.Stderr = os.Stderr
 
 	err = serverCmd.Start()
-	if err != nil {
-		t.Fatalf("ERROR Cannot start server: '%s'", err)
-	}
+	require.NoError(t, err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
@@ -1340,60 +1352,44 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 
 	watermarksMapFile := filepath.Join(bpf.MapPrefixPath(), networkWatermarksEvents.ProcessNetworkWatermarksMapName)
 	m, err := ebpf.LoadPinnedMap(watermarksMapFile, nil)
-	if err != nil {
-		t.Fatalf("ERROR Cannot open map file: '%s'", err)
-	}
+	require.NoError(t, err, "cannot open map file")
 	defer m.Close()
 	processKey := &networkWatermarksEvents.ProcessNetworkWatermarksKey{Key: networkWatermarksEvents.PidToWatermarksKey(serverPid, syscall.IPPROTO_TCP, 0)}
 	var processValue networkWatermarksEvents.ProcessNetworkWatermarksValue
 	err = m.Lookup(processKey, &processValue)
-	if err == nil {
-		t.Fatal("ERROR Server process in network watermarks map before traffic")
-	}
+	require.Error(t, err, "server process in watermarks map before traffic")
 
 	clientCmd := exec.Command(os.Args[0], "-tcpClient")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	if err != nil {
-		t.Fatalf("ERROR Cannot start client: '%s'", err)
-	}
+	require.NoError(t, err, "cannot start client")
 
 	err = m.Lookup(processKey, &processValue)
-	if err != nil {
-		t.Fatalf("ERROR Server process not in network watermarks map: '%s'", err)
-	}
+	require.NoError(t, err, "server process must be in watermarks map")
 
-	serverCmd.Process.Kill()
-	serverCmd.Process.Wait()
-
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	killAndWaitCommand(t, serverCmd)
 
 	// the burst map record is sure to be removed after exit event is
 	// received, let's wait for that and do the lookup check after
 
 	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
-	if err == nil {
-		t.Fatal("ERROR Server process in network watermarks map after exit")
-	}
+	require.Error(t, err, "server process in watermarks map after exit")
 }
 
 func TestTcpBurst(t *testing.T) {
-	testTcpWatermarks(t, true)
+	testTcpWatermarks(t, false, true)
 }
 
 func TestTcpWatermarks(t *testing.T) {
-	testTcpWatermarks(t, false)
+	testTcpWatermarks(t, false, false)
+}
+
+func TestTcpWatermarksCLI(t *testing.T) {
+	testTcpWatermarks(t, true, false)
 }
 
 func TestNamespaces(t *testing.T) {
