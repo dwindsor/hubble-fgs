@@ -80,6 +80,7 @@ spec:
                 - ""
               resources:
                 - configmaps
+                - secrets
                 - services
               verbs:
                 - get
@@ -130,6 +131,16 @@ spec:
                 - watch
                 - create
           serviceAccountName: tetragon-operator
+        - rules:
+            - apiGroups:
+                - ""
+              resources:
+                - secrets
+              verbs:
+                - get
+                - list
+                - watch
+          serviceAccountName: tetragon
       clusterPermissions:
         - rules:
             - apiGroups:

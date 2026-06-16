@@ -1,0 +1,37 @@
+- command:
+    - "/otelcol-contrib"
+    - "--config=/conf/otel-agent-config.yaml"
+  image:
+  name: tetragon-otel-agent
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsUser: 0
+    runAsGroup: 0
+  resources:
+  env:
+    - name: SPLUNK_HEC_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name:
+          key:
+    - name: SPLUNK_HEC_ENDPOINT
+      valueFrom:
+        secretKeyRef:
+          name:
+          key:
+    - name: K8S_NODE
+      valueFrom:
+        fieldRef: { fieldPath: spec.nodeName }
+  volumeMounts:
+    - name: otel-agent-config-vol
+      mountPath: /conf
+      readOnly: true
+    - name: export-logs
+      mountPath:
+      readOnly: true
+    - name: file-storage
+      mountPath: /var/lib/otelcol/file-storage

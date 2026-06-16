@@ -44,6 +44,13 @@ func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 		return nil, err
 	}
 
+	splunkYaml := cm.Data[splunkKey]
+	splunkCMFields := make(map[string]any)
+	if err := yaml.Unmarshal([]byte(splunkYaml), &splunkCMFields); err != nil {
+		log.WithValues("value", splunkYaml).Error(err, "could not unmarshal the splunk_hec configuration")
+		return nil, err
+	}
+
 	imagePullSecrets := make([]corev1.LocalObjectReference, 0)
 	imagePullSecretsValue := configValue(log, cmFields, "imagePullSecrets", "")
 	if imagePullSecretsValue != "" {
@@ -115,14 +122,14 @@ func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 					ServiceAccountName:            configValue(log, cmFields, "serviceAccountName", ""),
 					SecurityContext:               &securityContext,
 					InitContainers:                daemonSetInitContainers(log, namespace, cmFields),
-					Containers:                    daemonSetContainers(log, cmFields),
+					Containers:                    daemonSetContainersWithOtel(log, cmFields, splunkCMFields),
 					NodeSelector:                  configMapOfString(log, cmFields, "nodeSelector"),
 					Affinity:                      &affinity,
 					Tolerations:                   tolerations,
 					HostNetwork:                   configValue(log, cmFields, "hostNetwork", false),
 					DNSPolicy:                     dnsPolicy(log, cmFields),
 					TerminationGracePeriodSeconds: new(int64(1)),
-					Volumes:                       volumes(log, cmFields),
+					Volumes:                       volumes(log, cmFields, splunkCMFields),
 					// This is required to avoid diff with actual K8S object
 					DeprecatedServiceAccount: configValue(log, cmFields, "serviceAccountName", ""),
 				},
@@ -581,7 +588,7 @@ func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
 	return corev1.DNSDefault
 }
 
-func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
+func volumes(log logr.Logger, cmFields map[string]any, splunkCMFields map[string]any) []corev1.Volume {
 	hostPathDirectoryVolumeType := corev1.HostPathDirectory
 	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
 	volumes := []corev1.Volume{
@@ -658,6 +665,93 @@ func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 				},
 			)
 		}
+		if configValue(log, splunkCMFields, "enabled", false) {
+			volumes = append(volumes,
+				corev1.Volume{
+					Name: "otel-agent-config-vol",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: OtelConfigMapName,
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  "otel-agent-config",
+								Path: "otel-agent-config.yaml",
+							}},
+						},
+					},
+				},
+				corev1.Volume{
+					Name: "file-storage",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			)
+
+			tlsSecretName := ""
+			if tlsFields, ok := splunkCMFields[tlsKey].(map[string]any); ok {
+				if secretFields, ok := tlsFields[tlsSecretKey].(map[string]any); ok {
+					if n, ok := secretFields[tlsSecretNameKey].(string); ok {
+						tlsSecretName = n
+					}
+				}
+			}
+			tlsCAFile := ""
+			if tlsFields, ok := splunkCMFields[tlsKey].(map[string]any); ok {
+				if secretFields, ok := tlsFields[tlsSecretKey].(map[string]any); ok {
+					if ca, ok := secretFields[tlsSecretCACertKey].(string); ok {
+						tlsCAFile = ca
+					}
+				}
+			}
+			tlsCertFile := ""
+			if tlsFields, ok := splunkCMFields[tlsKey].(map[string]any); ok {
+				if secretFields, ok := tlsFields[tlsSecretKey].(map[string]any); ok {
+					if cert, ok := secretFields[tlsSecretClientCertKey].(string); ok {
+						tlsCertFile = cert
+					}
+				}
+			}
+			tlsKeyFile := ""
+			if tlsFields, ok := splunkCMFields[tlsKey].(map[string]any); ok {
+				if secretFields, ok := tlsFields[tlsSecretKey].(map[string]any); ok {
+					if key, ok := secretFields[tlsSecretClientKeyKey].(string); ok {
+						tlsKeyFile = key
+					}
+				}
+			}
+			if tlsSecretName == "" || (tlsCAFile == "" && tlsCertFile == "" && tlsKeyFile == "") {
+				tlsInlineCA := ""
+				if tlsFields, ok := splunkCMFields[tlsKey].(map[string]any); ok {
+					tlsInlineCA, _ = tlsFields[tlsCAKey].(string)
+				}
+				tlsInlineCert := ""
+				if tlsFields, ok := splunkCMFields[tlsKey].(map[string]any); ok {
+					tlsInlineCert, _ = tlsFields[tlsCertKey].(string)
+				}
+				tlsInlineKey := ""
+				if tlsFields, ok := splunkCMFields[tlsKey].(map[string]any); ok {
+					tlsInlineKey, _ = tlsFields[tlsKeyKey].(string)
+				}
+				if tlsInlineCA != "" || tlsInlineCert != "" || tlsInlineKey != "" {
+					tlsSecretName = "tetragon-splunk-tls"
+				}
+			}
+			if tlsSecretName != "" {
+				volumes = append(volumes,
+					corev1.Volume{
+						Name: "otel-splunk-tls",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: tlsSecretName,
+							},
+						},
+					},
+				)
+			}
+		}
+
 	}
 	volumes = append(volumes, volumesFromConfigMap(log, cmFields, "extraVolumes")...)
 	volumes = append(volumes, hostPathVolumesFromConfigMap(log, cmFields, "extraHostPathMounts")...)
@@ -748,6 +842,132 @@ func configArray(log logr.Logger, config map[string]any, key string, defaultValu
 	return defaultValue
 }
 
+func daemonSetContainersWithOtel(log logr.Logger, cmFields map[string]any, splunkCMFields map[string]any) []corev1.Container {
+	containers := daemonSetContainers(log, cmFields)
+	if configValue(log, splunkCMFields, "enabled", false) {
+		if c := otelContainer(log, splunkCMFields, cmFields); c != nil {
+			containers = append(containers, *c)
+		}
+	}
+	return containers
+}
+
+func otelContainer(log logr.Logger, splunkFields map[string]any, cmFields map[string]any) *corev1.Container {
+	imageFields, _ := splunkFields["image"].(map[string]any)
+	override := ""
+	repository := ""
+	tag := ""
+	if imageFields != nil {
+		override, _ = imageFields["override"].(string)
+		repository, _ = imageFields["repository"].(string)
+		tag, _ = imageFields["tag"].(string)
+	}
+	image := ""
+	if override != "" {
+		image = override
+	} else {
+		if repository != "" && tag != "" {
+			image = fmt.Sprintf("%s:%s", repository, tag)
+		}
+	}
+
+	tokenName := ""
+	tokenKey := ""
+	if tokenFields, ok := splunkFields["token"].(map[string]any); ok {
+		tokenName, _ = tokenFields["secretName"].(string)
+		tokenKey, _ = tokenFields["secretKey"].(string)
+	}
+	endpointName := ""
+	endpointKey := ""
+	if endpointFields, ok := splunkFields["endpoint"].(map[string]any); ok {
+		endpointName, _ = endpointFields["secretName"].(string)
+		endpointKey, _ = endpointFields["secretKey"].(string)
+	}
+
+	exportDir := configValue(log, cmFields, "exportDirectory", "")
+
+	resources := corev1.ResourceRequirements{}
+	resourcesValue := configValue(log, splunkFields, "resources", "")
+	if resourcesValue != "" {
+		if err := yaml.Unmarshal([]byte(resourcesValue), &resources); err != nil {
+			log.WithValues("value", resourcesValue).Error(err, "could not unmarshal the resources, default value used instead")
+		}
+	}
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      "otel-agent-config-vol",
+			ReadOnly:  true,
+			MountPath: "/conf",
+		},
+		{
+			Name:      "export-logs",
+			MountPath: exportDir,
+		},
+		{
+			Name:      "file-storage",
+			MountPath: "/var/lib/otelcol/file-storage",
+		},
+	}
+
+	if tlsSecret(splunkFields) {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      "otel-splunk-tls",
+			MountPath: "/tls",
+			ReadOnly:  true,
+		})
+	}
+
+	return &corev1.Container{
+		Name:    "tetragon-otel-agent",
+		Image:   image,
+		Command: []string{"/otelcol-contrib", "--config=/conf/otel-agent-config.yaml"},
+		Args:    []string{},
+		Env: []corev1.EnvVar{
+			{
+				Name: "K8S_NODE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						APIVersion: "v1",
+						FieldPath:  "spec.nodeName",
+					},
+				},
+			},
+			{
+				Name: "SPLUNK_HEC_TOKEN",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: tokenName},
+						Key:                  tokenKey,
+					},
+				},
+			},
+			{
+				Name: "SPLUNK_HEC_ENDPOINT",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: endpointName},
+						Key:                  endpointKey,
+					},
+				},
+			},
+		},
+		Ports:                    []corev1.ContainerPort{},
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		ImagePullPolicy:          corev1.PullIfNotPresent,
+		VolumeMounts:             mounts,
+		Resources:                resources,
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: new(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"All"},
+			},
+			ReadOnlyRootFilesystem: new(true),
+			RunAsUser:              new(int64(0)),
+			RunAsGroup:             new(int64(0)),
+		},
+	}
+}
+
 func configValueInt(log logr.Logger, config map[string]any, key string, bitSize int, defaultValue int) int {
 	value := configValue(log, config, key, "")
 	if value == "" {
@@ -759,4 +979,32 @@ func configValueInt(log logr.Logger, config map[string]any, key string, bitSize 
 		return defaultValue
 	}
 	return int(valueInt)
+}
+
+// tlsSecret returns true if a TLS secret should be mounted for the otel container.
+// This mirrors the Helm logic in install/kubernetes/enterprise/templates/_extensions.tpl:
+// - external secret: name is set AND at least one of ca_cert/client_cert/client_key is set
+// - inline certs:    at least one of ca/crt/key is set
+func tlsSecret(splunkConfig map[string]any) bool {
+	tlsFields, ok := splunkConfig[tlsKey].(map[string]any)
+	if !ok {
+		return false
+	}
+	if secretFields, ok := tlsFields[tlsSecretKey].(map[string]any); ok {
+		extName, _ := secretFields[tlsSecretNameKey].(string)
+		if len(extName) > 0 {
+			if keysFields, ok := secretFields[tlsSecretKeysKey].(map[string]any); ok {
+				hasCA, _ := keysFields[tlsSecretCACertKey].(string)
+				hasCert, _ := keysFields[tlsSecretClientCertKey].(string)
+				hasKey, _ := keysFields[tlsSecretClientKeyKey].(string)
+				if len(hasCA) > 0 || len(hasCert) > 0 || len(hasKey) > 0 {
+					return true
+				}
+			}
+		}
+	}
+	tlsInlineCA, _ := tlsFields[tlsCAKey].(string)
+	tlsInlineCert, _ := tlsFields[tlsCertKey].(string)
+	tlsInlineKey, _ := tlsFields[tlsKeyKey].(string)
+	return len(tlsInlineCA) > 0 || len(tlsInlineCert) > 0 || len(tlsInlineKey) > 0
 }

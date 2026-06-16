@@ -1,0 +1,66 @@
+extensions: |
+  file_storage:
+    directory: /var/lib/otelcol/file-storage
+receivers: |
+  filelog:
+    include:
+      - /var/run/cilium/tetragon/**/*.log
+    multiline:
+      line_start_pattern: "^{"
+    start_at: end
+    poll_interval: 1s
+    max_concurrent_files: 20
+    include_file_path: true
+    include_file_name: true
+    storage: file_storage
+    operators:
+      - type: json_parser
+        on_error: send
+      - type: time_parser
+        parse_from: body.time
+        layout_type: gotime
+        layout: "2006-01-02T15:04:05.999999999Z07:00"
+        on_error: send
+processors: |
+  attributes:
+    actions:
+      - action: upsert
+        key: com.splunk.source
+        from_attribute: log.file.path # use log.file.name for just the basename
+      - action: upsert
+        key: com.splunk.sourcetype
+        value: cisco:isovalent
+  resource:
+    attributes:
+      - action: upsert
+        key: host.name
+        value: "${env:K8S_NODE}"
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 512
+  batch:
+    #timeout: 60s
+    timeout: 3600
+    send_batch_max_size: 10240
+    send_batch_size: 2560
+exporters: |
+  splunk_hec:
+    endpoint: "${env:SPLUNK_HEC_ENDPOINT}"
+    token: "${env:SPLUNK_HEC_TOKEN}"
+    sourcetype: "cisco:isovalent"
+    sending_queue:
+      enabled: true
+      num_consumers: 2
+      queue_size: 512
+    retry_on_failure:
+      enabled: true
+      initial_interval: 2s
+      max_interval: 30s
+      max_elapsed_time: 300s
+service: |
+  extensions: [file_storage]
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: [attributes, resource, memory_limiter, batch]
+      exporters: [splunk_hec]

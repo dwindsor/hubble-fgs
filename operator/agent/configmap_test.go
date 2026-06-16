@@ -31,6 +31,7 @@ func TestDefaultOperatorConfigMap(t *testing.T) {
 		OperatorConfigMapAgentDaemonSetKey:   defaultDSConfig,
 		OperatorConfigMapRTHooksDaemonSetKey: defaultRTDSConfig,
 		OperatorConfigMapAggregatorKey:       defaultAggregatorConfig,
+		splunkKey:                            defaultSplunkConfig,
 	}
 	actual := DefaultOperatorConfigMap(logr.Log, "kube-system", "test")
 

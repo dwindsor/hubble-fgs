@@ -512,6 +512,30 @@ tetragonGrpcAddress: localhost:54321
 serviceMonitorEnabled: true
 agentServiceMonitorPrometheusAddress: localhost
 agentServiceMonitorPrometheusPort: "1234"`,
+					splunkKey: `enabled: true
+image:
+  repository: quay.io/isovalent/opentelemetry-collector-contrib
+  tag: "0.133.0"
+resources: |
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+  requests:
+    cpu: "1"
+    memory: "3Gi"
+endpoint:
+  secretName: splunk-hec
+  secretKey: hec-endpoint
+token:
+  secretName: splunk-hec
+  secretKey: hec-token
+tls:
+  secret:
+    name: custom-tetragon-splunk-tls
+    keys:
+      ca_cert: ca.crt
+      client_cert: tls.crt
+      client_key: tls.key`,
 				},
 			},
 			expected: &appv1.DaemonSet{
@@ -647,6 +671,34 @@ agentServiceMonitorPrometheusPort: "1234"`,
 										HostPath: &corev1.HostPathVolumeSource{
 											Path: "/opt/tetragon-test",
 											Type: &hostPathDirectoryOrCreateVolumeType,
+										},
+									},
+								},
+								{
+									Name: "otel-agent-config-vol",
+									VolumeSource: corev1.VolumeSource{
+										ConfigMap: &corev1.ConfigMapVolumeSource{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: OtelConfigMapName,
+											},
+											Items: []corev1.KeyToPath{{
+												Key:  "otel-agent-config",
+												Path: "otel-agent-config.yaml",
+											}},
+										},
+									},
+								},
+								{
+									Name: "file-storage",
+									VolumeSource: corev1.VolumeSource{
+										EmptyDir: &corev1.EmptyDirVolumeSource{},
+									},
+								},
+								{
+									Name: "otel-splunk-tls",
+									VolumeSource: corev1.VolumeSource{
+										Secret: &corev1.SecretVolumeSource{
+											SecretName: "custom-tetragon-splunk-tls",
 										},
 									},
 								},
@@ -855,6 +907,87 @@ agentServiceMonitorPrometheusPort: "1234"`,
 											corev1.ResourceCPU:    resource.MustParse("2500m"),
 											corev1.ResourceMemory: resource.MustParse("2536Mi"),
 										},
+									},
+								},
+								{
+									Name:    "tetragon-otel-agent",
+									Command: []string{"/otelcol-contrib", "--config=/conf/otel-agent-config.yaml"},
+									Args:    []string{},
+									Image:   "quay.io/isovalent/opentelemetry-collector-contrib:0.133.0",
+									Env: []corev1.EnvVar{
+										{
+											Name: "K8S_NODE",
+											ValueFrom: &corev1.EnvVarSource{
+												FieldRef: &corev1.ObjectFieldSelector{
+													APIVersion: "v1",
+													FieldPath:  "spec.nodeName",
+												},
+											},
+										},
+										{
+											Name: "SPLUNK_HEC_TOKEN",
+											ValueFrom: &corev1.EnvVarSource{
+												SecretKeyRef: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "splunk-hec",
+													},
+													Key: "hec-token",
+												},
+											},
+										},
+										{
+											Name: "SPLUNK_HEC_ENDPOINT",
+											ValueFrom: &corev1.EnvVarSource{
+												SecretKeyRef: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "splunk-hec",
+													},
+													Key: "hec-endpoint",
+												},
+											},
+										},
+									},
+									Ports:                    []corev1.ContainerPort{},
+									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+									ImagePullPolicy:          corev1.PullIfNotPresent,
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "otel-agent-config-vol",
+											ReadOnly:  true,
+											MountPath: "/conf",
+										},
+										{
+											Name:      "export-logs",
+											MountPath: "/var/run/cilium/tetragon-test",
+										},
+										{
+											Name:      "file-storage",
+											MountPath: "/var/lib/otelcol/file-storage",
+										},
+										{
+											Name:      "otel-splunk-tls",
+											MountPath: "/tls",
+											ReadOnly:  true,
+										},
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("2"),
+											corev1.ResourceMemory: resource.MustParse("4Gi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("1"),
+											corev1.ResourceMemory: resource.MustParse("3Gi"),
+										},
+									},
+									SecurityContext: &corev1.SecurityContext{
+										AllowPrivilegeEscalation: new(false),
+										Capabilities: &corev1.Capabilities{
+											Drop: []corev1.Capability{"All"},
+										},
+										ReadOnlyRootFilesystem: new(true),
+										RunAsUser:              new(int64(0)),
+										RunAsGroup:             new(int64(0)),
 									},
 								},
 							},
@@ -1421,15 +1554,17 @@ func TestVolumes(t *testing.T) {
 	dsVolumeDefaultMode := int32(420)
 
 	testCases := []struct {
-		name       string
-		yamlString string
-		expected   []corev1.Volume
+		name         string
+		yamlString   string
+		splunkString string
+		expected     []corev1.Volume
 	}{
 		{
 			name: "default values",
 			yamlString: `tetragonEnabled: true
 exportDirectory: /var/run/cilium/tetragon
 hostProcPath: /proc`,
+			splunkString: ``,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
@@ -1485,6 +1620,7 @@ hostProcPath: /proc`,
 			yamlString: `tetragonEnabled: false
 exportDirectory: /var/run/cilium/tetragon
 hostProcPath: /proc`,
+			splunkString: ``,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
@@ -1507,12 +1643,16 @@ hostProcPath: /proc`,
 			},
 		},
 		{
-			name: "tetragon and oci-hook enabled",
+			name: "tetragon, oci-hook and splunk_hec enabled",
 			yamlString: `ociHookSetupEnabled: true
 tetragonEnabled: true
 exportDirectory: /var/run/cilium/tetragon
 hostProcPath: /proc
 ociHookSetupInstallDir: /opt/tetragon`,
+			splunkString: `enabled: true
+tls:
+  secret:
+    name: custom-tetragon-splunk-tls`,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
@@ -1579,6 +1719,151 @@ ociHookSetupInstallDir: /opt/tetragon`,
 						},
 					},
 				},
+				{
+					Name: "otel-agent-config-vol",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: OtelConfigMapName,
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  "otel-agent-config",
+								Path: "otel-agent-config.yaml",
+							}},
+						},
+					},
+				},
+				{
+					Name: "file-storage",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "otel-splunk-tls",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "custom-tetragon-splunk-tls",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "tetragon, oci-hook and splunk_hec enabled",
+			yamlString: `ociHookSetupEnabled: true
+tetragonEnabled: true
+exportDirectory: /var/run/cilium/tetragon
+hostProcPath: /proc
+ociHookSetupInstallDir: /opt/tetragon`,
+			splunkString: `enabled: true
+tls:
+  ca: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-------
+  crt: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-------
+  key: |
+    -----BEGIN CERTIFICATE-----
+    xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    -----END CERTIFICATE-------`,
+			expected: []corev1.Volume{
+				{
+					Name: "cilium-run",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/run/cilium",
+							Type: &hostPathDirectoryOrCreateVolumeType,
+						},
+					},
+				},
+				{
+					Name: "export-logs",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/run/cilium/tetragon",
+							Type: &hostPathDirectoryOrCreateVolumeType,
+						},
+					},
+				},
+				{
+					Name: "tetragon-config",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "tetragon-config",
+							},
+							DefaultMode: &dsVolumeDefaultMode,
+						},
+					},
+				},
+				{
+					Name: "bpf-maps",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/sys/fs/bpf",
+							Type: &hostPathDirectoryOrCreateVolumeType,
+						},
+					},
+				},
+				{
+					Name: "host-proc",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/proc",
+							Type: &hostPathDirectoryVolumeType,
+						},
+					},
+				},
+				{
+					Name: "oci-hooks-path",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/usr/share/containers/oci/hooks.d/",
+							Type: &hostPathDirectoryVolumeType,
+						},
+					},
+				},
+				{
+					Name: "oci-hooks-install-path",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/opt/tetragon",
+							Type: &hostPathDirectoryOrCreateVolumeType,
+						},
+					},
+				},
+				{
+					Name: "otel-agent-config-vol",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: OtelConfigMapName,
+							},
+							Items: []corev1.KeyToPath{{
+								Key:  "otel-agent-config",
+								Path: "otel-agent-config.yaml",
+							}},
+						},
+					},
+				},
+				{
+					Name: "file-storage",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "otel-splunk-tls",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "tetragon-splunk-tls",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -1604,6 +1889,7 @@ extraHostPathMounts: |
     mountPath: /host/test2
 metadataEnabled: true
 `,
+			splunkString: ``,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
@@ -1718,8 +2004,10 @@ metadataEnabled: true
 		t.Run(tt.name, func(t *testing.T) {
 			cfgMap := make(map[string]any)
 			require.NoError(t, yaml.Unmarshal([]byte(tt.yamlString), &cfgMap))
+			splunkCfgMap := make(map[string]any)
+			require.NoError(t, yaml.Unmarshal([]byte(tt.splunkString), &splunkCfgMap))
 			// function to test
-			actual := volumes(logr.Log, cfgMap)
+			actual := volumes(logr.Log, cfgMap, splunkCfgMap)
 
 			require.Equal(t, tt.expected, actual)
 		})

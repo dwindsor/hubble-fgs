@@ -12,11 +12,13 @@ package agent
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,6 +35,8 @@ type Reconciler struct {
 
 const (
 	AgentConfigMapName       = "tetragon-config"
+	OtelConfigMapName        = "tetragon-otel-agent-conf"
+	OtelSecretName           = "tetragon-splunk-tls"
 	OperatorConfigMapName    = "tetragon-operator-config"
 	DaemonSetName            = "tetragon"
 	RTDaemonSetName          = "tetragon-rthooks"
@@ -105,6 +109,133 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, err
 		}
 		log.Info("agent ConfigMap updated")
+	}
+
+	// Reconcile the otel ConfigMap and Secret, gated on splunk_hec.enabled.
+	splunkCMFields := make(map[string]any)
+	if err := yaml.Unmarshal([]byte(opCM.Data[splunkKey]), &splunkCMFields); err != nil {
+		log.WithValues("value", opCM.Data[splunkKey]).Error(err, "could not unmarshal the splunk_hec configuration")
+		return ctrl.Result{}, err
+	}
+	splunkEnabled := configValue(log, splunkCMFields, "enabled", false)
+
+	otelCM := &corev1.ConfigMap{}
+	otelCMNamespacedName := types.NamespacedName{
+		Namespace: req.Namespace,
+		Name:      OtelConfigMapName,
+	}
+	if splunkEnabled {
+		desiredOtelCM, err := OtelConfigMap(log, req.Namespace, OtelConfigMapName, opCM)
+		if err != nil {
+			log.Error(err, "unable to generate the desired otel ConfigMap")
+			return ctrl.Result{}, nil
+		}
+		if err := ctrl.SetControllerReference(opCM, desiredOtelCM, r.Scheme); err != nil {
+			log.Error(err, fmt.Sprintf("unable to set the owner reference to the %s ConfigMap", OtelConfigMapName))
+			return ctrl.Result{}, err
+		}
+		if err := r.Get(ctx, otelCMNamespacedName, otelCM); err != nil {
+			if !apierrors.IsNotFound(err) {
+				log.Error(err, fmt.Sprintf("unable to fetch the %s ConfigMap", OtelConfigMapName))
+				return ctrl.Result{}, err
+			}
+			log.Info("otel ConfigMap not found, creating")
+			if err := r.Create(ctx, desiredOtelCM); err != nil {
+				log.Error(err, fmt.Sprintf("unable to create %s ConfigMap", OtelConfigMapName))
+				return ctrl.Result{}, err
+			}
+			log.Info(fmt.Sprintf("%s ConfigMap created", OtelConfigMapName))
+			return ctrl.Result{Requeue: true}, nil
+		}
+		if !equality.Semantic.DeepEqual(otelCM.Labels, desiredOtelCM.Labels) || !equality.Semantic.DeepEqual(otelCM.Data, desiredOtelCM.Data) {
+			log.Info(fmt.Sprintf("updating %s ConfigMap", OtelConfigMapName))
+			if err := r.Update(ctx, desiredOtelCM); err != nil {
+				log.Error(err, fmt.Sprintf("unable to update the %s ConfigMap", OtelConfigMapName))
+				return ctrl.Result{}, err
+			}
+			log.Info(fmt.Sprintf("%s ConfigMap updated", OtelConfigMapName))
+		}
+	} else {
+		if err := r.Get(ctx, otelCMNamespacedName, otelCM); err == nil {
+			if !metav1.IsControlledBy(otelCM, opCM) {
+				log.Info(fmt.Sprintf("skipping deletion of %s ConfigMap: not owned by this controller", OtelConfigMapName))
+			} else if err := r.Delete(ctx, otelCM); err != nil {
+				log.Error(err, fmt.Sprintf("unable to delete the %s ConfigMap", OtelConfigMapName))
+				return ctrl.Result{}, err
+			} else {
+				log.Info(fmt.Sprintf("%s ConfigMap deleted", OtelConfigMapName))
+			}
+		} else if !apierrors.IsNotFound(err) {
+			log.Error(err, fmt.Sprintf("unable to fetch the %s ConfigMap", OtelConfigMapName))
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Reconcile the otel Secret (only when splunk_hec is enabled and inline certs are configured).
+	otelSecret := &corev1.Secret{}
+	otelSecretNamespacedName := types.NamespacedName{
+		Namespace: req.Namespace,
+		Name:      OtelSecretName,
+	}
+	if splunkEnabled {
+		desiredOtelSecret, err := OtelSecret(log, req.Namespace, OtelSecretName, opCM)
+		if err != nil {
+			log.Error(err, "unable to generate the desired otel Secret")
+			return ctrl.Result{}, nil
+		}
+		if desiredOtelSecret != nil {
+			if err := ctrl.SetControllerReference(opCM, desiredOtelSecret, r.Scheme); err != nil {
+				log.Error(err, fmt.Sprintf("unable to set the owner reference to the %s Secret", OtelSecretName))
+				return ctrl.Result{}, err
+			}
+		}
+		if err := r.Get(ctx, otelSecretNamespacedName, otelSecret); err != nil {
+			if !apierrors.IsNotFound(err) {
+				log.Error(err, fmt.Sprintf("unable to fetch the %s Secret", OtelSecretName))
+				return ctrl.Result{}, err
+			}
+			if desiredOtelSecret != nil {
+				log.Info("otel Secret not found, creating")
+				if err := r.Create(ctx, desiredOtelSecret); err != nil {
+					log.Error(err, fmt.Sprintf("unable to create %s Secret", OtelSecretName))
+					return ctrl.Result{}, err
+				}
+				log.Info(fmt.Sprintf("%s Secret created", OtelSecretName))
+				return ctrl.Result{Requeue: true}, nil
+			}
+		} else {
+			if desiredOtelSecret == nil {
+				if !metav1.IsControlledBy(otelSecret, opCM) {
+					log.Info(fmt.Sprintf("skipping deletion of %s Secret: not owned by this controller", OtelSecretName))
+				} else if err := r.Delete(ctx, otelSecret); err != nil {
+					log.Error(err, fmt.Sprintf("unable to delete the %s Secret", OtelSecretName))
+					return ctrl.Result{}, err
+				} else {
+					log.Info(fmt.Sprintf("%s Secret deleted", OtelSecretName))
+				}
+			} else if !equality.Semantic.DeepEqual(otelSecret.Labels, desiredOtelSecret.Labels) || !equality.Semantic.DeepEqual(otelSecret.Data, desiredOtelSecret.Data) {
+				log.Info(fmt.Sprintf("updating %s Secret", OtelSecretName))
+				if err := r.Update(ctx, desiredOtelSecret); err != nil {
+					log.Error(err, fmt.Sprintf("unable to update the %s Secret", OtelSecretName))
+					return ctrl.Result{}, err
+				}
+				log.Info(fmt.Sprintf("%s Secret updated", OtelSecretName))
+			}
+		}
+	} else {
+		if err := r.Get(ctx, otelSecretNamespacedName, otelSecret); err == nil {
+			if !metav1.IsControlledBy(otelSecret, opCM) {
+				log.Info(fmt.Sprintf("skipping deletion of %s Secret: not owned by this controller", OtelSecretName))
+			} else if err := r.Delete(ctx, otelSecret); err != nil {
+				log.Error(err, fmt.Sprintf("unable to delete the %s Secret", OtelSecretName))
+				return ctrl.Result{}, err
+			} else {
+				log.Info(fmt.Sprintf("%s Secret deleted", OtelSecretName))
+			}
+		} else if !apierrors.IsNotFound(err) {
+			log.Error(err, fmt.Sprintf("unable to fetch the %s Secret", OtelSecretName))
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Reconcile the agent DaemonSet.
@@ -320,6 +451,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 // are reconciled accordingly.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1.ConfigMap{}).Owns(&appsv1.DaemonSet{}).
+		For(&corev1.ConfigMap{}).Owns(&appsv1.DaemonSet{}).Owns(&corev1.Secret{}).
 		Complete(r)
 }

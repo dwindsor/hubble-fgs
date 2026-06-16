@@ -44,6 +44,9 @@ var (
 
 	//go:embed manifests/aggregator-config.yaml
 	defaultAggregatorConfig string
+
+	//go:embed manifests/splunk-hec-config.yaml
+	defaultSplunkConfig string
 )
 
 // DefaultOperatorConfigMap creates a ConfigMap.
@@ -57,6 +60,7 @@ func DefaultOperatorConfigMap(log logr.Logger, namespace string, name string) *c
 	data[OperatorConfigMapAgentDaemonSetKey] = defaultDSConfig
 	data[OperatorConfigMapRTHooksDaemonSetKey] = defaultRTDSConfig
 	data[OperatorConfigMapAggregatorKey] = defaultAggregatorConfig
+	data[splunkKey] = defaultSplunkConfig
 	cm := &corev1.ConfigMap{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "ConfigMap",
