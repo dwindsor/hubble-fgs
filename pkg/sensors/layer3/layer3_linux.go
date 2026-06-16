@@ -764,6 +764,7 @@ func EnableLayer3Progs() error {
 	if enterpriseOption.Config.EnableTCP {
 		tcpEnabled = true
 		tcp.SetStatsInterval(enterpriseOption.Config.TCPStatsInterval)
+		tcp.ParseWatermarksOptions()
 	}
 	if enterpriseOption.Config.EnableTCPRTT {
 		if !utils.RTTHookAvailable() {

@@ -44,11 +44,10 @@ var (
 		return getRunTcpGC(emitSocketStatsEvent, cache)
 	}}
 
-	WatermarksEnable           bool
+	WatermarksEnabled          bool
 	WatermarksWindowSize       uint64
 	WatermarksBurstTriggerMult uint64
 	WatermarksDipTriggerMult   uint64
-	WatermarksEnabled          = false
 
 	DisableConnect = false
 	DisableClose   = false
@@ -63,7 +62,7 @@ func StatsEnabled() bool {
 func SetConfig(cfg *networkapi.Layer3ConfigValue) error {
 	ConfigureSockStatSampler(cfg,
 		StatsInterval,
-		WatermarksEnable,
+		WatermarksEnabled,
 		WatermarksWindowSize,
 		WatermarksBurstTriggerMult,
 		WatermarksDipTriggerMult,
@@ -92,6 +91,7 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 		WatermarksEnabled = false
+		ParseWatermarksOptions()
 	}
 	tcpconfig.ClearConfig()
 	if StatsEnabled() {
@@ -203,7 +203,7 @@ func EnableTcp() ([]*program.Program, []*program.Program, []*program.Map) {
 
 	logger.GetLogger().Info("Enable TCP",
 		"statsInterval", StatsInterval,
-		"watermarksEnable", WatermarksEnable,
+		"WatermarksEnabled", WatermarksEnabled,
 		"watermarksWindowSize", WatermarksWindowSize,
 		"watermarksBurstTriggerMult", WatermarksBurstTriggerMult,
 		"maxRttHistogram", tcpconfig.RttHistogramMax,
@@ -238,22 +238,21 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	}
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
 		WatermarksEnabled = true
-		WatermarksEnable = true
 		WatermarksWindowSize = uint64(spec.Parser.Tcp.Watermarks.WindowSize)
 		WatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Watermarks.BurstTriggerPercent)
 		WatermarksDipTriggerMult = uint64(spec.Parser.Tcp.Watermarks.DipTriggerPercent)
-		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_TCP, false)
+		if spec.Parser.NetworkWatermarksExitGen.Enable && spec.Parser.NetworkWatermarksExitGen.Interval > 0 {
+			go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_TCP, false)
+		}
 	} else if spec.Parser.Tcp != nil && spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
 		WatermarksEnabled = true
-		WatermarksEnable = true
 		WatermarksWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
 		WatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
-		go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_TCP, true)
+		if spec.Parser.NetworkWatermarksExitGen.Enable && spec.Parser.NetworkWatermarksExitGen.Interval > 0 {
+			go networkWatermarksEvents.Start(time.Duration(spec.Parser.NetworkWatermarksExitGen.Interval)*time.Millisecond, syscall.IPPROTO_TCP, true)
+		}
 	} else {
-		WatermarksEnable = false
-		WatermarksWindowSize = 0
-		WatermarksBurstTriggerMult = 0
-		WatermarksDipTriggerMult = 0
+		ParseWatermarksOptions()
 	}
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.RttHistogram.Enable || enterpriseOption.Config.EnableTCPRTT {
 		tcpconfig.RttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
@@ -274,6 +273,25 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
 	}
 	return nil
+}
+
+// ParseWatermarksOptions parses the Tetragon config and outputs the kernel selectors
+// needed for BPF to identify TCP watermarks and run the monitor on it.
+func ParseWatermarksOptions() {
+	if enterpriseOption.Config.EnableTCPWatermarks {
+		WatermarksEnabled = true
+		WatermarksWindowSize = uint64(enterpriseOption.Config.TCPWatermarksWindowSizeMs)
+		WatermarksBurstTriggerMult = uint64(enterpriseOption.Config.TCPWatermarksBurstTriggerPercent)
+		WatermarksDipTriggerMult = uint64(enterpriseOption.Config.TCPWatermarksDipTriggerPercent)
+		if enterpriseOption.Config.EnableNetworkWatermarksExitGen && enterpriseOption.Config.NetworkWatermarksExitGenInterval > 0 {
+			go networkWatermarksEvents.Start(enterpriseOption.Config.NetworkWatermarksExitGenInterval, syscall.IPPROTO_TCP, false)
+		}
+	} else {
+		WatermarksEnabled = false
+		WatermarksWindowSize = 0
+		WatermarksBurstTriggerMult = 0
+		WatermarksDipTriggerMult = 0
+	}
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
