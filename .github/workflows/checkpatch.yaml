@@ -14,7 +14,7 @@ jobs:
     # subjects for a reason (e.g. including the digest). Other checkpatch checks are either ignored or relevant only
     # for BPF code, so it's fine to skip the entire workflow for Renovate PRs. If there are more checks added then we
     # should revisit it (and maybe update cilium-checkpatch).
-    if: ${{ github.event.pull_request.user.login != 'cilium-renovate[bot]' }}
+    if: ${{ github.event.pull_request.user.login != 'isovalent-renovate[bot]' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
