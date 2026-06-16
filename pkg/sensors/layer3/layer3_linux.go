@@ -462,7 +462,7 @@ func (l3 *l3Sensor) PolicyHandler(
 			// DNS requires cgroup programs.
 			udpCgroup = true
 		}
-		if tcpEnabled && spec.Parser.Tcp.RttHistogram.Enable && !utils.RTTHookAvailable() {
+		if tcpEnabled && spec.Parser.Tcp != nil && spec.Parser.Tcp.RttHistogram.Enable && !utils.RTTHookAvailable() {
 			return nil, fmt.Errorf("tcp rtt enabled in policy but kernel support missing")
 		}
 		if rawEnabled && !utils.RawHooksAvailable() {
@@ -765,6 +765,7 @@ func EnableLayer3Progs() error {
 		tcpEnabled = true
 		tcp.SetStatsInterval(enterpriseOption.Config.TCPStatsInterval)
 		tcp.ParseWatermarksOptions()
+		tcp.ParseRTTOptions()
 	}
 	if enterpriseOption.Config.EnableTCPRTT {
 		if !utils.RTTHookAvailable() {

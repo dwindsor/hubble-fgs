@@ -92,6 +92,7 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 		WatermarksEnabled = false
 		ParseWatermarksOptions()
+		ParseRTTOptions()
 	}
 	tcpconfig.ClearConfig()
 	if StatsEnabled() {
@@ -254,16 +255,16 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 	} else {
 		ParseWatermarksOptions()
 	}
-	if spec.Parser.Tcp != nil && spec.Parser.Tcp.RttHistogram.Enable || enterpriseOption.Config.EnableTCPRTT {
+	if spec.Parser.Tcp != nil && (spec.Parser.Tcp.RttHistogram.Enable || enterpriseOption.Config.EnableTCPRTT) &&
+		(spec.Parser.Tcp.RttHistogram.Max != 0 || spec.Parser.Tcp.RttHistogram.Min != 0) {
 		tcpconfig.RttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
 		tcpconfig.RttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
-
-		if tcpconfig.RttHistogramMax < tcpconfig.RttHistogramMin {
-			tcpconfig.RttHistogramMax = 0
-			return fmt.Errorf("misconfigured Rtt Histogram: Min value must be less than Max")
-		}
 	} else {
+		ParseRTTOptions()
+	}
+	if tcpconfig.RttHistogramMax < tcpconfig.RttHistogramMin {
 		tcpconfig.RttHistogramMax = 0
+		return fmt.Errorf("misconfigured RTT Histogram: Min value must be less than Max")
 	}
 
 	if spec.Parser.Tcp != nil {
@@ -273,6 +274,17 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
 	}
 	return nil
+}
+
+// ParseRTTOptions parses the Tetragon config and sets the config parameters.
+func ParseRTTOptions() {
+	if enterpriseOption.Config.EnableTCPRTT {
+		tcpconfig.RttHistogramMin = enterpriseOption.Config.TCPRTTHistMin
+		tcpconfig.RttHistogramMax = enterpriseOption.Config.TCPRTTHistMax
+	} else {
+		tcpconfig.RttHistogramMin = 0
+		tcpconfig.RttHistogramMax = 0
+	}
 }
 
 // ParseWatermarksOptions parses the Tetragon config and outputs the kernel selectors
