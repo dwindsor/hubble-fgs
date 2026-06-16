@@ -42,6 +42,13 @@ func setSwitchesInternal(switches []SwitchSettings, revert bool) ([]SwitchSettin
 			} else {
 				*v = s.OldValue.(int)
 			}
+		case (*uint32):
+			if !revert {
+				s.OldValue = *v
+				*v = s.Value.(uint32)
+			} else {
+				*v = s.OldValue.(uint32)
+			}
 		case (*[]int):
 			if !revert {
 				s.OldValue = *v

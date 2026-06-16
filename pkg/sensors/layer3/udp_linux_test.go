@@ -312,7 +312,7 @@ func runUdpWatermarksClient() {
 	}
 }
 
-func testUdpWatermarks(t *testing.T, legacy bool) {
+func testUdpWatermarks(t *testing.T, CLISwitches, legacy bool) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
@@ -334,7 +334,8 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 
 	var checker *ec.UnorderedEventChecker
 
-	if legacy {
+	// CLISwitches implies !legacy
+	if legacy && !CLISwitches {
 		checker = ec.NewUnorderedEventChecker(
 			ec.NewProcessExecChecker("clientExec").
 				WithProcess(clientProcess),
@@ -436,20 +437,37 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if legacy {
-		if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfigLegacy); err != nil {
-			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-		}
-	} else {
-		if err := observertesthelper.WriteConfigFile(testConfigFile, udpConfig); err != nil {
-			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-		}
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: time.Minute},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPWatermarks, Value: true},
+			{KeyPtr: &enterpriseOption.Config.UDPWatermarksWindowSizeMs, Value: uint32(1000)},
+			{KeyPtr: &enterpriseOption.Config.UDPWatermarksBurstTriggerPercent, Value: uint32(50)},
+			{KeyPtr: &enterpriseOption.Config.UDPWatermarksDipTriggerPercent, Value: uint32(10)},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkWatermarksExitGen, Value: true},
+			{KeyPtr: &enterpriseOption.Config.NetworkWatermarksExitGenInterval, Value: 1000 * time.Millisecond},
+		}))
 	}
 
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		var configYaml string
+		if legacy {
+			configYaml = udpConfigLegacy
+		} else {
+			configYaml = udpConfig
+		}
+		tp, err := tracingpolicy.FromYAML(configYaml)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -490,57 +508,41 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	processKey := &networkWatermarksEvents.ProcessNetworkWatermarksKey{Key: networkWatermarksEvents.PidToWatermarksKey(serverPid, syscall.IPPROTO_UDP, 0)}
 	var processValue networkWatermarksEvents.ProcessNetworkWatermarksValue
 	err = m.Lookup(processKey, &processValue)
-	assert.Error(t, err, "server process in watermarks map before traffic")
+	require.Error(t, err, "server process in watermarks map before traffic")
 
 	clientCmd := exec.Command(os.Args[0], "-udpWatermarksClient")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	assert.NoError(t, err, "cannot start client")
+	require.NoError(t, err, "cannot start client")
 
 	err = m.Lookup(processKey, &processValue)
-	assert.NoError(t, err, "server process must be in watermarks map")
-
-	err = m.Lookup(processKey, &processValue)
-	assert.NoError(t, err, "client process must be in watermarks map")
+	require.NoError(t, err, "server process must be in watermarks map")
 
 	killAndWaitCommand(t, serverCmd)
-
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 
 	// the burst map record is sure to be removed after exit event is
 	// received, let's wait for that and do the lookup check after
 
 	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
-	assert.Error(t, err, "server process in watermarks map after exit")
+	require.Error(t, err, "server process in watermarks map after exit")
 
 	killAndWaitCommand(t, clientCmd)
 }
 
 func TestUdpBurst(t *testing.T) {
-	testUdpWatermarks(t, true)
+	testUdpWatermarks(t, false, true)
 }
 
 func TestUdpWatermarks(t *testing.T) {
-	testUdpWatermarks(t, false)
+	testUdpWatermarks(t, false, false)
 }
 
-// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
-// thing to do here even if revive complains.
-//
-//revive:disable:context-as-argument
-func getBasicUdpObserver(t *testing.T, ctx context.Context) *observer.Observer {
-	return getLayer3Observer(t, ctx, udpBasicConfig, true)
+func TestUdpWatermarksCLI(t *testing.T) {
+	testUdpWatermarks(t, true, false)
 }
 
 func configureDisableSwitchesAndConfig(t *testing.T, CLISwitches bool, disableConnect bool, disableListen bool, disableClose bool, disableStats bool) string {
