@@ -153,52 +153,52 @@ __get_method(ctx_md *msg, struct msg_http *http)
 	const u32 skip = 4;
 	http->scratch[0] = (u32)0;
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "connect")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "connect")) {
 		DEBUG("method connect");
 		return http_method_connect;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "delete")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "delete")) {
 		DEBUG("method delete");
 		return http_method_delete;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "get")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "get")) {
 		DEBUG("method get");
 		return http_method_get;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "head")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "head")) {
 		DEBUG("method head");
 		return http_method_head;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "options")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "options")) {
 		DEBUG("method options");
 		return http_method_options;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "post")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "post")) {
 		DEBUG("method post");
 		return http_method_post;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "put")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "put")) {
 		DEBUG("method put");
 		return http_method_put;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "patch")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "patch")) {
 		DEBUG("method patch");
 		return http_method_patch;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "trace")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "trace")) {
 		DEBUG("method trace");
 		return http_method_trace;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "pri")) {
+	if (!strncmp_exact(http->scratch + skip, sz, "pri")) {
 		DEBUG("method pro");
 		// We need to walk the parser back here since http2 parser wants to do string
 		// matching on PRI for the http2 preface.
@@ -206,7 +206,13 @@ __get_method(ctx_md *msg, struct msg_http *http)
 		return http_method_pri;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, sz, "http")) {
+	/* A status line starts with the HTTP version (e.g. "HTTP/1.1"), so we
+	 * match the "HTTP/" prefix rather than the whole token. This stays a
+	 * prefix match (strncmp_truncated) on purpose: the token is the version
+	 * string, not a bare method. Including the trailing '/' avoids matching
+	 * a bogus method token that merely begins with "http".
+	 */
+	if (!strncmp_truncated(http->scratch + skip, sz, "http/")) {
 		DEBUG("method http");
 		// We need to walk the parser back here since we also want to parse this out as
 		// the response protocol.
@@ -446,22 +452,22 @@ map_header_to_type(ctx_md *msg, struct msg_http *http)
 	const u32 skip = 4;
 	sz = (__u32 *)&http->scratch[0];
 
-	if (!strncmp_truncated(http->scratch + skip, *sz, "host")) {
+	if (!strncmp_exact(http->scratch + skip, *sz, "host")) {
 		DEBUG("header: host");
 		return http_request_host;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, *sz, "user-agent")) {
+	if (!strncmp_exact(http->scratch + skip, *sz, "user-agent")) {
 		DEBUG("header: user-agent");
 		return http_request_user_agent;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, *sz, "content-length")) {
+	if (!strncmp_exact(http->scratch + skip, *sz, "content-length")) {
 		DEBUG("header: content-length");
 		return http_request_content_length;
 	}
 
-	if (!strncmp_truncated(http->scratch + skip, *sz, "transfer-encoding")) {
+	if (!strncmp_exact(http->scratch + skip, *sz, "transfer-encoding")) {
 		DEBUG("header: transfer-encoding");
 		return http_request_transfer_encoding;
 	}
