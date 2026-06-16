@@ -10,18 +10,31 @@
 
 package v1alpha1
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
-// We define a custom Unmarshaler for FileSpec to set
+// UnmarshalJSON defines a custom Unmarshaler for FileSpec to set
 // monitorHostFiles default equals to true even in nok8s
 // builds. This is called from json.Unmarshal when we have
 // a FileSpec and is applied both in k8s and nok8s cases.
+//
+// We decode strictly (DisallowUnknownFields) so that unknown or misplaced
+// fields under spec.file are rejected instead of silently dropped. Without
+// this, the lenient default json.Unmarshal would ignore e.g. a kprobe-style
+// "matchNamespaces" selector (the file sensor uses "matchLinuxNamespaces"),
+// loading the policy without the intended filtering. This makes the file
+// subtree consistent with the rest of the spec, which already rejects unknown
+// fields, and it applies to both k8s and nok8s builds.
 func (spec *FileSpec) UnmarshalJSON(data []byte) error {
 	type fileSpec FileSpec
 	ret := fileSpec{
 		MonitorHostFiles: true,
 	}
-	if err := json.Unmarshal(data, &ret); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&ret); err != nil {
 		return err
 	}
 	*spec = FileSpec(ret)
