@@ -767,6 +767,7 @@ func EnableLayer3Progs() error {
 		tcp.ParseWatermarksOptions()
 		tcp.ParseRTTOptions()
 		tcp.ParseMetricsOptions()
+		tcp.ParseDisableOptions()
 	}
 	if enterpriseOption.Config.EnableTCPRTT {
 		if !utils.RTTHookAvailable() {

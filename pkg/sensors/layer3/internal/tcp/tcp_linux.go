@@ -71,10 +71,15 @@ func SetConfig(cfg *networkapi.Layer3ConfigValue) error {
 	// If this is a CLI configuration lets inherit the network events
 	// configuration as well.
 	if enterpriseOption.Config.Layer3CLIEnable {
-		DisableConnect = !enterpriseOption.Config.EnableNetworkEvents
-		DisableClose = !enterpriseOption.Config.EnableNetworkEvents
-		DisableAccept = !enterpriseOption.Config.EnableNetworkEvents
-		DisableListen = !enterpriseOption.Config.EnableNetworkEvents
+		if !enterpriseOption.Config.EnableNetworkEvents {
+			DisableConnect = true
+			DisableClose = true
+			DisableAccept = true
+			DisableListen = true
+
+		} else {
+			ParseDisableOptions()
+		}
 	}
 	ConfigureTCPDisableEvents(cfg, DisableConnect, DisableClose, DisableAccept, DisableListen)
 	return nil
@@ -103,10 +108,7 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 		}
 	}
 
-	DisableConnect = false
-	DisableClose = false
-	DisableAccept = false
-	DisableListen = false
+	ParseDisableOptions()
 	if enterpriseOption.Config.Layer3CLIEnable {
 		SetConfig(cfg)
 	}
@@ -271,10 +273,18 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		DisableClose = spec.Parser.Tcp.DisableEvents.DisableClose
 		DisableAccept = spec.Parser.Tcp.DisableEvents.DisableAccept
 		DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
+	} else {
+		ParseDisableOptions()
 	}
 	return nil
 }
 
+func ParseDisableOptions() {
+	DisableConnect = enterpriseOption.Config.TCPDisableConnectEvents
+	DisableClose = enterpriseOption.Config.TCPDisableCloseEvents
+	DisableAccept = enterpriseOption.Config.TCPDisableAcceptEvents
+	DisableListen = enterpriseOption.Config.TCPDisableListenEvents
+}
 func ParseMetricsOptions() {
 	tcpconfig.MetricsEnabled = enterpriseOption.Config.EnableTCPMetrics
 	tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(enterpriseOption.Config.TCPMetricsLabelFilter)
