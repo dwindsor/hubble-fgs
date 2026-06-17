@@ -225,8 +225,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
 		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Tcp.Metrics.LabelFilter)
 	} else {
-		tcpconfig.MetricsEnabled = true
-		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter()
+		ParseMetricsOptions()
 	}
 
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.StatsInterval > 0 {
@@ -274,6 +273,11 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
 	}
 	return nil
+}
+
+func ParseMetricsOptions() {
+	tcpconfig.MetricsEnabled = enterpriseOption.Config.EnableTCPMetrics
+	tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(enterpriseOption.Config.TCPMetricsLabelFilter)
 }
 
 // ParseRTTOptions parses the Tetragon config and sets the config parameters.
