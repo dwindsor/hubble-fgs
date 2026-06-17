@@ -81,7 +81,7 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 	return getLayer3Observer(t, ctx, tcpDisableEventsConfig, !docker)
 }
 
-func testDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bool) {
+func testTCPDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bool) {
 	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
 		t.Skip("Test requires amd64 or kernel >=5.8")
 	}
@@ -146,23 +146,23 @@ func testDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bo
 	assert.NoError(t, err)
 }
 
-func TestDisableConnectEvent4CLI(t *testing.T) {
-	testDisableConfigConnect4(t, true, true)
+func TestTCPDisableConnectEvent4CLI(t *testing.T) {
+	testTCPDisableConfigConnect4(t, true, true)
 }
 
-func TestNoDisableConnectEvent4CLI(t *testing.T) {
-	testDisableConfigConnect4(t, true, false)
+func TestTCPNoDisableConnectEvent4CLI(t *testing.T) {
+	testTCPDisableConfigConnect4(t, true, false)
 }
 
-func TestDisableConnectEvent4NoCLI(t *testing.T) {
-	testDisableConfigConnect4(t, false, true)
+func TestTCPDisableConnectEvent4NoCLI(t *testing.T) {
+	testTCPDisableConfigConnect4(t, false, true)
 }
 
-func TestNoDisableConnectEvent4NoCLI(t *testing.T) {
-	testDisableConfigConnect4(t, false, false)
+func TestTCPNoDisableConnectEvent4NoCLI(t *testing.T) {
+	testTCPDisableConfigConnect4(t, false, false)
 }
 
-func testDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
+func testTCPDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
 	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
 		t.Skip("Test requires amd64 or kernel >=5.8")
 	}
@@ -285,28 +285,28 @@ func testDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches 
 	assert.NoError(t, err)
 }
 
-func TestDisableListenAcceptClose4CLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, 8101, true, true, true, true)
+func TestTCPDisableListenAcceptClose4CLI(t *testing.T) {
+	testTCPDisableConfigListenAcceptClose4(t, 8101, true, true, true, true)
 }
 
-func TestNoDisableListenAcceptClose4CLI(t *testing.T) {
+func TestTCPNoDisableListenAcceptClose4CLI(t *testing.T) {
 	if !utils.SupportFentry() {
 		t.Skipf("Close events without Fentry can cause missed events. skipping test")
 	}
 
 	// The close events within these tests are a little flaky when only using kprobes, so always disable
 	// close tests if we don't support FEntry.
-	testDisableConfigListenAcceptClose4(t, 8102, true, false, false, false)
+	testTCPDisableConfigListenAcceptClose4(t, 8102, true, false, false, false)
 }
 
-func TestDisableListenAcceptClose4NoCLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, 8103, false, true, true, true)
+func TestTCPDisableListenAcceptClose4NoCLI(t *testing.T) {
+	testTCPDisableConfigListenAcceptClose4(t, 8103, false, true, true, true)
 }
 
-func TestNoDisableListenAcceptClose4NoCLI(t *testing.T) {
+func TestTCPNoDisableListenAcceptClose4NoCLI(t *testing.T) {
 	// The close events within these tests are a little flaky when only using kprobes, so always disable
 	// close tests if we don't support FEntry.
-	testDisableConfigListenAcceptClose4(t, 8104, false, false, false, !utils.SupportFentry())
+	testTCPDisableConfigListenAcceptClose4(t, 8104, false, false, false, !utils.SupportFentry())
 }
 
 const TCPBUFSIZE, TCPBUFVAR = 1024, 256
@@ -416,7 +416,7 @@ func runTcpClient() {
 	socket.Close()
 }
 
-func testTcpWatermarks(t *testing.T, CLISwitches, legacy bool) {
+func testTCPWatermarks(t *testing.T, CLISwitches, legacy bool) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
@@ -629,16 +629,16 @@ func testTcpWatermarks(t *testing.T, CLISwitches, legacy bool) {
 	require.Error(t, err, "server process in watermarks map after exit")
 }
 
-func TestTcpBurst(t *testing.T) {
-	testTcpWatermarks(t, false, true)
+func TestTCPBurst(t *testing.T) {
+	testTCPWatermarks(t, false, true)
 }
 
-func TestTcpWatermarks(t *testing.T) {
-	testTcpWatermarks(t, false, false)
+func TestTCPWatermarks(t *testing.T) {
+	testTCPWatermarks(t, false, false)
 }
 
-func TestTcpWatermarksCLI(t *testing.T) {
-	testTcpWatermarks(t, true, false)
+func TestTCPWatermarksCLI(t *testing.T) {
+	testTCPWatermarks(t, true, false)
 }
 
 func TestNamespaces(t *testing.T) {
