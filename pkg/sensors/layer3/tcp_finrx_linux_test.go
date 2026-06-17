@@ -24,17 +24,22 @@ import (
 
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -190,9 +195,39 @@ func TestTCPFinRx(t *testing.T) {
 	suite.Run(t, new(TCPFinRx))
 }
 
+func TestTCPFinRxCLI(t *testing.T) {
+	// For reliability, we really need the sockops handlers as the kprobes can be
+	// unreliable. Note, the technology should work from kernel v5.5 (it needs
+	// probe_read_kernel in Cgroup/SKB programs).
+	if !utils.SupportCGroupSKBProbeRead() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+	suite.Run(t, new(TCPFinRx{TCPCommon: TCPCommon{useCLI: true}}))
+}
+
 func (suite *TCPFinRx) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	obs := getBasicTcpObserver(suite.T(), suite.ctx, false)
+
+	if suite.useCLI {
+		var err error
+		suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCPMetrics, Value: true},
+		})
+		suite.Require().NoError(err)
+	}
+	obs := getNoConfigObserver(suite.T(), suite.ctx, true)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
+
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(tcpBasicConfig)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -204,324 +239,325 @@ func (suite *TCPFinRx) HandleStats(_ string, stats *suite.SuiteInformation) {
 
 func (suite *TCPFinRx) TearDownSuite() {
 	suite.cancel()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
-func (suite *TCPFinRx) RecvOnlyKillServerKillClient() {
+func (suite *TCPFinRx) TestRecvOnlyKillServerKillClient() {
 	suite.testFinRx(3551, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGKILL, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyKillServerHupClient() {
+func (suite *TCPFinRx) TestRecvOnlyKillServerHupClient() {
 	suite.testFinRx(3552, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGHUP, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyKillServerTermClient() {
+func (suite *TCPFinRx) TestRecvOnlyKillServerTermClient() {
 	suite.testFinRx(3553, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGTERM, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyKillServerExitClient() {
+func (suite *TCPFinRx) TestRecvOnlyKillServerExitClient() {
 	suite.testFinRx(3554, -1, 1, "SW", "R", syscall.SIGKILL, 0, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyHupServerKillClient() {
+func (suite *TCPFinRx) TestRecvOnlyHupServerKillClient() {
 	suite.testFinRx(3555, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGKILL, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyHupServerHupClient() {
+func (suite *TCPFinRx) TestRecvOnlyHupServerHupClient() {
 	suite.testFinRx(3556, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGHUP, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyHupServerTermClient() {
+func (suite *TCPFinRx) TestRecvOnlyHupServerTermClient() {
 	suite.testFinRx(3557, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGTERM, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyHupServerExitClient() {
+func (suite *TCPFinRx) TestRecvOnlyHupServerExitClient() {
 	suite.testFinRx(3558, -1, 1, "SW", "R", syscall.SIGHUP, 0, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyTermServerKillClient() {
+func (suite *TCPFinRx) TestRecvOnlyTermServerKillClient() {
 	suite.testFinRx(3559, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGKILL, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyTermServerHupClient() {
+func (suite *TCPFinRx) TestRecvOnlyTermServerHupClient() {
 	suite.testFinRx(3560, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGHUP, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyTermServerTermClient() {
+func (suite *TCPFinRx) TestRecvOnlyTermServerTermClient() {
 	suite.testFinRx(3561, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGTERM, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyTermServerExitClient() {
+func (suite *TCPFinRx) TestRecvOnlyTermServerExitClient() {
 	suite.testFinRx(3562, -1, 1, "SW", "R", syscall.SIGTERM, 0, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyExitServerKillClient() {
+func (suite *TCPFinRx) TestRecvOnlyExitServerKillClient() {
 	suite.testFinRx(3563, 1, -1, "S", "RW", 0, syscall.SIGKILL, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyExitServerHupClient() {
+func (suite *TCPFinRx) TestRecvOnlyExitServerHupClient() {
 	suite.testFinRx(3564, 1, -1, "S", "RW", 0, syscall.SIGHUP, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyExitServerTermClient() {
+func (suite *TCPFinRx) TestRecvOnlyExitServerTermClient() {
 	suite.testFinRx(3565, 1, -1, "S", "RW", 0, syscall.SIGTERM, 5, 0)
 }
 
-func (suite *TCPFinRx) RecvOnlyExitServerExitClient() {
+func (suite *TCPFinRx) TestRecvOnlyExitServerExitClient() {
 	suite.testFinRx(3566, 1, 1, "S", "R", 0, 0, 5, 0)
 }
 
-func (suite *TCPFinRx) SendOnlyKillServerKillClient() {
+func (suite *TCPFinRx) TestSendOnlyKillServerKillClient() {
 	suite.testFinRx(3567, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGKILL, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyKillServerHupClient() {
+func (suite *TCPFinRx) TestSendOnlyKillServerHupClient() {
 	suite.testFinRx(3568, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGHUP, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyKillServerTermClient() {
+func (suite *TCPFinRx) TestSendOnlyKillServerTermClient() {
 	suite.testFinRx(3569, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGTERM, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyKillServerExitClient() {
+func (suite *TCPFinRx) TestSendOnlyKillServerExitClient() {
 	suite.testFinRx(3570, -1, 1, "RW", "S", syscall.SIGKILL, 0, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyHupServerKillClient() {
+func (suite *TCPFinRx) TestSendOnlyHupServerKillClient() {
 	suite.testFinRx(3571, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGKILL, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyHupServerHupClient() {
+func (suite *TCPFinRx) TestSendOnlyHupServerHupClient() {
 	suite.testFinRx(3572, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGHUP, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyHupServerTermClient() {
+func (suite *TCPFinRx) TestSendOnlyHupServerTermClient() {
 	suite.testFinRx(3573, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGTERM, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyHupServerExitClient() {
+func (suite *TCPFinRx) TestSendOnlyHupServerExitClient() {
 	suite.testFinRx(3574, -1, 1, "RW", "S", syscall.SIGHUP, 0, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyTermServerKillClient() {
+func (suite *TCPFinRx) TestSendOnlyTermServerKillClient() {
 	suite.testFinRx(3575, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGKILL, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyTermServerHupClient() {
+func (suite *TCPFinRx) TestSendOnlyTermServerHupClient() {
 	suite.testFinRx(3576, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGHUP, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyTermServerTermClient() {
+func (suite *TCPFinRx) TestSendOnlyTermServerTermClient() {
 	suite.testFinRx(3577, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGTERM, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyTermServerExitClient() {
+func (suite *TCPFinRx) TestSendOnlyTermServerExitClient() {
 	suite.testFinRx(3578, -1, 1, "RW", "S", syscall.SIGTERM, 0, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyExitServerKillClient() {
+func (suite *TCPFinRx) TestSendOnlyExitServerKillClient() {
 	suite.testFinRx(3579, 1, -1, "R", "SW", 0, syscall.SIGKILL, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyExitServerHupClient() {
+func (suite *TCPFinRx) TestSendOnlyExitServerHupClient() {
 	suite.testFinRx(3580, 1, -1, "R", "SW", 0, syscall.SIGHUP, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyExitServerTermClient() {
+func (suite *TCPFinRx) TestSendOnlyExitServerTermClient() {
 	suite.testFinRx(3581, 1, -1, "R", "SW", 0, syscall.SIGTERM, 0, 5)
 }
 
-func (suite *TCPFinRx) SendOnlyExitServerExitClient() {
+func (suite *TCPFinRx) TestSendOnlyExitServerExitClient() {
 	suite.testFinRx(3582, 1, 1, "R", "S", 0, 0, 0, 5)
 }
 
-func (suite *TCPFinRx) SendRecvKillServerKillClient() {
+func (suite *TCPFinRx) TestSendRecvKillServerKillClient() {
 	suite.testFinRx(3583, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvKillServerHupClient() {
+func (suite *TCPFinRx) TestSendRecvKillServerHupClient() {
 	suite.testFinRx(3584, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvKillServerTermClient() {
+func (suite *TCPFinRx) TestSendRecvKillServerTermClient() {
 	suite.testFinRx(3585, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvKillServerExitClient() {
+func (suite *TCPFinRx) TestSendRecvKillServerExitClient() {
 	suite.testFinRx(3586, -1, 1, "RSW", "SR", syscall.SIGKILL, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvHupServerKillClient() {
+func (suite *TCPFinRx) TestSendRecvHupServerKillClient() {
 	suite.testFinRx(3587, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvHupServerHupClient() {
+func (suite *TCPFinRx) TestSendRecvHupServerHupClient() {
 	suite.testFinRx(3588, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvHupServerTermClient() {
+func (suite *TCPFinRx) TestSendRecvHupServerTermClient() {
 	suite.testFinRx(3589, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvHupServerExitClient() {
+func (suite *TCPFinRx) TestSendRecvHupServerExitClient() {
 	suite.testFinRx(3590, -1, 1, "RSW", "SR", syscall.SIGHUP, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvTermServerKillClient() {
+func (suite *TCPFinRx) TestSendRecvTermServerKillClient() {
 	suite.testFinRx(3591, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvTermServerHupClient() {
+func (suite *TCPFinRx) TestSendRecvTermServerHupClient() {
 	suite.testFinRx(3592, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvTermServerTermClient() {
+func (suite *TCPFinRx) TestSendRecvTermServerTermClient() {
 	suite.testFinRx(3593, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvTermServerExitClient() {
+func (suite *TCPFinRx) TestSendRecvTermServerExitClient() {
 	suite.testFinRx(3594, -1, 1, "RSW", "SR", syscall.SIGTERM, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvExitServerKillClient() {
+func (suite *TCPFinRx) TestSendRecvExitServerKillClient() {
 	suite.testFinRx(3595, 1, -1, "RS", "SRW", 0, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvExitServerHupClient() {
+func (suite *TCPFinRx) TestSendRecvExitServerHupClient() {
 	suite.testFinRx(3596, 1, -1, "RS", "SRW", 0, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvExitServerTermClient() {
+func (suite *TCPFinRx) TestSendRecvExitServerTermClient() {
 	suite.testFinRx(3597, 1, -1, "RS", "SRW", 0, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) SendRecvExitServerExitClient() {
+func (suite *TCPFinRx) TestSendRecvExitServerExitClient() {
 	suite.testFinRx(3598, 1, 1, "RS", "SR", 0, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendKillServerKillClient() {
+func (suite *TCPFinRx) TestRecvSendKillServerKillClient() {
 	suite.testFinRx(3599, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendKillServerHupClient() {
+func (suite *TCPFinRx) TestRecvSendKillServerHupClient() {
 	suite.testFinRx(3600, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendKillServerTermClient() {
+func (suite *TCPFinRx) TestRecvSendKillServerTermClient() {
 	suite.testFinRx(3601, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendKillServerExitClient() {
+func (suite *TCPFinRx) TestRecvSendKillServerExitClient() {
 	suite.testFinRx(3602, -1, 1, "SRW", "RS", syscall.SIGKILL, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendHupServerKillClient() {
+func (suite *TCPFinRx) TestRecvSendHupServerKillClient() {
 	suite.testFinRx(3603, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendHupServerHupClient() {
+func (suite *TCPFinRx) TestRecvSendHupServerHupClient() {
 	suite.testFinRx(3604, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendHupServerTermClient() {
+func (suite *TCPFinRx) TestRecvSendHupServerTermClient() {
 	suite.testFinRx(3605, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendHupServerExitClient() {
+func (suite *TCPFinRx) TestRecvSendHupServerExitClient() {
 	suite.testFinRx(3606, -1, 1, "SRW", "RS", syscall.SIGHUP, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendTermServerKillClient() {
+func (suite *TCPFinRx) TestRecvSendTermServerKillClient() {
 	suite.testFinRx(3607, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendTermServerHupClient() {
+func (suite *TCPFinRx) TestRecvSendTermServerHupClient() {
 	suite.testFinRx(3608, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendTermServerTermClient() {
+func (suite *TCPFinRx) TestRecvSendTermServerTermClient() {
 	suite.testFinRx(3609, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendTermServerExitClient() {
+func (suite *TCPFinRx) TestRecvSendTermServerExitClient() {
 	suite.testFinRx(3610, -1, 1, "SRW", "RS", syscall.SIGTERM, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendExitServerKillClient() {
+func (suite *TCPFinRx) TestRecvSendExitServerKillClient() {
 	suite.testFinRx(3611, 1, -1, "SR", "RSW", 0, syscall.SIGKILL, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendExitServerHupClient() {
+func (suite *TCPFinRx) TestRecvSendExitServerHupClient() {
 	suite.testFinRx(3612, 1, -1, "SR", "RSW", 0, syscall.SIGHUP, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendExitServerTermClient() {
+func (suite *TCPFinRx) TestRecvSendExitServerTermClient() {
 	suite.testFinRx(3613, 1, -1, "SR", "RSW", 0, syscall.SIGTERM, 5, 5)
 }
 
-func (suite *TCPFinRx) RecvSendExitServerExitClient() {
+func (suite *TCPFinRx) TestRecvSendExitServerExitClient() {
 	suite.testFinRx(3614, 1, 1, "SR", "RS", 0, 0, 5, 5)
 }
 
-func (suite *TCPFinRx) SilentKillServerKillClient() {
+func (suite *TCPFinRx) TestSilentKillServerKillClient() {
 	suite.testFinRx(3615, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGKILL, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentKillServerHupClient() {
+func (suite *TCPFinRx) TestSilentKillServerHupClient() {
 	suite.testFinRx(3616, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGHUP, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentKillServerTermClient() {
+func (suite *TCPFinRx) TestSilentKillServerTermClient() {
 	suite.testFinRx(3617, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGTERM, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentKillServerExitClient() {
+func (suite *TCPFinRx) TestSilentKillServerExitClient() {
 	suite.testFinRx(3618, -1, 0, "W", "", syscall.SIGKILL, 0, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentHupServerKillClient() {
+func (suite *TCPFinRx) TestSilentHupServerKillClient() {
 	suite.testFinRx(3619, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGKILL, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentHupServerHupClient() {
+func (suite *TCPFinRx) TestSilentHupServerHupClient() {
 	suite.testFinRx(3620, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGHUP, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentHupServerTermClient() {
+func (suite *TCPFinRx) TestSilentHupServerTermClient() {
 	suite.testFinRx(3621, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGTERM, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentHupServerExitClient() {
+func (suite *TCPFinRx) TestSilentHupServerExitClient() {
 	suite.testFinRx(3622, -1, 0, "W", "", syscall.SIGHUP, 0, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentTermServerKillClient() {
+func (suite *TCPFinRx) TestSilentTermServerKillClient() {
 	suite.testFinRx(3623, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGKILL, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentTermServerHupClient() {
+func (suite *TCPFinRx) TestSilentTermServerHupClient() {
 	suite.testFinRx(3624, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGHUP, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentTermServerTermClient() {
+func (suite *TCPFinRx) TestSilentTermServerTermClient() {
 	suite.testFinRx(3625, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGTERM, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentTermServerExitClient() {
+func (suite *TCPFinRx) TestSilentTermServerExitClient() {
 	suite.testFinRx(3626, -1, 0, "W", "", syscall.SIGTERM, 0, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentExitServerKillClient() {
+func (suite *TCPFinRx) TestSilentExitServerKillClient() {
 	suite.testFinRx(3627, 0, -1, "", "W", 0, syscall.SIGKILL, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentExitServerHupClient() {
+func (suite *TCPFinRx) TestSilentExitServerHupClient() {
 	suite.testFinRx(3627, 0, -1, "", "W", 0, syscall.SIGHUP, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentExitServerTermClient() {
+func (suite *TCPFinRx) TestSilentExitServerTermClient() {
 	suite.testFinRx(3629, 0, -1, "", "W", 0, syscall.SIGTERM, 0, 0)
 }
 
-func (suite *TCPFinRx) SilentExitServerExitClient() {
+func (suite *TCPFinRx) TestSilentExitServerExitClient() {
 	suite.testFinRx(3630, 0, 0, "", "", 0, 0, 0, 0)
 }

@@ -106,14 +106,6 @@ spec:
       enable: true
 `
 
-// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
-// thing to do here even if revive complains.
-//
-//revive:disable:context-as-argument
-func getBasicTcpObserver(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
-	return getLayer3Observer(t, ctx, tcpBasicConfig, !docker)
-}
-
 type TCPCommon struct {
 	suite.Suite
 	useCLI          bool
