@@ -59,11 +59,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
 
-// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
-// thing to do here even if revive complains.
-//
-//revive:disable:context-as-argument
-func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool, CLISwitches bool, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) *observer.Observer {
+func getTcpObserverDisableEvents(t *testing.T, CLISwitches bool, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) string {
 	eventDisableConfig := `
       disableEvents:
 `
@@ -72,13 +68,19 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 	eventDisableConfig += "\n        disableAccept: " + strconv.FormatBool(disableAccept)
 	eventDisableConfig += "\n        disableListen: " + strconv.FormatBool(disableListen)
 
-	var tcpDisableEventsConfig string
 	if CLISwitches {
-		tcpDisableEventsConfig = tcpBasicConfigWOEnable + eventDisableConfig
-	} else {
-		tcpDisableEventsConfig = tcpBasicConfig + eventDisableConfig
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TCPDisableListenEvents, Value: disableListen},
+			{KeyPtr: &enterpriseOption.Config.TCPDisableConnectEvents, Value: disableConnect},
+			{KeyPtr: &enterpriseOption.Config.TCPDisableAcceptEvents, Value: disableAccept},
+			{KeyPtr: &enterpriseOption.Config.TCPDisableCloseEvents, Value: disableClose},
+		}))
+		return ""
 	}
-	return getLayer3Observer(t, ctx, tcpDisableEventsConfig, !docker)
+	return tcpBasicConfig + eventDisableConfig
 }
 
 func testTCPDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bool) {
@@ -92,18 +94,7 @@ func testTCPDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if CLISwitches {
-		enterpriseOption.Config.EnableNetworkEvents = !disableConnect
-		oldEnableTCPValue := enterpriseOption.Config.EnableTCP
-		enterpriseOption.Config.EnableTCP = true
-		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
-		enterpriseOption.Config.Layer3CLIEnable = true
-		t.Cleanup(func() {
-			enterpriseOption.Config.EnableTCP = oldEnableTCPValue
-			enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
-		})
-		layer3.EnableLayer3Progs()
-	}
+	configYaml := getTcpObserverDisableEvents(t, CLISwitches, disableConnect, true, true, true)
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -130,10 +121,15 @@ func testTCPDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	obs := getTcpObserverDisableEvents(t, ctx, false, CLISwitches, disableConnect, true, true, true)
-	if CLISwitches {
-		layer3.RunLayer3Progs(ctx, nil)
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(configYaml)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 
@@ -175,17 +171,16 @@ func testTCPDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitch
 
 	portstr := fmt.Sprintf("%d", port)
 
-	if CLISwitches {
-		enterpriseOption.Config.EnableNetworkEvents = !disableListen
-		oldEnableTCPValue := enterpriseOption.Config.EnableTCP
-		enterpriseOption.Config.EnableTCP = true
-		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
-		enterpriseOption.Config.Layer3CLIEnable = true
-		t.Cleanup(func() {
-			enterpriseOption.Config.EnableTCP = oldEnableTCPValue
-			enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
-		})
-		layer3.EnableLayer3Progs()
+	configYaml := getTcpObserverDisableEvents(t, CLISwitches, true, disableClose, disableAccept, disableListen)
+
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(configYaml)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
 
 	server := getNCCommand(t, "nc.openbsd")
@@ -232,10 +227,6 @@ func testTCPDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitch
 			WithSocketType(sm.Full("accept")),
 	)
 
-	obs := getTcpObserverDisableEvents(t, ctx, false, CLISwitches, true, disableClose, disableAccept, disableListen)
-	if CLISwitches {
-		layer3.RunLayer3Progs(ctx, nil)
-	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()

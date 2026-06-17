@@ -106,17 +106,6 @@ spec:
       enable: true
 `
 
-const tcpBasicConfigWOEnable = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "tcp"
-spec:
-  parser:
-    tcp:
-      enable: false
-`
-
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
 //
