@@ -24,6 +24,7 @@ int main()
 	uint64_t event_type;
 	struct iovec iovecs;
 	int fd, client_fd;
+	int reuse = 1;
 
 	sigact.sa_handler = signal_handler;
 	sigemptyset(&sigact.sa_mask);
@@ -38,7 +39,11 @@ int main()
 		printf("NotReady: %s\n", strerror(errno));
 		exit(1);
 	}
-
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse)) < 0) {
+		fprintf(stderr, "setsockopt failed\n");
+		printf("NotReady: %s\n", strerror(errno));
+		exit(1);
+	}
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(PORT);
 	if (bind(fd, (const struct sockaddr *)&addr, sizeof(addr)) < 0) {

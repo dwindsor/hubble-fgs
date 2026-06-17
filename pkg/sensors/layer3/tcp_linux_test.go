@@ -40,8 +40,11 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -58,6 +61,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -178,6 +182,8 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 
 type TCPCommon struct {
 	suite.Suite
+	useCLI          bool
+	switches        []cli.SwitchSettings
 	doneWG, readyWG sync.WaitGroup
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -191,10 +197,36 @@ func TestTCPBasic(t *testing.T) {
 	suite.Run(t, new(TCPBasic))
 }
 
+func TestTCPBasicCLI(t *testing.T) {
+	suite.Run(t, new(TCPBasic{TCPCommon: TCPCommon{useCLI: true}}))
+}
+
 func (suite *TCPBasic) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	suite.startExistingTCPServices()
-	obs := getBasicTcpObserver(suite.T(), suite.ctx, false)
+
+	if suite.useCLI {
+		var err error
+		suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCPMetrics, Value: true},
+		})
+		suite.Require().NoError(err)
+	}
+	obs := getNoConfigObserver(suite.T(), suite.ctx, true)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
+
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(tcpBasicConfig)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -205,8 +237,9 @@ func (suite *TCPBasic) HandleStats(_ string, stats *suite.SuiteInformation) {
 }
 
 func (suite *TCPBasic) TearDownSuite() {
-	suite.stopExistingTCPServices()
 	suite.cancel()
+	suite.stopExistingTCPServices()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 type TCPDocker struct {
@@ -217,10 +250,35 @@ func TestTCPDocker(t *testing.T) {
 	suite.Run(t, new(TCPDocker))
 }
 
+func TestTCPDockerCLI(t *testing.T) {
+	suite.Run(t, new(TCPDocker{TCPCommon: TCPCommon{useCLI: true}}))
+}
+
 func (suite *TCPDocker) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	suite.startDockerTCPServices()
-	obs := getBasicTcpObserver(suite.T(), suite.ctx, true)
+	if suite.useCLI {
+		var err error
+		suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCPMetrics, Value: true},
+		})
+		suite.Require().NoError(err)
+	}
+	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
+
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(tcpBasicConfig)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -231,8 +289,9 @@ func (suite *TCPDocker) HandleStats(_ string, stats *suite.SuiteInformation) {
 }
 
 func (suite *TCPDocker) TearDownSuite() {
-	suite.stopDockerTCPServices()
 	suite.cancel()
+	suite.stopDockerTCPServices()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 type TCPRTT struct {
