@@ -17,16 +17,21 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	"os/exec"
 	"runtime"
 	"syscall"
 	"testing"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -34,7 +39,10 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -62,10 +70,6 @@ spec:
 // thing to do here even if revive complains.
 //
 //revive:disable:context-as-argument
-func getTcpObserverWithRTTDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
-	return getLayer3Observer(t, ctx, tcpBasicConfigWithRTTDetection, !docker)
-}
-
 type TCPRTT struct {
 	TCPCommon
 }
@@ -82,9 +86,45 @@ func TestTCPRTT(t *testing.T) {
 	suite.Run(t, new(TCPRTT))
 }
 
+func TestTCPRTTCLI(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
+
+	if !utils.RTTHookAvailable() {
+		t.Skipf("RTT hooks are unavailable, skipping")
+	}
+
+	suite.Run(t, new(TCPRTT{TCPCommon: TCPCommon{useCLI: true}}))
+}
+
 func (suite *TCPRTT) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	obs := getTcpObserverWithRTTDetection(suite.T(), suite.ctx, false)
+	if suite.useCLI {
+		var err error
+		suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCPMetrics, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCPRTT, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TCPRTTHistMin, Value: uint32(0)},
+			{KeyPtr: &enterpriseOption.Config.TCPRTTHistMax, Value: uint32(1000000)},
+		})
+		suite.Require().NoError(err)
+	}
+	obs := getNoConfigObserver(suite.T(), suite.ctx, true)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
+
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(tcpBasicConfigWithRTTDetection)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -96,6 +136,7 @@ func (suite *TCPRTT) HandleStats(_ string, stats *suite.SuiteInformation) {
 
 func (suite *TCPRTT) TearDownSuite() {
 	suite.cancel()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 func (suite *TCPRTT) TestDetectRTT4() {
