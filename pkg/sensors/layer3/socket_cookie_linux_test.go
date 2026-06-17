@@ -21,14 +21,17 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/stretchr/testify/require"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	"golang.org/x/sys/unix"
@@ -126,32 +129,43 @@ func socketCookieTest(_ *testing.T) (ec.MultiEventChecker, error) {
 	return checker, nil
 }
 
-func TestSocketCookie(t *testing.T) {
+func testSocketCookie(t *testing.T, CLISwitches bool) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+		}))
 	}
 
-	layer3.BaseLoaded = false
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(tcpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	checker, err := socketCookieTest(t)
-	if err != nil {
-		t.Fatalf("socketCookieTest failed: %s", err)
-	}
+	require.NoError(t, err)
 
-	if err := jsonchecker.JsonTestCheck(t, checker); err != nil {
-		t.Logf("error: %s", err)
-		t.Fail()
-	}
+	err = jsonchecker.JsonTestCheck(t, checker)
+	require.NoError(t, err)
+}
+
+func TestSocketCookie(t *testing.T) {
+	testSocketCookie(t, false)
+}
+
+func TestSocketCookieCLI(t *testing.T) {
+	testSocketCookie(t, true)
 }
