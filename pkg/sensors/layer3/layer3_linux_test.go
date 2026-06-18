@@ -42,6 +42,7 @@ import (
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -257,17 +258,53 @@ metadata:
 spec: {}
 `
 
-func layer3Config(withRTT, withICMP, withRaw bool) string {
+func layer3Config(t *testing.T, CLISwitches, withRTT, withICMP, withRaw bool) string {
 	c := layer3ConfigTcp
+	switches := []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.TCPStatsInterval, Value: 20 * time.Second},
+		{KeyPtr: &enterpriseOption.Config.EnableTCPWatermarks, Value: true},
+		{KeyPtr: &enterpriseOption.Config.TCPWatermarksWindowSizeMs, Value: uint32(1000)},
+		{KeyPtr: &enterpriseOption.Config.TCPWatermarksBurstTriggerPercent, Value: uint32(50)},
+		{KeyPtr: &enterpriseOption.Config.TCPWatermarksDipTriggerPercent, Value: uint32(10)},
+		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: utils.CGroupSKBAvailable()},
+		{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
+		{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 2 * time.Minute},
+		{KeyPtr: &enterpriseOption.Config.EnableUDPWatermarks, Value: true},
+		{KeyPtr: &enterpriseOption.Config.UDPWatermarksWindowSizeMs, Value: uint32(1000)},
+		{KeyPtr: &enterpriseOption.Config.UDPWatermarksBurstTriggerPercent, Value: uint32(50)},
+		{KeyPtr: &enterpriseOption.Config.UDPWatermarksDipTriggerPercent, Value: uint32(10)},
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkWatermarksExitGen, Value: true},
+		{KeyPtr: &enterpriseOption.Config.NetworkWatermarksExitGenInterval, Value: 1000 * time.Millisecond},
+	}
+
 	if withRTT {
 		c = c + layer3ConfigTcpRtt
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.EnableTCPRTT, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TCPRTTHistMin, Value: uint32(0)},
+			{KeyPtr: &enterpriseOption.Config.TCPRTTHistMax, Value: uint32(4000)},
+		}...)
 	}
 	c = c + layer3ConfigRemainder
 	if withICMP {
 		c = c + layer3IcmpConfig
+		switches = append(switches, cli.SwitchSettings{KeyPtr: &enterpriseOption.Config.EnableICMP, Value: true})
 	}
 	if withRaw {
 		c = c + layer3RawConfig
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.EnableRawsock, Value: true},
+			{KeyPtr: &enterpriseOption.Config.RawsockReportClose, Value: true},
+		}...)
+	}
+
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, switches))
+		return noConfig
 	}
 	return c
 }
@@ -303,16 +340,20 @@ func getNoConfigObserver(t *testing.T, ctx context.Context, filtered bool) *obse
 	return getLayer3Observer(t, ctx, noConfig, filtered)
 }
 
-func TestLoadLayer3Sensor(t *testing.T) {
-	var l3Config string
-	layer3.BaseLoaded = false
+func testLoadLayer3Sensor(t *testing.T, CLISwitches bool) {
 	rawHooksAvailable := utils.CGroupSKBAvailable() && utils.RawHooksAvailable()
-	l3Config = layer3Config(utils.RTTHookAvailable(), utils.CGroupSKBAvailable(), rawHooksAvailable)
+
+	l3Config := layer3Config(t, CLISwitches, utils.RTTHookAvailable(), utils.CGroupSKBAvailable(), rawHooksAvailable)
+
 	if err := observertesthelper.WriteConfigFile(testConfigFile, l3Config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
 	b := base.GetInitialSensorTest(t)
+	require.NoError(t, layer3.EnableLayer3Progs())
+	layer3Sensor := layer3.Layer3InitialSensor()
+	b.Progs = append(b.Progs, layer3Sensor.Progs...)
+	b.Maps = append(b.Maps, layer3Sensor.Maps...)
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
@@ -327,7 +368,14 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		sensi = append(sensi, s)
 	}
 	sensors.UnloadSensors(sensi)
-	layer3.BaseLoaded = false
+}
+
+func TestLoadLayer3Sensor(t *testing.T) {
+	testLoadLayer3Sensor(t, false)
+}
+
+func TestLoadLayer3SensorCLI(t *testing.T) {
+	testLoadLayer3Sensor(t, true)
 }
 
 func ipToHexstring(addr net.IP) string {

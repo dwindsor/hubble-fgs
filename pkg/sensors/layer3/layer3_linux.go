@@ -818,15 +818,10 @@ func EnableLayer3Progs() error {
 	return nil
 }
 
-func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
+func Layer3InitialSensor() *sensors.Sensor {
 	// By default, enable CGroup/SKB.
 	progs, maps := ProgsAndMaps(udpCGroup)
-	var mgr *sensors.Manager
-	if sm != nil {
-		mgr = sm
-	} else {
-		mgr = observer.GetSensorManager()
-	}
+
 	initialLayer3Sensor := &sensors.Sensor{
 		Name:  api.BaseLayer3Policy,
 		Progs: progs,
@@ -836,6 +831,19 @@ func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 		return unloadLayer3Sensor(option.Config.KeepSensorsOnExit)
 	}
 	initialLayer3Sensor.PostLoadHook = manager.StartPodInfoReconcilerHook
+
+	return initialLayer3Sensor
+}
+
+func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
+	var mgr *sensors.Manager
+	if sm != nil {
+		mgr = sm
+	} else {
+		mgr = observer.GetSensorManager()
+	}
+	initialLayer3Sensor := Layer3InitialSensor()
+
 	if err := mgr.AddSensor(ctx, initialLayer3Sensor.Name, initialLayer3Sensor); err != nil {
 		return err
 	}
