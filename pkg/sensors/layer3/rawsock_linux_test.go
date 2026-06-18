@@ -73,6 +73,8 @@ spec:
 
 type rawTests struct {
 	suite.Suite
+	switches        []cli.SwitchSettings
+	useCLI          bool
 	doneWG, readyWG sync.WaitGroup
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -88,9 +90,40 @@ func TestRawsockCreateClose(t *testing.T) {
 	suite.Run(t, new(rawTests))
 }
 
+func TestRawsockCreateCloseCLI(t *testing.T) {
+	if !utils.RawHooksAvailable() {
+		t.Skipf("This test requires raw socket support, skipping")
+	}
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+	suite.Run(t, new(rawTests{useCLI: true}))
+}
+
 func (suite *rawTests) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	obs := getRawsockObserverWithEnable(suite.T(), suite.ctx)
+
+	if suite.useCLI {
+		var err error
+		suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableRawsock, Value: true},
+			{KeyPtr: &enterpriseOption.Config.RawsockReportClose, Value: true},
+		})
+		suite.Require().NoError(err)
+	}
+
+	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
+
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(rawsockConfigWithCloseEvents)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -102,6 +135,7 @@ func (suite *rawTests) HandleStats(_ string, stats *suite.SuiteInformation) {
 
 func (suite *rawTests) TearDownSuite() {
 	suite.cancel()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 type rawTest int
@@ -139,14 +173,6 @@ func (suite *rawTests) TestRawsockPacketRawAll() {
 
 func (suite *rawTests) TestRawsockPacketRawLoop() {
 	suite.testRawsockCreateClose(packetRawLoop)
-}
-
-// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
-// thing to do here even if revive complains.
-//
-//revive:disable:context-as-argument
-func getRawsockObserverWithEnable(t *testing.T, ctx context.Context) *observer.Observer {
-	return getLayer3Observer(t, ctx, rawsockConfigWithCloseEvents, true)
 }
 
 func (suite *rawTests) testRawsockCreateClose(ty rawTest) {
@@ -257,9 +283,9 @@ func TestRawsockCLISwitch2(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
 		{KeyPtr: &enterpriseOption.Config.EnableRawsock, Value: true},
 		{KeyPtr: &enterpriseOption.Config.RawsockReportClose, Value: true},
-		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
 	}))
 
 	selfChecker := ec.NewProcessChecker().
