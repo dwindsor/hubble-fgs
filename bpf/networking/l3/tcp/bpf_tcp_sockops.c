@@ -22,6 +22,7 @@ int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *s
 {
 	val->common.size = sizeof(struct msg_ip_event);
 	val->common.ktime = tg_get_ktime();
+	val->ret = 0;
 	val->socket_cookie = cookie;
 	val->socket_flags = 0;
 	val->version = socket->version;
@@ -36,6 +37,7 @@ int skops_tcpsocket(u64 cookie, struct msg_ip_event *val, struct tcpsocketmap_va
 {
 	val->common.size = sizeof(struct msg_ip_event);
 	val->common.ktime = tg_get_ktime();
+	val->ret = 0;
 	val->socket_cookie = cookie;
 	val->version = socket->version;
 	val->key.pid = socket->key.pid;

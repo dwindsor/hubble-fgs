@@ -167,6 +167,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 		event->common.op = ISO_MSG_OP_TCPACCEPT;
 		event->common.size = sizeof(struct msg_ip_event);
 		event->common.ktime = now;
+		event->ret = 0;
 		event->socket_cookie = newcookie;
 		event->socket_flags = SOCKFLAGS_TYPE_ACCEPT;
 		event->version = cookie_version;
