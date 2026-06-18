@@ -29,6 +29,8 @@ int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *s
 	val->key.pid = socket->key.pid;
 	val->key.ktime = socket->key.ktime;
 	val->create_time = socket->create_time;
+	val->ps_version = 0; // not a UDP event; keep deterministic
+	val->close_time = 0; // socket not closed yet on connect/listen
 
 	return 0;
 }
@@ -44,6 +46,10 @@ int skops_tcpsocket(u64 cookie, struct msg_ip_event *val, struct tcpsocketmap_va
 	val->key.ktime = socket->key.ktime;
 	val->create_time = socket->stats.create_time;
 	val->socket_flags = socket->socket_flags;
+	val->ps_version = 0;
+	// close path sets close_time = tg_get_ktime() afterward; zero here is
+	// harmless and keeps the helper's output fully initialized.
+	val->close_time = 0;
 
 	return 0;
 }
