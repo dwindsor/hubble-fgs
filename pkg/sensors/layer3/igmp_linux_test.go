@@ -26,7 +26,6 @@ import (
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 
@@ -40,6 +39,7 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -57,14 +57,6 @@ import (
 // V3 tests to precede the V2 tests, we either need creative test naming, or
 // we simply need a V3 suite that runs before a V2 suite. We have implemented
 // the latter.
-
-// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
-// thing to do here even if revive complains.
-//
-//revive:disable:context-as-argument
-func getBasicIgmpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
-	return getNoConfigObserver(t, ctx, filtered)
-}
 
 // It is important the V3 tests precede the V2 tests. See above for a discussion.
 func TestIGMPV3(t *testing.T) {
@@ -84,32 +76,27 @@ func TestIGMPV2(t *testing.T) {
 
 type IGMPV2 struct {
 	suite.Suite
-	doneWG, readyWG         sync.WaitGroup
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	oldEnableTCPValue       bool
-	oldEnableUDPValue       bool
-	oldEnableDNSValue       bool
-	oldEnableIGMPValue      bool
-	oldLayer3CLIEnableValue bool
+	switches        []cli.SwitchSettings
+	doneWG, readyWG sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 func (suite *IGMPV2) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	var err error
+	suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableIGMP, Value: true},
+	})
+	suite.Require().NoError(err)
 
-	suite.oldEnableTCPValue = enterpriseOption.Config.EnableTCP
-	enterpriseOption.Config.EnableTCP = true
-	suite.oldEnableUDPValue = enterpriseOption.Config.EnableUDP
-	enterpriseOption.Config.EnableUDP = true
-	suite.oldEnableDNSValue = enterpriseOption.Config.EnableDNS
-	enterpriseOption.Config.EnableDNS = true
-	suite.oldEnableIGMPValue = enterpriseOption.Config.EnableIGMP
-	enterpriseOption.Config.EnableIGMP = true
-	suite.oldLayer3CLIEnableValue = enterpriseOption.Config.Layer3CLIEnable
-	enterpriseOption.Config.Layer3CLIEnable = true
-
-	obs := getBasicIgmpObserver(suite.T(), suite.ctx, false)
-	layer3.StartLayer3Progs(suite.ctx, nil)
+	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -120,42 +107,33 @@ func (suite *IGMPV2) HandleStats(_ string, stats *suite.SuiteInformation) {
 }
 
 func (suite *IGMPV2) TearDownSuite() {
-	enterpriseOption.Config.EnableTCP = suite.oldEnableTCPValue
-	enterpriseOption.Config.EnableUDP = suite.oldEnableUDPValue
-	enterpriseOption.Config.EnableDNS = suite.oldEnableDNSValue
-	enterpriseOption.Config.EnableIGMP = suite.oldEnableIGMPValue
-	enterpriseOption.Config.Layer3CLIEnable = suite.oldLayer3CLIEnableValue
 	suite.cancel()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 type IGMPV3 struct {
 	suite.Suite
-	doneWG, readyWG         sync.WaitGroup
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	oldEnableTCPValue       bool
-	oldEnableUDPValue       bool
-	oldEnableDNSValue       bool
-	oldEnableIGMPValue      bool
-	oldLayer3CLIEnableValue bool
+	switches        []cli.SwitchSettings
+	doneWG, readyWG sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 func (suite *IGMPV3) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	var err error
+	suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableIGMP, Value: true},
+	})
+	suite.Require().NoError(err)
 
-	suite.oldEnableTCPValue = enterpriseOption.Config.EnableTCP
-	enterpriseOption.Config.EnableTCP = true
-	suite.oldEnableUDPValue = enterpriseOption.Config.EnableUDP
-	enterpriseOption.Config.EnableUDP = true
-	suite.oldEnableDNSValue = enterpriseOption.Config.EnableDNS
-	enterpriseOption.Config.EnableDNS = true
-	suite.oldEnableIGMPValue = enterpriseOption.Config.EnableIGMP
-	enterpriseOption.Config.EnableIGMP = true
-	suite.oldLayer3CLIEnableValue = enterpriseOption.Config.Layer3CLIEnable
-	enterpriseOption.Config.Layer3CLIEnable = true
-
-	obs := getBasicIgmpObserver(suite.T(), suite.ctx, false)
-	layer3.StartLayer3Progs(suite.ctx, nil)
+	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -166,12 +144,8 @@ func (suite *IGMPV3) HandleStats(_ string, stats *suite.SuiteInformation) {
 }
 
 func (suite *IGMPV3) TearDownSuite() {
-	enterpriseOption.Config.EnableTCP = suite.oldEnableTCPValue
-	enterpriseOption.Config.EnableUDP = suite.oldEnableUDPValue
-	enterpriseOption.Config.EnableDNS = suite.oldEnableDNSValue
-	enterpriseOption.Config.EnableIGMP = suite.oldEnableIGMPValue
-	enterpriseOption.Config.Layer3CLIEnable = suite.oldLayer3CLIEnableValue
 	suite.cancel()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 func (suite *IGMPV2) TestIGMPJoin() {
