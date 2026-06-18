@@ -302,6 +302,7 @@ func (u *updateMode) update(ctx context.Context, mode tetragon.TracingPolicyMode
 		Name:      u.loadedPol.name,
 		Namespace: u.loadedPol.namespace,
 		Mode:      &mode,
+		Domain:    MandateDomain,
 	})
 	if err == nil {
 		u.loadedPol.mode = nameFromMode(mode)
