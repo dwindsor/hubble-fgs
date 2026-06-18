@@ -254,7 +254,7 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/vladimirvivien/gexe v0.5.0 // indirect
-	go.mongodb.org/mongo-driver v1.17.6 // indirect
+	go.mongodb.org/mongo-driver v1.17.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
