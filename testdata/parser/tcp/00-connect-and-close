@@ -13,7 +13,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 128        # size
+  h4 136        # size
   ? 8           # ktime
 
   ## tuple
@@ -54,7 +54,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 128        # size
+  h4 136        # size
   ? 8           # ktime
 
   ## tuple
@@ -86,6 +86,13 @@ EVENT TCPCONNECTRET
   ## close time
   $ 00 00 00 00 00 00 00 00
 
+  ## policy id
+  $ 00 00 00 00 00 00 00 00
+  ## rule id
+  $ 00 00 00 00 00 00 00 00
+  ## verdict
+  $ 00 00 00 00 00 00 00 00
+
   $ 00 00 00 00
   # ^ Where is the padding coming from?
 END
@@ -95,7 +102,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 336        # size
+  h4 272        # size
   ? 8           # ktime
 
   ## tuple
@@ -148,15 +155,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 # rtt sum
-  $ 00 00 00 00 00 00 00 00 # latency buckets X 8
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # latency sum
 
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
@@ -167,7 +165,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 336        # size
+  h4 272        # size
   ? 8           # ktime
 
   ## tuple
@@ -220,15 +218,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 # rtt sum
-  $ 00 00 00 00 00 00 00 00 # latency buckets X 8
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # latency sum
 
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
@@ -238,7 +227,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 336        # size
+  h4 272        # size
   ? 8           # ktime
 
   ## tuple
@@ -291,15 +280,6 @@ EVENT TCPCLOSE
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 # rtt sum
-  $ 00 00 00 00 00 00 00 00 # latency buckets X 8
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 # latency sum
 
   h4 0x00 # pad
   # ^ Where is the extra 4 byte padding coming from?
