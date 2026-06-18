@@ -38,6 +38,7 @@ import (
 	tuo "github.com/cilium/tetragon/pkg/testutils/observer"
 	"github.com/cilium/tetragon/pkg/testutils/perfring"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
@@ -55,6 +56,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -83,20 +85,10 @@ spec:
       enable: true
 `
 
-// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
-// thing to do here even if revive complains.
-//
-//revive:disable:context-as-argument
-func getBasicIcmpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
-	return getLayer3Observer(t, ctx, icmpBasicConfig, filtered)
-}
-
-func getIcmpAndUdpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
-	return getLayer3Observer(t, ctx, icmpAndUdpBasicConfig, filtered)
-}
-
 type ICMPBasic struct {
 	suite.Suite
+	switches        []cli.SwitchSettings
+	useCLI          bool
 	doneWG, readyWG sync.WaitGroup
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -109,9 +101,36 @@ func TestICMPBasic(t *testing.T) {
 	suite.Run(t, new(ICMPBasic))
 }
 
+func TestICMPBasicCLI(t *testing.T) {
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+	suite.Run(t, new(ICMPBasic{useCLI: true}))
+}
+
 func (suite *ICMPBasic) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	obs := getBasicIcmpObserver(suite.T(), suite.ctx, false)
+
+	if suite.useCLI {
+		var err error
+		suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableICMP, Value: true},
+		})
+		suite.Require().NoError(err)
+	}
+
+	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
+
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(icmpBasicConfig)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -123,14 +142,16 @@ func (suite *ICMPBasic) HandleStats(_ string, stats *suite.SuiteInformation) {
 
 func (suite *ICMPBasic) TearDownSuite() {
 	suite.cancel()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 type ICMPUDP struct {
 	suite.Suite
-	doneWG, readyWG            sync.WaitGroup
-	ctx                        context.Context
-	cancel                     context.CancelFunc
-	oldEnableIcmpTrackingValue bool
+	switches        []cli.SwitchSettings
+	useCLI          bool
+	doneWG, readyWG sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 func TestICMPUDP(t *testing.T) {
@@ -140,13 +161,41 @@ func TestICMPUDP(t *testing.T) {
 	suite.Run(t, new(ICMPUDP))
 }
 
+func TestICMPUDPCLI(t *testing.T) {
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+	suite.Run(t, new(ICMPUDP{useCLI: true}))
+}
+
 func (suite *ICMPUDP) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	switches := []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.EnableIcmpTracking, Value: true},
+	}
+	if suite.useCLI {
+		switches = append(switches, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableICMP, Value: true},
+		}...)
+	}
+	var err error
+	suite.switches, err = cli.SetConfigFromSwitches(switches)
+	suite.Require().NoError(err)
 
-	suite.oldEnableIcmpTrackingValue = enterpriseOption.Config.EnableIcmpTracking
-	enterpriseOption.Config.EnableIcmpTracking = true
+	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 
-	obs := getIcmpAndUdpObserver(suite.T(), suite.ctx, false)
+	if !suite.useCLI {
+		tp, err := tracingpolicy.FromYAML(icmpAndUdpBasicConfig)
+		suite.Require().NoError(err)
+		err = observer.GetSensorManager().AddTracingPolicy(suite.ctx, tp)
+		suite.Require().NoError(err)
+	}
+
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -157,8 +206,8 @@ func (suite *ICMPUDP) HandleStats(_ string, stats *suite.SuiteInformation) {
 }
 
 func (suite *ICMPUDP) TearDownSuite() {
-	enterpriseOption.Config.EnableIcmpTracking = suite.oldEnableIcmpTrackingValue
 	suite.cancel()
+	cli.RevertSwitchesConfig(suite.switches)
 }
 
 func (suite *ICMPBasic) TestPingOutbound4() {
@@ -235,14 +284,11 @@ func TestICMPCLISwitchPerfRing(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
 	defer cancel()
 
-	oldEnableICMPValue := enterpriseOption.Config.EnableICMP
-	enterpriseOption.Config.EnableICMP = true
-	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
-	enterpriseOption.Config.Layer3CLIEnable = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableICMP = oldEnableICMPValue
-		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
-	})
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableICMP, Value: true},
+	}))
 
 	if err := observer.InitDataCache(1024); err != nil {
 		t.Fatalf("observertesthelper.InitDataCache: %s", err)
@@ -336,14 +382,11 @@ func TestICMPCLISwitchTetragon(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	oldEnableICMPValue := enterpriseOption.Config.EnableICMP
-	enterpriseOption.Config.EnableICMP = true
-	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
-	enterpriseOption.Config.Layer3CLIEnable = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableICMP = oldEnableICMPValue
-		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
-	})
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableICMP, Value: true},
+	}))
 
 	cmd := "ping"
 
