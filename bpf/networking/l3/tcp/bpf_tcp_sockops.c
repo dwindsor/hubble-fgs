@@ -183,6 +183,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	val->common.op = ISO_MSG_OP_TCPCONNECTRET;
 	skops_socket(cookie, (struct msg_ip_event *)val, socket);
 	skops_tuple(cookie, (struct msg_ip_event *)val, skops);
+	val->common.size = sizeof(struct msg_ip_with_tnp_event); // skops_socket sets the smaller msg_ip_event size; correct it for the tnp event
 	val->tuple.proto = IPPROTO_TCP;
 	val->policy_id = 0;
 	val->rule_id = 0;

@@ -54,7 +54,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 136        # size
+  h4 160        # size
   ? 8           # ktime
 
   ## tuple
