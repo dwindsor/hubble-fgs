@@ -18,7 +18,7 @@ PYTHON_IMAGE = docker.io/python:3.14-slim-bookworm
 # renovate: datasource=docker
 YQ_IMAGE = docker.io/mikefarah/yq:4.53.3@sha256:11a1f0b604b13dbbdc662260d8db6f644b22d8553122a25c1b5b2e8713ca6977
 # renovate: datasource=docker
-JQ_IMAGE = ghcr.io/jqlang/jq:1.8.1@sha256:4f34c6d23f4b1372ac789752cc955dc67c2ae177eb1b5860b75cdc5091ce6f91
+JQ_IMAGE = ghcr.io/jqlang/jq:1.8.2@sha256:b9c68867e5766576263a222e91db3de422d802069c7af70440e667a95344e486
 
 #
 # -- Versions
