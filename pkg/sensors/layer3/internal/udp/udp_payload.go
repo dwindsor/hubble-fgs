@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"syscall"
@@ -61,14 +62,12 @@ func parseDNSMessage(buf []byte) (*dnsapi.MsgDns, error) {
 
 	hdr, err := p.Start(buf)
 	if err != nil {
-		logger.GetLogger().Warn("Start error", logfields.Error, err)
-		return nil, err
+		return nil, fmt.Errorf("starting DNS parser: %w", err)
 	}
 
 	qs, err := p.AllQuestions()
 	if err != nil {
-		logger.GetLogger().Warn("Questions error", logfields.Error, err)
-		return nil, err
+		return nil, fmt.Errorf("parsing DNS questions: %w", err)
 	}
 
 	for _, q := range qs {
@@ -83,23 +82,20 @@ func parseDNSMessage(buf []byte) (*dnsapi.MsgDns, error) {
 			break
 		}
 		if err != nil {
-			logger.GetLogger().Warn("Answer parse error", logfields.Error, err)
-			return nil, err
+			return nil, fmt.Errorf("parsing DNS answer header: %w", err)
 		}
 
 		switch h.Type {
 		case dnsmessage.TypeA:
 			r, err := p.AResource()
 			if err != nil {
-				logger.GetLogger().Warn("Resource parse error", logfields.Error, err)
-				return nil, err
+				return nil, fmt.Errorf("parsing A resource: %w", err)
 			}
 			ips = append(ips, r.A[:])
 		case dnsmessage.TypeAAAA:
 			r, err := p.AAAAResource()
 			if err != nil {
-				logger.GetLogger().Warn("AAAA Resource parse error", logfields.Error, err)
-				return nil, err
+				return nil, fmt.Errorf("parsing AAAA resource: %w", err)
 			}
 			ips = append(ips, r.AAAA[:])
 		default:
@@ -135,7 +131,8 @@ func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, 
 
 	msgDns, err := parseDNSMessage(buf)
 	if err != nil {
-		return nil, err
+		logger.GetLogger().Warn("DNS parser error", logfields.Error, err)
+		return nil, fmt.Errorf("parsing DNS message: %w", err)
 	}
 
 	msgUnix := &dnsproto.MsgDnsUnix{
