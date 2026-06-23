@@ -99,7 +99,9 @@ func parseDNSMessage(buf []byte) (*dnsapi.MsgDns, error) {
 			}
 			ips = append(ips, r.AAAA[:])
 		default:
-			p.SkipAnswer()
+			if err := p.SkipAnswer(); err != nil {
+				return nil, fmt.Errorf("skipping answer: %w", err)
+			}
 		}
 		aTypes = append(aTypes, uint32(h.Type))
 	}
