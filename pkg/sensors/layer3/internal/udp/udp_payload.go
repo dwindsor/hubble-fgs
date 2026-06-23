@@ -40,6 +40,9 @@ import (
 
 const (
 	defaultDnsPort = 53
+	// maxDNSAnswers limits DNS answers to prevent memory exhaustion.
+	// Based on EDNS max size (4096 bytes) and minimal record size (~20 bytes).
+	maxDNSAnswers = 200
 )
 
 func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
@@ -83,6 +86,10 @@ func parseDNSMessage(buf []byte) (*dnsapi.MsgDns, error) {
 		}
 		if err != nil {
 			return nil, fmt.Errorf("parsing DNS answer header: %w", err)
+		}
+
+		if len(aTypes) >= maxDNSAnswers {
+			return nil, fmt.Errorf("too many DNS answers: limit is %d", maxDNSAnswers)
 		}
 
 		switch h.Type {
