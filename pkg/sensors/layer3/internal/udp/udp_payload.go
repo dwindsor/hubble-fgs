@@ -51,19 +51,8 @@ func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
 	return handleUdpDns(&m, r)
 }
 
-func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) {
+func parseDNSMessage(buf []byte) (*dnsapi.MsgDns, error) {
 	var p dnsmessage.Parser
-
-	// Annotate msg with user space parser op type
-	m.Common.Op = ops.MSG_OP_DNS
-
-	buf := make([]byte, int(m.Common.Size)-int(unsafe.Sizeof(m)))
-
-	if _, err := r.Read(buf); err != nil {
-		logger.GetLogger().Warn("Udp Dns Read error", logfields.Error, err)
-		return nil, err
-	}
-
 	var ips []net.IP
 	var ipStrings []string
 	var aTypes []uint32
@@ -123,18 +112,35 @@ func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, 
 		ipStrings = append(ipStrings, ip.String())
 	}
 
-	msgDns := dnsapi.MsgDns{
+	return &dnsapi.MsgDns{
 		Response:      hdr.Response,
 		RCode:         uint16(hdr.RCode),
 		AnswerTypes:   aTypes,
 		QuestionTypes: qTypes,
 		Names:         names,
 		IPs:           ipStrings,
+	}, nil
+}
+
+func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) {
+	// Annotate msg with user space parser op type
+	m.Common.Op = ops.MSG_OP_DNS
+
+	buf := make([]byte, int(m.Common.Size)-int(unsafe.Sizeof(m)))
+
+	if _, err := r.Read(buf); err != nil {
+		logger.GetLogger().Warn("Udp Dns Read error", logfields.Error, err)
+		return nil, err
+	}
+
+	msgDns, err := parseDNSMessage(buf)
+	if err != nil {
+		return nil, err
 	}
 
 	msgUnix := &dnsproto.MsgDnsUnix{
 		Msg: m,
-		Dns: msgDns,
+		Dns: *msgDns,
 	}
 	return []observer.Event{msgUnix}, nil
 }
