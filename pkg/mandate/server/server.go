@@ -58,6 +58,7 @@ func (s *Server) GetMandateStatus(_ context.Context, _ *api.GetMandateStatusReq)
 			Version:  status.Mandate.Version,
 			LoadedAt: timestamppb.New(status.Mandate.LoadedAt),
 			Checksum: status.Mandate.Checksum,
+			Domains:  status.Mandate.Domains,
 		}
 	}
 

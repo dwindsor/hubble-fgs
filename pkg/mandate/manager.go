@@ -41,6 +41,7 @@ type LoadedMandate struct {
 	Version  string    `json:"version,omitempty"`
 	LoadedAt time.Time `json:"loaded_at"`
 	Checksum string    `json:"checksum"`
+	Domains  []string  `json:"domains"`
 }
 
 // Status is the status of the mandate manager
