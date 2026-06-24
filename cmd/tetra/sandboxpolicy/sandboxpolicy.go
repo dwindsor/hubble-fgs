@@ -47,7 +47,6 @@ func listCmd() *cobra.Command {
 				cmd,
 				spListOutputFlag,
 				sandboxpolicy.SandboxDomain,
-				nil,
 			)
 		},
 	}

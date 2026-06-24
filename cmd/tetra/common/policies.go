@@ -25,24 +25,10 @@ func ListPolicies(
 	cmd *cobra.Command,
 	output string,
 	domain string,
-	mapName func(name string) (string, bool), // mapName filters and renames policies
 ) error {
 	res, err := ListTetragonPolicies(domain)
 	if err != nil {
 		return err
-	}
-
-	// keep only the policies we want in the list, and update their name
-	if mapName != nil {
-		for i := 0; i < len(res.Policies); i++ {
-			pol := res.Policies[i]
-			name, ok := mapName(pol.Name)
-			if !ok {
-				res.Policies = append(res.Policies[:i], res.Policies[i+1:]...)
-				i--
-			}
-			pol.Name = name
-		}
 	}
 
 	switch output {
