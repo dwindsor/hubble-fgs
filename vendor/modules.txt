@@ -406,7 +406,7 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.8.0-pre.0.0.20260615144038-8f6a9f6fb1e0 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.8.0-pre.0.0.20260624111909-0732c4ecff6e => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -460,6 +460,7 @@ github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/constants
 github.com/cilium/tetragon/pkg/crdutils
 github.com/cilium/tetragon/pkg/cri
+github.com/cilium/tetragon/pkg/cursorparser
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/dump
 github.com/cilium/tetragon/pkg/elf
@@ -490,6 +491,7 @@ github.com/cilium/tetragon/pkg/labels
 github.com/cilium/tetragon/pkg/logger
 github.com/cilium/tetragon/pkg/logger/logfields
 github.com/cilium/tetragon/pkg/manager
+github.com/cilium/tetragon/pkg/manager/events
 github.com/cilium/tetragon/pkg/matchers/bytesmatcher
 github.com/cilium/tetragon/pkg/matchers/durationmatcher
 github.com/cilium/tetragon/pkg/matchers/listmatcher
@@ -521,7 +523,6 @@ github.com/cilium/tetragon/pkg/observer/observertesthelper/docker
 github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/pidfile
 github.com/cilium/tetragon/pkg/podhelpers
-github.com/cilium/tetragon/pkg/podhooks
 github.com/cilium/tetragon/pkg/policyconf
 github.com/cilium/tetragon/pkg/policyfilter
 github.com/cilium/tetragon/pkg/policyfilter/rthooks

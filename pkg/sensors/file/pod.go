@@ -21,12 +21,11 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
-	"github.com/cilium/tetragon/pkg/podhooks"
+	"github.com/cilium/tetragon/pkg/manager/events"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
@@ -35,20 +34,23 @@ import (
 )
 
 func init() {
-	podhooks.RegisterCallbacksAtInit(podhooks.Callbacks{
-		PodCallbacks: func(podInformer cache.SharedIndexInformer) {
-			podInformer.AddEventHandler(
-				cache.ResourceEventHandlerFuncs{
-					AddFunc:    podhooksAddFunc,
-					UpdateFunc: podhooksUpdateFunc,
-					DeleteFunc: podhooksDeleteFunc,
-				},
-			)
-		},
-	})
 	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
 		CreateContainer: rthooksCreateContainer,
 	})
+}
+
+// RegisterPodHandlers wires the file sensor's pod lifecycle tracking into the
+// supplied pod-event source. It replaces the previous podhooks-based
+// registration (removed upstream): the agent now calls this explicitly during
+// startup once the controller manager's pod informer is available.
+func RegisterPodHandlers(src events.PodEventSource) error {
+	if err := src.OnPodAdd(onPodAdd); err != nil {
+		return err
+	}
+	if err := src.OnPodUpdate(onPodUpdate); err != nil {
+		return err
+	}
+	return src.OnPodDelete(onPodDelete)
 }
 
 type ContInit struct {
@@ -206,13 +208,7 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 	return nil
 }
 
-func podhooksAddFunc(obj any) {
-	pod, ok := obj.(*v1.Pod)
-	if !ok {
-		logger.GetLogger().Warn(fmt.Sprintf("fim, add-pod handler: unexpected object type: %T", pod))
-		return
-	}
-
+func onPodAdd(pod *v1.Pod) {
 	podID, err := uuid.Parse(string(pod.UID))
 	if err != nil {
 		logger.GetLogger().Warn("fim, add-pod handler: failed to parse pod id", logfields.Error, err, "pod-id", pod.UID)
@@ -261,13 +257,7 @@ func podhooksAddFunc(obj any) {
 	}
 }
 
-func podhooksUpdateFunc(oldObj, newObj any) {
-	pod1, ok1 := oldObj.(*v1.Pod)
-	pod2, ok2 := newObj.(*v1.Pod)
-	if !ok1 || !ok2 {
-		logger.GetLogger().Warn(fmt.Sprintf("fim, update-pod: unexpected object type(s): old:%T new:%T", pod1, pod2))
-		return
-	}
+func onPodUpdate(pod1, pod2 *v1.Pod) {
 	if pod1.UID != pod2.UID {
 		logger.GetLogger().Warn(fmt.Sprintf("fim, update-pod: unexpected pod ids: old:%T new:%T", pod1.UID, pod2.UID))
 		return
@@ -335,13 +325,7 @@ func podhooksUpdateFunc(oldObj, newObj any) {
 	}
 }
 
-func podhooksDeleteFunc(obj any) {
-	pod, ok := obj.(*v1.Pod)
-	if !ok {
-		logger.GetLogger().Warn(fmt.Sprintf("fim, add-pod handler: unexpected object type: %T", pod))
-		return
-	}
-
+func onPodDelete(pod *v1.Pod) {
 	podID, err := uuid.Parse(string(pod.UID))
 	if err != nil {
 		logger.GetLogger().Warn("fim, add-pod handler: failed to parse pod id", logfields.Error, err, "pod-id", pod.UID)

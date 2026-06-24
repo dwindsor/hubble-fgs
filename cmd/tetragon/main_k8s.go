@@ -9,9 +9,11 @@ import (
 
 	"github.com/cilium/lumberjack/v2"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	"github.com/cilium/tetragon/pkg/manager/events"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/cilium/tetragon/pkg/watcher/crdwatcher"
 
@@ -33,6 +35,17 @@ func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
 	// after the sensors are loaded, otherwise existing policies will fail to
 	// load on the first attempt.
 	if enterpriseOption.K8SControlPlaneEnabled() {
+		// controllerManager is non-nil here: Get() only returns a FakeManager
+		// (with a nil controller manager) when the k8s control plane is
+		// disabled, which the enclosing K8SControlPlaneEnabled() guard excludes.
+		controllerManager := kubernetesManager.GetControllerManager()
+
+		// Wire pod-event consumers that previously relied on the upstream
+		// podhooks auto-install (removed in favour of events.PodEventSource).
+		if err = wirePodEventConsumers(controllerManager.PodEvents()); err != nil {
+			return err
+		}
+
 		log.Info("Enabling policy watcher")
 
 		// add informers for all resources
@@ -41,8 +54,14 @@ func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
 			// recommended to use it to disable watching TracingPolicy in EE.
 			// Use --enable-policy-k8swatcher=false instead.
 			if option.Config.EnableTracingPolicyCRD {
-				err = crdwatcher.AddTracingPolicyInformer(ctx, kubernetesManager.GetControllerManager(), observer.GetSensorManager())
-				if err != nil {
+				// Cluster-scoped and namespaced TracingPolicy reconcilers each
+				// gate on their own CRD via RegisterControllerWhenCRDReady, so a
+				// missing namespaced CRD no longer blocks the cluster-scoped
+				// reconciler (and vice versa).
+				if err = crdwatcher.RegisterTracingPolicyReconciler(controllerManager, observer.GetSensorManager()); err != nil {
+					return err
+				}
+				if err = crdwatcher.RegisterTracingPolicyNamespacedReconciler(controllerManager, observer.GetSensorManager()); err != nil {
 					return err
 				}
 			}
@@ -70,10 +89,49 @@ func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
 	return nil
 }
 
+// wirePodEventConsumers registers the pod-event consumers that previously
+// relied on the upstream podhooks auto-install (manager.InstallHooks), removed
+// in favour of an explicit events.PodEventSource. Each consumer is gated on its
+// own enablement flag.
+func wirePodEventConsumers(podEvents events.PodEventSource) error {
+	if podEvents == nil {
+		return nil
+	}
+
+	// Pod delete handler for metrics cleanup. Gated on MetricsServer: the
+	// drainer (enterprise StartPodDeleteHandler, started in initK8sMetrics) only
+	// runs when the metrics server is enabled, so registering unconditionally
+	// would queue pod deletes that nothing drains.
+	if option.Config.MetricsServer != "" {
+		if err := metrics.RegisterPodDeleteHandler(podEvents); err != nil {
+			return err
+		}
+	}
+
+	// cgidmap and the file sensor (Linux-only host consumers).
+	if err := enableHostPodHandlers(podEvents); err != nil {
+		return err
+	}
+
+	if option.Config.EnablePolicyFilter {
+		// A GetState failure is non-fatal here, mirroring the OSS wiring which
+		// logs and continues rather than aborting startup. Use a distinct pfErr
+		// so the intentional `return nil` is not misread as a dropped error.
+		pfState, pfErr := policyfilter.GetState()
+		if pfErr != nil {
+			log.Warn("failed to get policyfilter state", logfields.Error, pfErr)
+			return nil
+		}
+		if err := pfState.RegisterPodHandlers(podEvents); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func initK8sMetrics() {
 	go enterpriseMetrics.StartPodDeleteHandler()
-	// Handler must be registered before the watcher is started
-	metrics.RegisterPodDeleteHandler()
 }
 
 func k8sPodAccessor() watcher.PodAccessor {
