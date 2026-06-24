@@ -49,6 +49,7 @@ func TestManager(t *testing.T) {
 		require.Equal(t, 1, status.Log.Total)
 		require.Equal(t, 1, status.Log.Failures)
 		require.Empty(t, mgr.loadedPolicies)
+		require.Nil(t, status.Mandate)
 
 		synctest.Wait()
 		mgr.Refresh()
@@ -58,6 +59,7 @@ func TestManager(t *testing.T) {
 		require.Equal(t, 2, status.Log.Total)
 		require.Equal(t, 2, status.Log.Failures)
 		require.Empty(t, mgr.loadedPolicies)
+		require.Nil(t, status.Mandate)
 
 		// NB: let time pass so that the refresh timeout is triggered
 		time.Sleep(time.Second * 2)
@@ -65,6 +67,7 @@ func TestManager(t *testing.T) {
 		require.Greater(t, status.Log.Total, 2)
 		require.Greater(t, status.Log.Failures, 2)
 		require.Empty(t, mgr.loadedPolicies)
+		require.Nil(t, status.Mandate)
 
 		// copy the test data (including the mandate file)
 		// and check that now everything succeeds
@@ -75,6 +78,9 @@ func TestManager(t *testing.T) {
 		status = mgr.Status()
 		require.Equal(t, 1, status.Log.Total-status.Log.Failures)
 		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, 2.yaml
+		require.NotNil(t, status.Mandate)
+		// single domain with initial id == 1
+		require.Equal(t, []string{"mandate-1"}, status.Mandate.Domains)
 
 		// change the mandate file to a new file without conf
 		oldFailures := status.Log.Failures
@@ -102,6 +108,8 @@ func TestManager(t *testing.T) {
 					})
 			},
 		))
+		// we have 1.yaml in the old domain and monitor.yaml in the new one
+		require.Equal(t, []string{"mandate-1", "mandate-2"}, status.Mandate.Domains)
 
 		// change the mandate file to a new file with mode config
 		oldFailures = status.Log.Failures
@@ -136,7 +144,7 @@ func TestManager(t *testing.T) {
 						return ie.Key == "url" && strings.HasSuffix(ie.Val, "monitor.yaml")
 					})
 			},
-		), "execting scipped monitor.yaml")
+		), "expecting skipped monitor.yaml")
 		require.True(t, slices.ContainsFunc(
 			status.Log.LastEntry().Attempts,
 			func(a attempt.Attempt) bool {
@@ -149,6 +157,8 @@ func TestManager(t *testing.T) {
 					})
 			},
 		), "expecting setting monitor mode on 1.yaml")
+		// we only updated modes, thus we expect same domains
+		require.Equal(t, []string{"mandate-1", "mandate-2"}, status.Mandate.Domains)
 
 		// change the mandate file to be a version that includes a broken policy
 		oldFailures = status.Log.Failures
@@ -175,6 +185,8 @@ func TestManager(t *testing.T) {
 					})
 			},
 		), "expecting skipped 1.yaml")
+		// Since everything has been rolled back, expect same domains as before
+		require.Equal(t, []string{"mandate-1", "mandate-2"}, status.Mandate.Domains)
 
 		// change the mandate file to a new file that works
 		oldFailures = status.Log.Failures
@@ -218,6 +230,8 @@ func TestManager(t *testing.T) {
 					})
 			},
 		), "expecting setting enforce mode on 1.yaml")
+		// 1.yaml was only mode-updated; 2.yaml and 3.yaml were loaded in the new domain
+		require.Equal(t, []string{"mandate-1", "mandate-3"}, status.Mandate.Domains)
 	})
 }
 
