@@ -20,27 +20,11 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
-const MandateDomain = "mandate"
-
 //revive:disable:exported
 type MandatePolicy struct {
-	tp   tracingpolicy.TracingPolicy
-	name string
-}
-
-var polNameRegex = regexp.MustCompile(`^mandate\+pol-\d+-(.*)$`)
-
-func OrigPolName(n string) (string, bool) {
-	match := polNameRegex.FindStringSubmatch(n)
-	if len(match) < 2 {
-		return "", false
-	}
-	return match[1], true
-}
-
-func mandatePolName(n string, id uint) string {
-	return fmt.Sprintf("mandate+pol-%d-%s", id, n)
-
+	tp     tracingpolicy.TracingPolicy
+	name   string
+	domain string
 }
 
 var alertNameRegex = regexp.MustCompile(`^mandate\+alert-\d+-(.*)$`)
@@ -58,11 +42,12 @@ func OrigAlertName(n string) (string, bool) {
 }
 
 func (m *manager) NewMandatePolicy(tp tracingpolicy.TracingPolicy) tracingpolicy.TracingPolicy {
+	const mandateDomain = "mandate"
 	ret := MandatePolicy{
-		tp:   tp,
-		name: mandatePolName(tp.TpName(), m.polNextID),
+		tp:     tp,
+		name:   tp.TpName(),
+		domain: fmt.Sprintf("%s-%d", mandateDomain, m.domainID),
 	}
-	m.polNextID++
 	if tp.TpNamespace() != "" {
 		logger.GetLogger().Warn("mandate does not currently support namespaced policies")
 	}
@@ -87,5 +72,5 @@ func (mp *MandatePolicy) TpNamespace() string {
 }
 
 func (mp *MandatePolicy) TpDomain() string {
-	return MandateDomain
+	return mp.domain
 }

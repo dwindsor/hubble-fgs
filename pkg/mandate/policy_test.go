@@ -17,18 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPolName(t *testing.T) {
-	for _, id := range []uint{1, 2324} {
-		n := mandatePolName("pizza", id)
-		orig, ok := OrigPolName(n)
-		require.True(t, ok, fmt.Sprintf("could not match %s", n))
-		require.Equal(t, "pizza", orig)
-	}
-
-	_, ok := OrigPolName("pizza")
-	require.False(t, ok)
-}
-
 func TestAlertName(t *testing.T) {
 	for _, id := range []uint{1, 2324} {
 		n := mandateAlertName("pizza", id)

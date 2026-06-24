@@ -16,6 +16,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"sync"
@@ -46,7 +47,8 @@ type manager struct {
 	wg             sync.WaitGroup
 	loadedPolicies []policy
 	attLog         attempt.Log
-	polNextID      uint
+	alertNextID    uint
+	domainID       uint64
 }
 
 type cmdID int
@@ -98,8 +100,8 @@ func (ty polTy) String() string {
 
 type policy struct {
 	namespace string
+	domain    string
 	name      string
-	origName  string
 	url       string
 	ty        polTy
 	checksum  []byte
@@ -128,14 +130,11 @@ func newTracingPolicy(url string, tp tracingpolicy.TracingPolicy, mode string) p
 		name:      tp.TpName(),
 		ty:        tracingPolTy,
 		mode:      mode,
+		domain:    tp.TpDomain(),
 	}
 	// If mode is empty, store the actual mode set by the tracing policy spec, if any.
 	if ret.mode == "" {
 		ret.mode = getModeFromTracingPolicy(tp)
-	}
-	ret.origName = ret.name
-	if oname, ok := OrigPolName(ret.name); ok {
-		ret.origName = oname
 	}
 	return ret
 }
@@ -152,7 +151,8 @@ func NewManager(
 		cnf:          cnf,
 		sensorMgr:    sensorMgr,
 		alertRuleMgr: alertRuleMgr,
-		polNextID:    1,
+		alertNextID:  1,
+		domainID:     0,
 	}
 	return mgr, nil
 }
@@ -160,7 +160,7 @@ func NewManager(
 func (m *manager) unloadPolicy(ctx context.Context, pol policy) error {
 	switch pol.ty {
 	case tracingPolTy:
-		return m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace, MandateDomain)
+		return m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace, pol.domain)
 	case alertPolTy:
 		if m.alertRuleMgr == nil {
 			return errors.New("alert manager disabled")
@@ -261,7 +261,7 @@ func (m *manager) refresh(ctx context.Context) {
 	// This will only be non-nil in case of mode updates errors!
 	for _, revertModeUpdate := range res.modeUpdates {
 		attempt.RunAttempt(
-			refrAtt.NewAttempt("revert policy mode").WithInfo("policy", revertModeUpdate.loadedPol.origName).WithInfo("mandate", unloadMandateID),
+			refrAtt.NewAttempt("revert policy mode").WithInfo("policy", revertModeUpdate.loadedPol.name).WithInfo("mandate", unloadMandateID),
 			func() error {
 				return revertModeUpdate.revert(ctx, refrAtt)
 			})
@@ -269,7 +269,7 @@ func (m *manager) refresh(ctx context.Context) {
 
 	for _, pol := range res.unloadPolicies {
 		attempt.RunAttempt(
-			refrAtt.NewAttempt("unload policy").WithInfo("policy", pol.origName).WithInfo("mandate", unloadMandateID),
+			refrAtt.NewAttempt("unload policy").WithInfo("policy", pol.name).WithInfo("mandate", unloadMandateID),
 			func() error {
 				err := m.unloadPolicy(ctx, pol)
 				if err != nil {
@@ -302,7 +302,7 @@ func (u *updateMode) update(ctx context.Context, mode tetragon.TracingPolicyMode
 		Name:      u.loadedPol.name,
 		Namespace: u.loadedPol.namespace,
 		Mode:      &mode,
-		Domain:    MandateDomain,
+		Domain:    u.loadedPol.domain,
 	})
 	if err == nil {
 		u.loadedPol.mode = nameFromMode(mode)
@@ -371,8 +371,7 @@ type fetchLoadPoliciesResult struct {
 // It returns an error if something went wrong, plus a structure that holds
 // the list of policies to be unloaded and eventually, the list of policy mode changes to be reverted.
 // If everything goes well, it returns list of loaded policies, and the list of policies to be unloaded.
-func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) (fetchLoadPoliciesResult, error) {
-	res := fetchLoadPoliciesResult{}
+func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) (res fetchLoadPoliciesResult, err error) {
 	policyData := make([]policyData, len(obj.Mandate.Policies))
 
 	// first pass, attempt to fetch all the policies
@@ -380,7 +379,8 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	// If at least one policy cannot be fetched, return an error
 	for i := range obj.Mandate.Policies {
 		pol := &obj.Mandate.Policies[i]
-		data, err := attemptFetchURL(refrAtt.NewAttempt("fetch policy"), pol.url_)
+		var data []byte
+		data, err = attemptFetchURL(refrAtt.NewAttempt("fetch policy"), pol.url_)
 		if err != nil {
 			return res, err
 		}
@@ -407,6 +407,7 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	toBeUpdatedModes := make([]updateMode, 0)
 
 	h := sha256.New()
+	needDomainIDBump := true
 
 	for i := range obj.Mandate.Policies {
 		pol := &obj.Mandate.Policies[i]
@@ -457,8 +458,23 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 			}
 			skipAtt.Complete(nil)
 		} else {
+			// Bump mandate id so that newly loaded policies
+			// end up in the new domain.
+			// Only bump if at least one policy had to be loaded
+			// to avoid "id holes" when only skipped policies are present.
+			if needDomainIDBump {
+				m.domainID++
+				defer func() {
+					// In case of error, restore previous id
+					if err != nil {
+						m.domainID--
+					}
+				}()
+				needDomainIDBump = false
+			}
 			loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", pol.url_.String())
-			loadedPol, err := m.attemptLoadPolicy(ctx, loadAtt, pol, data)
+			var loadedPol policy
+			loadedPol, err = m.attemptLoadPolicy(ctx, loadAtt, pol, data)
 			if err != nil {
 				// Return policies currently loaded as to-be-unloaded
 				res.unloadPolicies = loadedPolicies
@@ -472,7 +488,7 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 
 	// Finally, update policies modes as requested
 	for idx, update := range toBeUpdatedModes {
-		if err := update.apply(ctx, refrAtt); err != nil {
+		if err = update.apply(ctx, refrAtt); err != nil {
 			// In case of error, revert the whole change set (but only modes until the failing one!)
 			res.unloadPolicies = loadedPolicies
 			res.modeUpdates = toBeUpdatedModes[:idx]
@@ -530,8 +546,8 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 }
 
 func (m *manager) uniqueAlertName(ar *v1alpha1.AlertRule) string {
-	name := mandateAlertName(ar.GetName(), m.polNextID)
-	m.polNextID++
+	name := mandateAlertName(ar.GetName(), m.alertNextID)
+	m.alertNextID++
 	return name
 }
 
@@ -566,15 +582,15 @@ func (m *manager) attemptLoadAlert(
 	// different names as we do for policies. This allows us to ensure that everything loads
 	// properly before removing the policies from the previous mandate file
 	pol = policy{
-		name:     m.uniqueAlertName(ar),
-		origName: ar.GetName(),
-		url:      mandatePol.url_.String(),
-		ty:       alertPolTy,
+		name: m.uniqueAlertName(ar),
+		url:  mandatePol.url_.String(),
+		ty:   alertPolTy,
 	}
+	origName := ar.GetName()
 	ar.SetName(pol.name)
 	// Force-set the origName log file if needed.
 	if ar.Spec.Export.Filename == "" {
-		ar.Spec.Export.Filename = pol.origName + ".log"
+		ar.Spec.Export.Filename = origName + ".log"
 	}
 	err = m.alertRuleMgr.AddAlertRule(ar)
 	if err != nil {
@@ -618,16 +634,32 @@ func (m *manager) status() *Status {
 	var ret Status
 	ret.Running = true
 	ret.Conf = m.cnf
+
 	if m.obj != nil {
 		ret.Mandate = &LoadedMandate{
 			Version:  m.obj.VersionOrEmpty(),
 			LoadedAt: m.obj.loadedTime,
 			Checksum: m.obj.Checksum(),
+			Domains:  m.collectDomains(),
 		}
 	}
 	ret.Log = m.attLog.Attempts()
 
 	return &ret
+}
+
+func (m *manager) collectDomains() []string {
+	domainsSet := make(map[string]struct{})
+	for _, pol := range m.loadedPolicies {
+		if pol.domain == "" {
+			// skip empty domains policies (alert rules for now)
+			continue
+		}
+		domainsSet[pol.domain] = struct{}{}
+	}
+	domains := slices.Collect(maps.Keys(domainsSet))
+	slices.Sort(domains)
+	return domains
 }
 
 func (m *manager) Start() error {

@@ -54,9 +54,7 @@ func getSpecMode(opts []v1alpha1.OptionSpec) policyconf.Mode {
 
 func (tsm *TestSensorManager) policyMode(t *testing.T, polName string) policyconf.Mode {
 	for name, conf := range tsm.pols {
-		n, ok := OrigPolName(name)
-		require.True(t, ok, "invalid policy name", name)
-		if polName == n {
+		if polName == name {
 			return conf.mode
 		}
 	}
