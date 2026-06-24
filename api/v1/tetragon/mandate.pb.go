@@ -38,6 +38,7 @@ type Mandate struct {
 	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	LoadedAt      *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=loaded_at,json=loadedAt,proto3" json:"loaded_at,omitempty"`
 	Checksum      string                 `protobuf:"bytes,3,opt,name=checksum,proto3" json:"checksum,omitempty"`
+	Domains       []string               `protobuf:"bytes,4,rep,name=domains,proto3" json:"domains,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -91,6 +92,13 @@ func (x *Mandate) GetChecksum() string {
 		return x.Checksum
 	}
 	return ""
+}
+
+func (x *Mandate) GetDomains() []string {
+	if x != nil {
+		return x.Domains
+	}
+	return nil
 }
 
 type MandateConf struct {
@@ -349,11 +357,12 @@ var File_tetragon_mandate_proto protoreflect.FileDescriptor
 
 const file_tetragon_mandate_proto_rawDesc = "" +
 	"\n" +
-	"\x16tetragon/mandate.proto\x12\btetragon\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16tetragon/attempt.proto\"x\n" +
+	"\x16tetragon/mandate.proto\x12\btetragon\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16tetragon/attempt.proto\"\x92\x01\n" +
 	"\aMandate\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x127\n" +
 	"\tloaded_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bloadedAt\x12\x1a\n" +
-	"\bchecksum\x18\x03 \x01(\tR\bchecksum\"a\n" +
+	"\bchecksum\x18\x03 \x01(\tR\bchecksum\x12\x18\n" +
+	"\adomains\x18\x04 \x03(\tR\adomains\"a\n" +
 	"\vMandateConf\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12@\n" +
 	"\x0erefresh_period\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\rrefreshPeriod\"\x15\n" +

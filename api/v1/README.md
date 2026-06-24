@@ -3947,6 +3947,7 @@ Determins the behaviour of a field filter
 | version | [string](#string) |  |  |
 | loaded_at | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | checksum | [string](#string) |  |  |
+| domains | [string](#string) | repeated |  |
 
 
 

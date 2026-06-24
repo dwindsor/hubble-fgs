@@ -22,6 +22,7 @@ message Mandate {
   string version = 1;
   google.protobuf.Timestamp loaded_at = 2;
   string checksum = 3;
+  repeated string domains = 4;
 }
 
 message MandateConf {
