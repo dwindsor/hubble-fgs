@@ -417,6 +417,11 @@ tetragon:
   # DNS
   dns:
     enabled: false
+    ports: []
+    reportQuestions: false
+    metrics:
+      enabled: true
+      labelFilter: []
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
   # @ignored
   awsSonar:

@@ -116,6 +116,9 @@ const (
 	keyEnableRawsockMetrics              = "enable-rawsock-metrics"
 	keyRawsockMetricsLabelFilter         = "rawsock-metrics-label-filter"
 	keyEnableDNS                         = "enable-dns"
+	keyDNSReportQuestions                = "dns-report-questions"
+	keyEnableDNSMetrics                  = "enable-dns-metrics"
+	keyDNSMetricsLabelFilter             = "dns-metrics-label-filter"
 	keyMulticastApp                      = "multicast-app"
 	keyMulticastPorts                    = "multicast-ports"
 	keyEnableMulticastSeqCheck           = "enable-multicast-seq-check"
@@ -278,7 +281,10 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyRawsockReportClose, false, fmt.Sprintf("Report raw sockets closing (requires --%s)", keyEnableRawsock))
 	flags.Bool(keyEnableRawsockMetrics, true, fmt.Sprintf("Enable raw socket metrics (requires --%s)", keyEnableRawsock))
 	flags.StringSlice(keyRawsockMetricsLabelFilter, []string{}, fmt.Sprintf("Raw socket metrics label filter (requires --%s and --%s)", keyEnableRawsock, keyEnableRawsockMetrics))
-	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
+	flags.Bool(keyEnableDNS, false, fmt.Sprintf("Enable DNS observability (requires --%s)", keyEnableUDP))
+	flags.Bool(keyDNSReportQuestions, false, fmt.Sprintf("Report DNS questions as well as answers (requires --%s)", keyEnableDNS))
+	flags.Bool(keyEnableDNSMetrics, true, fmt.Sprintf("Enable DNS metrics (requires --%s)", keyEnableDNS))
+	flags.StringSlice(keyDNSMetricsLabelFilter, []string{}, fmt.Sprintf("DNS metrics label filter (requires --%s and --%s)", keyEnableDNS, keyEnableDNSMetrics))
 	flags.String(keyMulticastApp, "", fmt.Sprintf("Specify the multicast app to observe on the ports specified with --%s.", keyMulticastPorts))
 	flags.IntSlice(keyMulticastPorts, []int{}, fmt.Sprintf("UDP ports on which to observe the multicast app specified with --%s.", keyMulticastApp))
 	flags.Bool(keyEnableMulticastSeqCheck, false, fmt.Sprintf("Enable sequence checking for the multicast app specified with --%s and --%s.", keyMulticastApp, keyMulticastPorts))
@@ -420,6 +426,9 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableRawsockMetrics = viper.GetBool(keyEnableRawsockMetrics)
 	Config.RawsockMetricsLabelFilter = viper.GetStringSlice(keyRawsockMetricsLabelFilter)
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
+	Config.DNSReportQuestions = viper.GetBool(keyDNSReportQuestions)
+	Config.EnableDNSMetrics = viper.GetBool(keyEnableDNSMetrics)
+	Config.DNSMetricsLabelFilter = viper.GetStringSlice(keyDNSMetricsLabelFilter)
 	Config.MulticastApp = viper.GetString(keyMulticastApp)
 	// Set the AppID from the app string. If not found, this will default to 0 (MulticastNoApp)
 	Config.MulticastAppID = multicastAppID[Config.MulticastApp]
@@ -485,12 +494,18 @@ func validateConfig(config config) error {
 		}
 	}
 
+	if config.EnableDNS {
+		// The DNS parser is loaded alongside the UDP sensor
+		if !config.EnableUDP {
+			return fmt.Errorf("the DNS parser requires --%s", keyEnableUDP)
+		}
+	}
+
 	if config.EnableBPFDNSParser {
 		// The BPF DNS parser is loaded alongside the UDP sensor
 		if !config.EnableUDP {
 			return fmt.Errorf("the BPF DNS parser requires --%s", keyEnableUDP)
 		}
-
 	}
 
 	if config.EnableBPFDNSPerPod {

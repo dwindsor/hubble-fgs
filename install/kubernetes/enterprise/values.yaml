@@ -127,6 +127,11 @@ tetragon:
   # DNS
   dns:
     enabled: false
+    ports: []
+    reportQuestions: false
+    metrics:
+      enabled: true
+      labelFilter: []
   prometheus:
     metricsLabelFilter: "namespace,workload,binary"
   # EXPERIMENTAL: Publish metrics to AWS Sonar.

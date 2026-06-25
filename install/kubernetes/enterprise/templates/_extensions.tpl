@@ -78,6 +78,10 @@ rawsock-report-close: {{ .Values.tetragon.layer3.rawsock.reportClose | quote }}
 enable-rawsock-metrics: {{ .Values.tetragon.layer3.rawsock.metrics.enabled | quote }}
 rawsock-metrics-label-filter: {{ .Values.tetragon.layer3.rawsock.metrics.labelFilter | quote }}
 enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
+dns-ports: {{ .Values.tetragon.dns.ports | quote }}
+dns-report-questions: {{ .Values.tetragon.dns.reportQuestions | quote }}
+enable-dns-metrics: {{ .Values.tetragon.dns.metrics.enabled | quote }}
+dns-metrics-label-filter: {{ .Values.tetragon.dns.metrics.labelFilter | quote }}
 enable-network-events: {{ .Values.tetragon.enableEvents.network | quote }}
 multicast-app: {{ .Values.tetragon.layer3.udp.multicast.app | quote }}
 multicast-ports: {{ .Values.tetragon.layer3.udp.multicast.ports | quote }}

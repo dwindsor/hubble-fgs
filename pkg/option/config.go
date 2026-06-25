@@ -98,6 +98,10 @@ type config struct {
 
 	DNSStatsPerSocket bool
 
+	DNSReportQuestions    bool
+	EnableDNSMetrics      bool
+	DNSMetricsLabelFilter []string
+
 	EnableFimDispatcher bool
 
 	MandateConf mandateconf.ManagerConf

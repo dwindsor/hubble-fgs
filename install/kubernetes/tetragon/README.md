@@ -130,6 +130,10 @@ Helm chart for Tetragon Enterprise
 | tetragon.cri.socketHostPath | string | `""` | path of the CRI socket on the host. This will typically be "/run/containerd/containerd.sock" for containerd or "/var/run/crio/crio.sock"  for crio. |
 | tetragon.debug | bool | `false` | If you want to run Tetragon in debug mode change this value to true |
 | tetragon.dns.enabled | bool | `false` |  |
+| tetragon.dns.metrics.enabled | bool | `true` |  |
+| tetragon.dns.metrics.labelFilter | list | `[]` |  |
+| tetragon.dns.ports | list | `[]` |  |
+| tetragon.dns.reportQuestions | bool | `false` |  |
 | tetragon.dnsStatsPerSocket | bool | `false` |  |
 | tetragon.enableApplicationModel | bool | `false` | Enable application model. |
 | tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
