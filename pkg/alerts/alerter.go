@@ -205,6 +205,13 @@ func (a *alerter) AddAlertRuleFromYAML(_ context.Context, req *tetragon.AddAlert
 	if err != nil {
 		return nil, err
 	}
+
+	domain := server.GrpcDomain
+	if req.Domain != "" {
+		domain = req.Domain
+	}
+	ar.Domain = domain
+
 	err = a.ruleManager.AddAlertRule(ar)
 	if err != nil {
 		return nil, err
@@ -223,7 +230,11 @@ func (a *alerter) AddAlertRuleFromYAML(_ context.Context, req *tetragon.AddAlert
 }
 
 func (a *alerter) DeleteAlertRule(_ context.Context, req *tetragon.DeleteAlertRuleRequest) (*tetragon.DeleteAlertRuleResponse, error) {
-	a.ruleManager.DeleteAlertRule(req.Name, req.Domain)
+	domain := server.GrpcDomain
+	if req.Domain != "" {
+		domain = req.Domain
+	}
+	a.ruleManager.DeleteAlertRule(req.Name, domain)
 	return &tetragon.DeleteAlertRuleResponse{}, nil
 }
 
@@ -240,8 +251,13 @@ func (a *alerter) ListAlertRules(_ context.Context, req *tetragon.ListAlertRules
 }
 
 func (a *alerter) GetAlertRule(_ context.Context, req *tetragon.GetAlertRuleRequest) (*tetragon.GetAlertRuleResponse, error) {
+	domain := server.GrpcDomain
+	if req.Domain != "" {
+		domain = req.Domain
+	}
+
 	key := collectionKey{
-		domain: req.Domain,
+		domain: domain,
 		name:   req.Name,
 	}
 	r, ok := a.ruleManager.rules[key]
