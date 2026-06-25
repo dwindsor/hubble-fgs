@@ -44,7 +44,6 @@
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/static",
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/chainguard-base"
       ],
-      "pinDigests": false
     },
     {
       "enabled": true,
