@@ -183,7 +183,13 @@ func ParseDNSOptions(config *networkapi.UdpConfigValue) {
 		config.DnsStatsPerSocket = 1
 	}
 
+	config.DnsReportQuestions = 0
+	if option.Config.DNSReportQuestions {
+		config.DnsReportQuestions = 1
+	}
+
 	parseDNSPortsOption(config)
+	ParseDNSMetricsOptions()
 }
 
 func parseDNSPortsOption(config *networkapi.UdpConfigValue) {
@@ -239,8 +245,7 @@ func ParseDnsSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolic
 		dnsconfig.MetricsEnabled = spec.Parser.Dns.Metrics.Enable
 		dnsconfig.CurrentLabels = dnsconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Dns.Metrics.LabelFilter)
 	} else {
-		dnsconfig.MetricsEnabled = true
-		dnsconfig.CurrentLabels = dnsconfig.DefaultLabelFilter()
+		ParseDNSMetricsOptions()
 	}
 	config.DnsReportQuestions = 0
 	if spec.Parser.Dns.ReportQuestions {
@@ -251,6 +256,11 @@ func ParseDnsSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolic
 	// fix is to do in kernel BPF parser.
 	ip.EnableDns()
 	logger.GetLogger().Info("Enable DNS")
+}
+
+func ParseDNSMetricsOptions() {
+	dnsconfig.MetricsEnabled = option.Config.EnableDNSMetrics
+	dnsconfig.CurrentLabels = dnsconfig.DefaultLabelFilter().WithEnabledLabels(option.Config.DNSMetricsLabelFilter)
 }
 
 // ParseUdpWatermarksSpec parses the input yaml/crd and outputs the kernel selectors
