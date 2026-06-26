@@ -35,6 +35,7 @@ var exampleAR = &v1alpha1.AlertRule{
 		Tags:       []string{"network"},
 		Severity:   "critical",
 	},
+	Domain: "test",
 }
 
 var updatedAR = &v1alpha1.AlertRule{
@@ -48,6 +49,7 @@ var updatedAR = &v1alpha1.AlertRule{
 		Severity:   "info",
 		Export:     v1alpha1.AlertExport{Filename: "test.log"},
 	},
+	Domain: "test",
 }
 
 var anotherAR = &v1alpha1.AlertRule{
@@ -61,6 +63,7 @@ var anotherAR = &v1alpha1.AlertRule{
 		Severity:   "warning",
 		Export:     v1alpha1.AlertExport{Filename: "test.log"},
 	},
+	Domain: "test",
 }
 
 func TestAddAlertRule(t *testing.T) {
@@ -72,7 +75,7 @@ func TestAddAlertRule(t *testing.T) {
 		assert.Len(t, rm.rules, i+1)
 
 		// Check the rule got added correctly
-		rule, ok := rm.rules[ar.GetName()]
+		rule, ok := rm.rules[collectionKey{domain: "test", name: ar.GetName()}]
 		assert.True(t, ok)
 		assert.NotNil(t, rule)
 		assert.NotNil(t, rule.cel)
@@ -92,7 +95,10 @@ func TestUpdateAlertRule(t *testing.T) {
 	assert.Len(t, rm.rules, 1)
 	// The rule has no Export.Filename; it uses default `GetName() + ".log"`.
 	assert.NotNil(t, rm.encoders[exampleAR.GetName()+".log"])
-	ogCEL := rm.rules[exampleAR.GetName()].cel
+	ogCEL := rm.rules[collectionKey{
+		domain: "test",
+		name:   exampleAR.GetName(),
+	}].cel
 
 	// Update the rule
 	err := rm.AddAlertRule(updatedAR)
@@ -102,7 +108,10 @@ func TestUpdateAlertRule(t *testing.T) {
 	assert.NotNil(t, rm.encoders[updatedAR.Spec.Export.Filename])
 
 	// Check the rule got added correctly
-	rule, ok := rm.rules[updatedAR.GetName()]
+	rule, ok := rm.rules[collectionKey{
+		domain: "test",
+		name:   updatedAR.GetName(),
+	}]
 	assert.True(t, ok)
 	assert.NotNil(t, rule)
 	assert.NotEqual(t, ogCEL, rule.cel)
@@ -125,7 +134,7 @@ func TestDeleteAlertRule(t *testing.T) {
 	assert.Len(t, rm.rules, 1)
 
 	// Delete the rule
-	rm.DeleteAlertRule(exampleAR.GetName())
+	rm.DeleteAlertRule(exampleAR.GetName(), "test")
 	assert.Len(t, rm.rules, 0)
 }
 
@@ -144,9 +153,12 @@ func TestAddSameRule(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, rm.rules, 1)
 	assert.Len(t, rm.encoders, 1)
-	encoder := rm.rules[ruleName].jsonEncoder
+	encoder := rm.rules[collectionKey{
+		domain: "test",
+		name:   ruleName,
+	}].jsonEncoder
 	assert.Equal(t, int32(1), encoder.refCnt.Load())
-	rm.DeleteAlertRule(ruleName)
+	rm.DeleteAlertRule(ruleName, "test")
 	assert.Len(t, rm.rules, 0)
 	assert.Len(t, rm.encoders, 0)
 	assert.Equal(t, int32(0), encoder.refCnt.Load())
@@ -170,23 +182,32 @@ func TestAddFilenameRule(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, rm.rules, 2)
-	assert.Contains(t, rm.rules, ruleName)
+	assert.Contains(t, rm.rules, collectionKey{
+		domain: "test",
+		name:   ruleName,
+	})
 
-	encoder1 := rm.rules[ruleName].jsonEncoder
-	encoder2 := rm.rules[anotherRuleName].jsonEncoder
+	encoder1 := rm.rules[collectionKey{
+		domain: "test",
+		name:   ruleName,
+	}].jsonEncoder
+	encoder2 := rm.rules[collectionKey{
+		domain: "test",
+		name:   anotherRuleName,
+	}].jsonEncoder
 	assert.NotEqual(t, encoder1, encoder2)
 	assert.Equal(t, int32(1), encoder1.refCnt.Load())
 	assert.Equal(t, int32(1), encoder2.refCnt.Load())
 	assert.Len(t, rm.rules, 2)
 	assert.Len(t, rm.encoders, 2)
 
-	rm.DeleteAlertRule(ruleName)
+	rm.DeleteAlertRule(ruleName, "test")
 	assert.Len(t, rm.rules, 1)
 	assert.Len(t, rm.encoders, 1)
 	assert.Equal(t, int32(0), encoder1.refCnt.Load())
 	assert.Equal(t, int32(1), encoder2.refCnt.Load())
 
-	rm.DeleteAlertRule(anotherRuleName)
+	rm.DeleteAlertRule(anotherRuleName, "test")
 	assert.Len(t, rm.rules, 0)
 	assert.Len(t, rm.encoders, 0)
 	assert.Equal(t, int32(0), encoder1.refCnt.Load())
@@ -215,12 +236,24 @@ func TestAddSameFilenameRule(t *testing.T) {
 
 	// now we have two rules
 	assert.Len(t, rm.rules, 2)
-	assert.Contains(t, rm.rules, ruleName)
-	assert.Contains(t, rm.rules, anotherRuleName)
+	assert.Contains(t, rm.rules, collectionKey{
+		domain: "test",
+		name:   ruleName,
+	})
+	assert.Contains(t, rm.rules, collectionKey{
+		domain: "test",
+		name:   anotherRuleName,
+	})
 
 	// but, because the files are the same we have 1 encoder with a reference count of 2
-	encoder1 := rm.rules[ruleName].jsonEncoder
-	encoder2 := rm.rules[anotherRuleName].jsonEncoder
+	encoder1 := rm.rules[collectionKey{
+		domain: "test",
+		name:   ruleName,
+	}].jsonEncoder
+	encoder2 := rm.rules[collectionKey{
+		domain: "test",
+		name:   anotherRuleName,
+	}].jsonEncoder
 	assert.Equal(t, encoder1, encoder2)
 	assert.Equal(t, int32(2), encoder1.refCnt.Load())
 	assert.Len(t, rm.encoders, 1)
@@ -230,7 +263,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	assert.NoError(t, err)
 
 	// delete one rule, we are left with one rule and one encoder
-	rm.DeleteAlertRule(ruleName)
+	rm.DeleteAlertRule(ruleName, "test")
 	assert.Len(t, rm.rules, 1)
 	assert.Len(t, rm.encoders, 1)
 	assert.Equal(t, int32(1), encoder1.refCnt.Load())
@@ -240,7 +273,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	assert.NoError(t, err)
 
 	// delete the other rule, no encoders and no rules remain
-	rm.DeleteAlertRule(anotherRuleName)
+	rm.DeleteAlertRule(anotherRuleName, "test")
 	assert.Len(t, rm.rules, 0)
 	assert.Len(t, rm.encoders, 0)
 	assert.Equal(t, int32(0), encoder1.refCnt.Load())
@@ -271,7 +304,10 @@ func TestAddAlertRuleSameFilename(t *testing.T) {
 		assert.Len(t, rm.rules, i+1)
 
 		// Check the rule got added correctly
-		rule, ok := rm.rules[ar.GetName()]
+		rule, ok := rm.rules[collectionKey{
+			domain: "test",
+			name:   ar.GetName(),
+		}]
 		assert.True(t, ok)
 		assert.NotNil(t, rule)
 		assert.NotNil(t, rule.cel)

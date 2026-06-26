@@ -41,6 +41,6 @@ func (am *TestAlertManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	return nil
 }
 
-func (am *TestAlertManager) DeleteAlertRule(name string) {
+func (am *TestAlertManager) DeleteAlertRule(name, _ string) {
 	delete(am.alerts, name)
 }

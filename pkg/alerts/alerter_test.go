@@ -150,7 +150,7 @@ func TestRPCAddAlertRuleFromYAMLUpdate(t *testing.T) {
 	a.ruleManager.AddAlertRule(anotherAR)
 
 	// Update a rule
-	req := &tetragon.AddAlertRuleFromYAMLRequest{Yaml: updatedYAML}
+	req := &tetragon.AddAlertRuleFromYAMLRequest{Yaml: updatedYAML, Domain: "test"}
 	resp, err := a.AddAlertRuleFromYAML(t.Context(), req)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -189,15 +189,24 @@ func TestRPCDeleteAlertRule(t *testing.T) {
 	a.ruleManager.AddAlertRule(exampleAR)
 	a.ruleManager.AddAlertRule(anotherAR)
 
+	// Delete a rule - wrong domain
+	req := &tetragon.DeleteAlertRuleRequest{Name: "shell", Domain: "test2"}
+	a.DeleteAlertRule(t.Context(), req)
+	// check no rule got deleted
+	assert.Len(t, a.ruleManager.rules, 2)
+
 	// Delete a rule
-	req := &tetragon.DeleteAlertRuleRequest{Name: "shell"}
+	req = &tetragon.DeleteAlertRuleRequest{Name: "shell", Domain: "test"}
 	resp, err := a.DeleteAlertRule(t.Context(), req)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	// Check the rule got deleted
 	assert.Len(t, a.ruleManager.rules, 1)
-	_, exists := a.ruleManager.rules["shell"]
+	_, exists := a.ruleManager.rules[collectionKey{
+		domain: "test",
+		name:   "shell",
+	}]
 	assert.False(t, exists)
 }
 
@@ -208,9 +217,23 @@ func TestRPCListAlertRules(t *testing.T) {
 	a.ruleManager.AddAlertRule(exampleAR)
 	a.ruleManager.AddAlertRule(anotherAR)
 
-	// List rules
-	req := &tetragon.ListAlertRulesRequest{}
+	// List rules - wrong domain
+	req := &tetragon.ListAlertRulesRequest{Domain: "test2"}
 	resp, err := a.ListAlertRules(t.Context(), req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.Rules, 0)
+
+	// List rules - any domain
+	req = &tetragon.ListAlertRulesRequest{}
+	resp, err = a.ListAlertRules(t.Context(), req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.Rules, 2)
+
+	// List rules
+	req = &tetragon.ListAlertRulesRequest{Domain: "test"}
+	resp, err = a.ListAlertRules(t.Context(), req)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 
@@ -243,7 +266,7 @@ func TestRPCGetAlertRule(t *testing.T) {
 	a.ruleManager.AddAlertRule(anotherAR)
 
 	// Get a rule
-	req := &tetragon.GetAlertRuleRequest{Name: "shell"}
+	req := &tetragon.GetAlertRuleRequest{Name: "shell", Domain: "test"}
 	resp, err := a.GetAlertRule(t.Context(), req)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
