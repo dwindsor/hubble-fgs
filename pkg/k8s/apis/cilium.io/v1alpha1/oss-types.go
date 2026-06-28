@@ -29,6 +29,7 @@ type KprobeIgnore struct {
 	CallNotFound bool `json:"callNotFound,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!self.return || has(self.returnArg)",message="ReturnArg not specified with Return=true."
 type KProbeSpec struct {
 	// Name of the function to apply the kprobe spec to.
 	Call string `json:"call"`
@@ -268,17 +269,9 @@ type ArgSelector struct {
 }
 
 type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override;GetUrl;DnsLookup;NoPost;Signal;TrackSock;UntrackSock;NotifyEnforcer;CleanupEnforcerNotification;Set
+	// +kubebuilder:validation:Enum=Post;Sigkill;Override;GetUrl;DnsLookup;NoPost;Signal;TrackSock;UntrackSock;NotifyEnforcer;CleanupEnforcerNotification;Set
 	// Action to execute.
-	// NOTE: actions FollowFD, UnfollowFD, and CopyFD are marked as deprecated and planned to
-	// be removed in version 1.5.
 	Action string `json:"action"`
-	// +kubebuilder:validation:Optional
-	// An arg index for the fd for fdInstall action
-	ArgFd uint32 `json:"argFd"`
-	// +kubebuilder:validation:Optional
-	// An arg index for the filename for fdInstall action
-	ArgName uint32 `json:"argName"`
 	// +kubebuilder:validation:Optional
 	// A URL for the getUrl action
 	ArgUrl string `json:"argUrl"`
@@ -364,6 +357,8 @@ type TracepointSpec struct {
 	Raw bool `json:"raw,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!(has(self.symbols) && has(self.addrs)) && !(has(self.symbols) && has(self.offsets)) && !(has(self.addrs) && has(self.offsets))",message="uprobe needs at most one of symbols, addrs or offsets defined"
+// +kubebuilder:validation:XValidation:rule="!self.return || has(self.returnArg)",message="ReturnArg not specified with Return=true."
 type UProbeSpec struct {
 	// Name of the traced binary
 	Path string `json:"path"`

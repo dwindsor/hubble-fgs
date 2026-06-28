@@ -36,15 +36,23 @@ const (
 	// Post action creates an event (default action).
 	KprobeAction_KPROBE_ACTION_POST KprobeAction = 1
 	// Post action creates a mapping between file descriptors and file names.
+	// Deprecated and no more supported.
+	//
+	// Deprecated: Marked as deprecated in tetragon/tetragon.proto.
 	KprobeAction_KPROBE_ACTION_FOLLOWFD KprobeAction = 2
 	// Sigkill action synchronously terminates the process.
 	KprobeAction_KPROBE_ACTION_SIGKILL KprobeAction = 3
 	// Post action removes a mapping between file descriptors and file names.
+	// Deprecated and no more supported.
+	//
+	// Deprecated: Marked as deprecated in tetragon/tetragon.proto.
 	KprobeAction_KPROBE_ACTION_UNFOLLOWFD KprobeAction = 4
 	// Override action modifies the return value of the call.
 	KprobeAction_KPROBE_ACTION_OVERRIDE KprobeAction = 5
 	// Post action dupplicates a mapping between file descriptors and file
-	// names.
+	// names. Deprecated and no more supported.
+	//
+	// Deprecated: Marked as deprecated in tetragon/tetragon.proto.
 	KprobeAction_KPROBE_ACTION_COPYFD KprobeAction = 6
 	// GetURL action issue an HTTP Get request against an URL from userspace.
 	KprobeAction_KPROBE_ACTION_GETURL KprobeAction = 7
@@ -5444,15 +5452,15 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\aaddress\x18\x01 \x01(\x04R\aaddress\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x04R\x06offset\x12\x16\n" +
 	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x16\n" +
-	"\x06module\x18\x04 \x01(\tR\x06module*\xdb\x03\n" +
+	"\x06module\x18\x04 \x01(\tR\x06module*\xe7\x03\n" +
 	"\fKprobeAction\x12\x19\n" +
 	"\x15KPROBE_ACTION_UNKNOWN\x10\x00\x12\x16\n" +
-	"\x12KPROBE_ACTION_POST\x10\x01\x12\x1a\n" +
-	"\x16KPROBE_ACTION_FOLLOWFD\x10\x02\x12\x19\n" +
-	"\x15KPROBE_ACTION_SIGKILL\x10\x03\x12\x1c\n" +
-	"\x18KPROBE_ACTION_UNFOLLOWFD\x10\x04\x12\x1a\n" +
-	"\x16KPROBE_ACTION_OVERRIDE\x10\x05\x12\x18\n" +
-	"\x14KPROBE_ACTION_COPYFD\x10\x06\x12\x18\n" +
+	"\x12KPROBE_ACTION_POST\x10\x01\x12\x1e\n" +
+	"\x16KPROBE_ACTION_FOLLOWFD\x10\x02\x1a\x02\b\x01\x12\x19\n" +
+	"\x15KPROBE_ACTION_SIGKILL\x10\x03\x12 \n" +
+	"\x18KPROBE_ACTION_UNFOLLOWFD\x10\x04\x1a\x02\b\x01\x12\x1a\n" +
+	"\x16KPROBE_ACTION_OVERRIDE\x10\x05\x12\x1c\n" +
+	"\x14KPROBE_ACTION_COPYFD\x10\x06\x1a\x02\b\x01\x12\x18\n" +
 	"\x14KPROBE_ACTION_GETURL\x10\a\x12\x1b\n" +
 	"\x17KPROBE_ACTION_DNSLOOKUP\x10\b\x12\x18\n" +
 	"\x14KPROBE_ACTION_NOPOST\x10\t\x12\x18\n" +
