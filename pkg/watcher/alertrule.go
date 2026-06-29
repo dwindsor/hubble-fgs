@@ -35,6 +35,8 @@ func addAlertRule(obj any, rm alerts.RuleManager) {
 		return
 	}
 
+	ar.Domain = v1alpha1.K8sDomain
+
 	err := rm.AddAlertRule(ar)
 
 	if err != nil {
@@ -64,6 +66,8 @@ func updateAlertRule(oldObj any, newObj any, rm alerts.RuleManager) {
 		return
 	}
 
+	newAr.Domain = v1alpha1.K8sDomain
+
 	// Alert rules are indexed by name, so adding the new alert rule will
 	// overwrite the old one.
 	err := rm.AddAlertRule(newAr)
@@ -83,7 +87,7 @@ func deleteAlertRule(obj any, rm alerts.RuleManager) {
 		return
 	}
 
-	rm.DeleteAlertRule(ar.GetName())
+	rm.DeleteAlertRule(ar.GetName(), v1alpha1.K8sDomain)
 
 	logger.GetLogger().Info("Deleted alert rule", "name", ar.GetName())
 }

@@ -92,7 +92,7 @@ func listCmd() *cobra.Command {
 		Use:   "list",
 		Short: "list all policies of any kind",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			alertRules, err := alertrule.ListAlertRules()
+			alertRules, err := alertrule.ListAlertRules("")
 			if err != nil {
 				return err
 			}

@@ -223,22 +223,28 @@ func (a *alerter) AddAlertRuleFromYAML(_ context.Context, req *tetragon.AddAlert
 }
 
 func (a *alerter) DeleteAlertRule(_ context.Context, req *tetragon.DeleteAlertRuleRequest) (*tetragon.DeleteAlertRuleResponse, error) {
-	a.ruleManager.DeleteAlertRule(req.Name)
+	a.ruleManager.DeleteAlertRule(req.Name, req.Domain)
 	return &tetragon.DeleteAlertRuleResponse{}, nil
 }
 
-func (a *alerter) ListAlertRules(_ context.Context, _ *tetragon.ListAlertRulesRequest) (*tetragon.ListAlertRulesResponse, error) {
+func (a *alerter) ListAlertRules(_ context.Context, req *tetragon.ListAlertRulesRequest) (*tetragon.ListAlertRulesResponse, error) {
 	rules := make([]*tetragon.AlertRule, 0, len(a.ruleManager.rules))
 	a.ruleManager.mutex.RLock()
 	defer a.ruleManager.mutex.RUnlock()
-	for _, r := range a.ruleManager.rules {
-		rules = append(rules, ruleToProto(r))
+	for key, r := range a.ruleManager.rules {
+		if req.Domain == "" || key.domain == req.Domain {
+			rules = append(rules, ruleToProto(r))
+		}
 	}
 	return &tetragon.ListAlertRulesResponse{Rules: rules}, nil
 }
 
 func (a *alerter) GetAlertRule(_ context.Context, req *tetragon.GetAlertRuleRequest) (*tetragon.GetAlertRuleResponse, error) {
-	r, ok := a.ruleManager.rules[req.Name]
+	key := collectionKey{
+		domain: req.Domain,
+		name:   req.Name,
+	}
+	r, ok := a.ruleManager.rules[key]
 	if !ok {
 		return nil, fmt.Errorf("rule not found: %s", req.Name)
 	}

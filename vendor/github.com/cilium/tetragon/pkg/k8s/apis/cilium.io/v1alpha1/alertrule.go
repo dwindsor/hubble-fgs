@@ -30,6 +30,7 @@ type AlertRule struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	Spec              AlertRuleSpec `json:"spec"`
+	Domain            string        `json:"-"`
 }
 
 type rateLimit struct {

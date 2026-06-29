@@ -51,13 +51,18 @@ type rule struct {
 
 type RuleManager interface {
 	AddAlertRule(ar *v1alpha1.AlertRule) error
-	DeleteAlertRule(name string)
+	DeleteAlertRule(name, domain string)
+}
+
+type collectionKey struct {
+	domain string
+	name   string
 }
 
 // AlertRuleManager is an exposed type without any exposed field.
 // Callers can only interact through implemented interfaces.
 type AlertRuleManager struct {
-	rules    map[string]*rule
+	rules    map[collectionKey]*rule
 	encoders map[string]*jsonEncoder
 	eventMap map[string]any
 	mutex    sync.RWMutex
@@ -71,7 +76,7 @@ type AlertRuleManager struct {
 
 func NewRuleManager() *AlertRuleManager {
 	return &AlertRuleManager{
-		rules:    make(map[string]*rule),
+		rules:    make(map[collectionKey]*rule),
 		encoders: make(map[string]*jsonEncoder),
 		// Create a single empty (all values are nil) process event map
 		// this removes the need to do map allocations for every incoming event.
@@ -129,6 +134,7 @@ func (r *AlertRuleManager) SetLogParams(params eventlog.Params) error {
 // This is an internal helper method.
 func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error {
 	name := ar.GetName()
+	key := collectionKey{ar.Domain, name}
 	celProgram, eventNames, err := cef.CompileCEL(ar.Spec.Expression)
 	if err != nil {
 		// Track compilation errors in metrics
@@ -171,7 +177,7 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 
 	severity := ar.Spec.Severity
 	// if we are replacing a rule, decref its encoder and update metrics
-	if oldRule, ok := r.rules[name]; ok {
+	if oldRule, ok := r.rules[key]; ok {
 		r.encoderDecref(oldRule)
 		// If we're replacing a rule with different severity, update metrics
 		if oldRule.severity != severity {
@@ -180,7 +186,7 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 		}
 	}
 
-	r.rules[name] = &rule{
+	r.rules[key] = &rule{
 		cel:         celProgram,
 		eventNames:  eventNames,
 		name:        ar.GetName(),
@@ -243,11 +249,12 @@ func (r *AlertRuleManager) updateRuleMetrics() {
 	}
 }
 
-func (r *AlertRuleManager) DeleteAlertRule(name string) {
+func (r *AlertRuleManager) DeleteAlertRule(name, domain string) {
+	key := collectionKey{domain, name}
 	r.mutex.Lock()
-	if rule, ok := r.rules[name]; ok {
+	if rule, ok := r.rules[key]; ok {
 		r.encoderDecref(rule)
-		delete(r.rules, name)
+		delete(r.rules, key)
 
 		// Only delete evaluation and compilation error metrics
 		// We preserve the AlertTriggered metric to maintain historical data

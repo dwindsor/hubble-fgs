@@ -27,6 +27,8 @@ func New() *cobra.Command {
 		Short: "Manage alert rules",
 	}
 
+	var domain string
+
 	addCmd := &cobra.Command{
 		Use:   "add <yaml_file>",
 		Short: "add/update alert rule",
@@ -44,7 +46,8 @@ func New() *cobra.Command {
 			}
 
 			_, err = c.Client.AddAlertRuleFromYAML(c.ctx, &tetragon.AddAlertRuleFromYAMLRequest{
-				Yaml: string(yamlb),
+				Yaml:   string(yamlb),
+				Domain: domain,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to add alert rule: %w", err)
@@ -67,7 +70,8 @@ func New() *cobra.Command {
 			defer c.Close()
 
 			_, err = c.Client.DeleteAlertRule(c.ctx, &tetragon.DeleteAlertRuleRequest{
-				Name: args[0],
+				Name:   args[0],
+				Domain: domain,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to delete alert rule: %w", err)
@@ -84,9 +88,7 @@ func New() *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return ListAlerts(
-				cmd, "text",
-				func(n string) (string, bool) { return n, true },
-			)
+				cmd, "text", domain)
 		},
 	}
 
@@ -102,7 +104,8 @@ func New() *cobra.Command {
 			defer c.Close()
 
 			res, err := c.Client.GetAlertRule(c.ctx, &tetragon.GetAlertRuleRequest{
-				Name: args[0],
+				Name:   args[0],
+				Domain: domain,
 			})
 			if err != nil || res == nil {
 				return fmt.Errorf("failed to get alert rule: %w", err)
@@ -120,6 +123,8 @@ func New() *cobra.Command {
 		listCmd,
 		getCmd,
 	)
+
+	cmd.Flags().StringVarP(&domain, "domain", "", "", "Domain to be used. Use k8s to act on CRD alerts. By default only acts against grpc domain.")
 
 	testCmd := testCommand()
 	if testCmd != nil {
@@ -149,22 +154,11 @@ func printAlertRules(
 func ListAlerts(
 	cmd *cobra.Command,
 	output string,
-	mapName func(name string) (string, bool), // mapName filters and renames policies
+	domain string,
 ) error {
-	res, err := ListAlertRules()
+	res, err := ListAlertRules(domain)
 	if err != nil {
 		return err
-	}
-
-	// keep only the rules we want in the list, and change their name
-	for i := 0; i < len(res.Rules); i++ {
-		rule := res.Rules[i]
-		name, ok := mapName(rule.Meta.Name)
-		if !ok {
-			res.Rules = append(res.Rules[:i], res.Rules[i+1:]...)
-			i--
-		}
-		rule.Meta.Name = name
 	}
 
 	switch output {
@@ -180,14 +174,14 @@ func ListAlerts(
 	return nil
 }
 
-func ListAlertRules() (*tetragon.ListAlertRulesResponse, error) {
+func ListAlertRules(domain string) (*tetragon.ListAlertRulesResponse, error) {
 	c, err := NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
 	defer c.Close()
 
-	res, err := c.Client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{})
+	res, err := c.Client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{Domain: domain})
 	if err != nil || res == nil {
 		return nil, fmt.Errorf("failed to list alert rules: %w", err)
 	}

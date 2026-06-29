@@ -96,6 +96,7 @@ func (p *defaultLoader) OnAlertRule(_ context.Context, fname string, bytes []byt
 	if err != nil {
 		return err
 	}
+	ar.Domain = tracingpolicy.StaticDomain
 	if ar.Spec.Export.Filename == "" {
 		ar.Spec.Export.Filename = filepath.Base(fname) + ".log"
 	}

@@ -76,7 +76,7 @@ func ifConfig(commander bugtoolpkg.Commander) error {
 }
 
 func listAlertRules(grpcer bugtoolpkg.GRPCer) error {
-	res, err := alertrule.ListAlertRules()
+	res, err := alertrule.ListAlertRules("")
 	if err != nil {
 		return err
 	}

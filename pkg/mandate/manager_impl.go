@@ -165,7 +165,7 @@ func (m *manager) unloadPolicy(ctx context.Context, pol policy) error {
 		if m.alertRuleMgr == nil {
 			return errors.New("alert manager disabled")
 		}
-		m.alertRuleMgr.DeleteAlertRule(pol.name)
+		m.alertRuleMgr.DeleteAlertRule(pol.name, pol.domain)
 		return nil
 	default:
 		return fmt.Errorf("unknown policy type: %d", pol.ty)

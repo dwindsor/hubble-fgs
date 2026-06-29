@@ -21,7 +21,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
 	eecommon "github.com/isovalent/hubble-fgs/cmd/tetra/common"
-	"github.com/isovalent/hubble-fgs/pkg/mandate"
 	"github.com/isovalent/hubble-fgs/pkg/mandate/cli"
 
 	"github.com/spf13/cobra"
@@ -81,7 +80,6 @@ func statusCmd() *cobra.Command {
 				if output == "text" {
 					fmt.Printf("policies:\n")
 				}
-
 				for _, domain := range res.LoadedMandate.Domains {
 					eecommon.ListPolicies(cmd, output, domain)
 				}
@@ -89,7 +87,9 @@ func statusCmd() *cobra.Command {
 				if output == "text" {
 					fmt.Printf("alerts:\n")
 				}
-				alertrule.ListAlerts(cmd, output, mandate.OrigAlertName)
+				for _, domain := range res.LoadedMandate.Domains {
+					alertrule.ListAlerts(cmd, output, domain)
+				}
 			}
 
 			return nil

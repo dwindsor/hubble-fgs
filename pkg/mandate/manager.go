@@ -34,7 +34,7 @@ type SensorManager interface {
 
 type AlertRuleManager interface {
 	AddAlertRule(ar *v1alpha1.AlertRule) error
-	DeleteAlertRule(name string)
+	DeleteAlertRule(name, domain string)
 }
 
 type LoadedMandate struct {
