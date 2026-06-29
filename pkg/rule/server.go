@@ -22,8 +22,6 @@ import (
 	dto "github.com/prometheus/client_model/go"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
-
-	"github.com/isovalent/hubble-fgs/pkg/mandate"
 )
 
 const (
@@ -166,12 +164,7 @@ func collectTagProbes(alertRules []*v1alpha1.AlertRule, tagProbes map[string]*v1
 	for _, tag := range tags {
 		if after, ok := strings.CutPrefix(tag, probeRuleTagPrefix); ok {
 			for _, rule := range alertRules {
-				// We need to discover the non-mandate name (ie: with mandate+alert... removed)
-				preMandateName, ok := mandate.OrigAlertName(rule.Name)
-				if !ok {
-					preMandateName = rule.Name
-				}
-				if preMandateName == after {
+				if rule.Name == after {
 					tagProbes[after] = rule
 					break
 				}

@@ -12,13 +12,14 @@ package mandate
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
+
+const mandateDomain = "mandate"
 
 //revive:disable:exported
 type MandatePolicy struct {
@@ -27,22 +28,7 @@ type MandatePolicy struct {
 	domain string
 }
 
-var alertNameRegex = regexp.MustCompile(`^mandate\+alert-\d+-(.*)$`)
-
-func mandateAlertName(n string, id uint) string {
-	return fmt.Sprintf("mandate+alert-%d-%s", id, n)
-}
-
-func OrigAlertName(n string) (string, bool) {
-	match := alertNameRegex.FindStringSubmatch(n)
-	if len(match) < 2 {
-		return "", false
-	}
-	return match[1], true
-}
-
 func (m *manager) NewMandatePolicy(tp tracingpolicy.TracingPolicy) tracingpolicy.TracingPolicy {
-	const mandateDomain = "mandate"
 	ret := MandatePolicy{
 		tp:     tp,
 		name:   tp.TpName(),

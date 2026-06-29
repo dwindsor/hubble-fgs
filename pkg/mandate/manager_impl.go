@@ -47,7 +47,6 @@ type manager struct {
 	wg             sync.WaitGroup
 	loadedPolicies []policy
 	attLog         attempt.Log
-	alertNextID    uint
 	domainID       uint64
 }
 
@@ -151,7 +150,6 @@ func NewManager(
 		cnf:          cnf,
 		sensorMgr:    sensorMgr,
 		alertRuleMgr: alertRuleMgr,
-		alertNextID:  1,
 		domainID:     0,
 	}
 	return mgr, nil
@@ -545,12 +543,6 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 	return ret, nil
 }
 
-func (m *manager) uniqueAlertName(ar *v1alpha1.AlertRule) string {
-	name := mandateAlertName(ar.GetName(), m.alertNextID)
-	m.alertNextID++
-	return name
-}
-
 func (m *manager) attemptLoadAlert(
 	att *attempt.InprAttempt,
 	data []byte,
@@ -578,19 +570,17 @@ func (m *manager) attemptLoadAlert(
 		return
 	}
 
-	// NB(kkourt): We rename the alert rules so that alerts with the same name end up having
-	// different names as we do for policies. This allows us to ensure that everything loads
-	// properly before removing the policies from the previous mandate file
+	ar.Domain = fmt.Sprintf("%s-%d", mandateDomain, m.domainID)
 	pol = policy{
-		name: m.uniqueAlertName(ar),
-		url:  mandatePol.url_.String(),
-		ty:   alertPolTy,
+		name:   ar.GetName(),
+		url:    mandatePol.url_.String(),
+		ty:     alertPolTy,
+		domain: ar.Domain,
 	}
-	origName := ar.GetName()
-	ar.SetName(pol.name)
-	// Force-set the origName log file if needed.
+
+	// Force-set the log file if needed.
 	if ar.Spec.Export.Filename == "" {
-		ar.Spec.Export.Filename = origName + ".log"
+		ar.Spec.Export.Filename = pol.name + ".log"
 	}
 	err = m.alertRuleMgr.AddAlertRule(ar)
 	if err != nil {
@@ -651,10 +641,6 @@ func (m *manager) status() *Status {
 func (m *manager) collectDomains() []string {
 	domainsSet := make(map[string]struct{})
 	for _, pol := range m.loadedPolicies {
-		if pol.domain == "" {
-			// skip empty domains policies (alert rules for now)
-			continue
-		}
 		domainsSet[pol.domain] = struct{}{}
 	}
 	domains := slices.Collect(maps.Keys(domainsSet))
