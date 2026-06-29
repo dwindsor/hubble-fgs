@@ -60,6 +60,11 @@ func (suite *TCPFinRx) testFinRx(port uint32, serverIterations, clientIterations
 		suite.T().Skip("Test requires amd64 or kernel >=5.8")
 	}
 
+	// use different ports to avoid time wait issues upsetting the tests.
+	if suite.useCLI {
+		port += 1000
+	}
+
 	client := testutils.RepoRootPath("contrib/tester-progs/net/tcp_client")
 	server := testutils.RepoRootPath("contrib/tester-progs/net/tcp_server")
 
@@ -122,6 +127,8 @@ func (suite *TCPFinRx) testFinRx(port uint32, serverIterations, clientIterations
 				WithBytesReceived(clientBytes)),
 	)
 
+	suite.readyWG.Wait()
+
 	cmdServer := exec.Command(server, fmt.Sprintf("%d", port), fmt.Sprintf("%d", serverIterations), serverPattern)
 	serverOut, err := cmdServer.StdoutPipe()
 	suite.Require().NoError(err, "could not connect to server output pipe")
@@ -130,7 +137,10 @@ func (suite *TCPFinRx) testFinRx(port uint32, serverIterations, clientIterations
 	suite.Require().NoError(err, "cannot start server")
 	suite.T().Logf("Started the server")
 
+	waitForSocketToListen(suite.T(), net.ParseIP("127.0.0.1"), uint16(port), syscall.IPPROTO_TCP, syscall.AF_INET)
+
 	serverScanner := bufio.NewScanner(serverOut)
+	suite.Require().NoError(serverScanner.Err())
 	for serverScanner.Scan() {
 		line := serverScanner.Text()
 		if line == "Ready!" {
