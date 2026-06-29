@@ -864,6 +864,10 @@ func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	if err != nil {
 		return err
 	}
+	// If TCP or UDP was enabled with CLI switches, start the application model server.
+	if tcpEnabled || udpEnabled {
+		model.DefaultNewServer()
+	}
 	err = RunLayer3Progs(ctx, sm)
 	BaseLoaded = true
 	if err != nil {
