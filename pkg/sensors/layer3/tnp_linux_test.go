@@ -26,6 +26,8 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +36,10 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -228,7 +233,7 @@ func testTNPPersistence(t *testing.T, readyWG *sync.WaitGroup) {
 	assert.NoError(t, observertesthelper.ExecWGCurl(readyWG, 0, "127.0.0.1:2112/metrics"))
 }
 
-func TestTNP(t *testing.T) {
+func testTNP(t *testing.T, CLISwitches bool) {
 	if !kernels.MinKernelVersion("5.15.0") || !utils.SupportAddAndFetch() {
 		t.Skip()
 	}
@@ -239,8 +244,30 @@ func TestTNP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs := getLayer3Observer(t, ctx, tcpBasicConfig, true)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+		}))
+	}
 
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(tcpBasicConfig)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
+
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	for _, test := range tnpTests {
@@ -260,4 +287,8 @@ func TestTNP(t *testing.T) {
 		}
 		t.Logf("Test %s was successful", test.name)
 	}
+}
+
+func TestTNPCLI(t *testing.T) {
+	testTNP(t, true)
 }
