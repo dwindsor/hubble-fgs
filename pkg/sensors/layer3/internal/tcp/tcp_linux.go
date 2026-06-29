@@ -29,7 +29,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
@@ -221,8 +220,6 @@ func SetStatsInterval(interval time.Duration) {
 }
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
-	model.DefaultNewServer()
-
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
 		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Tcp.Metrics.LabelFilter)

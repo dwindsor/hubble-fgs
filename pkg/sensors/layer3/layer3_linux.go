@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
+	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	layer3cfg "github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/config"
@@ -474,6 +475,12 @@ func (l3 *l3Sensor) PolicyHandler(
 		udpCgroup = false
 		dnsEnabled = false
 	}
+
+	// Start a new model if TCP or UDP is enabled
+	if (spec.Parser.Tcp != nil && tcpEnabled) || (spec.Parser.Udp != nil && udpEnabled) {
+		model.DefaultNewServer()
+	}
+
 	var err error
 	if spec.Parser.Tcp != nil && tcpEnabled {
 		err = tcp.PolicyHandler(spec)
