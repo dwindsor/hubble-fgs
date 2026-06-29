@@ -25,6 +25,7 @@ service AlertService {
 
 message AddAlertRuleFromYAMLRequest {
   string yaml = 1;
+  string domain = 2;
 }
 
 message AddAlertRuleResponse {
@@ -33,11 +34,14 @@ message AddAlertRuleResponse {
 
 message DeleteAlertRuleRequest {
   string name = 1;
+  string domain = 2;
 }
 
 message DeleteAlertRuleResponse {}
 
-message ListAlertRulesRequest {}
+message ListAlertRulesRequest {
+  string domain = 1;
+}
 
 message ListAlertRulesResponse {
   repeated AlertRule rules = 1;
@@ -45,6 +49,7 @@ message ListAlertRulesResponse {
 
 message GetAlertRuleRequest {
   string name = 1;
+  string domain = 2;
 }
 
 message GetAlertRuleResponse {

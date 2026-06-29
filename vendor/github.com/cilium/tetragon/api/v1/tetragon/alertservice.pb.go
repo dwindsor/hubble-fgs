@@ -34,6 +34,7 @@ const (
 type AddAlertRuleFromYAMLRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Yaml          string                 `protobuf:"bytes,1,opt,name=yaml,proto3" json:"yaml,omitempty"`
+	Domain        string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -71,6 +72,13 @@ func (*AddAlertRuleFromYAMLRequest) Descriptor() ([]byte, []int) {
 func (x *AddAlertRuleFromYAMLRequest) GetYaml() string {
 	if x != nil {
 		return x.Yaml
+	}
+	return ""
+}
+
+func (x *AddAlertRuleFromYAMLRequest) GetDomain() string {
+	if x != nil {
+		return x.Domain
 	}
 	return ""
 }
@@ -122,6 +130,7 @@ func (x *AddAlertRuleResponse) GetRule() *AlertRule {
 type DeleteAlertRuleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Domain        string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -159,6 +168,13 @@ func (*DeleteAlertRuleRequest) Descriptor() ([]byte, []int) {
 func (x *DeleteAlertRuleRequest) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *DeleteAlertRuleRequest) GetDomain() string {
+	if x != nil {
+		return x.Domain
 	}
 	return ""
 }
@@ -201,6 +217,7 @@ func (*DeleteAlertRuleResponse) Descriptor() ([]byte, []int) {
 
 type ListAlertRulesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Domain        string                 `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -233,6 +250,13 @@ func (x *ListAlertRulesRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListAlertRulesRequest.ProtoReflect.Descriptor instead.
 func (*ListAlertRulesRequest) Descriptor() ([]byte, []int) {
 	return file_tetragon_alertservice_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListAlertRulesRequest) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
 }
 
 type ListAlertRulesResponse struct {
@@ -282,6 +306,7 @@ func (x *ListAlertRulesResponse) GetRules() []*AlertRule {
 type GetAlertRuleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Domain        string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -319,6 +344,13 @@ func (*GetAlertRuleRequest) Descriptor() ([]byte, []int) {
 func (x *GetAlertRuleRequest) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *GetAlertRuleRequest) GetDomain() string {
+	if x != nil {
+		return x.Domain
 	}
 	return ""
 }
@@ -371,19 +403,23 @@ var File_tetragon_alertservice_proto protoreflect.FileDescriptor
 
 const file_tetragon_alertservice_proto_rawDesc = "" +
 	"\n" +
-	"\x1btetragon/alertservice.proto\x12\btetragon\x1a\x14tetragon/alert.proto\"1\n" +
+	"\x1btetragon/alertservice.proto\x12\btetragon\x1a\x14tetragon/alert.proto\"I\n" +
 	"\x1bAddAlertRuleFromYAMLRequest\x12\x12\n" +
-	"\x04yaml\x18\x01 \x01(\tR\x04yaml\"?\n" +
+	"\x04yaml\x18\x01 \x01(\tR\x04yaml\x12\x16\n" +
+	"\x06domain\x18\x02 \x01(\tR\x06domain\"?\n" +
 	"\x14AddAlertRuleResponse\x12'\n" +
-	"\x04rule\x18\x01 \x01(\v2\x13.tetragon.AlertRuleR\x04rule\",\n" +
+	"\x04rule\x18\x01 \x01(\v2\x13.tetragon.AlertRuleR\x04rule\"D\n" +
 	"\x16DeleteAlertRuleRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\x19\n" +
-	"\x17DeleteAlertRuleResponse\"\x17\n" +
-	"\x15ListAlertRulesRequest\"C\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06domain\x18\x02 \x01(\tR\x06domain\"\x19\n" +
+	"\x17DeleteAlertRuleResponse\"/\n" +
+	"\x15ListAlertRulesRequest\x12\x16\n" +
+	"\x06domain\x18\x01 \x01(\tR\x06domain\"C\n" +
 	"\x16ListAlertRulesResponse\x12)\n" +
-	"\x05rules\x18\x01 \x03(\v2\x13.tetragon.AlertRuleR\x05rules\")\n" +
+	"\x05rules\x18\x01 \x03(\v2\x13.tetragon.AlertRuleR\x05rules\"A\n" +
 	"\x13GetAlertRuleRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"?\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06domain\x18\x02 \x01(\tR\x06domain\"?\n" +
 	"\x14GetAlertRuleResponse\x12'\n" +
 	"\x04rule\x18\x01 \x01(\v2\x13.tetragon.AlertRuleR\x04rule2\xf1\x02\n" +
 	"\fAlertService\x12_\n" +

@@ -3613,6 +3613,7 @@ Determins the behaviour of a field filter
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | yaml | [string](#string) |  |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -3643,6 +3644,7 @@ Determins the behaviour of a field filter
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -3668,6 +3670,7 @@ Determins the behaviour of a field filter
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
+| domain | [string](#string) |  |  |
 
 
 
@@ -3693,6 +3696,11 @@ Determins the behaviour of a field filter
 
 ### ListAlertRulesRequest
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| domain | [string](#string) |  |  |
 
 
 
