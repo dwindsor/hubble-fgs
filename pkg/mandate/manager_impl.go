@@ -403,24 +403,30 @@ func (m *manager) consumeLoadPolicyReq(ctx context.Context, refrAtt *attempt.Inp
 	}
 }
 
+func fetchPolicies(refrAtt *attempt.InprAttempt, obj *Obj) ([]policyData, error) {
+	policyData := make([]policyData, len(obj.Mandate.Policies))
+	for i := range obj.Mandate.Policies {
+		pol := &obj.Mandate.Policies[i]
+		data, err := attemptFetchURL(refrAtt.NewAttempt("fetch policy"), pol.url_)
+		if err != nil {
+			return policyData, err
+		}
+		policyData[i] = data
+	}
+	return policyData, nil
+}
+
 // fetchAndLoadPolicies fetches and loads the policies in obj
 // It returns an error if something went wrong, plus a structure that holds
 // the list of policies to be unloaded and eventually, the list of policy mode changes to be reverted.
 // If everything goes well, it returns list of loaded policies, and the list of policies to be unloaded.
 func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) (res fetchLoadPoliciesResult, err error) {
-	policyData := make([]policyData, len(obj.Mandate.Policies))
-
 	// first pass, attempt to fetch all the policies
 	// NB: we want to make sure that all policies are fetchable before starting loading them.
 	// If at least one policy cannot be fetched, return an error
-	for i := range obj.Mandate.Policies {
-		pol := &obj.Mandate.Policies[i]
-		var data []byte
-		data, err = attemptFetchURL(refrAtt.NewAttempt("fetch policy"), pol.url_)
-		if err != nil {
-			return res, err
-		}
-		policyData[i] = data
+	policyData, err := fetchPolicies(refrAtt, obj)
+	if err != nil {
+		return res, err
 	}
 
 	// Consumer goroutines management
@@ -428,7 +434,6 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	reqCh := make(chan *loadPolicyReq, len(obj.Mandate.Policies))
 	resCh := make(chan policy, len(obj.Mandate.Policies))
 	ngoroutines := min(maxRefreshGoroutines, len(obj.Mandate.Policies))
-
 	// Start consumer goroutines
 	for range ngoroutines {
 		errs.Go(m.consumeLoadPolicyReq(ctx, refrAtt, reqCh, resCh))
@@ -454,6 +459,9 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	toBeUpdatedModes := make([]updateMode, 0)
 
 	h := sha256.New()
+	// We will only increase m.domainID at the first effectively loaded policy.
+	// No need to bump it if we are going to skip all of them.
+	// Also, in case of error, a defer() function will decrease it.
 	needDomainIDBump := true
 
 	for i := range obj.Mandate.Policies {
