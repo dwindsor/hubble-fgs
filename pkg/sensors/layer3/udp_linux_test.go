@@ -52,7 +52,6 @@ import (
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -70,7 +69,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 )
 
 const udpConfigLegacy = `
@@ -1468,7 +1466,7 @@ func (suite *UDPBasic) TestConnectAfterStartEvent6() {
 	killAndWaitCommand(suite.T(), cmdClient)
 }
 
-func testDnsEvents(t *testing.T, withQuestions bool) {
+func testDnsEvents(t *testing.T, CLISwitches, withQuestions bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -1483,19 +1481,33 @@ func testDnsEvents(t *testing.T, withQuestions bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	config := udpConfigWithoutDnsQuestions
-	if withQuestions {
-		config = udpConfigWithDnsQuestions
+	if CLISwitches {
+		switches := []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+		}
+		if withQuestions {
+			switches = append(switches, cli.SwitchSettings{KeyPtr: &enterpriseOption.Config.DNSReportQuestions, Value: true})
+		}
+		require.NoError(t, cli.SetSwitches(t, switches))
 	}
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
+	obs := getNoConfigObserver(t, ctx, true)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+	if !CLISwitches {
+		config := udpConfigWithoutDnsQuestions
+		if withQuestions {
+			config = udpConfigWithDnsQuestions
+		}
+		tp, err := tracingpolicy.FromYAML(config)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
 
 	option.Config.UsePerfRingBuffer = true
@@ -1608,18 +1620,27 @@ func testDnsEvents(t *testing.T, withQuestions bool) {
 	// slowly in 5.4 kernels
 	oldDelay := jsonchecker.RetryDelay
 	jsonchecker.RetryDelay = oldDelay * 2
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	jsonchecker.RetryDelay = oldDelay
 }
 
 func TestDnsEventsWithQuestions(t *testing.T) {
 	t.Skip("Disabled due to flakiness")
-	testDnsEvents(t, true)
+	testDnsEvents(t, false, true)
 }
 
 func TestDnsEventsWithoutQuestions(t *testing.T) {
-	testDnsEvents(t, false)
+	testDnsEvents(t, false, false)
+}
+
+func TestDnsEventsWithQuestionsCLI(t *testing.T) {
+	t.Skip("Disabled due to flakiness")
+	testDnsEvents(t, true, true)
+}
+
+func TestDnsEventsWithoutQuestionsCLI(t *testing.T) {
+	testDnsEvents(t, true, false)
 }
 
 func testDisableCloseConfig(t *testing.T, CLISwitches, disableClose bool) {
