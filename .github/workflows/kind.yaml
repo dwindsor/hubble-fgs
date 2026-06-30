@@ -5,7 +5,7 @@ on:
       - "**.md"
 
 env:
-  HELM_CHART_REPOSITORY: oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-docker/charts/tetragon
+  HELM_CHART_REPOSITORY: oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-helmoci/tetragon
 
 jobs:
   kind-integration-test:

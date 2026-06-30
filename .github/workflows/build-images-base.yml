@@ -250,10 +250,10 @@ jobs:
       - name: Set registry path
         id: registry
         run: |
-          REGISTRY_PATH="isovalent-eng-docker"
+          REGISTRY_PATH="isovalent-eng-helmoci"
 
           if ${{ inputs.is_lseg }}; then
-            REGISTRY_PATH="isovalent-lseg-private-docker"
+            REGISTRY_PATH="isovalent-lseg-private-docker/charts"
           elif ${{ inputs.is_release }}; then
             REGISTRY_PATH="isovalent-iep-docker"
           fi
@@ -286,7 +286,7 @@ jobs:
               "rthooks.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
             }
           registry: ${{ vars.ARTIFACTORY_HOST }}
-          registry_namespace: ${{ steps.registry.outputs.path }}/charts
+          registry_namespace: ${{ steps.registry.outputs.path }}
           registry_username: ${{ vars.ARTIFACTORY_USERNAME }}
           registry_password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
