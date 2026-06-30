@@ -40,7 +40,7 @@ const (
 	// TPKindDefinition is the kind name of Cilium Tracing Policy
 	TPNamespacedKindDefinition = "TracingPolicyNamespaced"
 
-	k8sDomain = "k8s"
+	K8sDomain = "k8s"
 )
 
 // +genclient
@@ -71,7 +71,7 @@ func (tp *TracingPolicyNamespaced) TpNamespace() string {
 }
 
 func (tp *TracingPolicyNamespaced) TpDomain() string {
-	return k8sDomain
+	return K8sDomain
 }
 
 // +genclient
@@ -187,7 +187,7 @@ func (tp *TracingPolicy) TpNamespace() string {
 }
 
 func (tp *TracingPolicy) TpDomain() string {
-	return k8sDomain
+	return K8sDomain
 }
 
 // OperationSelectorValue represents the value for MatchOperations.
