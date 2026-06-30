@@ -1680,7 +1680,6 @@ static inline __attribute__((always_inline)) void inc_error(__u32 hook, int metr
 static inline __attribute__((always_inline)) int handle_enforcement(int err)
 {
 	__u32 zero = 0, polacct = POLICY_INVALID_ACT_;
-	struct policy_stats *pstats;
 	struct policy_conf *pcnf;
 	int retval = 0;
 
@@ -1698,9 +1697,7 @@ static inline __attribute__((always_inline)) int handle_enforcement(int err)
 	}
 
 	if (polacct != POLICY_INVALID_ACT_) {
-		pstats = map_lookup_elem(&policy_stats, &zero);
-		if (pstats)
-			lock_add(&pstats->act_cnt[polacct], 1);
+		policy_selector_stats_update(polacct, 0);
 	}
 
 	return retval;

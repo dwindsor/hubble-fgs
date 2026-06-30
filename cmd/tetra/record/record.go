@@ -117,15 +117,6 @@ func recordGRPC(ctx context.Context, client tetragon.FineGuidanceSensorsClient, 
 	return nil
 }
 
-// record is a thin wrapper around recordGRPC.
-func record(conf *config.GenericRecorderConf, out *os.File) func(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
-	return func(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
-		if err := recordGRPC(ctx, client, conf, out); err != nil {
-			logger.Fatal(logger.GetLogger(), "Failed to record from gRPC", logfields.Error, err)
-		}
-	}
-}
-
 func New() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "record <config.yaml>",
@@ -148,33 +139,39 @@ func New() *cobra.Command {
 			}
 			return nil
 		},
-		Run: func(_ *cobra.Command, args []string) {
+		RunE: func(_ *cobra.Command, args []string) error {
 			config, err := config.FileConfigYaml(args[0])
 			if err != nil {
-				logger.Fatal(logger.GetLogger(), "Failed to parse recorder config", logfields.Error, err)
+				return fmt.Errorf("failed to parse recorder config: %v", err)
 			}
 
 			var outFile *os.File
 			if outFileName == "" {
 				outFile = os.Stdout
 			} else {
-				var err error
 				outFile, err = os.Create(outFileName)
 				if err != nil {
-					logger.Fatal(logger.GetLogger(), "Failed to open output file for writing", logfields.Error, err)
+					return fmt.Errorf("failed to open output file for writing: %v", err)
 				}
 			}
 
 			// If jsonFile is provided then don't try to connect to gRPC, just record
 			// using the json file instead
 			if jsonFile != "" {
-				err := recordJSON(jsonFile, config, outFile)
-				if err != nil {
-					logger.Fatal(logger.GetLogger(), "Failed to record event from JSON file", logfields.Error, err)
+				if err = recordJSON(jsonFile, config, outFile); err != nil {
+					return fmt.Errorf("ailed to record event from JSON file: %v", err)
 				}
 			} else {
-				common.CliRun(record(config, outFile))
+				client, err := common.NewClientWithDefaultContextAndAddress()
+				if err != nil {
+					return err
+				}
+				defer client.Close()
+				if err = recordGRPC(client.Ctx, client.Client, config, outFile); err != nil {
+					return fmt.Errorf("failed to record from gRPC: %v", err)
+				}
 			}
+			return nil
 		},
 	}
 

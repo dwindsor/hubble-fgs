@@ -357,8 +357,8 @@ github.com/cilium/cilium/pkg/u8proto
 github.com/cilium/cilium/pkg/util
 github.com/cilium/cilium/pkg/version
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/ebpf v0.21.1-0.20260501093402-9f87aafaeb37
-## explicit; go 1.24.0
+# github.com/cilium/ebpf v0.22.0
+## explicit; go 1.25.0
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
 github.com/cilium/ebpf/btf
@@ -369,6 +369,7 @@ github.com/cilium/ebpf/internal/epoll
 github.com/cilium/ebpf/internal/kallsyms
 github.com/cilium/ebpf/internal/kconfig
 github.com/cilium/ebpf/internal/linux
+github.com/cilium/ebpf/internal/mountinfo
 github.com/cilium/ebpf/internal/platform
 github.com/cilium/ebpf/internal/sys
 github.com/cilium/ebpf/internal/sysenc
@@ -406,7 +407,7 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.8.0-pre.0.0.20260627085925-93a2d207e8fe => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.8.0-pre.0.0.20260630102841-7156976705ca => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -584,6 +585,7 @@ github.com/cilium/tetragon/tests/e2e/flags
 github.com/cilium/tetragon/tests/e2e/helpers
 github.com/cilium/tetragon/tests/e2e/helpers/gops
 github.com/cilium/tetragon/tests/e2e/helpers/grpc
+github.com/cilium/tetragon/tests/e2e/helpers/grpcbridge
 github.com/cilium/tetragon/tests/e2e/helpers/grpctls
 github.com/cilium/tetragon/tests/e2e/install/tetragon
 github.com/cilium/tetragon/tests/e2e/runners
@@ -1269,7 +1271,7 @@ github.com/prometheus/client_model/go
 ## explicit; go 1.25.0
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.20.1
+# github.com/prometheus/procfs v0.21.0
 ## explicit; go 1.25.0
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs

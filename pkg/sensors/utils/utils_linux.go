@@ -603,10 +603,6 @@ func _checkBPFTimerUsable() bool {
 }
 
 func LogLayer3Features() string {
-	// once we have detected all features, flush the BTF spec
-	// we cache all values so calling again a Has* function will
-	// not load the BTF again
-	defer btf.FlushKernelSpec()
 	return fmt.Sprintf("packet: %t, packet_mem: %t, add_and_fetch: %t, current_task_btf: %t, process_tree: %t, "+
 		"func_by_func_verif: %t, global_func_ptr_args: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t, udp_bind_needs_dummies: %t, "+
 		"sockops_cgroup_ancestor: %t, timer_avail: %t, timer_usable: %t",

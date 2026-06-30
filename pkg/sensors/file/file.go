@@ -217,7 +217,7 @@ var mapTypes = map[string]MapType{
 	"open_user_to_kernel_path":   PinnedMap,
 	"file_openraw_enforce_map":   PinnedMap,
 	"policy_conf":                PinnedMap,
-	"policy_stats":               PinnedMap,
+	"selector_stats":             PinnedMap,
 	"exec_cred_map":              PinnedMap,
 	"io_openat2_heap":            PinnedMap,
 	"io_openat2_map":             PinnedMap,

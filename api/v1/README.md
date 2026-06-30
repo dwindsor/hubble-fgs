@@ -301,6 +301,7 @@
     - [SetDebugRequest](#tetragon-SetDebugRequest)
     - [SetDebugResponse](#tetragon-SetDebugResponse)
     - [TracingPolicyActionCounters](#tetragon-TracingPolicyActionCounters)
+    - [TracingPolicySelectorActionCounters](#tetragon-TracingPolicySelectorActionCounters)
     - [TracingPolicyStats](#tetragon-TracingPolicyStats)
     - [TracingPolicyStatus](#tetragon-TracingPolicyStatus)
   
@@ -5229,6 +5230,25 @@ active ruleset
 | monitor_notify_enforcer | [uint64](#uint64) |  | number of enforcer notifications that did not occur because the policy was in monitor mode |
 | set | [uint64](#uint64) |  | number of set actions triggered from the policy |
 | monitor_set | [uint64](#uint64) |  | number of set actions that did not occur because the policy was in monitor mode |
+| nopost | [uint64](#uint64) |  | number of events suppressed by NoPost actions |
+
+
+
+
+
+
+<a name="tetragon-TracingPolicySelectorActionCounters"></a>
+
+### TracingPolicySelectorActionCounters
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| hook | [string](#string) |  | hook is the policy hook that owns the selector |
+| hook_index | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  | hook_index is the hook index withing a policy |
+| selector_index | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  | selector_index is the selector index within the hook |
+| action_counters | [TracingPolicyActionCounters](#tetragon-TracingPolicyActionCounters) |  | action counters for the selector |
 
 
 
@@ -5244,6 +5264,7 @@ active ruleset
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | action_counters | [TracingPolicyActionCounters](#tetragon-TracingPolicyActionCounters) |  |  |
+| selector_action_counters | [TracingPolicySelectorActionCounters](#tetragon-TracingPolicySelectorActionCounters) | repeated |  |
 
 
 

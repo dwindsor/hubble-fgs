@@ -58,8 +58,8 @@ func execveMapCmd() *cobra.Command {
 		Use:   "execve",
 		Short: "dump execve map",
 		Args:  cobra.ExactArgs(0),
-		Run: func(_ *cobra.Command, _ []string) {
-			dumpExecveMap(mapFname)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return dumpExecveMap(cmd, mapFname)
 		},
 	}
 
@@ -70,15 +70,14 @@ func execveMapCmd() *cobra.Command {
 }
 
 func policyfilterCmd() *cobra.Command {
-
 	mapFname := filepath.Join(defaults.DefaultMapRoot, defaults.DefaultMapPrefix, policyfilter.MapName)
 
 	ret := &cobra.Command{
 		Use:   "policyfilter",
 		Short: "dump policyfilter state",
 		Args:  cobra.ExactArgs(0),
-		Run: func(_ *cobra.Command, _ []string) {
-			PolicyfilterState(mapFname)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return PolicyfilterState(cmd, mapFname)
 		},
 	}
 
@@ -88,13 +87,14 @@ func policyfilterCmd() *cobra.Command {
 	return ret
 }
 
-func dumpExecveMap(fname string) {
+func dumpExecveMap(cmd *cobra.Command, fname string) error {
 	m, err := ebpf.LoadPinnedMap(fname, &ebpf.LoadPinOptions{
 		ReadOnly: true,
 	})
 	if err != nil {
-		logger.Fatal(logger.GetLogger(), "failed to open execve map", logfields.Error, err)
+		return fmt.Errorf("failed to open execve map: %w", err)
 	}
+	defer m.Close()
 
 	data := make(map[execvemap.ExecveKey]execvemap.ExecveValue)
 	iter := m.Iterate()
@@ -106,17 +106,18 @@ func dumpExecveMap(fname string) {
 	}
 
 	if err := iter.Err(); err != nil {
-		logger.Fatal(logger.GetLogger(), "error iterating execve map", logfields.Error, err)
+		return fmt.Errorf("error iterating execve map: %w", err)
 	}
 
 	if len(data) == 0 {
-		fmt.Printf("(empty)")
-		return
+		cmd.Print("(empty)")
+		return nil
 	}
 
 	for k, v := range data {
-		fmt.Printf("%d %+v\n", k, v)
+		cmd.Printf("%d %+v\n", k, v)
 	}
+	return nil
 }
 
 func processCacheCmd() *cobra.Command {
@@ -159,24 +160,22 @@ func processCacheCmd() *cobra.Command {
 	return ret
 }
 
-func PolicyfilterState(fname string) {
+func PolicyfilterState(cmd *cobra.Command, fname string) error {
 	m, err := policyfilter.OpenMap(fname)
 	if err != nil {
-		logger.Fatal(logger.GetLogger(), "failed to open policyfilter map", logfields.Error, err)
-		return
+		return fmt.Errorf("failed to open policyfilter map: %w", err)
 	}
 	defer m.Close()
 
 	data, err := m.Dump()
 	if err != nil {
-		logger.Fatal(logger.GetLogger(), "failed to dump policyfilter map", logfields.Error, err)
-		return
+		return fmt.Errorf("failed to dump policyfilter map: %w", err)
 	}
 
-	fmt.Println("--- PolicyID to CgroupIDs mapping ---")
+	cmd.Println("--- PolicyID to CgroupIDs mapping ---")
 
 	if len(data.Policy) == 0 {
-		fmt.Printf("(empty)\n")
+		cmd.Println("(empty)")
 	}
 
 	for polId, cgIDs := range data.Policy {
@@ -184,14 +183,14 @@ func PolicyfilterState(fname string) {
 		for id := range cgIDs {
 			ids = append(ids, strconv.FormatUint(uint64(id), 10))
 		}
-		fmt.Printf("%d: %s\n", polId, strings.Join(ids, ","))
+		cmd.Printf("%d: %s\n", polId, strings.Join(ids, ","))
 	}
 
 	if data.Cgroup != nil {
-		fmt.Println("--- CgroupID to PolicyIDs mapping ---")
+		cmd.Println("--- CgroupID to PolicyIDs mapping ---")
 
 		if len(data.Cgroup) == 0 {
-			fmt.Printf("(empty)\n")
+			cmd.Println("(empty)")
 		}
 
 		for cgIDs, polIds := range data.Cgroup {
@@ -199,9 +198,10 @@ func PolicyfilterState(fname string) {
 			for id := range polIds {
 				ids = append(ids, strconv.FormatUint(uint64(id), 10))
 			}
-			fmt.Printf("%d: %s\n", cgIDs, strings.Join(ids, ","))
+			cmd.Printf("%d: %s\n", cgIDs, strings.Join(ids, ","))
 		}
 	}
+	return nil
 }
 
 func bpfErrMetricsCmd() *cobra.Command {

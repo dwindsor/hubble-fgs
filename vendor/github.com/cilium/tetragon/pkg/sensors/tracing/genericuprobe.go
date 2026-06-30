@@ -412,16 +412,63 @@ func (k *observerUprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 }
 
 type addUprobeIn struct {
-	sensorPath string
-	policyName string
-	useMulti   bool
-	celExprs   *selectors.CelExprFunctions
+	sensorPath        string
+	policyName        string
+	useMulti          bool
+	celExprs          *selectors.CelExprFunctions
+	selectorStatsBase uint32
 }
 
 type uprobeHas struct {
 	sleepableOffload bool
 	sleepablePreload bool
 	substring        bool
+}
+
+func validateMultiUprobeConsistency(uprobes []v1alpha1.UProbeSpec) error {
+	if len(uprobes) < 2 {
+		return nil
+	}
+
+	type pathState struct {
+		idx    int
+		method string
+	}
+
+	pathStates := make(map[string]pathState)
+
+	for i, curr := range uprobes {
+		method := ""
+		if len(curr.Symbols) != 0 {
+			method = "symbols"
+		} else if len(curr.Offsets) != 0 {
+			method = "offsets"
+		} else if len(curr.Addrs) != 0 {
+			method = "addrs"
+		}
+
+		state, ok := pathStates[curr.Path]
+		if !ok {
+			pathStates[curr.Path] = pathState{
+				idx:    i,
+				method: method,
+			}
+			continue
+		}
+
+		if method != state.method {
+			return fmt.Errorf(
+				"multi-uprobe requires uprobes for the same hook path to use the same addressing method, but uprobe[%d] uses %s while uprobe[%d] uses %s for path %q; disable multiprobe with spec.options: [{name: disable-uprobe-multi, value: \"true\"}]",
+				i,
+				method,
+				state.idx,
+				state.method,
+				curr.Path,
+			)
+		}
+	}
+
+	return nil
 }
 
 func createGenericUprobeSensor(
@@ -454,10 +501,20 @@ func createGenericUprobeSensor(
 		celExprs: celExprs,
 	}
 
+	if in.useMulti {
+		if err = validateMultiUprobeConsistency(spec.UProbes); err != nil {
+			return nil, err
+		}
+	}
+
+	var selectorStatsBase uint32
 	for _, uprobe := range spec.UProbes {
 		if err = appendMacrosSelectors(uprobe.Selectors, spec.SelectorsMacros); err != nil {
 			return nil, fmt.Errorf("append macros selectors: %w", err)
 		}
+
+		in.selectorStatsBase = selectorStatsBase
+		selectorStatsBase += uint32(len(uprobe.Selectors))
 
 		ids, err = addUprobe(&uprobe, ids, &in, &has)
 		if err != nil {
@@ -735,6 +792,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 	}
 
 	eventConfig := initEventConfig()
+	eventConfig.SelStatsBase = in.selectorStatsBase
 
 	// Parse ReturnArg, we have two types of return arg parsing. We
 	// support populating an uprobe buffer from uretprobe hooks. This
@@ -955,7 +1013,7 @@ func createMultiUprobeSensor(polInfo *policyInfo, sensorPath string, multiIDs []
 		maps = append(maps, program.MapUser(cgtracker.MapName, load))
 	}
 
-	maps = append(maps, polInfo.policyConfMap(load), polInfo.policyStatsMap(load))
+	maps = append(maps, polInfo.policyConfMap(load), polInfo.selectorStatsMap(load))
 
 	filterMap.SetMaxEntries(len(multiIDs))
 	configMap.SetMaxEntries(len(multiIDs))
@@ -1092,7 +1150,7 @@ func createUprobeSensorFromEntry(polInfo *policyInfo, uprobeEntry *genericUprobe
 		maps = append(maps, retFilterMap)
 	}
 
-	maps = append(maps, polInfo.policyConfMap(load), polInfo.policyStatsMap(load))
+	maps = append(maps, polInfo.policyConfMap(load), polInfo.selectorStatsMap(load))
 
 	return progs, maps
 }
