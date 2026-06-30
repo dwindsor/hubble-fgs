@@ -33,7 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
-func addCmd() *cobra.Command {
+func addCmd(domain *string) *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "add [file|folder]",
 		Short: "add a policy or a list of policies of any kind",
@@ -57,7 +57,7 @@ func addCmd() *cobra.Command {
 			}
 			defer tracingClient.Close()
 
-			loader := policies.NewRemoteLoader(alertClient.Client, networkClient.Client, tracingClient.Client)
+			loader := policies.NewRemoteLoader(alertClient.Client, networkClient.Client, tracingClient.Client, *domain)
 
 			fname := args[0]
 			// check if it is a yaml file or directory
@@ -87,17 +87,17 @@ func isUnimplemented(err error) bool {
 	return false
 }
 
-func listCmd() *cobra.Command {
+func listCmd(domain *string) *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "list",
 		Short: "list all policies of any kind",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			alertRules, err := alertrule.ListAlertRules("")
+			alertRules, err := alertrule.ListAlertRules(*domain)
 			if err != nil {
 				return err
 			}
 			// List all domains policies
-			tracingPolicies, err := common2.ListTetragonPolicies("")
+			tracingPolicies, err := common2.ListTetragonPolicies(*domain)
 			if err != nil {
 				return err
 			}
@@ -170,7 +170,7 @@ func getNameAndNamespace(s string) (string, string) {
 	return policyName, policyNamespace
 }
 
-func getCmd() *cobra.Command {
+func getCmd(domain *string) *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "get <name>",
 		Short: "get a policy of any kind",
@@ -197,7 +197,7 @@ func getCmd() *cobra.Command {
 			}
 			defer tracingClient.Close()
 
-			resTracing, _ := tracingClient.Client.ListTracingPolicies(context.Background(), &tetragon.ListTracingPoliciesRequest{})
+			resTracing, _ := tracingClient.Client.ListTracingPolicies(context.Background(), &tetragon.ListTracingPoliciesRequest{Domain: *domain})
 			if resTracing != nil {
 				for _, pol := range resTracing.GetPolicies() {
 					if pol.Name == policyName && pol.Namespace == policyNamespace {
@@ -216,7 +216,7 @@ func getCmd() *cobra.Command {
 				cmd.Printf("%s\n", resNetwork.Yaml)
 				return nil
 			}
-			resAlert, _ := alertClient.Client.GetAlertRule(context.Background(), &tetragon.GetAlertRuleRequest{Name: policyName})
+			resAlert, _ := alertClient.Client.GetAlertRule(context.Background(), &tetragon.GetAlertRuleRequest{Name: policyName, Domain: *domain})
 			if resAlert != nil {
 				cmd.Printf("%+v\n", resAlert.Rule.Meta)
 				return nil
@@ -227,7 +227,7 @@ func getCmd() *cobra.Command {
 	return ret
 }
 
-func delCmd() *cobra.Command {
+func delCmd(domain *string) *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "delete <name>",
 		Short: "delete a policy of any kind",
@@ -254,7 +254,7 @@ func delCmd() *cobra.Command {
 			}
 			defer tracingClient.Close()
 
-			_, err = tracingClient.Client.DeleteTracingPolicy(context.Background(), &tetragon.DeleteTracingPolicyRequest{Name: policyName, Namespace: policyNamespace})
+			_, err = tracingClient.Client.DeleteTracingPolicy(context.Background(), &tetragon.DeleteTracingPolicyRequest{Name: policyName, Namespace: policyNamespace, Domain: *domain})
 			if err == nil {
 				return nil
 			}
@@ -262,7 +262,7 @@ func delCmd() *cobra.Command {
 			if err == nil {
 				return nil
 			}
-			_, err = alertClient.Client.DeleteAlertRule(context.Background(), &tetragon.DeleteAlertRuleRequest{Name: policyName})
+			_, err = alertClient.Client.DeleteAlertRule(context.Background(), &tetragon.DeleteAlertRuleRequest{Name: policyName, Domain: *domain})
 			if err == nil {
 				return nil
 			}
@@ -279,11 +279,14 @@ func New() *cobra.Command {
 		Short:   "manage policies of any kind",
 	}
 
+	var domain string
+	ret.PersistentFlags().StringVarP(&domain, "domain", "", "", "Domain to be used. Use k8s to act on CRD tracing policies or alerts. By default only acts against grpc domain.")
+
 	ret.AddCommand(
-		addCmd(),
-		listCmd(),
-		getCmd(),
-		delCmd(),
+		addCmd(&domain),
+		listCmd(&domain),
+		getCmd(&domain),
+		delCmd(&domain),
 	)
 
 	return ret

@@ -25,14 +25,16 @@ type remoteLoader struct {
 	alertRuleService     tetragon.AlertServiceClient
 	networkPolicyService tetragon.NetworkPolicyServiceClient
 	tracingPolicyService tetragon.FineGuidanceSensorsClient
+
+	domain string
 }
 
-func (r remoteLoader) OnTracingPolicy(ctx context.Context, _ string, bytes []byte) error {
-	_, err := r.tracingPolicyService.AddTracingPolicy(ctx, &tetragon.AddTracingPolicyRequest{Yaml: string(bytes)})
+func (r *remoteLoader) OnTracingPolicy(ctx context.Context, _ string, bytes []byte) error {
+	_, err := r.tracingPolicyService.AddTracingPolicy(ctx, &tetragon.AddTracingPolicyRequest{Yaml: string(bytes), Domain: r.domain})
 	return err
 }
 
-func (r remoteLoader) OnSandboxPolicy(ctx context.Context, fname string, bytes []byte) error {
+func (r *remoteLoader) OnSandboxPolicy(ctx context.Context, fname string, bytes []byte) error {
 	pol, err := sandboxpolicy.FromYAML(string(bytes))
 	if err != nil {
 		return err
@@ -58,25 +60,34 @@ func (r remoteLoader) OnSandboxPolicy(ctx context.Context, fname string, bytes [
 		return err
 	}
 
+	// Store current domain
+	currDomain := r.domain
+	defer func() {
+		// Restore domain
+		r.domain = currDomain
+	}()
+	// Enforce SandboxDomain for sandbox policies
+	r.domain = sandboxpolicy.SandboxDomain
 	return r.OnTracingPolicy(ctx, fname, out)
 }
 
-func (r remoteLoader) OnNetworkPolicy(ctx context.Context, _ string, bytes []byte) error {
+func (r *remoteLoader) OnNetworkPolicy(ctx context.Context, _ string, bytes []byte) error {
 	_, err := r.networkPolicyService.AddNetworkPolicyFromYAML(ctx, &tetragon.AddNetworkPolicyFromYAMLRequest{Yaml: string(bytes)})
 	return err
 }
 
-func (r remoteLoader) OnAlertRule(ctx context.Context, _ string, bytes []byte) error {
-	_, err := r.alertRuleService.AddAlertRuleFromYAML(ctx, &tetragon.AddAlertRuleFromYAMLRequest{Yaml: string(bytes)})
+func (r *remoteLoader) OnAlertRule(ctx context.Context, _ string, bytes []byte) error {
+	_, err := r.alertRuleService.AddAlertRuleFromYAML(ctx, &tetragon.AddAlertRuleFromYAMLRequest{Yaml: string(bytes), Domain: r.domain})
 	return err
 }
 
 func NewRemoteLoader(alertRuleService tetragon.AlertServiceClient,
 	networkPolicyService tetragon.NetworkPolicyServiceClient,
-	tracingPolicyService tetragon.FineGuidanceSensorsClient) Loader {
+	tracingPolicyService tetragon.FineGuidanceSensorsClient, domain string) Loader {
 	return &remoteLoader{
 		alertRuleService:     alertRuleService,
 		networkPolicyService: networkPolicyService,
 		tracingPolicyService: tracingPolicyService,
+		domain:               domain,
 	}
 }
