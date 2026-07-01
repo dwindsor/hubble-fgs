@@ -349,6 +349,7 @@ func testLoadLayer3Sensor(t *testing.T, CLISwitches bool) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
+	layer3.BaseLoaded = false
 	b := base.GetInitialSensorTest(t)
 	require.NoError(t, layer3.EnableLayer3Progs())
 	layer3Sensor := layer3.Layer3InitialSensor()
