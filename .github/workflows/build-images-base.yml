@@ -255,7 +255,7 @@ jobs:
           if ${{ inputs.is_lseg }}; then
             REGISTRY_PATH="isovalent-lseg-private-docker/charts"
           elif ${{ inputs.is_release }}; then
-            REGISTRY_PATH="isovalent-iep-docker"
+            REGISTRY_PATH="isovalent-iep-helmoci"
           fi
 
           echo "path=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
