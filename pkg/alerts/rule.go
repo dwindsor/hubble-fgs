@@ -47,6 +47,7 @@ type rule struct {
 	jsonEncoder *jsonEncoder
 	labels      map[string]string
 	rateLimiter *encoderRateLimiter
+	domain      string
 }
 
 type RuleManager interface {
@@ -197,6 +198,7 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 		jsonEncoder: encoder,
 		labels:      ar.Labels,
 		rateLimiter: rateLimiter,
+		domain:      ar.Domain,
 	}
 
 	if newEncoder {

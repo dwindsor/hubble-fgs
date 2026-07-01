@@ -48,7 +48,7 @@ func TestEvaluateRules(t *testing.T) {
 
 	// Check if alerts JSON files are correctly written
 	expectedFiles := map[string]string{
-		"curl2.log":  `{"event":{"process_exec":{"process":{"binary":"/usr/bin/curl","arguments":"ebpf.io"}},"time":"1970-01-01T00:00:00Z"},"rule":{"name":"curl2","severity":"CRITICAL","message":"Curl is curling.","tags":["network"]}}` + "\n",
+		"curl2.log":  `{"event":{"process_exec":{"process":{"binary":"/usr/bin/curl","arguments":"ebpf.io"}},"time":"1970-01-01T00:00:00Z"},"rule":{"name":"curl2","severity":"CRITICAL","message":"Curl is curling.","tags":["network"],"domain":"test"}}` + "\n",
 		"shell2.log": "", // not matched
 	}
 	files, err := os.ReadDir(option.Config.AlertsExportDir)
@@ -246,6 +246,7 @@ func TestRPCListAlertRules(t *testing.T) {
 				Severity: tetragon.AlertRuleMeta_CRITICAL,
 				Message:  "Curl is curling.",
 				Tags:     []string{"network"},
+				Domain:   "test",
 			},
 		}, {
 			Meta: &tetragon.AlertRuleMeta{
@@ -253,6 +254,7 @@ func TestRPCListAlertRules(t *testing.T) {
 				Severity: tetragon.AlertRuleMeta_WARNING,
 				Message:  "Looks like shell.",
 				Tags:     []string{"shell"},
+				Domain:   "test",
 			},
 		},
 	}, resp.Rules)
@@ -279,6 +281,7 @@ func TestRPCGetAlertRule(t *testing.T) {
 				Severity: tetragon.AlertRuleMeta_WARNING,
 				Message:  "Looks like shell.",
 				Tags:     []string{"shell"},
+				Domain:   "test",
 			},
 		},
 	}, resp)

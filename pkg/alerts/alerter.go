@@ -191,6 +191,7 @@ func ruleToMeta(r *rule) *tetragon.AlertRuleMeta {
 		Tags:               r.tags,
 		RiskScore:          int32(r.riskScore),
 		RateLimitTriggered: false,
+		Domain:             r.domain,
 	}
 }
 

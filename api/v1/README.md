@@ -3568,6 +3568,7 @@ Determins the behaviour of a field filter
 | tags | [string](#string) | repeated |  |
 | risk_score | [int32](#int32) |  |  |
 | rate_limit_triggered | [bool](#bool) |  |  |
+| domain | [string](#string) |  |  |
 
 
 

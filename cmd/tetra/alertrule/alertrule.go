@@ -139,10 +139,11 @@ func printAlertRules(
 	rules []*tetragon.AlertRule,
 ) {
 	w := tabwriter.NewWriter(output, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "NAME\tSEVERITY\tTAGS\tMESSAGE")
+	fmt.Fprintln(w, "NAME\tDOMAIN\tSEVERITY\tTAGS\tMESSAGE")
 	for _, rule := range rules {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			rule.Meta.Name,
+			rule.Meta.Domain,
 			rule.Meta.Severity,
 			rule.Meta.Tags,
 			rule.Meta.Message)

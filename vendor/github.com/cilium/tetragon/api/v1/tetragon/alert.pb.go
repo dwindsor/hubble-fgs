@@ -92,6 +92,7 @@ type AlertRuleMeta struct {
 	Tags               []string               `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty"`
 	RiskScore          int32                  `protobuf:"varint,5,opt,name=risk_score,json=riskScore,proto3" json:"risk_score,omitempty"`
 	RateLimitTriggered bool                   `protobuf:"varint,6,opt,name=rate_limit_triggered,json=rateLimitTriggered,proto3" json:"rate_limit_triggered,omitempty"`
+	Domain             string                 `protobuf:"bytes,7,opt,name=domain,proto3" json:"domain,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -166,6 +167,13 @@ func (x *AlertRuleMeta) GetRateLimitTriggered() bool {
 		return x.RateLimitTriggered
 	}
 	return false
+}
+
+func (x *AlertRuleMeta) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
 }
 
 type AlertRule struct {
@@ -268,7 +276,7 @@ var File_tetragon_alert_proto protoreflect.FileDescriptor
 
 const file_tetragon_alert_proto_rawDesc = "" +
 	"\n" +
-	"\x14tetragon/alert.proto\x12\btetragon\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x12tetragon/dns.proto\x1a\x15tetragon/events.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xa2\x02\n" +
+	"\x14tetragon/alert.proto\x12\btetragon\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x12tetragon/dns.proto\x1a\x15tetragon/events.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xba\x02\n" +
 	"\rAlertRuleMeta\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12<\n" +
 	"\bseverity\x18\x02 \x01(\x0e2 .tetragon.AlertRuleMeta.SeverityR\bseverity\x12\x18\n" +
@@ -276,7 +284,8 @@ const file_tetragon_alert_proto_rawDesc = "" +
 	"\x04tags\x18\x04 \x03(\tR\x04tags\x12\x1d\n" +
 	"\n" +
 	"risk_score\x18\x05 \x01(\x05R\triskScore\x120\n" +
-	"\x14rate_limit_triggered\x18\x06 \x01(\bR\x12rateLimitTriggered\"@\n" +
+	"\x14rate_limit_triggered\x18\x06 \x01(\bR\x12rateLimitTriggered\x12\x16\n" +
+	"\x06domain\x18\a \x01(\tR\x06domain\"@\n" +
 	"\bSeverity\x12\x0f\n" +
 	"\vUNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04INFO\x10\x01\x12\v\n" +
