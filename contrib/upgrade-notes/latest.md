@@ -20,6 +20,7 @@ Depending on your setup, changes listed here might require a manual intervention
 ### Kubernetes CRDs
 
 * The one-way latency configuration for TCP and UDP has been removed.
+* Deprecated FIM matchLinuxCapabilities selector in favor of matchCapabilities.
 
 ### Events (protobuf API)
 
