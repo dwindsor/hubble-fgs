@@ -306,5 +306,5 @@ jobs:
       - name: Print helm command
         run: |
           echo "Example commands:"
-          echo helm template -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/charts/tetragon --version ${{ steps.version.outputs.chart_version }}
-          echo helm install tetragon -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/charts/tetragon --version ${{ steps.version.outputs.chart_version }}
+          echo helm template -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon --version ${{ steps.version.outputs.chart_version }}
+          echo helm install tetragon -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon --version ${{ steps.version.outputs.chart_version }}
