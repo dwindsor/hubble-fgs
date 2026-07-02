@@ -346,6 +346,9 @@ type FileSelector struct {
 	// A list of capabilities and IDs
 	MatchCapabilities []FileCapabilitiesSelector `json:"matchLinuxCapabilities,omitempty"`
 	// +kubebuilder:validation:Optional
+	// A list of capabilities and IDs
+	MatchCapabilitiesOSS []CapabilitiesSelector `json:"matchCapabilities,omitempty"`
+	// +kubebuilder:validation:Optional
 	// A list of file rename type filters.
 	MatchRenameSrcType []FileRenameTypeSelector `json:"matchRenameSrcType,omitempty"`
 	// +kubebuilder:validation:Optional
