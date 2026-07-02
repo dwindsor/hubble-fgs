@@ -837,7 +837,7 @@ static inline __attribute__((always_inline)) int check_match_capabilities(__u32 
 	struct msg_capabilities *c;
 	const struct cred *cred;
 	struct task_struct *task;
-	__u32 zero = 0;
+	__u32 zero = 0, user_inum;
 	__u64 caps;
 
 	c = map_lookup_elem(&file_msg_caps_heap, &zero);
@@ -851,6 +851,11 @@ static inline __attribute__((always_inline)) int check_match_capabilities(__u32 
 	task = (struct task_struct *)get_current_task();
 	if (!task)
 		return 0; // we cannot apply matchCapabilities without the task_struct
+
+	/* if isns != 0 we care only for events in different than the host user namespace */
+	user_inum = BPF_CORE_READ(task, mm, user_ns, ns.inum);
+	if (sel_caps->isns != 0 && user_inum == sel_caps->isns)
+		return 0;
 
 	cred = BPF_CORE_READ(task, cred);
 	if (!cred)

@@ -111,6 +111,8 @@ type SelCaps struct {
 	Op     uint32 `align:"op"`     // In or NotIn
 	Type   uint32 `align:"type"`   // Effective or Inheritable or Permitted
 	Filter uint64 `align:"filter"` // Capabilities to match (ORed)
+	IsNs   uint32 `align:"isns"`   // IsNamespaceCapability
+	Pad    uint32 `align:"pad"`
 }
 
 type SelNsFilter struct {

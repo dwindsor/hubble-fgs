@@ -230,6 +230,8 @@ struct file_sel_caps {
 	__u32 op; // In or NotIn
 	__u32 type; // Effective or Inheritable or Permitted
 	__u64 filter; // Capabilities to match (ORed)
+	__u32 isns; // IsNamespaceCapability
+	__u32 pad;
 };
 
 struct file_sel_rename {
