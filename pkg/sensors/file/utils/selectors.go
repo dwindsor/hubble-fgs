@@ -13,6 +13,7 @@
 package file
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -1675,6 +1676,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseMatchDigests(kernelSelectors, s.MatchDigests, i); err != nil {
 			return nil, fmt.Errorf("parseMatchDigests error: %w", err)
+		}
+		if s.MatchCapabilities != nil && s.MatchCapabilitiesOSS != nil {
+			return nil, errors.New("cannot define both matchLinuxCapabilities and matchCapabilities")
 		}
 		if err := ParseLinuxMatchCapabilities(kernelSelectors, s.MatchCapabilities, i); err != nil {
 			return nil, fmt.Errorf("parseMatchLinuxCapabilities error: %w", err)
