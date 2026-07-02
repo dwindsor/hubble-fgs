@@ -84,7 +84,7 @@ spec:
         filter: Host
       - namespace: Mnt
         filter: NoHost
-      matchLinuxCapabilities:
+      matchCapabilities:
       - type: Effective
         operator: In
         values:
