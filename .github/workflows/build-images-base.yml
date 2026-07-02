@@ -260,6 +260,19 @@ jobs:
 
           echo "path=${REGISTRY_PATH}" >> $GITHUB_OUTPUT
 
+      - name: Set image path
+        id: image
+        run: |
+          IMAGE_PATH="isovalent-eng-docker"
+
+          if ${{ inputs.is_lseg }}; then
+            IMAGE_PATH="isovalent-lseg-private-docker"
+          elif ${{ inputs.is_release }}; then
+            IMAGE_PATH="isovalent-iep-docker"
+          fi
+
+          echo "path=${IMAGE_PATH}" >> $GITHUB_OUTPUT
+
       - name: Push OCI Helm dev chart
         uses: cilium/reusable-workflows/.github/actions/push-helm-chart@6ae27958f2f37545bf48e44106b73df05b1f6d12 # v0.1.0
         with:
@@ -268,19 +281,19 @@ jobs:
           version: ${{ steps.version.outputs.chart_version }}
           values_file_changes: |
             {
-              "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon${{
+              "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon${{
                 inputs.is_release && '' || '-ci'
               }}",
               "tetragon.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
-              "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon-aggregator${{
+              "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon-aggregator${{
                 inputs.is_release && '' || '-ci'
               }}",
               "tetragonAggregator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
-              "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon-operator${{
+              "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon-operator${{
                 inputs.is_release && '' || '-ci'
               }}",
               "tetragonOperator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
-              "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon-rthooks${{
+              "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon-rthooks${{
                 inputs.is_release && '' || '-ci'
               }}",
               "rthooks.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
