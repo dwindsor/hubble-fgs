@@ -329,7 +329,7 @@ spec:
       - matchLinuxNamespaces: # is not in the host pid namespace
           - namespace: Pid
             filter: NoHost
-      - matchLinuxCapabilities: # does not have CAP_SYS_ADMIN
+      - matchCapabilities: # does not have CAP_SYS_ADMIN
           - type: Effective
             operator: NotIn
             values:
