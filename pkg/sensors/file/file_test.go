@@ -2904,7 +2904,7 @@ func testFileReadSelectorCapNs(gt *testing.T, t *testing.T) {
 						Filter:    "Host",
 					},
 				},
-				MatchCapabilities: []v1alpha1.FileCapabilitiesSelector{
+				MatchCapabilitiesOSS: []v1alpha1.CapabilitiesSelector{
 					{
 						Type:     "Effective",
 						Operator: "In",
