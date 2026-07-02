@@ -213,3 +213,18 @@ func TestGetSelectorsMetadata8(t *testing.T) {
 	assert.True(t, o.HasMatchOperations)
 	assert.Equal(t, o.OperationsSet, NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...))
 }
+
+func TestGetSelectorsMetadataMatchCapabilities(t *testing.T) {
+	o, err := GetSelectorsMetadata([]v1alpha1.FileSelector{
+		{
+			MatchCapabilitiesOSS: []v1alpha1.CapabilitiesSelector{
+				{
+					Operator: "In",
+					Values:   []string{"CAP_SYS_ADMIN"},
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.True(t, o.HasMatchCapabilities)
+}

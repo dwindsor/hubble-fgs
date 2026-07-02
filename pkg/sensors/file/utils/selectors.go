@@ -214,7 +214,7 @@ type KernelSelectorState struct {
 	// matchDigests mappings
 	digests map[uint32]*SelDigests
 
-	// matchLinuxCapabilities
+	// matchLinuxCapabilities/matchCapabilities
 	capabilities map[uint32]*fileapi.SelCaps
 
 	// matchLinuxNamespaces
@@ -1096,6 +1096,71 @@ func ParseLinuxMatchCapabilities(k *KernelSelectorState, caps []v1alpha1.FileCap
 	return nil
 }
 
+func ParseMatchCapability(k *KernelSelectorState, capability *v1alpha1.CapabilitiesSelector, selIdx int) error {
+	val := k.InitOrGetCapabilities(uint32(selIdx))
+	var err error
+	var ok bool
+
+	// operator
+	val.Op, err = selectors.SelectorOp(capability.Operator)
+	if err != nil {
+		return fmt.Errorf("matchCapabilities error: %w", err)
+	}
+	if (val.Op != selectors.SelectorOpIn) && (val.Op != selectors.SelectorOpNotIn) {
+		return fmt.Errorf("matchCapabilities supports only In and NotIn operators")
+	}
+
+	// type
+	tystr := strings.ToLower(capability.Type)
+	val.Type, ok = capabilitiesTypeTable[tystr]
+	if !ok {
+		return fmt.Errorf("parseMatchCapability: actionType %s unknown", capability.Type)
+	}
+
+	// values
+	val.Filter = uint64(0)
+	for _, v := range capability.Values {
+		valstr := strings.ToUpper(v)
+		c, ok := tetragon.CapabilitiesType_value[valstr]
+		if !ok {
+			return fmt.Errorf("parseMatchCapability: value %s unknown", valstr)
+		}
+		val.Filter |= (1 << c)
+	}
+
+	// IsNamespaceCapability
+	val.IsNs = uint32(0) // false by default
+	if capability.IsNamespaceCapability {
+		// If IsNamespaceCapability == true will try to match the capabilities
+		//     only when current_user_namespace != host_user_namespace.
+		// If IsNamespaceCapability == false will try to match the capabilities
+		//     ignoring the user_namespace value.
+		// To implement this we pass the "/proc/1/ns/user" value as the host
+		// user namespace to compare with that inside the kernel.
+		val.IsNs, err = namespace.GetPidNsInode(1, "user")
+		if err != nil {
+			return fmt.Errorf("matchCapabilities reading pid 1 user namespace failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func ParseMatchCapabilities(k *KernelSelectorState, caps []v1alpha1.CapabilitiesSelector, selIdx int) error {
+	if !kernels.MinKernelVersion("5.4") && len(caps) > 0 {
+		return fmt.Errorf("only support matchCapabilities for kernels >= 5.4")
+	}
+	if len(caps) > 1 {
+		return fmt.Errorf("only support one capabilities filter inside a single selector")
+	}
+	for _, c := range caps {
+		if err := ParseMatchCapability(k, &c, selIdx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func ParseLinuxMatchNamespace(k *KernelSelectorState, ns *v1alpha1.FileNamespaceSelector, selIdx int) error {
 	val := k.InitOrGetNamespaces(uint32(selIdx))
 
@@ -1613,6 +1678,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseLinuxMatchCapabilities(kernelSelectors, s.MatchCapabilities, i); err != nil {
 			return nil, fmt.Errorf("parseMatchLinuxCapabilities error: %w", err)
+		}
+		if err := ParseMatchCapabilities(kernelSelectors, s.MatchCapabilitiesOSS, i); err != nil {
+			return nil, fmt.Errorf("parseMatchCapabilities error: %w", err)
 		}
 		if err := ParseLinuxMatchNamespaces(kernelSelectors, s.MatchNamespaces, i); err != nil {
 			return nil, fmt.Errorf("parseMatchLinuxNamespaces error: %w", err)

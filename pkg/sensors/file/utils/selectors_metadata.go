@@ -95,7 +95,7 @@ func GetSelectorsMetadata(sel []v1alpha1.FileSelector) (*SelectorsMetadata, erro
 		meta.HasMatchOperations = If(len(s.MatchOperations) > 0, true, meta.HasMatchOperations)
 		meta.HasMatchDigests = If(len(s.MatchDigests) > 0, true, meta.HasMatchDigests)
 		meta.HasMatchNamespaces = If(len(s.MatchNamespaces) > 0, true, meta.HasMatchNamespaces)
-		meta.HasMatchCapabilities = If(len(s.MatchCapabilities) > 0, true, meta.HasMatchCapabilities)
+		meta.HasMatchCapabilities = If(len(s.MatchCapabilities) > 0 || len(s.MatchCapabilitiesOSS) > 0, true, meta.HasMatchCapabilities)
 		meta.HasMatchRenameSrcType = If(len(s.MatchRenameSrcType) > 0, true, meta.HasMatchRenameSrcType)
 		meta.HasMatchFilename = If(len(s.MatchFilename) > 0, true, meta.HasMatchFilename)
 		meta.HasMatchOpenFlags = If(len(s.MatchOpenFlags) > 0, true, meta.HasMatchOpenFlags)
