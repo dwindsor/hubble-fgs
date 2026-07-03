@@ -4,10 +4,10 @@ go 1.26.3
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
-	github.com/aws/aws-sdk-go-v2 v1.42.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.26
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.29
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.1
+	github.com/aws/aws-sdk-go-v2 v1.42.1
+	github.com/aws/aws-sdk-go-v2/config v1.32.27
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.30
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.2
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.19.5
 	github.com/cilium/ebpf v0.22.0
@@ -17,7 +17,7 @@ require (
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.3.2
 	github.com/containernetworking/plugins v1.9.1
-	github.com/cri-o/cri-o v1.36.1
+	github.com/cri-o/cri-o v1.36.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.19.0
 	github.com/gdamore/tcell/v2 v2.13.10
@@ -38,7 +38,7 @@ require (
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.0
 	github.com/operator-framework/api v0.44.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/rivo/tview v0.42.0
@@ -81,20 +81,20 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	github.com/Microsoft/hcsshim v0.15.0-rc.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.13 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.25 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.29 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.29 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.30 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.12 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.22 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.29 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.30 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.2.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.31.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.43.4 // indirect
-	github.com/aws/smithy-go v1.27.1 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.26 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.23 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.30 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.31 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.2.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.31.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.43.5 // indirect
+	github.com/aws/smithy-go v1.27.3 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cilium/hive v0.0.0-20260108104938-97756f6ff54c // indirect
 	github.com/cilium/proxy v0.0.0-20250623105955-2136f59a4ea1 // indirect
