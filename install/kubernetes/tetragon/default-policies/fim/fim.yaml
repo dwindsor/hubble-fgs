@@ -326,9 +326,11 @@ spec:
           prefix: "/root/"
     monitorHostFiles: true
     selectors:
-      - matchLinuxNamespaces: # is not in the host pid namespace
+      - matchNamespaces: # is not in the host pid namespace
           - namespace: Pid
-            filter: NoHost
+            operator: "NotIn"
+            values:
+              - "host_ns"
       - matchCapabilities: # does not have CAP_SYS_ADMIN
           - type: Effective
             operator: NotIn
