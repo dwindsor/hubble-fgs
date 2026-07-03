@@ -343,6 +343,9 @@ type FileSelector struct {
 	// A list of namespaces and IDs
 	MatchNamespaces []FileNamespaceSelector `json:"matchLinuxNamespaces,omitempty"`
 	// +kubebuilder:validation:Optional
+	// A list of namespaces and IDs
+	MatchNamespacesOSS []NamespaceSelector `json:"matchNamespaces,omitempty"`
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:deprecatedversion:warning="matchLinuxCapabilities is deprecated. Use matchCapabilities instead."
 	// A list of capabilities and IDs
 	// Deprecated: Use matchCapabilities instead.

@@ -544,6 +544,13 @@ func (in *FileSelector) DeepCopyInto(out *FileSelector) {
 		*out = make([]FileNamespaceSelector, len(*in))
 		copy(*out, *in)
 	}
+	if in.MatchNamespacesOSS != nil {
+		in, out := &in.MatchNamespacesOSS, &out.MatchNamespacesOSS
+		*out = make([]NamespaceSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.MatchCapabilities != nil {
 		in, out := &in.MatchCapabilities, &out.MatchCapabilities
 		*out = make([]FileCapabilitiesSelector, len(*in))

@@ -1802,6 +1802,42 @@ spec:
                             - namespace
                             type: object
                           type: array
+                        matchNamespaces:
+                          description: A list of namespaces and IDs
+                          items:
+                            properties:
+                              namespace:
+                                description: Namespace selector name.
+                                enum:
+                                - Uts
+                                - Ipc
+                                - Mnt
+                                - Pid
+                                - PidForChildren
+                                - Net
+                                - Time
+                                - TimeForChildren
+                                - Cgroup
+                                - User
+                                type: string
+                              operator:
+                                description: Namespace selector operator.
+                                enum:
+                                - In
+                                - NotIn
+                                type: string
+                              values:
+                                description: Namespace IDs (or host_ns for host namespace)
+                                  of namespaces to match.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - namespace
+                            - operator
+                            - values
+                            type: object
+                          type: array
                         matchOpenFlags:
                           description: A list of file open flags filters.
                           items:
