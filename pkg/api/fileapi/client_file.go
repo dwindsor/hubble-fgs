@@ -115,22 +115,18 @@ type SelCaps struct {
 	Pad    uint32 `align:"pad"`
 }
 
-type SelNsFilter struct {
-	UtsFilter       uint32 // 0 Equal, 1 NotEqual
-	IpcFilter       uint32
-	MntFilter       uint32
-	PidFilter       uint32
-	PidChildFilter  uint32
-	NetFilter       uint32
-	TimeFilter      uint32
-	TimeChildFilter uint32
-	CgroupFilter    uint32
-	UserFilter      uint32
+type SelNsEntry struct {
+	Op     uint32
+	Values []uint32
 }
 
 type SelNs struct {
-	Ns     processapi.MsgNamespaces `align:"ns"`
-	Filter SelNsFilter              `align:"filter"`
+	Ns map[uint32]SelNsEntry
+}
+
+type NsFilterKey struct {
+	SelIdx uint32 `align:"sel_id"`
+	NsIdx  uint32 `align:"ns_id"`
 }
 
 type MsgFileEvent struct {

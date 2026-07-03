@@ -178,7 +178,8 @@ var mapTypes = map[string]MapType{
 	"file_config_map":            PinnedMap, // for configuration options
 	"file_digests_maps":          PinnedMap, // for matchDigests
 	"file_errors_map":            PinnedMap, // for eBPF errors
-	"file_namespaces_map":        PinnedMap, // for matchLinuxNamespaces
+	"file_ns_ops_map":            PinnedMap, // for matchLinuxNamespaces
+	"file_ns_values_map":         PinnedMap, // for matchLinuxNamespaces
 	"file_open_flags_map":        PinnedMap, // for matchOpenFlags
 	"file_ops_maps":              PinnedMap, // for matchOperations
 	"file_rename_map":            PinnedMap, // for matchRenameSrcType
@@ -1816,11 +1817,20 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 					}
 					return nil
 				}
-			case "file_namespaces_map":
-				m.SetMaxEntries(maxSelectors)
+			case "file_ns_ops_map":
+				m.SetMaxEntries(fm.GetEntriesFileNsMap(sel))
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
-					if err := fm.GenerateFileNamespacesMap(m, sel); err != nil {
-						return fmt.Errorf("file_namespaces_map: %w", err)
+					if err := fm.GenerateFileNsOpsMap(m, sel); err != nil {
+						return fmt.Errorf("file_ns_ops_map: %w", err)
+					}
+					return nil
+				}
+			case "file_ns_values_map":
+				m.SetMaxEntries(fm.GetEntriesFileNsMap(sel))
+				m.SetInnerMaxEntries(fm.GetMaxInnerEntriesFileNsValuesMap(sel))
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string) error {
+					if err := fm.GenerateFileNsValuesMap(m, sel, pinPathPrefix); err != nil {
+						return fmt.Errorf("file_ns_values_map: %w", err)
 					}
 					return nil
 				}

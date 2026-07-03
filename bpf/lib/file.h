@@ -246,27 +246,9 @@ struct onflags {
 	__u32 has_acc_mode;
 };
 
-struct ns_filter {
-	union {
-		struct {
-			__u32 uts_filter;
-			__u32 ipc_filter;
-			__u32 mnt_filter;
-			__u32 pid_filter;
-			__u32 pid_for_children_filter;
-			__u32 net_filter;
-			__u32 time_filter;
-			__u32 time_for_children_filter;
-			__u32 cgroup_filter;
-			__u32 user_filter;
-		};
-		__u32 filter[ns_max_types];
-	};
-}; // All fields aligned so no 'packed' attribute.
-
-struct file_sel_namespaces {
-	struct msg_ns ns;
-	struct ns_filter filter;
+struct ns_filter_key {
+	__u32 sel_id;
+	__u32 ns_id;
 };
 
 struct msg_file_ops {

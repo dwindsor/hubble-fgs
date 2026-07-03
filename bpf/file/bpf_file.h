@@ -509,11 +509,24 @@ struct {
 } file_open_flags_map SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(max_entries, MAX_FIM_SELECTORS);
+	__type(key, struct ns_filter_key); /* selector id + namespace id */
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_HASH);
+			__uint(max_entries, 1);
+			__type(key, __u32); /* namespace id */
+			__type(value, __u32); /* unused */
+		});
+} file_ns_values_map SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_FIM_SELECTORS);
-	__type(key, __u32); /* selector id */
-	__type(value, struct file_sel_namespaces);
-} file_namespaces_map SEC(".maps");
+	__type(key, struct ns_filter_key); /* selector id + namespace id */
+	__type(value, __u32);
+} file_ns_ops_map SEC(".maps");
 
 struct file_actions_val {
 	__u32 val;
@@ -905,18 +918,14 @@ static inline __attribute__((always_inline)) void __get_namespaces(struct msg_ns
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_namespaces(__u32 sel_idx)
 {
-	struct file_sel_namespaces *sel_ns;
 	struct task_struct *task;
 	struct msg_ns *n;
-	__u32 i = 0;
+	int zero = 0;
+	__u32 ns_idx = 0;
 
-	n = map_lookup_elem(&file_msg_ns_heap, &i);
+	n = map_lookup_elem(&file_msg_ns_heap, &zero);
 	if (!n)
 		return 0;
-
-	sel_ns = map_lookup_elem(&file_namespaces_map, &sel_idx);
-	if (!sel_ns) // no matchOperations for this selector
-		return 1;
 
 	task = (struct task_struct *)get_current_task();
 	if (!task)
@@ -927,10 +936,24 @@ static inline __attribute__((always_inline)) int check_match_namespaces(__u32 se
 #ifndef __ENABLE_GLOB_SUPPORT
 #pragma unroll
 #endif
-	for (i = 0; i < ns_max_types; ++i) {
-		if (sel_ns->filter.filter[i] == NS_FILTER_HOST && (sel_ns->ns.inum[i] != n->inum[i]))
+	for (ns_idx = 0; ns_idx < ns_max_types; ++ns_idx) {
+		__u32 *op, *val_exists, ns_inum;
+		void *values_map;
+		struct ns_filter_key k = {
+			.sel_id = sel_idx,
+			.ns_id = ns_idx,
+		};
+
+		op = map_lookup_elem(&file_ns_ops_map, &k);
+		values_map = map_lookup_elem(&file_ns_values_map, &k);
+		if (!op || !values_map)
+			continue; // no selector for this specific namespace
+
+		ns_inum = n->inum[ns_idx];
+		val_exists = map_lookup_elem(values_map, &ns_inum);
+		if (*op == op_filter_in && val_exists == 0)
 			return 0;
-		if (sel_ns->filter.filter[i] == NS_FILTER_NOHOST && (sel_ns->ns.inum[i] == n->inum[i]))
+		if (*op == op_filter_notin && val_exists != 0)
 			return 0;
 	}
 	return 1;

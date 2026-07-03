@@ -50,7 +50,7 @@ struct lpm_val _lpm_val;
 struct digest_key _digest_key;
 struct file_exec_stats _file_exec_stats;
 struct file_sel_caps _file_sel_caps;
-struct file_sel_namespaces _file_sel_namespaces;
+struct ns_filter_key _ns_filter_key;
 struct file_errors _file_errors;
 struct pattern_val _pattern_val;
 struct full_path _full_path;

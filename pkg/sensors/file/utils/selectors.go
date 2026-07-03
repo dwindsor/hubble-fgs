@@ -293,7 +293,9 @@ func (k *KernelSelectorState) InitOrGetNamespaces(selIdx uint32) *fileapi.SelNs 
 	if ok {
 		return val
 	}
-	inner := &fileapi.SelNs{}
+	inner := &fileapi.SelNs{
+		Ns: make(map[uint32]fileapi.SelNsEntry),
+	}
 	k.namespaces[selIdx] = inner
 	return inner
 }
@@ -632,13 +634,104 @@ func GenerateFileCapabilitiesMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	return nil
 }
 
-func GenerateFileNamespacesMap(m *ebpf.Map, sel *KernelSelectorState) error {
-	for idx, ns := range sel.namespaces {
-		if err := m.Update(idx, ns, ebpf.UpdateAny); err != nil {
-			return err
+// for file_ns_values_map
+func GenerateFileNsValuesMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	maxEntries := GetMaxInnerEntriesFileNsValuesMap(sel)
+	for selIdx, entry := range sel.namespaces { // for each selector
+		for nsIdx, ns := range entry.Ns { // ... and for each namespace type
+			values := ns.Values
+
+			// in order kernels we should provide the maximum number of inner map entries
+			maxInnerEntries := uint32(len(values))
+			if !kernels.MinKernelVersion("5.9") {
+				// Versions before 5.9 do not allow inner maps to have different sizes.
+				// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+				maxInnerEntries = uint32(maxEntries)
+			}
+
+			// It is allowed to have values: [] in the policy but this will create an
+			// inner map with MaxEntries equals to 0 and this will fail.
+			if maxInnerEntries == 0 {
+				maxInnerEntries = 1
+			}
+
+			innerName := fmt.Sprintf("file_ns_values_map_%d_%d", selIdx, nsIdx)
+			innerSpec := &ebpf.MapSpec{
+				Name:       innerName,
+				Type:       ebpf.Hash,
+				KeySize:    4, // uint32
+				ValueSize:  4, // uint32
+				MaxEntries: maxInnerEntries,
+			}
+			innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+				PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+			})
+			if err != nil {
+				return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+			}
+			defer innerMap.Close()
+
+			innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
+
+			zero := uint32(0)
+			for _, val := range values {
+				if err := innerMap.Update(val, zero, ebpf.UpdateAny); err != nil {
+					return fmt.Errorf("failed to insert value into %s: %w", innerName, err)
+				}
+			}
+
+			if err := outerMap.Update(fileapi.NsFilterKey{
+				SelIdx: selIdx,
+				NsIdx:  nsIdx,
+			}, uint32(innerMap.FD()), 0); err != nil {
+				return fmt.Errorf("failed to insert %s: %w", innerName, err)
+			}
 		}
 	}
 	return nil
+}
+
+// for file_ns_ops_map
+func GenerateFileNsOpsMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for selIdx, entry := range sel.namespaces { // for each selector
+		for nsIdx, ns := range entry.Ns { // ... and for each namespace type
+			if err := m.Update(fileapi.NsFilterKey{
+				SelIdx: selIdx,
+				NsIdx:  nsIdx,
+			}, ns.Op, ebpf.UpdateAny); err != nil {
+				return fmt.Errorf("failed to insert %v: %w", sel, err)
+			}
+		}
+	}
+	return nil
+}
+
+// for file_ns_values_map
+func GetMaxInnerEntriesFileNsValuesMap(sel *KernelSelectorState) int {
+	var maxEntries int
+	for _, entry := range sel.namespaces { // for each selector
+		for _, ns := range entry.Ns { // ... and for each namespace type
+			if len(ns.Values) > maxEntries { // .. get the number of user provided values
+				maxEntries = len(ns.Values)
+			}
+		}
+	}
+	if maxEntries == 0 {
+		maxEntries++
+	}
+	return maxEntries
+}
+
+// for file_ns_ops_map and file_ns_values_map
+func GetEntriesFileNsMap(sel *KernelSelectorState) int {
+	var numEntries int
+	for _, entry := range sel.namespaces { // for each selector
+		numEntries += len(entry.Ns) // ... count the number of ops that we need
+	}
+	if numEntries == 0 {
+		numEntries++
+	}
+	return numEntries
 }
 
 func GenerateFileRenameMap(m *ebpf.Map, sel *KernelSelectorState) error {
@@ -1163,8 +1256,6 @@ func ParseMatchCapabilities(k *KernelSelectorState, caps []v1alpha1.Capabilities
 }
 
 func ParseLinuxMatchNamespace(k *KernelSelectorState, ns *v1alpha1.FileNamespaceSelector, selIdx int) error {
-	val := k.InitOrGetNamespaces(uint32(selIdx))
-
 	nsStr := strings.ToLower(ns.Namespace)
 	nsId, ok := namespaceTypeTable[nsStr]
 	if !ok {
@@ -1177,42 +1268,30 @@ func ParseLinuxMatchNamespace(k *KernelSelectorState, ns *v1alpha1.FileNamespace
 		return fmt.Errorf("parseMatchLinuxNamespace: filterType %s unknown", ns.Filter)
 	}
 
-	var err error
-	switch nsId {
-	case namespaceTypeUts:
-		val.Filter.UtsFilter = filterId
-		val.Ns.UtsInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypeIpc:
-		val.Filter.IpcFilter = filterId
-		val.Ns.IpcInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypeMnt:
-		val.Filter.MntFilter = filterId
-		val.Ns.MntInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypePid:
-		val.Filter.PidFilter = filterId
-		val.Ns.PidInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypePidForChildren:
-		val.Filter.PidChildFilter = filterId
-		val.Ns.PidChildInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypeNet:
-		val.Filter.NetFilter = filterId
-		val.Ns.NetInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypeTime:
-		val.Filter.TimeFilter = filterId
-		val.Ns.TimeInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypeTimeForChildren:
-		val.Filter.TimeChildFilter = filterId
-		val.Ns.TimeChildInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypeCgroup:
-		val.Filter.CgroupFilter = filterId
-		val.Ns.CgroupInum, err = namespace.GetPidNsInode(1, nsStr)
-	case namespaceTypeUser:
-		val.Filter.UserFilter = filterId
-		val.Ns.UserInum, err = namespace.GetPidNsInode(1, nsStr)
+	// nothing to do here -- the user want to match all namespaces
+	if filterId == namespaceFilterAll {
+		return nil
 	}
+
+	var nsOp uint32
+	switch filterId {
+	case namespaceFilterHost:
+		nsOp = selectors.SelectorOpIn
+	case namespaceFilterAll:
+		nsOp = selectors.SelectorOpNotIn
+	}
+
+	nsVal, err := namespace.GetPidNsInode(1, nsStr)
 	if err != nil {
 		return fmt.Errorf("parseMatchLinuxNamespace: Failed to get root namespace for %s: %w", nsStr, err)
 	}
+
+	val := k.InitOrGetNamespaces(uint32(selIdx))
+	val.Ns[nsId] = fileapi.SelNsEntry{
+		Op:     nsOp,
+		Values: []uint32{nsVal},
+	}
+
 	return nil
 }
 
