@@ -22,8 +22,7 @@ import (
 //
 // We decode strictly (DisallowUnknownFields) so that unknown or misplaced
 // fields under spec.file are rejected instead of silently dropped. Without
-// this, the lenient default json.Unmarshal would ignore e.g. a kprobe-style
-// "matchNamespaces" selector (the file sensor uses "matchLinuxNamespaces"),
+// this, the lenient default json.Unmarshal would ignore unknown selectors,
 // loading the policy without the intended filtering. This makes the file
 // subtree consistent with the rest of the spec, which already rejects unknown
 // fields, and it applies to both k8s and nok8s builds.
