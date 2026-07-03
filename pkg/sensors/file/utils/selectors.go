@@ -1832,6 +1832,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		if err := ParseMatchCapabilities(kernelSelectors, s.MatchCapabilitiesOSS, i); err != nil {
 			return nil, fmt.Errorf("parseMatchCapabilities error: %w", err)
 		}
+		if s.MatchNamespaces != nil && s.MatchNamespacesOSS != nil {
+			return nil, errors.New("cannot define both matchLinuxNamespaces and matchNamespaces")
+		}
 		if err := ParseLinuxMatchNamespaces(kernelSelectors, s.MatchNamespaces, i); err != nil {
 			return nil, fmt.Errorf("parseMatchLinuxNamespaces error: %w", err)
 		}
