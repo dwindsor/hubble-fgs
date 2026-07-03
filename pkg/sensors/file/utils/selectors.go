@@ -1739,6 +1739,73 @@ func GetProcessDurationMapSize(sel *KernelSelectorState) int {
 	return len(sel.processduration)
 }
 
+func ParseMatchNamespace(k *KernelSelectorState, action *v1alpha1.NamespaceSelector, selIdx int) error {
+	nsstr := strings.ToLower(action.Namespace)
+	// write namespace type
+	ns, ok := namespaceTypeTable[nsstr]
+	if !ok {
+		return fmt.Errorf("parseMatchNamespace: actionType %s unknown", action.Namespace)
+	}
+
+	// write operator
+	op, err := selectors.SelectorOp(action.Operator)
+	if err != nil {
+		return fmt.Errorf("matchNamespace error: %w", err)
+	}
+	if (op != selectors.SelectorOpIn) && (op != selectors.SelectorOpNotIn) {
+		return errors.New("matchNamespace supports only In and NotIn operators")
+	}
+
+	var values []uint32
+	for _, v := range action.Values {
+		val, err := strconv.ParseUint(v, 10, 32)
+		if err != nil {
+			// the only case that we can accept and is not a uint32 is "<host_ns>"
+			// in this case we should replace that with the approproate value
+			if v == "host_ns" {
+				n, err := namespace.GetHostNsInode(nsstr)
+				if err != nil {
+					return fmt.Errorf("matchNamespace reading host '%s' namespace failed: %w", nsstr, err)
+				}
+				val = uint64(n)
+			} else {
+				return fmt.Errorf("values for matchNamespace can only be numeric or \"host_ns\". (%w)", err)
+			}
+		}
+		values = append(values, uint32(val))
+	}
+
+	l := k.InitOrGetNamespaces(uint32(selIdx))
+	l.Ns[ns] = fileapi.SelNsEntry{
+		Op:     op,
+		Values: values,
+	}
+
+	return nil
+}
+
+func ParseMatchNamespaces(k *KernelSelectorState, nses []v1alpha1.NamespaceSelector, selIdx int) error {
+	if !kernels.MinKernelVersion("5.4") && len(nses) > 0 {
+		return fmt.Errorf("only support matchNamespaces for kernels >= 5.4")
+	}
+	// we only support one filter per namespace
+	nsFilter := make(map[string]int)
+	for _, ns := range nses {
+		nsStr := strings.ToLower(ns.Namespace)
+		_, ok := nsFilter[nsStr]
+		if ok {
+			return fmt.Errorf("only support one namespace filter per type inside a single selector: %s appears twice", ns.Namespace)
+		}
+		nsFilter[nsStr] = 0
+	}
+	for _, a := range nses {
+		if err := ParseMatchNamespace(k, &a, selIdx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors int) (*KernelSelectorState, error) {
 	if len(fileSel) > maxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -1767,6 +1834,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseLinuxMatchNamespaces(kernelSelectors, s.MatchNamespaces, i); err != nil {
 			return nil, fmt.Errorf("parseMatchLinuxNamespaces error: %w", err)
+		}
+		if err := ParseMatchNamespaces(kernelSelectors, s.MatchNamespacesOSS, i); err != nil {
+			return nil, fmt.Errorf("parseMatchNamespaces error: %w", err)
 		}
 		if err := ParseRenameSrcTypes(kernelSelectors, s.MatchRenameSrcType, i); err != nil {
 			return nil, fmt.Errorf("parseRenameSrcType error: %w", err)

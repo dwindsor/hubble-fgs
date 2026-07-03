@@ -228,3 +228,21 @@ func TestGetSelectorsMetadataMatchCapabilities(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, o.HasMatchCapabilities)
 }
+
+func TestGetSelectorsMetadataMatchNamespaces(t *testing.T) {
+	o, err := GetSelectorsMetadata([]v1alpha1.FileSelector{
+		{
+			MatchNamespacesOSS: []v1alpha1.NamespaceSelector{
+				{
+					Namespace: "Mnt",
+					Operator:  "In",
+					Values: []string{
+						"host_ns",
+					},
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.True(t, o.HasMatchNamespaces)
+}
