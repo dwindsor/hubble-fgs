@@ -21,6 +21,7 @@ Depending on your setup, changes listed here might require a manual intervention
 
 * The one-way latency configuration for TCP and UDP has been removed.
 * Deprecated FIM matchLinuxCapabilities selector in favor of matchCapabilities.
+* Deprecated FIM matchLinuxNamespaces selector in favor of matchNamespaces.
 
 ### Events (protobuf API)
 
