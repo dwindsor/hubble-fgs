@@ -2898,10 +2898,13 @@ func testFileReadSelectorCapNs(gt *testing.T, t *testing.T) {
 		// so they are in the host mnt namespace and with CAP_SYS_ADMIN
 		Selectors: []v1alpha1.FileSelector{
 			{
-				MatchNamespaces: []v1alpha1.FileNamespaceSelector{
+				MatchNamespacesOSS: []v1alpha1.NamespaceSelector{
 					{
 						Namespace: "Mnt",
-						Filter:    "Host",
+						Operator:  "In",
+						Values: []string{
+							"host_ns",
+						},
 					},
 				},
 				MatchCapabilitiesOSS: []v1alpha1.CapabilitiesSelector{
