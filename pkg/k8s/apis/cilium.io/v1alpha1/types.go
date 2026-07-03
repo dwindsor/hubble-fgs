@@ -340,7 +340,9 @@ type FileSelector struct {
 	// A list of operation filters.
 	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:deprecatedversion:warning="matchLinuxNamespaces is deprecated. Use matchNamespaces instead."
 	// A list of namespaces and IDs
+	// Deprecated: Use matchNamespaces instead.
 	MatchNamespaces []FileNamespaceSelector `json:"matchLinuxNamespaces,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of namespaces and IDs

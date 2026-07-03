@@ -1772,7 +1772,9 @@ spec:
                             type: object
                           type: array
                         matchLinuxNamespaces:
-                          description: A list of namespaces and IDs
+                          description: |-
+                            A list of namespaces and IDs
+                            Deprecated: Use matchNamespaces instead.
                           items:
                             properties:
                               filter:
