@@ -268,21 +268,6 @@ func getEnabledCRDs() map[string]struct{} {
 		crds[v1alpha1.PIName] = struct{}{}
 	}
 
-	if enterpriseOption.Config.EnablePolicyK8sWatcher {
-		// NB(anna): Check this option for OSS compatibility, but it's not
-		// recommended to use it to disable watching TracingPolicy in EE.
-		// Use --enable-policy-k8swatcher=false instead.
-		//
-		// The cluster-scoped and namespaced TracingPolicy CRDs are no longer
-		// gated here: each reconciler waits on its own CRD via
-		// RegisterControllerWhenCRDReady (see initK8s), so a missing namespaced
-		// CRD must not block the cluster-scoped reconciler (and vice versa).
-		if enterpriseOption.Config.EnableSandboxPolicies {
-			crds[enterpriseClient.SandboxPolicyCRD.ResName] = struct{}{}
-			crds[enterpriseClient.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
-		}
-	}
-
 	crds[enterpriseClient.AlertRuleCRD.ResName] = struct{}{}
 	crds[enterpriseClient.TetragonNetworkPolicyCRD.ResName] = struct{}{}
 	crds[enterpriseClient.TetragonNetworkPolicyNamespacedCRD.ResName] = struct{}{}

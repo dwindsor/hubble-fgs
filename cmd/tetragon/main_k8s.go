@@ -48,16 +48,14 @@ func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
 
 		log.Info("Enabling policy watcher")
 
-		// add informers for all resources
+		// Register CRD reconcilers. Each gates on its own CRD via
+		// RegisterControllerWhenCRDReady, so cluster-scoped and namespaced
+		// variants never block one another.
 		if enterpriseOption.Config.EnablePolicyK8sWatcher {
 			// NB(anna): Check this option for OSS compatibility, but it's not
 			// recommended to use it to disable watching TracingPolicy in EE.
 			// Use --enable-policy-k8swatcher=false instead.
 			if option.Config.EnableTracingPolicyCRD {
-				// Cluster-scoped and namespaced TracingPolicy reconcilers each
-				// gate on their own CRD via RegisterControllerWhenCRDReady, so a
-				// missing namespaced CRD no longer blocks the cluster-scoped
-				// reconciler (and vice versa).
 				if err = crdwatcher.RegisterTracingPolicyReconciler(controllerManager, observer.GetSensorManager()); err != nil {
 					return err
 				}
@@ -66,8 +64,10 @@ func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
 				}
 			}
 			if enterpriseOption.Config.EnableSandboxPolicies {
-				err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, kubernetesManager.GetControllerManager(), observer.GetSensorManager())
-				if err != nil {
+				if err = enterpriseWatcher.RegisterSandboxPolicyReconciler(controllerManager, observer.GetSensorManager()); err != nil {
+					return err
+				}
+				if err = enterpriseWatcher.RegisterSandboxPolicyNamespacedReconciler(controllerManager, observer.GetSensorManager()); err != nil {
 					return err
 				}
 			}
