@@ -412,17 +412,16 @@ func (k *observerUprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 }
 
 type addUprobeIn struct {
-	sensorPath        string
 	policyName        string
-	useMulti          bool
 	celExprs          *selectors.CelExprFunctions
 	selectorStatsBase uint32
 }
 
 type uprobeHas struct {
-	sleepableOffload bool
-	sleepablePreload bool
-	substring        bool
+	sleepableOffload     bool
+	sleepablePreload     bool
+	substring            bool
+	sleepablePreloadSize int
 }
 
 func validateMultiUprobeConsistency(uprobes []v1alpha1.UProbeSpec) error {
@@ -471,11 +470,161 @@ func validateMultiUprobeConsistency(uprobes []v1alpha1.UProbeSpec) error {
 	return nil
 }
 
+type uprobeConfigState struct {
+	symbols       int
+	offsets       int
+	addrs         int
+	refCtrOffsets int
+
+	selectors kprobeSelectors
+
+	message string
+	tags    []string
+
+	eventConfig       *api.EventConfig
+	setRetprobe       bool
+	argPrinters       []argPrinter
+	argReturnPrinters []argPrinter
+
+	policyName string
+}
+
+type uprobeArgConfig struct {
+	argTypes [api.EventConfigMaxArgs]int32
+	argMeta  [api.EventConfigMaxArgs]uint32
+	argIdx   [api.EventConfigMaxArgs]int32
+
+	argPrinters []argPrinter
+
+	regArg     [api.EventConfigMaxRegArgs]api.ConfigRegArg
+	allBTFArgs [api.EventConfigMaxArgs][api.MaxBTFArgDepth]api.ConfigBTFArg
+
+	argRetprobe    *v1alpha1.KProbeArg
+	argRetprobeIdx int
+	preload        bool
+}
+
+func validateUprobeSpec(spec *v1alpha1.UProbeSpec, state *uprobeConfigState) error {
+	state.symbols = len(spec.Symbols)
+	state.offsets = len(spec.Offsets)
+	state.addrs = len(spec.Addrs)
+	state.refCtrOffsets = len(spec.RefCtrOffsets)
+
+	numAddressMethods := 0
+	if state.symbols != 0 {
+		numAddressMethods++
+	}
+	if state.offsets != 0 {
+		numAddressMethods++
+	}
+	if state.addrs != 0 {
+		numAddressMethods++
+	}
+
+	if numAddressMethods != 1 {
+		return errors.New("uprobe needs exactly one of either Symbols, Offsets or Addrs defined")
+	}
+
+	if state.refCtrOffsets != 0 {
+		if state.symbols != 0 && state.symbols != state.refCtrOffsets {
+			return fmt.Errorf("RefCtrOffsets(%d) has different dimension than Symbols(%d)",
+				state.refCtrOffsets, state.symbols)
+		}
+		if state.offsets != 0 && state.offsets != state.refCtrOffsets {
+			return fmt.Errorf("RefCtrOffsets(%d) has different dimension than Offsets(%d)",
+				state.refCtrOffsets, state.offsets)
+		}
+	}
+
+	return nil
+}
+
+func validateUprobeFeatures(spec *v1alpha1.UProbeSpec, has *uprobeHas) error {
+	if selectors.HasOverride(spec.Selectors) {
+		if !bpf.HasUprobeRegsChange() {
+			return errors.New("can't use override regs action, no kernel support")
+		}
+		has.sleepableOffload = true
+	}
+
+	if selectors.HasOperator(spec.Selectors, selectors.SelectorOpSubString) {
+		if !bpf.HasKfunc("bpf_strnstr") {
+			return errors.New("can't use SubString operator, no kernel support")
+		}
+		has.substring = true
+	}
+
+	if selectors.HasOperator(spec.Selectors, selectors.SelectorOpSubStringIgnCase) {
+		if !bpf.HasKfunc("bpf_strncasestr") {
+			return errors.New("can't use SubStringIgnCase operator, no kernel support")
+		}
+		has.substring = true
+	}
+
+	return nil
+}
+
+func initUprobeSelectors(spec *v1alpha1.UProbeSpec, in *addUprobeIn, state *uprobeConfigState) error {
+	entry, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
+		Selectors: spec.Selectors,
+		Args:      spec.Args,
+		Data:      spec.Data,
+		IsUprobe:  true,
+		CelExprs:  in.celExprs,
+	})
+	if err != nil {
+		return err
+	}
+
+	state.selectors = kprobeSelectors{
+		entry: entry,
+	}
+
+	var retrn *selectors.KernelSelectorState
+	if spec.Return {
+		retrn, err = selectors.InitKernelReturnSelectorState(spec.Selectors, spec.ReturnArg,
+			nil, nil, nil)
+		if err != nil {
+			// we rely on addUprobe cleanup for entry selector
+			return err
+		}
+	}
+
+	state.selectors.retrn = retrn
+	return nil
+}
+
+func cleanupUprobeEntries(ids []idtable.EntryID) error {
+	var errs error
+
+	for _, id := range ids {
+		uprobeEntry, err := genericUprobeTableGet(id)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+
+		if err = selectors.CleanupKernelSelectorState(uprobeEntry.loadArgs.selectors.entry); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err = selectors.CleanupKernelSelectorState(uprobeEntry.loadArgs.selectors.retrn); err != nil {
+			errs = errors.Join(errs, err)
+		}
+
+		_, err = uprobeTable.RemoveEntry(id)
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+
+	return errs
+}
+
 func createGenericUprobeSensor(
 	spec *v1alpha1.TracingPolicySpec,
 	name string,
 	polInfo *policyInfo,
-) (*sensors.Sensor, error) {
+) (retSensor *sensors.Sensor, retErr error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var ids []idtable.EntryID
@@ -488,24 +637,32 @@ func createGenericUprobeSensor(
 	// - there's support detected
 	useMulti := !polInfo.specOpts.DisableUprobeMulti && bpf.HasUprobeMulti()
 
+	// user sleepable_preload override
+	has.sleepablePreloadSize = polInfo.specOpts.SleepablePreloadSize
+
 	if useMulti {
 		// if we are using multi-uprobe, CEL expressions are shared across all uprobes
 		celExprs = &selectors.CelExprFunctions{}
 	}
 
 	in := addUprobeIn{
-		sensorPath: name,
 		policyName: polInfo.name,
-
-		useMulti: useMulti,
-		celExprs: celExprs,
+		celExprs:   celExprs,
 	}
 
-	if in.useMulti {
+	if useMulti {
 		if err = validateMultiUprobeConsistency(spec.UProbes); err != nil {
 			return nil, err
 		}
 	}
+
+	defer func() {
+		if retErr != nil {
+			if cleanupErr := cleanupUprobeEntries(ids); cleanupErr != nil {
+				retErr = errors.Join(retErr, cleanupErr)
+			}
+		}
+	}()
 
 	var selectorStatsBase uint32
 	for _, uprobe := range spec.UProbes {
@@ -522,7 +679,7 @@ func createGenericUprobeSensor(
 		}
 	}
 
-	if in.useMulti {
+	if useMulti {
 		progs, maps, err = createMultiUprobeSensor(polInfo, name, ids, has)
 	} else {
 		progs, maps, err = createSingleUprobeSensor(polInfo, ids, has)
@@ -548,134 +705,54 @@ func createGenericUprobeSensor(
 		Policy:    polInfo.name,
 		Namespace: polInfo.namespace,
 		DestroyHook: func() error {
-			var errs error
-
-			for _, id := range ids {
-				uprobeEntry, err := genericUprobeTableGet(id)
-				if err != nil {
-					errs = errors.Join(errs, err)
-					continue
-				}
-
-				if err = selectors.CleanupKernelSelectorState(uprobeEntry.loadArgs.selectors.entry); err != nil {
-					errs = errors.Join(errs, err)
-				}
-
-				_, err = uprobeTable.RemoveEntry(id)
-				if err != nil {
-					errs = errors.Join(errs, err)
-				}
-			}
-			return errs
+			return cleanupUprobeEntries(ids)
 		},
 	}, nil
 }
 
-func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn, has *uprobeHas) ([]idtable.EntryID, error) {
-	var argRetprobe *v1alpha1.KProbeArg
-	var argRetprobeIdx int
-	var setRetprobe bool
+func initUprobeMisc(spec *v1alpha1.UProbeSpec, state *uprobeConfigState) error {
+	var err error
 
-	symbols := len(spec.Symbols)
-	offsets := len(spec.Offsets)
-	addrs := len(spec.Addrs)
-	refCtrOffsets := len(spec.RefCtrOffsets)
-
-	// uprobe definition spec sanity check
-	numAddressMethods := 0
-	if symbols != 0 {
-		numAddressMethods++
-	}
-	if offsets != 0 {
-		numAddressMethods++
-	}
-	if addrs != 0 {
-		numAddressMethods++
-	}
-
-	if numAddressMethods != 1 {
-		return nil, errors.New("uprobe needs exactly one of either Symbols, Offsets or Addrs defined")
-	}
-
-	if refCtrOffsets != 0 {
-		if symbols != 0 && symbols != refCtrOffsets {
-			return nil, fmt.Errorf("RefCtrOffsets(%d) has different dimension than Symbols(%d)",
-				refCtrOffsets, symbols)
-		}
-		if offsets != 0 && offsets != refCtrOffsets {
-			return nil, fmt.Errorf("RefCtrOffsets(%d) has different dimension than Offsets(%d)",
-				refCtrOffsets, offsets)
-		}
-	}
-
-	if selectors.HasOverride(spec.Selectors) {
-		if !bpf.HasUprobeRegsChange() {
-			return nil, errors.New("can't use override regs action, no kernel support")
-		}
-		has.sleepableOffload = true
-	}
-
-	if selectors.HasOperator(spec.Selectors, selectors.SelectorOpSubString) {
-		if !bpf.HasKfunc("bpf_strnstr") {
-			return nil, errors.New("can't use SubString operator, no kernel support")
-		}
-		has.substring = true
-	}
-
-	if selectors.HasOperator(spec.Selectors, selectors.SelectorOpSubStringIgnCase) {
-		if !bpf.HasKfunc("bpf_strncasestr") {
-			return nil, errors.New("can't use SubStringIgnCase operator, no kernel support")
-		}
-		has.substring = true
-	}
-
-	// Parse Filters into kernel filter logic
-	uprobeSelectorState, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
-		Selectors: spec.Selectors,
-		Args:      spec.Args,
-		Data:      spec.Data,
-		IsUprobe:  true,
-		CelExprs:  in.celExprs,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var uprobeRetSelectorState *selectors.KernelSelectorState
-	if spec.Return {
-		uprobeRetSelectorState, err = selectors.InitKernelReturnSelectorState(spec.Selectors, spec.ReturnArg,
-			nil, nil, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	msgField, err := getPolicyMessage(spec.Message)
+	state.message, err = getPolicyMessage(spec.Message)
 	if errors.Is(err, ErrMsgSyntaxShort) || errors.Is(err, ErrMsgSyntaxEscape) {
-		return nil, err
+		return err
 	} else if errors.Is(err, ErrMsgSyntaxLong) {
 		logger.GetLogger().Warn(fmt.Sprintf("TracingPolicy 'message' field too long, truncated to %d characters", TpMaxMessageLen),
-			"policy-name", in.policyName)
+			"policy-name", state.policyName)
 	}
 
-	var (
-		argTypes [api.EventConfigMaxArgs]int32
-		argMeta  [api.EventConfigMaxArgs]uint32
-		argIdx   [api.EventConfigMaxArgs]int32
+	state.tags, err = GetPolicyTags(spec.Tags)
+	return err
+}
 
-		argPrinters       []argPrinter
-		argReturnPrinters []argPrinter
-
-		regArg [api.EventConfigMaxRegArgs]api.ConfigRegArg
-	)
-
-	tagsField, err := GetPolicyTags(spec.Tags)
+func initUprobeArgs(spec *v1alpha1.UProbeSpec, has *uprobeHas, in *addUprobeIn, state *uprobeConfigState) error {
+	argCfg, err := getUprobeArgConfig(spec, has)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var allBTFArgs [api.EventConfigMaxArgs][api.MaxBTFArgDepth]api.ConfigBTFArg
-	var preload bool
+	eventConfig := initEventConfig()
+	eventConfig.SelStatsBase = in.selectorStatsBase
+	eventConfig.ArgType = argCfg.argTypes
+	eventConfig.ArgMeta = argCfg.argMeta
+	eventConfig.ArgIndex = argCfg.argIdx
+	eventConfig.BTFArg = argCfg.allBTFArgs
+	eventConfig.RegArg = argCfg.regArg
+
+	setRetprobe, argReturnPrinters, err := getUprobeReturnArg(spec, argCfg, eventConfig)
+	if err != nil {
+		return err
+	}
+
+	state.eventConfig = eventConfig
+	state.setRetprobe = setRetprobe
+	state.argPrinters = argCfg.argPrinters
+	state.argReturnPrinters = argReturnPrinters
+	return nil
+}
+
+func getUprobeArgConfig(spec *v1alpha1.UProbeSpec, has *uprobeHas) (uprobeArgConfig, error) {
+	var cfg uprobeArgConfig
 
 	addArg := func(i int, a *v1alpha1.KProbeArg, data bool) error {
 		var preloadArg bool
@@ -686,7 +763,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 			if hasPtRegsSource(a) {
 				var ok bool
 
-				regArg[i].Offset, regArg[i].Size, ok = asm.RegOffsetSize(a.Resolve)
+				cfg.regArg[i].Offset, cfg.regArg[i].Size, ok = asm.RegOffsetSize(a.Resolve)
 				if !ok {
 					return fmt.Errorf("error: Failed to retrieve register argument '%s'", a.Resolve)
 				}
@@ -697,7 +774,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 					if !bpf.HasKfunc("bpf_copy_from_user_str") {
 						return fmt.Errorf("can't preload string for argument %d", i)
 					}
-					if preload {
+					if cfg.preload {
 						return errors.New("error: can't preload more than one argument")
 					}
 					preloadArg = true
@@ -710,7 +787,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 				if err != nil {
 					return fmt.Errorf("can't resolve current_task source: %s", a.Resolve)
 				}
-				allBTFArgs[i] = btfArg
+				cfg.allBTFArgs[i] = btfArg
 				argType = findTypeFromBTFType(a, lastBTFType)
 			}
 		} else {
@@ -721,7 +798,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 					return err
 				}
 
-				allBTFArgs[i] = btfArg
+				cfg.allBTFArgs[i] = btfArg
 				argType = findTypeFromBTFType(a, lastBTFType)
 			}
 
@@ -729,16 +806,16 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 				if !bpf.HasKfunc("bpf_copy_from_user_str") {
 					return fmt.Errorf("can't preload string for argument %d", i)
 				}
-				if preload {
+				if cfg.preload {
 					return errors.New("error: can't preload more than one argument")
 				}
 				preloadArg = true
 			}
 		}
 
-		preload = preload || preloadArg
+		cfg.preload = cfg.preload || preloadArg
 
-		has.sleepablePreload = has.sleepablePreload || preload
+		has.sleepablePreload = has.sleepablePreload || cfg.preload
 
 		if argType == gt.GenericInvalidType {
 			return fmt.Errorf("Arg(%d) type '%s' unsupported", i, a.Type)
@@ -748,19 +825,19 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 			return err
 		}
 		if argReturnCopy(argMValue) {
-			argRetprobe = &spec.Args[i]
-			argRetprobeIdx = i
+			cfg.argRetprobe = &spec.Args[i]
+			cfg.argRetprobeIdx = i
 		}
 		if a.Index > 4 {
 			return fmt.Errorf("error add arg: ArgType %s Index %d out of bounds",
 				a.Type, int(a.Index))
 		}
 
-		argTypes[i] = int32(argType)
-		argMeta[i] = uint32(argMValue)
-		argIdx[i] = int32(a.Index)
+		cfg.argTypes[i] = int32(argType)
+		cfg.argMeta[i] = uint32(argMValue)
+		cfg.argIdx[i] = int32(a.Index)
 
-		argPrinters = append(argPrinters, argPrinter{index: i, ty: argType, data: data})
+		cfg.argPrinters = append(cfg.argPrinters, argPrinter{index: i, ty: argType, data: data})
 		return nil
 	}
 
@@ -769,10 +846,10 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 	// Parse Arguments
 	for _, arg := range spec.Args {
 		if arg.Source != "" {
-			return nil, fmt.Errorf("standard argument can't have source set '%s'", arg.Source)
+			return cfg, fmt.Errorf("standard argument can't have source set '%s'", arg.Source)
 		}
 		if err := addArg(i, &arg, false); err != nil {
-			return nil, err
+			return cfg, err
 		}
 		i = i + 1
 	}
@@ -780,19 +857,22 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 	// Parse Data
 	for _, data := range spec.Data {
 		if !hasPtRegsSource(&data) && !hasCurrentTaskSource(&data) {
-			return nil, fmt.Errorf("data argument has wrong source '%s'", data.Source)
+			return cfg, fmt.Errorf("data argument has wrong source '%s'", data.Source)
 		}
 		if data.Resolve == "" {
-			return nil, errors.New("data argument missing 'resolve' setup")
+			return cfg, errors.New("data argument missing 'resolve' setup")
 		}
 		if err := addArg(i, &data, true); err != nil {
-			return nil, err
+			return cfg, err
 		}
 		i = i + 1
 	}
 
-	eventConfig := initEventConfig()
-	eventConfig.SelStatsBase = in.selectorStatsBase
+	return cfg, nil
+}
+
+func getUprobeReturnArg(spec *v1alpha1.UProbeSpec, argCfg uprobeArgConfig, eventConfig *api.EventConfig) (bool, []argPrinter, error) {
+	var argReturnPrinters []argPrinter
 
 	// Parse ReturnArg, we have two types of return arg parsing. We
 	// support populating an uprobe buffer from uretprobe hooks. This
@@ -805,14 +885,14 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 	// argReturnPrinters tell golang printer piece how to print the event.
 	if spec.Return {
 		if spec.ReturnArg == nil {
-			return nil, errors.New("ReturnArg not specified with Return=true")
+			return false, nil, errors.New("ReturnArg not specified with Return=true")
 		}
 		argType := gt.GenericTypeFromString(spec.ReturnArg.Type)
 		if argType == gt.GenericInvalidType {
 			if spec.ReturnArg.Type == "" {
-				return nil, errors.New("ReturnArg not specified with Return=true")
+				return false, nil, errors.New("ReturnArg not specified with Return=true")
 			}
-			return nil, fmt.Errorf("ReturnArg type '%s' unsupported", spec.ReturnArg.Type)
+			return false, nil, fmt.Errorf("ReturnArg type '%s' unsupported", spec.ReturnArg.Type)
 		}
 		eventConfig.ArgReturn = int32(argType)
 		argP := argPrinter{index: api.ReturnArgIndex, ty: argType}
@@ -821,51 +901,47 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		eventConfig.ArgReturn = int32(gt.GenericUnsetType)
 	}
 
-	setRetprobe = spec.Return
-	if argRetprobe != nil {
+	setRetprobe := spec.Return
+	if argCfg.argRetprobe != nil {
 		setRetprobe = true
 
-		argType := gt.GenericTypeFromString(argRetprobe.Type)
+		argType := gt.GenericTypeFromString(argCfg.argRetprobe.Type)
 		eventConfig.ArgReturnCopy = int32(argType)
 
-		argP := argPrinter{index: argRetprobeIdx, ty: argType, label: argRetprobe.Label}
+		argP := argPrinter{index: argCfg.argRetprobeIdx, ty: argType, label: argCfg.argRetprobe.Label}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
 		eventConfig.ArgReturnCopy = int32(gt.GenericUnsetType)
 	}
 
+	return setRetprobe, argReturnPrinters, nil
+}
+
+func addUprobeEntries(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, state *uprobeConfigState) ([]idtable.EntryID, error) {
 	addUprobeEntry := func(sym string, offset uint64, idx int) error {
 		var refCtrOffset uint64
+		var err error
 
-		if refCtrOffsets != 0 {
+		if state.refCtrOffsets != 0 {
 			refCtrOffset = spec.RefCtrOffsets[idx]
 		}
 
-		eventConfig.ArgType = argTypes
-		eventConfig.ArgMeta = argMeta
-		eventConfig.ArgIndex = argIdx
-		eventConfig.BTFArg = allBTFArgs
-		eventConfig.RegArg = regArg
-
 		uprobeEntry := &genericUprobe{
 			loadArgs: uprobeLoadArgs{
-				retprobe: setRetprobe,
-				config:   eventConfig,
-				selectors: kprobeSelectors{
-					entry: uprobeSelectorState,
-					retrn: uprobeRetSelectorState,
-				},
+				retprobe:  state.setRetprobe,
+				config:    state.eventConfig,
+				selectors: state.selectors,
 			},
 			tableId:           idtable.UninitializedEntryID,
 			path:              spec.Path,
 			symbol:            sym,
 			address:           offset,
 			refCtrOffset:      refCtrOffset,
-			policyName:        in.policyName,
-			message:           msgField,
-			argPrinters:       argPrinters,
-			argReturnPrinters: argReturnPrinters,
-			tags:              tagsField,
+			policyName:        state.policyName,
+			message:           state.message,
+			argPrinters:       state.argPrinters,
+			argReturnPrinters: state.argReturnPrinters,
+			tags:              state.tags,
 			pendingEvents:     nil,
 		}
 
@@ -877,7 +953,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		uprobeTable.AddEntry(uprobeEntry)
 		id := uprobeEntry.tableId
 
-		eventConfig.FuncId = uint32(id.ID)
+		state.eventConfig.FuncId = uint32(id.ID)
 
 		ids = append(ids, id)
 		return nil
@@ -885,54 +961,54 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 
 	f, err := elf.OpenSafeELFFile(spec.Path)
 	if err != nil {
-		return nil, err
+		return ids, err
 	}
 	defer f.Close()
 
-	if symbols != 0 && f.IsStrippedPureGoBinary() {
+	if state.symbols != 0 && f.IsStrippedPureGoBinary() {
 		tbl, err := f.Pclntab()
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse pclntab: %w", err)
+			return ids, fmt.Errorf("failed to parse pclntab: %w", err)
 		}
 		for idx, sym := range spec.Symbols {
 			if err := checkSymbol(sym); err != nil {
-				return nil, fmt.Errorf("failed to parse symbol: %w", err)
+				return ids, fmt.Errorf("failed to parse symbol: %w", err)
 			}
 			off, ok := tbl.OffsetByName(sym)
 			if !ok {
-				return nil, fmt.Errorf("failed to resolve symbol: %w", err)
+				return ids, fmt.Errorf("failed to resolve symbol: %w", err)
 			}
 			err = addUprobeEntry(sym, off, idx)
 			if err != nil {
-				return nil, err
+				return ids, err
 			}
 		}
-	} else if symbols != 0 {
+	} else if state.symbols != 0 {
 		for idx, sym := range spec.Symbols {
 			if err := checkSymbol(sym); err != nil {
-				return nil, fmt.Errorf("failed to parse symbol: %w", err)
+				return ids, fmt.Errorf("failed to parse symbol: %w", err)
 			}
 			err = addUprobeEntry(sym, 0, idx)
 			if err != nil {
-				return nil, err
+				return ids, err
 			}
 		}
-	} else if offsets != 0 {
+	} else if state.offsets != 0 {
 		for idx, off := range spec.Offsets {
 			err = addUprobeEntry("", off, idx)
 			if err != nil {
-				return nil, err
+				return ids, err
 			}
 		}
-	} else if addrs != 0 {
+	} else if state.addrs != 0 {
 		for idx, addr := range spec.Addrs {
 			off, err := f.OffsetFromAddr(addr)
 			if err != nil {
-				return nil, err
+				return ids, err
 			}
 			err = addUprobeEntry("", off, idx)
 			if err != nil {
-				return nil, err
+				return ids, err
 			}
 		}
 	}
@@ -940,8 +1016,60 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 	return ids, nil
 }
 
+func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn, has *uprobeHas) (retIDs []idtable.EntryID, retErr error) {
+	state := uprobeConfigState{
+		policyName: in.policyName,
+	}
+
+	defer func() {
+		if retErr != nil {
+			if cleanupErr := selectors.CleanupKernelSelectorState(state.selectors.entry); cleanupErr != nil {
+				retErr = errors.Join(retErr, cleanupErr)
+			}
+			if cleanupErr := selectors.CleanupKernelSelectorState(state.selectors.retrn); cleanupErr != nil {
+				retErr = errors.Join(retErr, cleanupErr)
+			}
+		}
+	}()
+
+	if err := validateUprobeSpec(spec, &state); err != nil {
+		return ids, err
+	}
+
+	if err := validateUprobeFeatures(spec, has); err != nil {
+		return ids, err
+	}
+
+	if err := initUprobeSelectors(spec, in, &state); err != nil {
+		return ids, err
+	}
+
+	if err := initUprobeMisc(spec, &state); err != nil {
+		return ids, err
+	}
+
+	if err := initUprobeArgs(spec, has, in, &state); err != nil {
+		return ids, err
+	}
+
+	return addUprobeEntries(spec, ids, &state)
+}
+
 func multiUprobePinPath(sensorPath string) string {
 	return sensors.PathJoin(sensorPath, "multi_uprobe")
+}
+
+func getSleepablePreloadMap(userSize int, load *program.Program) *program.Map {
+	var m *program.Map
+
+	if userSize != 0 {
+		m = program.MapBuilderProgram("sleepable_preload", load)
+		m.SetMaxEntries(userSize)
+	} else {
+		m = program.MapShared("sleepable_preload", load)
+		m.SetMaxEntries(sleepablePreloadMaxEntries)
+	}
+	return m
 }
 
 func createMultiUprobeSensor(polInfo *policyInfo, sensorPath string, multiIDs []idtable.EntryID, has uprobeHas) ([]*program.Program, []*program.Map, error) {
@@ -1004,8 +1132,7 @@ func createMultiUprobeSensor(polInfo *policyInfo, sensorPath string, multiIDs []
 	}
 
 	if has.sleepablePreload {
-		sleepablePreloadMap := program.MapBuilderProgram("sleepable_preload", load)
-		sleepablePreloadMap.SetMaxEntries(sleepablePreloadMaxEntries)
+		sleepablePreloadMap := getSleepablePreloadMap(has.sleepablePreloadSize, load)
 		maps = append(maps, sleepablePreloadMap)
 	}
 
@@ -1115,8 +1242,7 @@ func createUprobeSensorFromEntry(polInfo *policyInfo, uprobeEntry *genericUprobe
 	}
 
 	if has.sleepablePreload {
-		sleepablePreloadMap := program.MapBuilderProgram("sleepable_preload", load)
-		sleepablePreloadMap.SetMaxEntries(sleepablePreloadMaxEntries)
+		sleepablePreloadMap := getSleepablePreloadMap(has.sleepablePreloadSize, load)
 		maps = append(maps, sleepablePreloadMap)
 	}
 

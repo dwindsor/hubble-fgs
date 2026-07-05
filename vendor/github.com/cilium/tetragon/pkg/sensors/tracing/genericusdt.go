@@ -215,7 +215,7 @@ func createMultiUsdtSensor(
 	}
 
 	if has.sleepablePreload {
-		sleepablePreloadMap := program.MapBuilderProgram("sleepable_preload", load)
+		sleepablePreloadMap := program.MapShared("sleepable_preload", load)
 		sleepablePreloadMap.SetMaxEntries(sleepablePreloadMaxEntries)
 		maps = append(maps, sleepablePreloadMap)
 	}
@@ -286,7 +286,7 @@ func createUsdtSensorFromEntry(polInfo *policyInfo, usdtEntry *genericUsdt,
 	}
 
 	if has.sleepablePreload {
-		sleepablePreloadMap := program.MapBuilderProgram("sleepable_preload", load)
+		sleepablePreloadMap := program.MapShared("sleepable_preload", load)
 		sleepablePreloadMap.SetMaxEntries(sleepablePreloadMaxEntries)
 		maps = append(maps, sleepablePreloadMap)
 	}
@@ -324,16 +324,24 @@ func addUsdt(spec *v1alpha1.UsdtSpec, in *addUsdtIn, ids []idtable.EntryID, has 
 			"policy-name", in.policyName)
 	}
 
-	var (
-		argPrinters []argPrinter
-		found       bool
-	)
+	// Parse Filters into kernel filter logic
+	state, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
+		Selectors: spec.Selectors,
+		Args:      spec.Args,
+		Data:      []v1alpha1.KProbeArg{},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var found bool
 
 	for _, target := range targets {
 		if spec.Provider != target.Spec.Provider || spec.Name != target.Spec.Name {
 			continue
 		}
 
+		var argPrinters []argPrinter
 		config := &api.EventConfig{}
 		config.SelStatsBase = in.selectorStatsBase
 		found = true
@@ -341,16 +349,6 @@ func addUsdt(spec *v1alpha1.UsdtSpec, in *addUsdtIn, ids []idtable.EntryID, has 
 		if len(spec.Args) > api.EventConfigMaxArgs {
 			return nil, fmt.Errorf("failed to configure usdt '%s/%s', too many arguments (%d) allowed %d",
 				spec.Provider, spec.Name, len(spec.Args), api.EventConfigMaxArgs)
-		}
-
-		// Parse Filters into kernel filter logic
-		state, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
-			Selectors: spec.Selectors,
-			Args:      spec.Args,
-			Data:      []v1alpha1.KProbeArg{},
-		})
-		if err != nil {
-			return nil, err
 		}
 
 		// Validate argument for set action
