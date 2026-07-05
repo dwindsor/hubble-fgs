@@ -36,6 +36,9 @@ type PolicyStory struct {
 }
 
 type policyRepositoryImpl struct {
+	// mu guards all fields below: the repository is mutated concurrently by
+	// the network-policy reconciler and the gRPC NetworkPolicyService.
+	mu            sync.RWMutex
 	policyLibrary map[string]datapathPolicyID
 	idLibrary     map[datapathPolicyID]*PolicyStory
 	policyId      datapathPolicyID
@@ -82,7 +85,9 @@ func (r *policyRepositoryImpl) generateRuleId() datapathRuleID {
 	return r.ruleId
 }
 
-func (r *policyRepositoryImpl) Get(name string) *PolicyStory {
+// get is the lock-free lookup shared by the public accessors; callers must
+// hold r.mu.
+func (r *policyRepositoryImpl) get(name string) *PolicyStory {
 	id, ok := r.policyLibrary[name]
 	if !ok {
 		return nil
@@ -90,19 +95,34 @@ func (r *policyRepositoryImpl) Get(name string) *PolicyStory {
 	return r.idLibrary[id]
 }
 
+func (r *policyRepositoryImpl) Get(name string) *PolicyStory {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.get(name)
+}
+
 func (r *policyRepositoryImpl) Delete(name string) {
-	id := r.policyLibrary[name]
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	id, ok := r.policyLibrary[name]
+	if !ok {
+		return
+	}
 	delete(r.policyLibrary, name)
 	delete(r.idLibrary, id)
 }
 
 func (r *policyRepositoryImpl) Add(p *PolicyStory) {
-	_, ok := r.policyLibrary[p.Title]
-	if !ok {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if id, ok := r.policyLibrary[p.Title]; ok {
+		// Upsert: replace the story under its existing datapath ID.
+		p.id = id
+	} else {
 		p.id = r.generateId()
-		r.idLibrary[p.id] = p
-		r.policyLibrary[p.Title] = p.id
 	}
+	r.idLibrary[p.id] = p
+	r.policyLibrary[p.Title] = p.id
 	p.rules = make(map[types.TetragonPolicyUniqueID]datapathRuleID)
 	uniqueDescriptions := set.Set[string]{}
 	for _, policy := range p.IrPolicy {
@@ -122,6 +142,8 @@ func (r *policyRepositoryImpl) Add(p *PolicyStory) {
 }
 
 func (r *policyRepositoryImpl) GetId(name string) (uint64, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	id, ok := r.policyLibrary[name]
 	if !ok {
 		return uint64(0), ok
@@ -130,7 +152,9 @@ func (r *policyRepositoryImpl) GetId(name string) (uint64, bool) {
 }
 
 func (r *policyRepositoryImpl) GetRuleId(ruleId types.TetragonPolicyUniqueID) (uint64, bool) {
-	p := r.Get(ruleId.PolicyName)
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	p := r.get(ruleId.PolicyName)
 	if p == nil {
 		return uint64(0), false
 	}
@@ -142,6 +166,8 @@ func (r *policyRepositoryImpl) GetRuleId(ruleId types.TetragonPolicyUniqueID) (u
 }
 
 func (r *policyRepositoryImpl) GetName(id uint64) (string, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	p, ok := r.idLibrary[datapathPolicyID(id)]
 	if !ok {
 		return "", ok
@@ -150,7 +176,9 @@ func (r *policyRepositoryImpl) GetName(id uint64) (string, bool) {
 }
 
 func (r *policyRepositoryImpl) GetRule(policy string, id uint64, deny, allow bool) (string, bool) {
-	p := r.Get(policy)
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	p := r.get(policy)
 	if p == nil {
 		return "", false
 	}
@@ -174,6 +202,8 @@ func (r *policyRepositoryImpl) GetRule(policy string, id uint64, deny, allow boo
 }
 
 func (r *policyRepositoryImpl) GetList() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	names := []string{}
 	for _, story := range r.idLibrary {
 		names = append(names, story.Title)
