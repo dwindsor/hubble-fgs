@@ -80,6 +80,11 @@ func (sm *ServiceMap) AddOrUpdate(svc *ServiceInfo) {
 				delete(sm.byClusterIP, ip)
 			}
 		}
+		// Endpoints are tracked separately (from EndpointSlices); a service
+		// update must not wipe the previously discovered endpoints.
+		if svc.Endpoints == nil {
+			svc.Endpoints = old.Endpoints
+		}
 	}
 
 	// Add new mappings
@@ -142,7 +147,19 @@ func (sm *ServiceMap) UpdateEndpoints(namespace, name string, endpoints []Endpoi
 	if svc, ok := sm.byName[key]; ok {
 		svcExists = true
 		oldEndpoints = svc.Endpoints
-		svc.Endpoints = endpoints
+		// Publish a new ServiceInfo instead of mutating the shared one in place:
+		// getters return these pointers uncopied, so an in-place write races.
+		updated := *svc
+		updated.Endpoints = endpoints
+		sm.byName[key] = &updated
+		if updated.ClusterIP.IsValid() {
+			sm.byClusterIP[updated.ClusterIP] = &updated
+		}
+		for _, ip := range updated.ClusterIPs {
+			if ip.IsValid() {
+				sm.byClusterIP[ip] = &updated
+			}
+		}
 	}
 	sm.mu.Unlock()
 

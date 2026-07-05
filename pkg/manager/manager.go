@@ -120,7 +120,7 @@ func New(ctx context.Context) (KubernetesManager, error) {
 		// layer3 sensor maps (because it's used in the netpolstate
 		// handlers), it will be loaded in layer3 sensor PostLoadHook.
 		sm := servicemap.NewServiceMap(state)
-		if err := servicemap.AddServiceInformer(ctx, ossManager, sm); err != nil {
+		if err := servicemap.RegisterReconcilers(ossManager.Manager, sm); err != nil {
 			return nil, err
 		}
 		// Set the ServiceMap on the realized state for policy lookups
