@@ -596,7 +596,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	saveInitInfo()
 	updateServiceStarting()
 
-	err = initK8s(ctx, alertsManager)
+	err = initK8s(alertsManager)
 	if err != nil {
 		return err
 	}

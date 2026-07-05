@@ -27,7 +27,7 @@ import (
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 )
 
-func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
+func initK8s(alertsManager alerts.RuleManager) error {
 	var err error
 	kubernetesManager := manager.Get()
 
@@ -72,8 +72,7 @@ func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
 				}
 			}
 			if enterpriseOption.Config.EnableAlerts {
-				err = enterpriseWatcher.AddAlertRuleInformer(ctx, kubernetesManager.GetControllerManager(), alertsManager)
-				if err != nil {
+				if err = enterpriseWatcher.RegisterAlertRuleReconciler(controllerManager, alertsManager); err != nil {
 					return err
 				}
 			}

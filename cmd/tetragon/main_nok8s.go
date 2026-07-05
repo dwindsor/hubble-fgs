@@ -13,7 +13,7 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
-func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
+func initK8s(_ alerts.RuleManager) error {
 	return nil
 }
 

@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
@@ -264,10 +263,13 @@ func (fm *FakeManager) GetPodInfoOfNS(_ string) ([]v1alpha1.PodInfo, error) {
 func getEnabledCRDs() map[string]struct{} {
 	crds := make(map[string]struct{})
 
+	// Reconcilers self-gate on their own CRD via RegisterControllerWhenCRDReady
+	// (see initK8s), so TracingPolicy, SandboxPolicy, AlertRule and both
+	// TetragonNetworkPolicy CRDs are intentionally absent here. PodInfo remains
+	// because its field index needs the CRD present before its informer starts.
 	if option.Config.EnablePodInfo {
 		crds[v1alpha1.PIName] = struct{}{}
 	}
 
-	crds[enterpriseClient.AlertRuleCRD.ResName] = struct{}{}
 	return crds
 }
