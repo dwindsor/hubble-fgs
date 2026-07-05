@@ -269,7 +269,5 @@ func getEnabledCRDs() map[string]struct{} {
 	}
 
 	crds[enterpriseClient.AlertRuleCRD.ResName] = struct{}{}
-	crds[enterpriseClient.TetragonNetworkPolicyCRD.ResName] = struct{}{}
-	crds[enterpriseClient.TetragonNetworkPolicyNamespacedCRD.ResName] = struct{}{}
 	return crds
 }

@@ -78,8 +78,12 @@ func initK8s(ctx context.Context, alertsManager alerts.RuleManager) error {
 				}
 			}
 			if enterpriseOption.Config.EnableApplicationModel {
-				err = netpol.AddTetragonNetworkPolicyInformer(ctx, kubernetesManager.GetControllerManager())
-				if err != nil {
+				if err = netpol.RegisterTetragonNetworkPolicyReconciler(controllerManager); err != nil {
+					return err
+				}
+				// The namespaced reconciler is a placeholder until namespaced
+				// support is implemented.
+				if err = netpol.RegisterTetragonNetworkPolicyNamespacedReconciler(controllerManager); err != nil {
 					return err
 				}
 			}

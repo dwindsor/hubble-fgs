@@ -13,182 +13,39 @@
 package netpol
 
 import (
-	"context"
 	"fmt"
-
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
-	"github.com/cilium/tetragon/pkg/manager"
-	"k8s.io/client-go/tools/cache"
-
-	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/netpolstate"
-	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
-func addTetragonNetworkPolicy(obj any) {
-	var policies []*types.TetragonNetworkPolicy
-	var crd *v1alpha1.TetragonNetworkPolicy
-	var crdNS *v1alpha1.TetragonNetworkPolicyNamespaced
-	var err error
-
-	name := ""
-
-	if !option.Config.EnableTCP {
-		logger.GetLogger().Warn("addNetworkPolicy: network policies require --" + option.KeyEnableTCP)
+// applyPolicies and unapplyPolicies program the datapath via netpolstate. They
+// are package variables so Reconcile-level unit tests can stub out the
+// BPF-backed state without loading sensors.
+var (
+	applyPolicies = func(policies []*types.TetragonNetworkPolicy) error {
+		return netpolstate.Get().AddPolicies(policies)
 	}
-
-	switch np := obj.(type) {
-	case *v1alpha1.TetragonNetworkPolicy:
-		name = np.Name
-		crd = np
-		policies, err = ToTetragonNetworkPolicies(np)
-		if err != nil {
-			logger.GetLogger().Warn("addNetworkPolicy: failed to convert TetragonNetworkPolicy to Tetragon network policy", logfields.Error, err,
-				"network-policy-name", np.Name,
-				"network-policy-namespace", np.Namespace)
-			return
-		}
-
-	case *v1alpha1.TetragonNetworkPolicyNamespaced:
-		logger.GetLogger().Warn("addNetworkPolicy: namespaced policy currently not supported",
-			"obj", obj,
-			"obj-type", fmt.Sprintf("%T", obj))
-		return
-
-	default:
-		logger.GetLogger().Warn("addNetworkPolicy: invalid type", "obj", obj, "obj-type", fmt.Sprintf("%T", obj))
-		return
+	unapplyPolicies = func(policies []*types.TetragonNetworkPolicy) error {
+		return netpolstate.Get().RemovePolicies(policies)
 	}
+)
 
-	err = loadPolicy(&library.PolicyStory{
-		Title:       name,
-		CRDPolicy:   crd,
-		CRDNSPolicy: crdNS,
-		IrPolicy:    policies,
-	})
-
-	if err != nil {
-		logger.GetLogger().Warn("addNetworkPolicy: aborted", logfields.Error, err, "title", name, "network rules", len(policies), "network policy", policies)
-		return
-	}
-
-	logger.GetLogger().Info("addNetworkPolicy: completed successfully", "title", name, "network rules", len(policies), "network policy", policies)
-}
-
-func getCurrentNameAndAltName(resourceName string) (string, bool, string) {
+// getCurrentSlot returns the slot currently holding resourceName's policy, the
+// story there (nil if neither slot is populated), and the free slot to stage the
+// next version into. The repository double-buffers between the canonical name
+// and a "__"-prefixed alternate so an update loads the new version before
+// unloading the old one (gap-free update).
+func getCurrentSlot(resourceName string) (string, *library.PolicyStory, string) {
 	altName := "__" + resourceName
-	policy := library.GetRepository().Get(resourceName)
-	if policy != nil {
-		return resourceName, true, altName
+	if story := library.GetRepository().Get(resourceName); story != nil {
+		return resourceName, story, altName
 	}
-
-	policy = library.GetRepository().Get(altName)
-	if policy != nil {
-		return altName, true, resourceName
+	if story := library.GetRepository().Get(altName); story != nil {
+		return altName, story, resourceName
 	}
-
-	return resourceName, false, altName
-}
-
-func updateTetragonNetworkPolicy(_, newObj any) {
-	var newPolicy []*types.TetragonNetworkPolicy
-	var crd *v1alpha1.TetragonNetworkPolicy
-	var crdNS *v1alpha1.TetragonNetworkPolicyNamespaced
-	var err error
-
-	resourceName := ""
-
-	switch np := newObj.(type) {
-	case *v1alpha1.TetragonNetworkPolicy:
-		resourceName = np.Name
-		crd = np
-		newPolicy, err = ToTetragonNetworkPolicies(np)
-		if err != nil {
-			logger.GetLogger().Warn("updateNetworkPolicy: failed to convert TetragonNetworkPolicy to Tetragon network policy", logfields.Error, err,
-				"network-policy-name", np.Name,
-				"network-policy-namespace", np.Namespace)
-			return
-		}
-
-	case *v1alpha1.TetragonNetworkPolicyNamespaced:
-		logger.GetLogger().Warn("updateNetworkPolicy: namespaced policy currently not supported", "obj", newObj,
-			"obj-type", fmt.Sprintf("%T", newObj))
-		return
-
-	default:
-		logger.GetLogger().Warn("updateNetworkPolicy: invalid type", "obj", newObj,
-			"obj-type", fmt.Sprintf("%T", newObj))
-		return
-	}
-
-	oldName, ok, newName := getCurrentNameAndAltName(resourceName)
-	if !ok {
-		logger.GetLogger().Debug("updateNetworkPolicy: update but policy does not exist",
-			"new title", newName,
-			"old title", oldName,
-			"network rules", len(newPolicy))
-	}
-
-	// Policy update is slightly complicated to avoid having a gap
-	// in policy. First we create the updated policy and only then
-	// do we remove the previous policy.
-	library.GetRepository().Add(&library.PolicyStory{
-		Title:       newName,
-		CRDPolicy:   crd,
-		CRDNSPolicy: crdNS,
-		IrPolicy:    newPolicy,
-	})
-	err = netpolstate.Get().AddPolicies(newPolicy)
-	if err != nil {
-		logger.GetLogger().Warn("updateNetworkPolicy: failed to create new state in an update to Tetragon network policy command",
-			"new title", newName, "old title", oldName, "network rules", len(newPolicy))
-	}
-
-	if err := deleteNetworkPolicy(oldName); err != nil {
-		logger.GetLogger().Warn("updateNetworkPolicy: failed to remove old state in an update to Tetragon network policy command",
-			logfields.Error, err, "new name", newName, "old name", oldName)
-	}
-
-	logger.GetLogger().Info("updateNetworkPolicy: completed successfully",
-		"title", newName, "oldTitle", oldName, "new network rules", len(newPolicy))
-}
-
-func deleteNetworkPolicyObj(obj any) {
-	resourceName := ""
-
-	if dfsu, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-		obj = dfsu.Obj
-	}
-
-	switch np := obj.(type) {
-	case *v1alpha1.TetragonNetworkPolicy:
-		resourceName = np.Name
-
-	case *v1alpha1.TetragonNetworkPolicyNamespaced:
-		logger.GetLogger().Warn("deleteNetworkPolicy: namespaced policy currently not supported", "obj", obj,
-			"obj-type", fmt.Sprintf("%T", obj))
-
-	default:
-		logger.GetLogger().Warn("deleteNetworkPolicy: invalid type", "obj", obj, "obj-type", fmt.Sprintf("%T", obj))
-		return
-	}
-
-	currentName, ok, _ := getCurrentNameAndAltName(resourceName)
-	if !ok {
-		logger.GetLogger().Warn("TetragonNetworkPolicy deletion failed, policy does not exist", "name", resourceName)
-		return
-	}
-
-	err := deleteNetworkPolicy(currentName)
-	if err != nil {
-		logger.GetLogger().Warn("TetragonNetworkPolicy deletion failed", logfields.Error, err)
-	}
-	logger.GetLogger().Info("TetragonNetworkPolicy successfully deleted", "name", resourceName)
-
+	return resourceName, nil, altName
 }
 
 func deleteNetworkPolicy(name string) error {
@@ -196,30 +53,11 @@ func deleteNetworkPolicy(name string) error {
 	if story == nil {
 		return fmt.Errorf("policy %q does not exist", name)
 	}
-	if err := netpolstate.Get().RemovePolicies(story.IrPolicy); err != nil {
+	if err := unapplyPolicies(story.IrPolicy); err != nil {
 		return fmt.Errorf("removing policy %q failed: %w", name, err)
 	}
 	library.GetRepository().Delete(name)
 	return nil
-}
-
-func AddTetragonNetworkPolicyInformer(ctx context.Context, m *manager.ControllerManager) error {
-	informer, err := m.Manager.GetCache().GetInformer(ctx, &v1alpha1.TetragonNetworkPolicy{})
-	if err != nil {
-		return err
-	}
-	_, err = informer.AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj any) {
-				addTetragonNetworkPolicy(obj)
-			},
-			UpdateFunc: func(oldObj any, newObj any) {
-				updateTetragonNetworkPolicy(oldObj, newObj)
-			},
-			DeleteFunc: func(obj any) {
-				deleteNetworkPolicyObj(obj)
-			}})
-	return err
 }
 
 func loadPolicy(policyStory *library.PolicyStory) error {
@@ -234,8 +72,10 @@ func loadPolicy(policyStory *library.PolicyStory) error {
 
 	library.GetRepository().Add(policyStory)
 
-	err := netpolstate.Get().AddPolicies(policyStory.IrPolicy)
-	if err != nil {
+	if err := applyPolicies(policyStory.IrPolicy); err != nil {
+		// Roll back so the failed policy isn't left looking loaded, which would
+		// block retries with "would overwrite".
+		library.GetRepository().Delete(policyStory.Title)
 		return fmt.Errorf("failed create match label from policy set %s: %w", policyStory.Title, err)
 	}
 	return nil
