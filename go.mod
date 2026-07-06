@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.27
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.30
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.2
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.0
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.19.5
 	github.com/cilium/ebpf v0.22.0
@@ -257,12 +257,12 @@ require (
 	go.mongodb.org/mongo-driver v1.17.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/mod v0.36.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/term v0.44.0
-	golang.org/x/text v0.38.0
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/text v0.39.0
+	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/genproto v0.0.0-20260319201613-d00831a3d3e7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect

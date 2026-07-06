@@ -145,7 +145,7 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared/arn
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared/config
-# github.com/aws/aws-sdk-go-v2/service/s3 v1.104.2
+# github.com/aws/aws-sdk-go-v2/service/s3 v1.105.0
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/service/s3
 github.com/aws/aws-sdk-go-v2/service/s3/internal/arn
@@ -1514,7 +1514,7 @@ golang.org/x/crypto/internal/poly1305
 ## explicit; go 1.24.0
 golang.org/x/exp/maps
 golang.org/x/exp/slices
-# golang.org/x/mod v0.36.0
+# golang.org/x/mod v0.37.0
 ## explicit; go 1.25.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
@@ -1566,7 +1566,7 @@ golang.org/x/sys/windows/svc
 # golang.org/x/term v0.44.0
 ## explicit; go 1.25.0
 golang.org/x/term
-# golang.org/x/text v0.38.0
+# golang.org/x/text v0.39.0
 ## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -1594,7 +1594,7 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.15.0
 ## explicit; go 1.25.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.45.0
+# golang.org/x/tools v0.47.0
 ## explicit; go 1.25.0
 golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/go/ast/edge
