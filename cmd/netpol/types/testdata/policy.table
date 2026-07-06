@@ -1,4 +1,0 @@
-Rule      Proto  Src        SrcPort  SrcVLAN  SrcVRF  Dst          DstPort  DstVLAN  DstVRF  Action
-deny_all  TCP    0.0.0.0/0  *        0        foo     0.0.0.0/0    *        2        quux    deny
-http      UDP    1.0.0.0/1  1-20     1        bar     10.0.0.1/32  80       1        xyzzy   allow
-icmp      ICMP   2.0.0.0/2  2        2        baz     10.0.0.2/32  25-30    0        xyz     allow
