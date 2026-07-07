@@ -306,8 +306,6 @@ skip-policysandbox-crd: {{ not .Values.tetragon.enableSandboxpolicies | quote }}
     - tetragonnetworkpolicies.cilium.io
     - tetragonnetworkpoliciesnamespaced.cilium.io
     - tetragonnodes.isovalent.com
-    - smartswitches.isovalent.com
-    - smartswitchnetworkpolicies.isovalent.com
   verbs:
     - update
     - get

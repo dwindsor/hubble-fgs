@@ -42,6 +42,10 @@ ISOVALENT_IPA_CRDS_RELATIVE_DIR = vendor/github.com/isovalent/ipa/k8s/crds/isova
 CRDS := $(ROOT_DIR)/$(CRDS_RELATIVE_DIR)
 CILIUM_IPA_CRDS := $(ROOT_DIR)/$(CILIUM_IPA_CRDS_RELATIVE_DIR)
 ISOVALENT_IPA_CRDS := $(ROOT_DIR)/$(ISOVALENT_IPA_CRDS_RELATIVE_DIR)
+# Supported isovalent.com CRDs shipped in the chart. The SmartSwitch CRDs
+# (smartswitches, smartswitchnetworkpolicies, networkobjectgroups) moved to the
+# hs-fw repo and are intentionally omitted.
+ISOVALENT_IPA_CRDS_FILES := isovalent.com_tetragonnodes.yaml
 JSON_SCHEMAS := $(ROOT_DIR)/install/kubernetes/schemas
 TARGET_MAX_CHAR_NUM = 25
 DASHBOARDS_DIR := $(EE_PATCHES)/dashboards
@@ -119,7 +123,9 @@ tetragon/values.yaml: ## Merge values.yaml from OSS and EE
 tetragon/templates: $(CRDS) $(EE_PATCHES) ## Copy EE specific patched into the EE Helm chart (CRs, CRDs, etc.)
 	cp -rf $(CRDS)/. $(EE_CHART)/crds-yaml
 	cp -rf $(CILIUM_IPA_CRDS)/. $(EE_CHART)/crds-yaml
-	cp -rf $(ISOVALENT_IPA_CRDS)/. $(EE_CHART)/crds-yaml
+	# Copy only the supported isovalent.com CRDs (see ISOVALENT_IPA_CRDS_FILES);
+	# embed.go is copied alongside to match the vendored CRD bundle.
+	cp -f $(ISOVALENT_IPA_CRDS)/embed.go $(addprefix $(ISOVALENT_IPA_CRDS)/,$(ISOVALENT_IPA_CRDS_FILES)) $(EE_CHART)/crds-yaml
 	cp -rf $(EE_PATCHES)/default-policies/. $(EE_CHART)/default-policies
 	cp -rf $(EE_PATCHES)/files/. $(EE_CHART)/files
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates

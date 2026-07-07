@@ -20,20 +20,6 @@ import (
 )
 
 var (
-	SmartSwitchCRD = osscrdutils.NewCRDBytes(
-		slog.Default(),
-		"SmartSwitch/v1alpha1",
-		"smartswitches.isovalent.com",
-		ipak8s.CRDsv1Alpha1SmartSwitches,
-	)
-
-	SmartSwitchNetworkPolicyCRD = osscrdutils.NewCRDBytes(
-		slog.Default(),
-		"SmartSwitchNetworkPolicy/v1alpha1",
-		"smartswitchnetworkpolicies.isovalent.com",
-		ipak8s.CRDsv1Alpha1SmartSwitchNetworkPolicy,
-	)
-
 	TetragonNodeCRD = osscrdutils.NewCRDBytes(
 		slog.Default(),
 		"TetragonNode/v1alpha1",
@@ -42,8 +28,6 @@ var (
 	)
 
 	AllCRDs = []crdutils.CRD{
-		SmartSwitchCRD,
-		SmartSwitchNetworkPolicyCRD,
 		TetragonNodeCRD,
 	}
 )
