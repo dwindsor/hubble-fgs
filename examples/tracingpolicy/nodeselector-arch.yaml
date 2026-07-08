@@ -1,0 +1,16 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "nodeselector-arch"
+spec:
+  nodeSelector:
+    matchExpressions:
+      - key: "tetragon.io/arch"
+        operator: In
+        values: ["arm64"]
+  kprobes:
+  - call: "tcp_connect"
+    syscall: false
+    args:
+    - index: 0
+      type: "sock"
