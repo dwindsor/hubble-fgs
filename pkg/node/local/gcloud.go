@@ -36,17 +36,19 @@ func (g *GCloudMetadataService) GetHostname(ctx context.Context) (string, error)
 // GetLabels retrieves all instance attributes as labels.
 // GCP does not have a dedicated labels endpoint in the metadata service, so we are using instance attributes as labels.
 func (g *GCloudMetadataService) GetLabels(ctx context.Context) (map[string]string, error) {
+	labels := baseHostLabels()
 	keys, err := g.client.InstanceAttributesWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var labels = make(map[string]string)
 	for _, key := range keys {
 		value, err := g.client.InstanceAttributeValueWithContext(ctx, key)
 		if err != nil {
 			return nil, err
 		}
-		labels[key] = value
+		if _, ok := labels[key]; !ok { // host-derived labels win over cloud tags
+			labels[key] = value
+		}
 	}
 	return labels, nil
 }

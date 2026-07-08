@@ -47,11 +47,17 @@ func (a *AzureMetadataService) GetHostname(ctx context.Context) (string, error) 
 }
 
 func (a *AzureMetadataService) GetLabels(ctx context.Context) (map[string]string, error) {
+	labels := baseHostLabels()
 	resp, err := a.metadata(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetTags(), nil
+	for key, val := range resp.GetTags() {
+		if _, ok := labels[key]; !ok { // host-derived labels win over cloud tags
+			labels[key] = val
+		}
+	}
+	return labels, nil
 }
 
 func (a *AzureMetadataService) GetInstanceId(ctx context.Context) (string, error) {

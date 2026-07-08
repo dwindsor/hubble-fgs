@@ -42,5 +42,5 @@ func (n *NoopMetadataService) GetExternalDNS(_ context.Context) (string, error) 
 }
 
 func (n *NoopMetadataService) GetLabels(_ context.Context) (map[string]string, error) {
-	return nil, nil
+	return baseHostLabels(), nil
 }

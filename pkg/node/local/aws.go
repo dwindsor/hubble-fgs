@@ -61,7 +61,7 @@ func (m *AWSMetadataService) GetExternalDNS(ctx context.Context) (string, error)
 }
 
 func (m *AWSMetadataService) GetLabels(ctx context.Context) (map[string]string, error) {
-	tags := make(map[string]string)
+	tags := baseHostLabels()
 	out, err := m.imdsClient.GetMetadata(ctx, &imds.GetMetadataInput{Path: "/tags/instance"})
 	if err != nil {
 		return nil, err
@@ -73,7 +73,9 @@ func (m *AWSMetadataService) GetLabels(ctx context.Context) (map[string]string, 
 		if err != nil {
 			return nil, err
 		}
-		tags[key] = val
+		if _, ok := tags[key]; !ok { // host-derived labels win over cloud tags
+			tags[key] = val
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err

@@ -57,10 +57,8 @@ func (m *GenericMetadataService) GetExternalDNS(_ context.Context) (string, erro
 }
 
 func (m *GenericMetadataService) GetLabels(_ context.Context) (map[string]string, error) {
-	// Return basic labels for non-cloud environments
-	labels := map[string]string{
-		"tetragon.io/environment": "generic",
-	}
+	labels := baseHostLabels()
+	labels["tetragon.io/environment"] = "generic"
 	return labels, nil
 }
 
