@@ -580,8 +580,10 @@ type TracingPolicySelectorActionCounters struct {
 	SelectorIndex *wrapperspb.UInt32Value `protobuf:"bytes,3,opt,name=selector_index,json=selectorIndex,proto3" json:"selector_index,omitempty"`
 	// action counters for the selector
 	ActionCounters *TracingPolicyActionCounters `protobuf:"bytes,4,opt,name=action_counters,json=actionCounters,proto3" json:"action_counters,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// selector_label is an optional user-provided selector label
+	SelectorLabel string `protobuf:"bytes,5,opt,name=selector_label,json=selectorLabel,proto3" json:"selector_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TracingPolicySelectorActionCounters) Reset() {
@@ -640,6 +642,13 @@ func (x *TracingPolicySelectorActionCounters) GetActionCounters() *TracingPolicy
 		return x.ActionCounters
 	}
 	return nil
+}
+
+func (x *TracingPolicySelectorActionCounters) GetSelectorLabel() string {
+	if x != nil {
+		return x.SelectorLabel
+	}
+	return ""
 }
 
 type TracingPolicyStats struct {
@@ -2583,13 +2592,14 @@ const file_tetragon_sensors_proto_rawDesc = "" +
 	"\vmonitor_set\x18\t \x01(\x04R\n" +
 	"monitorSet\x12\x16\n" +
 	"\x06nopost\x18\n" +
-	" \x01(\x04R\x06nopost\"\x8b\x02\n" +
+	" \x01(\x04R\x06nopost\"\xb2\x02\n" +
 	"#TracingPolicySelectorActionCounters\x12\x12\n" +
 	"\x04hook\x18\x01 \x01(\tR\x04hook\x12;\n" +
 	"\n" +
 	"hook_index\x18\x02 \x01(\v2\x1c.google.protobuf.UInt32ValueR\thookIndex\x12C\n" +
 	"\x0eselector_index\x18\x03 \x01(\v2\x1c.google.protobuf.UInt32ValueR\rselectorIndex\x12N\n" +
-	"\x0faction_counters\x18\x04 \x01(\v2%.tetragon.TracingPolicyActionCountersR\x0eactionCounters\"\xcd\x01\n" +
+	"\x0faction_counters\x18\x04 \x01(\v2%.tetragon.TracingPolicyActionCountersR\x0eactionCounters\x12%\n" +
+	"\x0eselector_label\x18\x05 \x01(\tR\rselectorLabel\"\xcd\x01\n" +
 	"\x12TracingPolicyStats\x12N\n" +
 	"\x0faction_counters\x18\x01 \x01(\v2%.tetragon.TracingPolicyActionCountersR\x0eactionCounters\x12g\n" +
 	"\x18selector_action_counters\x18\x02 \x03(\v2-.tetragon.TracingPolicySelectorActionCountersR\x16selectorActionCounters\"\xc6\x03\n" +

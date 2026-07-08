@@ -5249,6 +5249,7 @@ active ruleset
 | hook_index | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  | hook_index is the hook index withing a policy |
 | selector_index | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  | selector_index is the selector index within the hook |
 | action_counters | [TracingPolicyActionCounters](#tetragon-TracingPolicyActionCounters) |  | action counters for the selector |
+| selector_label | [string](#string) |  | selector_label is an optional user-provided selector label |
 
 
 

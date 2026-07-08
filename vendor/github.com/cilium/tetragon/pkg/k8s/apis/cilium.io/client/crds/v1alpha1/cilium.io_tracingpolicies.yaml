@@ -502,6 +502,10 @@ spec:
                           KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
                           results of MatchPIDs and MatchArgs are ANDed.
                         properties:
+                          label:
+                            description: Human-readable selector label used in status
+                              and metrics.
+                            type: string
                           macros:
                             description: |-
                               A list of macros names, defined in spec.selectorsMacros.
@@ -2443,6 +2447,10 @@ spec:
                           KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
                           results of MatchPIDs and MatchArgs are ANDed.
                         properties:
+                          label:
+                            description: Human-readable selector label used in status
+                              and metrics.
+                            type: string
                           macros:
                             description: |-
                               A list of macros names, defined in spec.selectorsMacros.
@@ -3415,6 +3423,10 @@ spec:
                           KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
                           results of MatchPIDs and MatchArgs are ANDed.
                         properties:
+                          label:
+                            description: Human-readable selector label used in status
+                              and metrics.
+                            type: string
                           macros:
                             description: |-
                               A list of macros names, defined in spec.selectorsMacros.
@@ -4909,6 +4921,10 @@ spec:
                     KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
                     results of MatchPIDs and MatchArgs are ANDed.
                   properties:
+                    label:
+                      description: Human-readable selector label used in status and
+                        metrics.
+                      type: string
                     macros:
                       description: |-
                         A list of macros names, defined in spec.selectorsMacros.
@@ -5824,6 +5840,10 @@ spec:
                           KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
                           results of MatchPIDs and MatchArgs are ANDed.
                         properties:
+                          label:
+                            description: Human-readable selector label used in status
+                              and metrics.
+                            type: string
                           macros:
                             description: |-
                               A list of macros names, defined in spec.selectorsMacros.
@@ -7019,6 +7039,10 @@ spec:
                           KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
                           results of MatchPIDs and MatchArgs are ANDed.
                         properties:
+                          label:
+                            description: Human-readable selector label used in status
+                              and metrics.
+                            type: string
                           macros:
                             description: |-
                               A list of macros names, defined in spec.selectorsMacros.
@@ -7973,6 +7997,10 @@ spec:
                           KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
                           results of MatchPIDs and MatchArgs are ANDed.
                         properties:
+                          label:
+                            description: Human-readable selector label used in status
+                              and metrics.
+                            type: string
                           macros:
                             description: |-
                               A list of macros names, defined in spec.selectorsMacros.
