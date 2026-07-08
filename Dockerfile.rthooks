@@ -30,7 +30,8 @@ RUN --mount=type=bind,readwrite,target=/go/src/github.com/isovalent/hubble-fgs \
 FROM ${BASE_IMAGE} AS static-base
 FROM ${GOLANG_IMAGE} AS rootfs-cleaner
 COPY --from=static-base / /rootfs
-RUN rm -rf /rootfs/etc/apk /rootfs/etc/apko.json /rootfs/var/cache/apk
+RUN apk add --no-commit-hooks --no-cache --root /rootfs busybox && \
+    rm -rf /rootfs/etc/apk /rootfs/etc/apko.json /rootfs/var/cache/apk
 
 FROM scratch AS release
 # TARGETOS is an automatic platform ARG enabled by Docker BuildKit.
