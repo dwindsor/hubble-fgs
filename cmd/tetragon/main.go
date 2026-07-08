@@ -546,6 +546,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// happen before the sensors are loaded, otherwise events will be stuck
 	// waiting for metadata.
 	podAccessor := k8sPodAccessor()
+	// Gate file and gRPC policies by spec.nodeSelector against a startup
+	// snapshot of the host labels, regardless of k8s mode (in k8s the
+	// crdwatcher additionally gates CRD policies against the Node object and
+	// reconciles on label updates).
+	var nodeSelectorLabels map[string]string
 	nodeMetadata, err := local.GetMetadataService()
 	if err != nil {
 		log.Warn("Failed to get node info. node_labels field will be empty", logfields.Error, err)
@@ -555,6 +560,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			log.Warn("Failed to get node info. node_labels field will be empty", logfields.Error, err)
 		} else {
 			node.SetNodeLabels(labels)
+			nodeSelectorLabels = labels
 		}
 
 		// Register node for non-k8s environments
@@ -742,7 +748,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	processcacheclean.Start()
 	defer processcacheclean.Stop()
 
-	if err = policies.LoadFromConfig(ctx, alertsManager, log); err != nil {
+	if err = policies.LoadFromConfig(ctx, alertsManager, log, nodeSelectorLabels); err != nil {
 		return err
 	}
 

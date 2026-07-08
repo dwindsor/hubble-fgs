@@ -46,16 +46,18 @@ type Loader interface {
 }
 
 type defaultLoader struct {
-	alertsManager alerts.RuleManager
-	sm            *sensors.Manager
-	log           *slog.Logger
+	alertsManager      alerts.RuleManager
+	sm                 *sensors.Manager
+	log                *slog.Logger
+	nodeSelectorLabels map[string]string
 }
 
-func NewDefaultLoader(alertsManager alerts.RuleManager, sm *sensors.Manager, log *slog.Logger) Loader {
+func NewDefaultLoader(alertsManager alerts.RuleManager, sm *sensors.Manager, log *slog.Logger, nodeSelectorLabels map[string]string) Loader {
 	return &defaultLoader{
-		alertsManager: alertsManager,
-		sm:            sm,
-		log:           log,
+		alertsManager:      alertsManager,
+		sm:                 sm,
+		log:                log,
+		nodeSelectorLabels: nodeSelectorLabels,
 	}
 }
 
@@ -68,6 +70,17 @@ func (p *defaultLoader) OnTracingPolicy(ctx context.Context, fname string, _ []b
 	tp, err := tracingpolicy.FromFile(f)
 	if err != nil {
 		return fmt.Errorf("failed to read (%s) tracing policy: %w", fname, err)
+	}
+
+	if SkipTracingPolicyForNode(tp, p.nodeSelectorLabels, p.log) {
+		p.log.Info("Skipping TracingPolicy: node does not match spec.nodeSelector",
+			"TracingPolicy", fname,
+			"metadata.namespace", tp.TpNamespace(),
+			"metadata.name", tp.TpName())
+		if err := p.sm.AddTracingPolicyWithState(ctx, tp, sensors.SkippedState); err != nil {
+			return fmt.Errorf("failed to add skipped (%s) tracing policy: %w", fname, err)
+		}
+		return nil
 	}
 
 	err = p.sm.AddTracingPolicy(ctx, tp)
@@ -158,9 +171,9 @@ func LoadFromFile(ctx context.Context, fname string, loader Loader) error {
 	return nil
 }
 
-func LoadFromConfig(ctx context.Context, alertsManager alerts.RuleManager, log *slog.Logger) error {
+func LoadFromConfig(ctx context.Context, alertsManager alerts.RuleManager, log *slog.Logger, nodeSelectorLabels map[string]string) error {
 	sm := observer.GetSensorManager()
-	loader := NewDefaultLoader(alertsManager, sm, log)
+	loader := NewDefaultLoader(alertsManager, sm, log, nodeSelectorLabels)
 
 	err := loadTpFromDir(ctx, option.Config.TracingPolicyDir, loader, log)
 	if err != nil {
