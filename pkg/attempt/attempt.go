@@ -19,6 +19,7 @@ package attempt
 import (
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -71,7 +72,7 @@ type InprAttempt struct {
 	info   []InfoEntry
 	logger Logger
 
-	inProgress int
+	inProgress atomic.Int32
 	attempts   []Attempt
 	errCnt     int
 	canNest    bool
@@ -87,10 +88,10 @@ func (a *InprAttempt) SetInfo(k, v string) {
 }
 
 func (a *InprAttempt) Complete(err error) error {
-	if a.inProgress > 0 {
-		return fmt.Errorf("cannot complete attempt: %d sub-attempts in prorgess", a.inProgress)
+	if a.inProgress.Load() > 0 {
+		return fmt.Errorf("cannot complete attempt: %d sub-attempts in progress", a.inProgress.Load())
 	}
-	if a.inProgress < 0 {
+	if a.inProgress.Load() < 0 {
 		return errors.New("attempt already completed")
 	}
 
@@ -99,7 +100,7 @@ func (a *InprAttempt) Complete(err error) error {
 		result = Result{err: err}
 	}
 
-	a.inProgress = -1
+	a.inProgress.Store(-1)
 	a.logger.logAttempt(Attempt{
 		Op:       a.op,
 		Info:     a.info,
@@ -116,7 +117,7 @@ func (a *InprAttempt) NewAttempt(op string) *InprAttempt {
 		panic("called NewAttempt on a non-nestible attempt")
 	}
 
-	a.inProgress++
+	a.inProgress.Add(1)
 	return &InprAttempt{
 		op:      op,
 		time:    time.Now(),
@@ -126,10 +127,10 @@ func (a *InprAttempt) NewAttempt(op string) *InprAttempt {
 }
 
 func (a *InprAttempt) logAttempt(c Attempt) {
-	if a.inProgress > 0 {
-		a.inProgress--
+	if a.inProgress.Load() > 0 {
+		a.inProgress.Add(-1)
 	} else {
-		logger.GetLogger().Error(fmt.Sprintf("invalid inProgress count when trying to log attempt: %d", a.inProgress))
+		logger.GetLogger().Error(fmt.Sprintf("invalid inProgress count when trying to log attempt: %d", a.inProgress.Load()))
 	}
 
 	a.attempts = append(a.attempts, c)
