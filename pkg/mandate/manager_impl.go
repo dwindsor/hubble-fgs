@@ -190,7 +190,6 @@ func (m *manager) attemptLoadPolicy(
 	case "TracingPolicy":
 		mp, err := m.attemptLoadMandateTracingPolicy(ctx, att, data, pol.mode_)
 		if err != nil {
-			att.Complete(err)
 			return invalidPolicy(), err
 		}
 		return newTracingPolicy(pol.url_.String(), mp, pol.mode_), nil
@@ -582,9 +581,7 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 	att *attempt.InprAttempt,
 	data []byte,
 	mode string,
-) (tracingpolicy.TracingPolicy, error) {
-	var ret tracingpolicy.TracingPolicy
-	var err error
+) (ret tracingpolicy.TracingPolicy, err error) {
 	defer func() {
 		att.Complete(err)
 	}()
@@ -593,14 +590,14 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 	if mode != "" {
 		data, err = tracingpolicy.PolicyYAMLSetMode(data, mode)
 		if err != nil {
-			return nil, err
+			return
 		}
 		att = att.WithInfo("mode", mode)
 	}
 
 	ret, err = tracingpolicy.FromYAML(string(data))
 	if err != nil {
-		return nil, err
+		return
 	}
 	att.SetInfo("name", ret.TpName())
 
@@ -612,9 +609,9 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 		// will keep it under the load_error state. So, let's try to remove it here to not
 		// leave any leftovers
 		m.sensorMgr.DeleteTracingPolicy(ctx, ret.TpName(), "", ret.TpDomain())
-		return nil, err
+		return
 	}
-	return ret, nil
+	return
 }
 
 func (m *manager) attemptLoadAlert(
