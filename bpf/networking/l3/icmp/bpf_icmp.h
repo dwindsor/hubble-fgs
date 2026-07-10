@@ -42,6 +42,25 @@
 #define ICMP_ADDRESS	    17 /* Address Mask Request		*/
 #define ICMP_ADDRESSREPLY   18 /* Address Mask Reply		*/
 
+// Codes for ICMP_DEST_UNREACH
+#define ICMP_NET_UNREACH    0 /* Network Unreachable		*/
+#define ICMP_HOST_UNREACH   1 /* Host Unreachable		*/
+#define ICMP_PROT_UNREACH   2 /* Protocol Unreachable		*/
+#define ICMP_PORT_UNREACH   3 /* Port Unreachable		*/
+#define ICMP_FRAG_NEEDED    4 /* Fragmentation Needed/DF set	*/
+#define ICMP_SR_FAILED	    5 /* Source Route failed		*/
+#define ICMP_NET_UNKNOWN    6
+#define ICMP_HOST_UNKNOWN   7
+#define ICMP_HOST_ISOLATED  8
+#define ICMP_NET_ANO	    9
+#define ICMP_HOST_ANO	    10
+#define ICMP_NET_UNR_TOS    11
+#define ICMP_HOST_UNR_TOS   12
+#define ICMP_PKT_FILTERED   13 /* Packet filtered */
+#define ICMP_PREC_VIOLATION 14 /* Precedence violation */
+#define ICMP_PREC_CUTOFF    15 /* Precedence cut off */
+#define NR_ICMP_UNREACH	    15 /* instead of hardcoding immediate value */
+
 // Taken from include/uapi/linux/icmpv6.h
 #define ICMPV6_DEST_UNREACH 1
 #define ICMPV6_PKT_TOOBIG   2
@@ -51,6 +70,15 @@
 #define ICMPV6_INFOMSG_MASK 0x80
 #define ICMPV6_ECHO_REQUEST 128
 #define ICMPV6_ECHO_REPLY   129
+
+// Codes for ICMPV6_DEST_UNREACH
+#define ICMPV6_NOROUTE	      0 /* No route to destination */
+#define ICMPV6_ADM_PROHIBITED 1 /* Communication administratively prohibited */
+#define ICMPV6_NOT_NEIGHBOUR  2 /* Beyond scope of source address */
+#define ICMPV6_ADDR_UNREACH   3 /* Address unreachable */
+#define ICMPV6_PORT_UNREACH   4 /* Port unreachable */
+#define ICMPV6_POLICY_FAIL    5 /* Source address failed ingress/egress policy */
+#define ICMPV6_REJECT_ROUTE   6 /* Reject route to destination */
 
 #define IPSKB_L3SLAVE  (1 << 7) // As defined in kernel
 #define IP6SKB_L3SLAVE 64 // As defined in kernel
