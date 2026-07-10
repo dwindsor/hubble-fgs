@@ -22,6 +22,7 @@
 #include "bpf_rate.h"
 #include "bpf_ktime.h"
 #include "networking/l3/tcp/bpf_tcp_info.h"
+#include "networking/l3/icmp/bpf_icmp.h"
 
 #include "bpf_tracing.h"
 
@@ -993,6 +994,14 @@ static int send(int deny, struct destination_endpoint_key *key, __u64 len, struc
 		__sync_fetch_and_add(&dest->tx_drops, len);
 		if (deny & TNP_POLICY_FALLTHRU)
 			__sync_fetch_and_add(&dest->deny_default, len);
+
+		if (bpf_ksym_exists(bpf_icmp_send)) {
+			if (skb->protocol == bpf_htons(ETH_P_IP))
+				bpf_icmp_send(skb, ICMP_DEST_UNREACH, ICMP_PKT_FILTERED);
+			else if (skb->protocol == bpf_htons(ETH_P_IPV6))
+				bpf_icmp_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_ADM_PROHIBITED);
+		}
+
 		return SK_DROP;
 	}
 	if (deny & TNP_POLICY_FALLTHRU)

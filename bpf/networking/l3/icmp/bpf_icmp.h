@@ -83,6 +83,8 @@
 #define IPSKB_L3SLAVE  (1 << 7) // As defined in kernel
 #define IP6SKB_L3SLAVE 64 // As defined in kernel
 
+extern int bpf_icmp_send(struct __sk_buff *skb_ctx, int type, int code) __ksym __weak;
+
 static inline __attribute__((always_inline)) int
 inet_sdif(struct sk_buff *skb)
 {
