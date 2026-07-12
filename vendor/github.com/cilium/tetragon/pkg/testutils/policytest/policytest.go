@@ -8,6 +8,8 @@ package policytest
 import (
 	"context"
 	"fmt"
+	"iter"
+	"strings"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/tetragoninfo"
@@ -39,6 +41,20 @@ type Parameter struct {
 	Name    string
 	Default any
 	Help    string
+	// Values, if set, is used to generate values for this parameter when testing.
+	// Values is meant to hold all values (including the one specified by Default)
+	Values []any
+}
+
+func (p *Parameter) HelpString() string {
+	if len(p.Values) == 0 {
+		return fmt.Sprintf("%s: %s (default:%s)", p.Name, p.Help, p.Default)
+	}
+	values := make([]string, 0, len(p.Values))
+	for _, v := range p.Values {
+		values = append(values, fmt.Sprintf("%v", v))
+	}
+	return fmt.Sprintf("%s: %s (values:%q default:%q)", p.Name, p.Help, strings.Join(values, ","), p.Default)
 }
 
 // T defines a policy test
@@ -62,22 +78,22 @@ type T struct {
 }
 
 type ScenarioRes struct {
-	Name            string
-	TriggerErr      error
-	CheckerErr      error
-	ActionCountsErr error
+	Name            string    `json:"name"`
+	TriggerErr      JSONError `json:"trigger_error"`
+	CheckerErr      JSONError `json:"checker_error"`
+	ActionCountsErr JSONError `json:"action_counts_error"`
 }
 
 func (sr *ScenarioRes) Err() error {
 	var err error
-	if sr.TriggerErr != nil {
-		err = fmt.Errorf("trigger error: %w", sr.TriggerErr)
+	if sr.TriggerErr.Err != nil {
+		err = fmt.Errorf("trigger error: %w", sr.TriggerErr.Err)
 	}
-	if sr.CheckerErr != nil {
-		err = addErr(err, "checker error", sr.CheckerErr)
+	if sr.CheckerErr.Err != nil {
+		err = addErr(err, "checker error", sr.CheckerErr.Err)
 	}
-	if sr.ActionCountsErr != nil {
-		err = addErr(err, "action counts error", sr.ActionCountsErr)
+	if sr.ActionCountsErr.Err != nil {
+		err = addErr(err, "action counts error", sr.ActionCountsErr.Err)
 	}
 	return err
 }
@@ -96,7 +112,12 @@ func addErr(err error, prefix1 string, err1 error) error {
 
 // Result of a policytest (T)
 type Result struct {
-	Skipped      string // if not empty, the policy was skipped and the string contains the reason
-	Err          error
-	ScenariosRes []ScenarioRes
+	Skipped      string        `json:"skipped,omitempty"` // if not empty, the policy was skipped and the string contains the reason
+	Err          JSONError     `json:"error"`
+	ScenariosRes []ScenarioRes `json:"scenarios"`
+}
+
+// AllParamValues returns a sequence of
+func (t *T) AllParamValues() iter.Seq[ParamVals] {
+	return allParamValues(t.Params)
 }

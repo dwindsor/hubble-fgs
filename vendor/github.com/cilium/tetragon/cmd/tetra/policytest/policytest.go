@@ -6,10 +6,11 @@
 package policytest
 
 import (
-
-	// import tests
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"iter"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -19,6 +20,13 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/testutils/policytest"
 	_ "github.com/cilium/tetragon/tests/policytests" // so that tests can be registered
+)
+
+type outputFmt int
+
+const (
+	outputText outputFmt = iota
+	outputJSON
 )
 
 func New() *cobra.Command {
@@ -47,7 +55,7 @@ func listCmd() *cobra.Command {
 				if listParams && len(pt.Params) > 0 {
 					cmd.Println(" parameters:")
 					for _, param := range pt.Params {
-						cmd.Printf("    %s: %s (default:%s)\n", param.Name, param.Help, param.Default)
+						cmd.Printf("   %s\n", param.HelpString())
 					}
 				}
 			}
@@ -119,7 +127,11 @@ func runCmd() *cobra.Command {
 	testBinsPath := filepath.Join(cwd, "contrib/tester-progs")
 	dumpPolicyPath := ""
 	monitorMode := false
+	allParams := false
+	allTests := false
 	var params map[string]string
+	var outputFormat = outputText
+	var outputFile = ""
 	cmd := cobra.Command{
 		Use:   "run",
 		Short: "Run Tetragon policy test(s)",
@@ -136,21 +148,43 @@ func runCmd() *cobra.Command {
 				},
 			))
 
-			// NB: parameters are applied to all policies
-			paramValues := make(map[string]any)
-			for k, v := range params {
-				paramValues[k] = v
+			var getParamValues func(t *policytest.T) iter.Seq[policytest.ParamVals]
+			if len(params) > 0 && allParams {
+				return errors.New("setting --params conflicts with --all-params")
+			} else if allParams {
+				getParamValues = func(t *policytest.T) iter.Seq[policytest.ParamVals] {
+					return t.AllParamValues()
+				}
+			} else {
+				// NB: parameters are applied to all policies
+				paramValues := make(map[string]any)
+				for k, v := range params {
+					paramValues[k] = v
+				}
+				getParamValues = func(_ *policytest.T) iter.Seq[policytest.ParamVals] {
+					return func(yield func(policytest.ParamVals) bool) {
+						yield(paramValues)
+					}
+				}
 			}
 
 			ctx := context.Background()
-			names := make(map[string]struct{})
-			for _, arg := range args {
-				names[arg] = struct{}{}
+			var ptFilterFn func(t *policytest.T) bool
+			if allTests {
+				ptFilterFn = func(_ *policytest.T) bool {
+					return true
+				}
+			} else {
+				names := make(map[string]struct{})
+				for _, arg := range args {
+					names[arg] = struct{}{}
+				}
+				ptFilterFn = func(t *policytest.T) bool {
+					_, ok := names[t.Name]
+					return ok
+				}
 			}
-			tests := policytest.AllPolicyTests.GetByFunction(func(t *policytest.T) bool {
-				_, ok := names[t.Name]
-				return ok
-			})
+			tests := policytest.AllPolicyTests.GetByFunction(ptFilterFn)
 			runner, err := policytest.NewLocalRunner(ctx, log, &policytest.Conf{
 				GrpcAddr:       common.ServerAddress,
 				BinsDir:        testBinsPath,
@@ -159,18 +193,44 @@ func runCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to start local runner: %w", err)
 			}
-			var results []*policytest.Result
-			var ptNames []string
+
+			var results []*policytest.NamedResult
 			for _, t := range tests {
-				ptNames = append(ptNames, t.Name)
-				res := runner.RunTest(log, t, &policytest.TestConf{
-					MonitorMode: monitorMode,
-					ParamValues: paramValues,
-				})
-				results = append(results, res)
+				for paramValues := range getParamValues(t) {
+					res := &policytest.NamedResult{
+						Name: fmt.Sprintf("%s (%s)", t.Name, paramValues),
+					}
+					res.Result = runner.RunTest(log, t, &policytest.TestConf{
+						MonitorMode: monitorMode,
+						ParamValues: paramValues,
+					})
+					results = append(results, res)
+				}
 			}
 			runner.Close()
-			policytest.DumpResults(cmd.OutOrStdout(), ptNames, results)
+
+			out := cmd.OutOrStdout()
+			if outputFile != "" {
+				f, err := os.OpenFile(outputFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+				if err != nil {
+					return fmt.Errorf("error opening output file: %w", err)
+				}
+				defer f.Close()
+				out = f
+			}
+
+			switch outputFormat {
+			case outputJSON:
+				for _, res := range results {
+					b, err := json.Marshal(res)
+					if err != nil {
+						return fmt.Errorf("failed to generate json: %w", err)
+					}
+					fmt.Fprintln(out, string(b))
+				}
+			case outputText:
+				policytest.DumpResults(out, results)
+			}
 			return nil
 		},
 	}
@@ -179,5 +239,37 @@ func runCmd() *cobra.Command {
 	flags.StringVar(&dumpPolicyPath, "dump-policy-path", dumpPolicyPath, "save the policy in the provided path")
 	flags.BoolVar(&monitorMode, "monitor-mode", monitorMode, "set the policy(-ies) in monitor mode before running the test(s)")
 	flags.StringToStringVar(&params, "set-param", map[string]string{}, "Set a policy parameter")
+	flags.BoolVar(&allParams, "all-params", allParams, "Run policy tests using all available parameters")
+	flags.Var(&outputFormat, "output", "output format (text|json)")
+	flags.StringVar(&outputFile, "output-file", "", "file to save the tests output. If empty, stdout is used.")
+	flags.BoolVar(&allTests, "all-tests", allTests, "Run all available policy tests")
 	return &cmd
+}
+
+func (of *outputFmt) Set(v string) error {
+	switch v {
+	case "text":
+		*of = outputText
+	case "json":
+		*of = outputJSON
+	default:
+		return errors.New("output format must be either \"text\" or \"json\"")
+	}
+
+	return nil
+}
+
+func (of *outputFmt) String() string {
+	switch *of {
+	case outputText:
+		return "text"
+	case outputJSON:
+		return "json"
+	default:
+		return ""
+	}
+}
+
+func (of *outputFmt) Type() string {
+	return "output"
 }
