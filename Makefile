@@ -165,7 +165,7 @@ tetra-nok8s: ## Compile the Tetragon gRPC client (nok8s build)
 
 .PHONY: tetrabox
 tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
-	$(GO_BUILD_SLIM) -o $@ $(TETRAGON_SLIM_TAGS_ARG) ./cmd/bin/tetrabox
+	$(GO_BUILD_SLIM) -o $@ $(TETRAGON_SLIM_TAGS_ARG) ./cmd/tetrabox
 	# set up symlinks so that things work
 	rm -f tetra tetragon $(FS_SCANNER_BIN)
 	ln -s tetrabox tetra
@@ -174,7 +174,7 @@ tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
 
 .PHONY: tetrabox-k8s
 tetrabox-k8s: tetragon-runner ## Compile single multi-call tetragon binary
-	$(GO_BUILD) -o $@ ./cmd/bin/tetrabox
+	$(GO_BUILD) -o $@ ./cmd/tetrabox
 	# set up symlinks so that things work
 	rm -f tetra tetragon $(FS_SCANNER_BIN)
 	ln -s $@ tetra
