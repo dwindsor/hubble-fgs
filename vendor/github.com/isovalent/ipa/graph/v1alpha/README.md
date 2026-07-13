@@ -344,8 +344,12 @@ one direction.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source | [Vertex](#graph-v1alpha-Vertex) |  | Source defines properties of the vertex at the emitting side of the connection. |
-| destination | [Vertex](#graph-v1alpha-Vertex) |  | Source defines properties of the vertex at the receiving side of the connection. |
+| source | [Vertex](#graph-v1alpha-Vertex) |  | Source defines properties of the vertex that initiated the connection, i.e. the side that opened the connection (for example, the sender of the TCP SYN or the process that owns the originating socket).
+
+Source and destination are defined by the direction in which the connection was initiated, independent of which emitter observed it. Two emitters observing the same connection from different vantage points (for example, the nodes hosting the source and the destination) MUST label the source and destination identically, so that consumers can deduplicate using the emitter&#39;s source_identifier. |
+| destination | [Vertex](#graph-v1alpha-Vertex) |  | Destination defines properties of the vertex that received the connection, i.e. the side that the source initiated the connection towards.
+
+Return traffic from the destination back to the source is NOT a separate connection: it is reported as the receive-side counters of the edge types on this same Connection (for example, EdgeTypeNetworkTelemetry.network_receive_bytes_total). |
 | links | [Edge](#graph-v1alpha-Edge) | repeated | Links define properties of the edges that link the two vertices.
 
 There MUST be at least one link between the source and destination vertices.
@@ -370,7 +374,7 @@ ConnectionLog events SHOULD NOT have overlapping time windows.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | uuid | [string](#string) |  | Uuid is a universally unique identifier for this event. |
-| emitter | [common.v1alpha.Emitter](#common-v1alpha-Emitter) |  | An emitter is the source that observes connection information. The emitter typically observes data at the source of the connection. |
+| emitter | [common.v1alpha.Emitter](#common-v1alpha-Emitter) |  | An emitter is the entity that observes connection information. An emitter commonly runs at the source of the connection (for example, on the node that hosts the connection initiator), but this is not required: an emitter MAY observe a connection from any vantage point. Regardless of where it observes, the emitter MUST label each connection&#39;s source and destination by the direction in which the connection was initiated (see Connection). |
 | window_start | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window start is the time at which the emitter started collecting information regarding the observed connections. |
 | window_end | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window end is the time at which the emitter stopped collecting information regarding the observed connections. |
 | connections | [Connection](#graph-v1alpha-Connection) | repeated | Connections is a list of all connections that were tracked during the given time window. |

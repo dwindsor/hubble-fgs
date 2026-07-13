@@ -41,8 +41,12 @@ type ConnectionLog struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Uuid is a universally unique identifier for this event.
 	Uuid string `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
-	// An emitter is the source that observes connection information. The emitter
-	// typically observes data at the source of the connection.
+	// An emitter is the entity that observes connection information. An emitter
+	// commonly runs at the source of the connection (for example, on the node
+	// that hosts the connection initiator), but this is not required: an emitter
+	// MAY observe a connection from any vantage point. Regardless of where it
+	// observes, the emitter MUST label each connection's source and destination
+	// by the direction in which the connection was initiated (see Connection).
 	Emitter *v1alpha.Emitter `protobuf:"bytes,2,opt,name=emitter,proto3" json:"emitter,omitempty"`
 	// Window start is the time at which the emitter started collecting
 	// information regarding the observed connections.
@@ -126,11 +130,24 @@ func (x *ConnectionLog) GetConnections() []*Connection {
 // one direction.
 type Connection struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Source defines properties of the vertex at the emitting side of the
-	// connection.
+	// Source defines properties of the vertex that initiated the connection,
+	// i.e. the side that opened the connection (for example, the sender of the
+	// TCP SYN or the process that owns the originating socket).
+	//
+	// Source and destination are defined by the direction in which the
+	// connection was initiated, independent of which emitter observed it. Two
+	// emitters observing the same connection from different vantage points (for
+	// example, the nodes hosting the source and the destination) MUST label the
+	// source and destination identically, so that consumers can deduplicate
+	// using the emitter's source_identifier.
 	Source *Vertex `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
-	// Source defines properties of the vertex at the receiving side of the
-	// connection.
+	// Destination defines properties of the vertex that received the connection,
+	// i.e. the side that the source initiated the connection towards.
+	//
+	// Return traffic from the destination back to the source is NOT a separate
+	// connection: it is reported as the receive-side counters of the edge types
+	// on this same Connection (for example,
+	// EdgeTypeNetworkTelemetry.network_receive_bytes_total).
 	Destination *Vertex `protobuf:"bytes,2,opt,name=destination,proto3" json:"destination,omitempty"`
 	// Links define properties of the edges that link the two vertices.
 	//

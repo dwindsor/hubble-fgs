@@ -72,7 +72,9 @@ The graph API consists of four main components:
 
 1. **ConnectionLog**: A time-windowed message emitted by a data source
 2. **Connection**: A directed graph with source vertex → destination vertex
-   linked by edges
+   linked by edges. The source is the side that *initiated* the connection and
+   the destination is the side it was initiated towards, independent of which
+   emitter observed it (see [Connection direction and emitters](#connection-direction-and-emitters)).
 3. **Vertex**: Properties of a connection endpoint (source or destination)
 4. **Edge**: Aggregatable telemetry properties of the connection
 
@@ -226,6 +228,229 @@ Connections can span different vertex families:
   }]
 }
 ```
+
+### Connection direction and emitters
+
+A `Connection` is directed: it has a `source` and a `destination`. These roles
+are defined by the **direction in which the connection was initiated**, not by
+which emitter observed the connection:
+
+- **source** is the side that initiated the connection (the side that opened it,
+  e.g. the sender of the TCP SYN or the process that owns the originating
+  socket).
+- **destination** is the side the connection was initiated towards.
+
+This is a property of the connection itself. It does not depend on the vantage
+point of the emitter. An emitter commonly runs at the source (for example, the
+node hosting the connection initiator), which is why the emitter is often
+described as observing "at the source" — but that is a typical deployment, not a
+rule. An emitter MAY observe a connection from any vantage point (the source
+side, the destination side, or somewhere in between).
+
+#### Return traffic is not a separate connection
+
+Traffic flowing back from the destination to the source (for example, the
+response to a request) does NOT produce a second `Connection` with the vertices
+swapped. Instead, it is reported as the receive-side counters of the relevant
+edge types on the **same** `Connection`. For example, on an A → B connection:
+
+- bytes sent A → B are reported in `network_transmit_bytes_total`
+- bytes sent B → A (the return traffic) are reported in
+  `network_receive_bytes_total`
+
+A `Connection` with `source = B, destination = A` only exists if B separately
+*initiates* a connection towards A.
+
+#### Multiple emitters observing the same connection
+
+In a distributed deployment, more than one emitter may observe the same logical
+connection (for example, the node hosting the source and the node hosting the
+destination both observe A → B). When this happens:
+
+- Each emitter MUST label the `source` and `destination` by connection
+  direction, as defined above. Because direction is independent of the vantage
+  point, all emitters produce the **same** source/destination labeling for the
+  same connection.
+- Each emitter SHOULD set a distinct `source_identifier` on its `emitter` field
+  so that consumers can attribute each `ConnectionLog` to a specific instance
+  and deduplicate overlapping observations.
+
+The "SHOULD NOT have overlapping time windows" constraint applies per emitter
+(identified by `source_identifier`); different emitters legitimately may emit
+events covering the same vertex pair and time window.
+
+#### Example: converting IPFIX flows to connection logs
+
+A common deployment is a fleet of switches exporting IPFIX (or NetFlow) flow
+records to a converter service that turns them into connection logs. Here the
+observer (the switch) and the emitter (the converter) are different entities,
+and the converter must take care to assign `source` and `destination` by
+connection direction rather than by the fields of an individual flow record.
+
+Two pitfalls to avoid:
+
+1. **Do not map the IPFIX `sourceIPv4Address`/`sourceTransportPort` of a single
+   flow record directly to the graph `source`.** A switch typically exports two
+   unidirectional flow records for one bidirectional connection (A → B and
+   B → A). Mapping each record's IPFIX "source" to the graph `source` produces
+   two `Connection` messages with swapped vertices for a single logical
+   connection, which contradicts the data model.
+
+2. **Do not put the switch in the `source` vertex** just because it exported the
+   flow. The switch is the *observer*; it belongs in the `emitter` field. The
+   vertices are the flow endpoints.
+
+Recommended approach:
+
+- **Determine the initiator.** The graph `source` is the side that initiated the
+  connection:
+  - **TCP:** use the TCP flags (IPFIX `tcpControlBits`); the side that sent the
+    initial SYN (without SYN-ACK) is the initiator.
+  - **Biflow records (RFC 5103):** if the exporter includes reverse fields
+    (e.g. `reverseOctetDeltaCount`), the record's forward direction is the
+    initiation direction — use forward = source, reverse = destination.
+  - **Fallback (UDP, or when flags are unavailable):** use a heuristic such as
+    ephemeral port → well-known port (client → server), or first-seen packet
+    ordering. This is best-effort, but the chosen rule MUST be applied
+    consistently so the same connection always maps the same way across windows
+    and switches (otherwise deduplication and time aggregation break).
+- **Merge the two unidirectional flows into a single `Connection`.** Pair the
+  A → B and B → A records of one connection and map forward traffic to the
+  transmit-side counters and reverse traffic to the receive-side counters (e.g.
+  `network_transmit_bytes_total` and `network_receive_bytes_total`). Emit one
+  `Connection`, not two.
+- **Set `source_identifier` to the observing switch.** When multiple switches on
+  the path observe the same connection, stamp each `ConnectionLog`'s
+  `emitter.source_identifier` with the identity of the switch that observed it
+  (e.g. serial number or management IP), not the converter's identity. This lets
+  consumers deduplicate observations of the same connection. The `emitter.name`
+  identifies the converter software; `source_identifier` identifies the observer.
+
+#### Counters describe the emitter's view, not end-to-end delivery
+
+A `Connection`'s edge counters describe what the emitter **observed at its own
+vantage point**. They are not a confirmation of what the destination actually
+received. On an A → B connection:
+
+- `network_transmit_*` is what the emitter saw put on the wire towards B.
+- `network_receive_*` is what the emitter saw arrive for this connection (the
+  return traffic from B), as observed at the emitter's location.
+
+Neither counter, by itself, tells you what B received. This matters most for
+protocols without delivery feedback: an emitter at A's side counts UDP datagrams
+as transmitted, but cannot know whether B received them — they may be dropped
+anywhere downstream, and the emitted `Connection` looks identical either way.
+(For TCP, `EdgeTypeL4Telemetry` retransmits and resets are an indirect,
+source-observable signal of delivery problems; UDP has no equivalent.)
+
+To determine what the destination actually received, you need an observation at
+the destination's vantage point: a separate `ConnectionLog` whose emitter sits
+at (or near) B, where `network_receive_*` reflects B's reception. Computing
+delivery or loss across the path is therefore a consumer-side, query-time
+operation that correlates the source-side `transmit_*` with the destination-side
+`receive_*` of the same connection (matched via `source_identifier`). A single
+`Connection` cannot express it.
+
+`network_transmit_drop_total` and `network_receive_drop_total` report drops at
+the emitter itself (for example, a switch dropping on egress or ingress), with
+the `_policy_total` fields as the policy-drop subset. These are local drops, not
+a statement about what the destination received.
+
+### Multicast connections
+
+Multicast traffic has no single unicast destination: a feeder sends to a group
+address that fans out to many receivers. The graph API models multicast at two
+levels, depending on the granularity you need. In practice the **per-receiver**
+level is usually what you want, because it is the only way to describe what each
+individual receiver actually got.
+
+The relevant fields are:
+
+- `VertexPropertyMulticast` (attachable to any vertex family) carries `source_id`
+  (an identifier for the multicast source) and `group_ip` (the group address,
+  validated to be in `224.0.0.0/4` or `ff00::/8`).
+- `EdgeTypeMulticastTelemetry` carries `sequence_number_gap_count_total` and a
+  `feeder_receiver_delay_histogram`.
+
+#### Per-receiver: describing what each receiver got
+
+To describe the traffic received on each individual IP of the group, emit **one
+`Connection` per receiver**:
+
+- `source` is the feeder, with `multicast.source_id` (and `multicast.group_ip`)
+  set.
+- `destination` is the **individual receiver's IP** (its own unicast address),
+  with `multicast.group_ip` set to record which group this delivery belongs to.
+- the edge counters describe what *that receiver* received. This connection is
+  observed at the receiver's vantage point (or the switch port facing it), so —
+  per the "counters describe the emitter's view" principle above — the
+  `network_receive_*` counters and `EdgeTypeMulticastTelemetry` (gaps, delay)
+  reflect that specific receiver's reception.
+
+```json5
+{
+  "source": {
+    "network_device": {
+      "name": "feeder-01",
+      "ip": "10.0.0.1",
+      "multicast": { "source_id": "feeder-01", "group_ip": "239.1.1.1" }
+    }
+  },
+  "destination": {
+    // The individual receiver. group_ip records which group it joined, so
+    // clients can group all receivers of a group by destination.multicast.group_ip.
+    "network_device": {
+      "name": "receiver-11",
+      "ip": "10.0.5.11",
+      "multicast": { "group_ip": "239.1.1.1" }
+    }
+  },
+  "links": [
+    {
+      "network_telemetry": {
+        // What this receiver actually received from the group.
+        "network_receive_packets_total": 980,
+        "network_receive_bytes_total": 1430000
+      }
+    },
+    {
+      "multicast_telemetry": {
+        // Gaps and delay observed at this receiver.
+        "sequence_number_gap_count_total": 2,
+        "feeder_receiver_delay_histogram": {
+          "count_total": 980,
+          "sum_total": 3100,
+          "bucket_le_1ms_total": 600,
+          "bucket_le_10ms_total": 900,
+          "bucket_le_100ms_total": 970,
+          "bucket_le_1s_total": 980
+        }
+      }
+    }
+  ]
+}
+```
+
+Because each receiver is its own `Connection` keyed by the receiver's IP, a
+client can see per-IP reception directly, and can aggregate across the group at
+query time by grouping on `destination.multicast.group_ip` (and/or
+`source.multicast.source_id`) — exactly the query-time aggregation described
+below. Per-receiver also respects the scalar-vertex constraint: the receiver set
+is expressed as many connections, never as a list packed into one vertex.
+
+#### Aggregate: feeder → group
+
+When you only need the stream as emitted by the feeder (not per-receiver
+reception), model a single `Connection` whose **destination is the group
+itself**: a vertex carrying `multicast.group_ip` and no individual receiver IP.
+This mirrors the (S,G) / (\*,G) model of multicast routing — the group address
+is the addressable destination even though delivery fans out to N receivers. The
+`EdgeTypeMulticastTelemetry` on such a connection describes the stream / feeder
+side rather than any single receiver.
+
+In both levels, direction follows the same initiator rule: the feeder originates
+the stream, so it is the `source`; the group (or the receiver it is delivered to)
+is the `destination`.
 
 ### Data aggregation
 
