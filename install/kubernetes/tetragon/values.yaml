@@ -770,7 +770,7 @@ integratedGrafana:
     image:
       registry: quay.io
       repository: prometheus/prometheus
-      tag: v3.13.0
+      tag: v3.13.1
       sha: ~
       pullPolicy: IfNotPresent
     # -- Resources for the Prometheus container.
