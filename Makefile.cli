@@ -47,7 +47,7 @@ $(RELEASE_FOLDER)/$(TARGET)-%.tar.gz: cli-clean
 		EXT=""; if [ "$$OS" = "windows" ]; then EXT=".exe"; fi; \
 		mkdir -p $(RELEASE_FOLDER)/$$OS/$$ARCH; \
 		echo "Building for $$OS/$$ARCH..."; \
-		env GOOS=$$OS GOARCH=$$ARCH $(CLI_GO_BUILD) -ldflags="$(GO_BUILD_LDFLAGS)" -o $(RELEASE_FOLDER)/$$OS/$$ARCH/$(TARGET)$$EXT ./cmd/tetra; \
+		env GOOS=$$OS GOARCH=$$ARCH $(CLI_GO_BUILD) -ldflags="$(GO_BUILD_LDFLAGS)" -o $(RELEASE_FOLDER)/$$OS/$$ARCH/$(TARGET)$$EXT ./cmd/bin/tetra; \
 		tar -czf $@ -C $(RELEASE_FOLDER)/$$OS/$$ARCH $(TARGET)$$EXT; \
 		sha256sum $@ > $@.sha256sum; \
 	}
