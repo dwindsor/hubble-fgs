@@ -10,7 +10,7 @@
 package main
 
 import (
-	fs_scanner "github.com/isovalent/hubble-fgs/cmd/tetragon-fs-scanner"
+	fs_scanner "github.com/isovalent/hubble-fgs/pkg/tetragon-fs-scanner"
 )
 
 func main() {

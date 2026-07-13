@@ -213,7 +213,7 @@ tetragon-runner:
 
 .PHONY: tetragon-fs-scanner
 tetragon-fs-scanner: tetragon-runner
-	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/bin/tetragon-fs-scanner/
+	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/tetragon-fs-scanner/
 
 GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/tetragon-rthooks build $(GO_BUILD_FLAGS)
 
