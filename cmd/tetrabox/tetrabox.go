@@ -15,7 +15,7 @@ import (
 	"os"
 	"path"
 
-	fs_scanner "github.com/isovalent/hubble-fgs/cmd/tetragon-fs-scanner"
+	"github.com/isovalent/hubble-fgs/pkg/fsscanner"
 	"github.com/isovalent/hubble-fgs/pkg/tetra"
 	"github.com/isovalent/hubble-fgs/pkg/tetragon"
 
@@ -44,7 +44,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "tetragon-fs-scanner":
-		fs_scanner.Main()
+		fsscanner.Main()
 		return
 	case "tetrabox":
 		fmt.Fprintln(os.Stderr, "tetrabox is a multi-call binary that combines three tetragon utilities: tetragon, tetra, and tetragon-fs-scanner")

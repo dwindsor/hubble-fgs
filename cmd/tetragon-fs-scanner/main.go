@@ -10,9 +10,9 @@
 package main
 
 import (
-	fs_scanner "github.com/isovalent/hubble-fgs/pkg/tetragon-fs-scanner"
+	"github.com/isovalent/hubble-fgs/pkg/fsscanner"
 )
 
 func main() {
-	fs_scanner.Main()
+	fsscanner.Main()
 }
