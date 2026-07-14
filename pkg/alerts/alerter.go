@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -269,14 +268,14 @@ func (a *alerter) GetAlertRule(_ context.Context, req *tetragon.GetAlertRuleRequ
 }
 
 func (a *alerter) Start(server *server.Server) error {
-	var readyWG sync.WaitGroup
-	var startErr error
-	readyWG.Add(1)
+	run, err := server.GetEventsListener(&tetragon.GetEventsRequest{}, a, a)
+	if err != nil {
+		return fmt.Errorf("error starting alerter: %w", err)
+	}
 	go func() {
-		if err := server.GetEventsWG(&tetragon.GetEventsRequest{}, a, a, &readyWG); err != nil {
-			startErr = fmt.Errorf("error starting alerter: %w", err)
+		if err = run(); err != nil {
+			logger.GetLogger().Warn("JSON exporter terminated with error", logfields.Error, err)
 		}
 	}()
-	readyWG.Wait()
-	return startErr
+	return nil
 }
