@@ -442,6 +442,9 @@ tetragon:
   # TLS
   tls:
     bpfContextCacheSize: 32000
+  networkInterfaceStats:
+    enabled: false
+    interval: 10s
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
   # @ignored
   awsSonar:

@@ -256,6 +256,8 @@ Helm chart for Tetragon Enterprise
 | tetragon.metadata.image.repository | string | `"quay.io/isovalent/hubble-enterprise-metadata"` |  |
 | tetragon.metadata.image.tag | string | `"current"` |  |
 | tetragon.nameOverride | string | `""` |  |
+| tetragon.networkInterfaceStats.enabled | bool | `false` |  |
+| tetragon.networkInterfaceStats.interval | string | `"10s"` |  |
 | tetragon.podAnnotations.enabled | bool | `false` |  |
 | tetragon.pprof.address | string | `"localhost"` | The address at which to expose pprof. |
 | tetragon.pprof.enabled | bool | `false` | Whether to enable exposing pprof server. |

@@ -237,6 +237,9 @@ options:
     - name: enable-network-events
       default_value: "true"
       usage: Enable Network Events from BPF to userspace
+    - name: enable-network-interface-stats
+      default_value: "false"
+      usage: Enable network interface statistics
     - name: enable-network-watermarks-exit-gen
       default_value: "true"
       usage: |
@@ -491,6 +494,10 @@ options:
     - name: netns-dir
       default_value: /var/run/docker/netns/
       usage: Network namespace dir
+    - name: network-interface-stats-interval
+      default_value: 10s
+      usage: |
+        Network interface statistics interval (requires --enable-network-interface-stats)
     - name: network-policy
       default_value: '[]'
       usage: Network policy file to load at startup

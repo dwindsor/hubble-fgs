@@ -144,6 +144,9 @@ tetragon:
   # TLS
   tls:
     bpfContextCacheSize: 32000
+  networkInterfaceStats:
+    enabled: false
+    interval: 10s
   prometheus:
     metricsLabelFilter: "namespace,workload,binary"
   # EXPERIMENTAL: Publish metrics to AWS Sonar.

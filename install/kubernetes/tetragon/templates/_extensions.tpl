@@ -100,6 +100,8 @@ enable-multicast-seq-check: {{ .Values.tetragon.layer3.udp.multicast.seqCheck | 
 multicast-sample-percent: {{ .Values.tetragon.layer3.udp.multicast.samplePercent | quote }}
 enable-network-watermarks-exit-gen: {{ .Values.tetragon.layer3.watermarksExitGen.enabled | quote }}
 network-watermarks-exit-gen-interval: {{ .Values.tetragon.layer3.watermarksExitGen.interval | quote }}
+enable-network-interface-stats: {{ .Values.tetragon.networkInterfaceStats.enabled | quote }}
+network-interface-stats-interval: {{ .Values.tetragon.networkInterfaceStats.interval | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}

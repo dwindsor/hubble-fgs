@@ -136,6 +136,8 @@ const (
 	keyEnableNetworkWatermarksExitGen    = "enable-network-watermarks-exit-gen"
 	keyNetworkWatermarksExitGenInterval  = "network-watermarks-exit-gen-interval"
 	keyEnableNetworkEvents               = "enable-network-events"
+	keyEnableNetworkInterfaceStats       = "enable-network-interface-stats"
+	keyNetworkInterfaceStatsInterval     = "network-interface-stats-interval"
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
 	keyTetragonNodeNamespace             = "node-namespace"
@@ -153,6 +155,7 @@ const (
 	EnvironmentAzure      = "azure"
 	EnvironmentGCloud     = "gcloud"
 	EnvironmentKubernetes = "kubernetes"
+	NetworkStatInterval   = time.Duration(10 * time.Second)
 )
 
 var (
@@ -324,6 +327,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableNetworkWatermarksExitGen, true, fmt.Sprintf("Enable generation of network watermarks exit events from user space when required (requires --%s)", keyNetworkWatermarksExitGenInterval))
 	flags.Duration(keyNetworkWatermarksExitGenInterval, 1*time.Second, fmt.Sprintf("Specify the network watermarks exit event generation interval (requires --%s)", keyEnableNetworkWatermarksExitGen))
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
+	flags.Bool(keyEnableNetworkInterfaceStats, false, "Enable network interface statistics")
+	flags.Duration(keyNetworkInterfaceStatsInterval, NetworkStatInterval, fmt.Sprintf("Network interface statistics interval (requires --%s)", keyEnableNetworkInterfaceStats))
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	flags.MarkHidden(keyK8sServiceAccountAuth)
@@ -485,6 +490,8 @@ func readAndSetEnterpriseFlags() error {
 	Config.EnableNetworkWatermarksExitGen = viper.GetBool(keyEnableNetworkWatermarksExitGen)
 	Config.NetworkWatermarksExitGenInterval = viper.GetDuration(keyNetworkWatermarksExitGenInterval)
 	Config.EnableNetworkEvents = viper.GetBool(keyEnableNetworkEvents)
+	Config.EnableNetworkInterfaceStats = viper.GetBool(keyEnableNetworkInterfaceStats)
+	Config.NetworkInterfaceStatsInterval = viper.GetDuration(keyNetworkInterfaceStatsInterval)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
 	// then we ignore enable/disable in policies.
@@ -673,6 +680,10 @@ func validateConfig(config config) error {
 
 	if config.EnableNetworkWatermarksExitGen && config.NetworkWatermarksExitGenInterval == 0 {
 		return fmt.Errorf("network watermarks exit event generation requires an interval > 0, specified with --%s", keyNetworkWatermarksExitGenInterval)
+	}
+
+	if config.EnableNetworkInterfaceStats && config.NetworkInterfaceStatsInterval == 0 {
+		return fmt.Errorf("network interface stats requires an interval > 0, specified with --%s", keyNetworkInterfaceStatsInterval)
 	}
 
 	// Network policies can be loaded via the k8s resource watcher as well

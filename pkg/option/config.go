@@ -183,6 +183,9 @@ type config struct {
 
 	EnableNetworkEvents bool
 
+	EnableNetworkInterfaceStats   bool
+	NetworkInterfaceStatsInterval time.Duration
+
 	EnableAlertProfiling bool
 
 	// K8sServiceAccountAuth is the base64 string for authenticating with k8s control plane
@@ -240,5 +243,6 @@ var (
 		NetworkWatermarksExitGenInterval:  time.Duration(1) * time.Second,
 		UDPIdleSocketTimeout:              time.Duration(2) * time.Minute,
 		EnableRawsockMetrics:              true,
+		NetworkInterfaceStatsInterval:     NetworkStatInterval,
 	}
 )
