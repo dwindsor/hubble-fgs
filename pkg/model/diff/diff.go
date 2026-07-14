@@ -690,6 +690,7 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 				ServiceKind:          0,
 				WorkloadKind:         telemetry.KubernetesWorkloadKind,
 				Ip:                   "",
+				IpProtocol:           telemetry.Protocol,
 				ApplicationModelUuid: telemetry.ApplicationModelId,
 			},
 		},
