@@ -13,7 +13,6 @@ package sandboxpolicy
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -63,16 +62,16 @@ func convertCmd() *cobra.Command {
 		Short: "convert a sandbox policy to a tracing policy (intended for testing)",
 		Long:  "Convert a sandbox policy to a tracing policy (intended for testing).\nPipe it over \"yq 'del(.spec.parser) | del(.spec.file) | del(.spec.loader)'\" for better results",
 		Args:  cobra.ExactArgs(1),
-		Run: func(_ *cobra.Command, args []string) {
+		RunE: func(_ *cobra.Command, args []string) error {
 			fname := args[0]
 			data, err := os.ReadFile(fname)
 			if err != nil {
-				log.Fatalf("failed to read %s: %v", fname, err)
+				return fmt.Errorf("failed to read %s: %v", fname, err)
 			}
 
 			pol, err := sandboxpolicy.FromYAML(string(data))
 			if err != nil {
-				log.Fatalf("failed to parse %s: %v", fname, err)
+				return fmt.Errorf("failed to parse %s: %v", fname, err)
 			}
 
 			var tp any
@@ -80,27 +79,28 @@ func convertCmd() *cobra.Command {
 			case *v1alpha1.SandboxPolicy:
 				tp, err = sandboxpolicy.ToTracingPolicy(sp)
 				if err != nil {
-					log.Fatalf("failed to convert %s: %v", fname, err)
+					return fmt.Errorf("failed to convert %s: %v", fname, err)
 				}
 			case *v1alpha1.SandboxPolicyNamespaced:
 				tp, err = sandboxpolicy.ToTracingPolicyNamespaced(sp)
 				if err != nil {
-					log.Fatalf("failed to convert %s: %v", fname, err)
+					return fmt.Errorf("failed to convert %s: %v", fname, err)
 				}
 			default:
-				log.Fatalf("unexpected parsing result of %s", fname)
+				return fmt.Errorf("unexpected parsing result of %s", fname)
 			}
 
 			out, err := yaml.Marshal(tp)
 			if err != nil {
-				log.Fatalf("failed to convert %s: %v", fname, err)
+				return fmt.Errorf("failed to convert %s: %v", fname, err)
 			}
 
 			_, err = os.Stdout.Write(out)
 			if err != nil {
-				log.Fatalf("failed to write data: %v", err)
+				return fmt.Errorf("failed to write data: %v", err)
 			}
 
+			return nil
 		},
 	}
 
