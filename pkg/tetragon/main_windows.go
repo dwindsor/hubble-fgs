@@ -70,6 +70,10 @@ func startLayer3Progs(ctx context.Context) error {
 	return layer3.LoadWinTCPSensor(ctx)
 }
 
+func startNetworkInterfaceStats(ctx context.Context) error {
+	return nil
+}
+
 func loadInitialProcFsSensor(_ context.Context) error {
 	return nil
 }

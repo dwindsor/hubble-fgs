@@ -12,6 +12,7 @@ package network
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"time"
@@ -33,11 +34,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 var (
-	NetworkStatInterval = time.Duration(10 * time.Second)
-	eventTimer          = timer.NewPeriodicTimer("Network Interface Timer", runNetworkCB, true)
+	eventTimer = timer.NewPeriodicTimer("Network Interface Timer", runNetworkCB, true)
 )
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns uint64, pod *tetragon.Pod) {
@@ -107,15 +108,15 @@ var (
 	)
 )
 
-func EnableNetworkParser(policy tracingpolicy.TracingPolicy, statInterval uint32) *sensors.Sensor {
+func EnableNetworkParser(policy tracingpolicy.TracingPolicy, statInterval time.Duration) *sensors.Sensor {
 	var defaultCBInterval time.Duration
 	var progs []*program.Program
 	var maps []*program.Map
 
 	if statInterval == 0 {
-		defaultCBInterval = NetworkStatInterval
+		defaultCBInterval = enterpriseOption.NetworkStatInterval
 	} else {
-		defaultCBInterval = time.Duration(time.Duration(statInterval) * time.Second)
+		defaultCBInterval = statInterval
 	}
 
 	versionStr := "__networkPacket_probe__"
@@ -148,7 +149,7 @@ func (net *networkSensor) PolicyHandler(
 	if spec.Parser.Interface.Packet {
 		logger.GetLogger().Info("Interface sensor: beta packet option has been deprecated; using polling approach instead.")
 	}
-	return EnableNetworkParser(policy, spec.Parser.Interface.StatsInterval), nil
+	return EnableNetworkParser(policy, time.Duration(spec.Parser.Interface.StatsInterval)*time.Second), nil
 }
 
 type MsgNetNsExitEvent struct {
@@ -164,6 +165,21 @@ func handleNetNsExit(r *bytes.Reader) ([]observer.Event, error) {
 	}
 	nscache.DelNetNs(m.NsInum)
 	return nil, nil
+}
+
+func StartNetworkInterfaceStats(ctx context.Context) error {
+	if enterpriseOption.Config.EnableNetworkInterfaceStats {
+		sens := EnableNetworkParser(&tracingpolicy.GenericTracingPolicy{}, enterpriseOption.Config.NetworkInterfaceStatsInterval)
+		mgr := observer.GetSensorManager()
+		if mgr == nil {
+			return fmt.Errorf("StartNetworkInterfaceStats could not get sensor manager")
+		}
+		err := mgr.AddSensor(ctx, sens.Name, sens)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func init() {

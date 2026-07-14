@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
 
@@ -93,6 +94,10 @@ func loadFIMInitialSensor(ctx context.Context) error {
 
 func startLayer3Progs(ctx context.Context) error {
 	return layer3.StartLayer3Progs(ctx, nil)
+}
+
+func startNetworkInterfaceStats(ctx context.Context) error {
+	return network.StartNetworkInterfaceStats(ctx)
 }
 
 func loadInitialProcFsSensor(ctx context.Context) error {
