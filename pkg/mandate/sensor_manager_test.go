@@ -13,6 +13,7 @@ package mandate
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/policyconf"
@@ -29,6 +30,7 @@ type conf struct {
 
 type TestSensorManager struct {
 	pols map[string]conf
+	mu   sync.Mutex
 }
 
 func NewTestSensorManager() *TestSensorManager {
@@ -53,6 +55,9 @@ func getSpecMode(opts []v1alpha1.OptionSpec) policyconf.Mode {
 }
 
 func (tsm *TestSensorManager) policyMode(t *testing.T, polName string) policyconf.Mode {
+	tsm.mu.Lock()
+	defer tsm.mu.Unlock()
+
 	for name, conf := range tsm.pols {
 		if polName == name {
 			return conf.mode
@@ -63,6 +68,9 @@ func (tsm *TestSensorManager) policyMode(t *testing.T, polName string) policycon
 }
 
 func (tsm *TestSensorManager) AddTracingPolicy(_ context.Context, tp tracingpolicy.TracingPolicy) error {
+	tsm.mu.Lock()
+	defer tsm.mu.Unlock()
+
 	name := tp.TpName()
 	mode := getSpecMode(tp.TpSpec().Options)
 	if _, exists := tsm.pols[name]; exists {
@@ -73,6 +81,9 @@ func (tsm *TestSensorManager) AddTracingPolicy(_ context.Context, tp tracingpoli
 }
 
 func (tsm *TestSensorManager) DeleteTracingPolicy(_ context.Context, name, _, _ string) error {
+	tsm.mu.Lock()
+	defer tsm.mu.Unlock()
+
 	if _, exists := tsm.pols[name]; !exists {
 		return fmt.Errorf("policy named %q does not exists", name)
 	}
@@ -81,6 +92,9 @@ func (tsm *TestSensorManager) DeleteTracingPolicy(_ context.Context, name, _, _ 
 }
 
 func (tsm *TestSensorManager) ConfigureTracingPolicy(_ context.Context, conf *tetragon.ConfigureTracingPolicyRequest) error {
+	tsm.mu.Lock()
+	defer tsm.mu.Unlock()
+
 	name := conf.GetName()
 	val, exists := tsm.pols[name]
 	if !exists {

@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
@@ -57,6 +58,8 @@ const (
 	stopCmdID
 	statusCmdID
 	configureCmdID
+
+	maxRefreshGoroutines = 16
 )
 
 type statusRet struct {
@@ -365,6 +368,41 @@ type fetchLoadPoliciesResult struct {
 	modeUpdates    []updateMode
 }
 
+type loadPolicyReq struct {
+	ctx      context.Context
+	pol      *Policy
+	data     []byte
+	checksum []byte
+}
+
+func (m *manager) consumeLoadPolicyReq(ctx context.Context, refrAtt *attempt.InprAttempt, reqCh chan *loadPolicyReq, resCh chan policy) func() error {
+	return func() error {
+		var (
+			loadReq *loadPolicyReq
+			ok      bool
+		)
+		for {
+			select {
+			case <-ctx.Done():
+				// either context canceled or any goroutine in the error group failed
+				return nil
+			case loadReq, ok = <-reqCh:
+				if !ok {
+					// end of loop, channel closed
+					return nil
+				}
+			}
+			loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", loadReq.pol.url_.String())
+			loadedPol, err := m.attemptLoadPolicy(ctx, loadAtt, loadReq.pol, loadReq.data)
+			if err != nil {
+				return fmt.Errorf("failed to load policy %q: %w", loadReq.pol.url_, err)
+			}
+			loadedPol.checksum = loadReq.checksum
+			resCh <- loadedPol
+		}
+	}
+}
+
 // fetchAndLoadPolicies fetches and loads the policies in obj
 // It returns an error if something went wrong, plus a structure that holds
 // the list of policies to be unloaded and eventually, the list of policy mode changes to be reverted.
@@ -383,6 +421,17 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 			return res, err
 		}
 		policyData[i] = data
+	}
+
+	// Consumer goroutines management
+	errs, ctx := errgroup.WithContext(ctx)
+	reqCh := make(chan *loadPolicyReq, len(obj.Mandate.Policies))
+	resCh := make(chan policy, len(obj.Mandate.Policies))
+	ngoroutines := min(maxRefreshGoroutines, len(obj.Mandate.Policies))
+
+	// Start consumer goroutines
+	for range ngoroutines {
+		errs.Go(m.consumeLoadPolicyReq(ctx, refrAtt, reqCh, resCh))
 	}
 
 	// second pass, attempt to load them.
@@ -470,18 +519,35 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 				}()
 				needDomainIDBump = false
 			}
-			loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", pol.url_.String())
-			var loadedPol policy
-			loadedPol, err = m.attemptLoadPolicy(ctx, loadAtt, pol, data)
-			if err != nil {
-				// Return policies currently loaded as to-be-unloaded
-				res.unloadPolicies = loadedPolicies
-				return res, fmt.Errorf("failed to load policy %q: %w", pol.url_, err)
+			reqCh <- &loadPolicyReq{
+				ctx:      ctx,
+				pol:      pol,
+				data:     data,
+				checksum: checksum,
 			}
-			// set the policy checksum and add it to the loaded set
-			loadedPol.checksum = checksum
-			loadedPolicies = append(loadedPolicies, loadedPol)
 		}
+	}
+
+	// Notify consumer goroutines to quit
+	close(reqCh)
+	// Wait for goroutines to quit
+	err = errs.Wait()
+
+	// Collect all loaded policies
+	close(resCh)
+	for {
+		loadedPol, ok := <-resCh
+		if !ok {
+			// We collected the final "channel closed" message
+			break
+		}
+		loadedPolicies = append(loadedPolicies, loadedPol)
+	}
+
+	// If there was an error, return policies currently loaded as to-be-unloaded
+	if err != nil {
+		res.unloadPolicies = loadedPolicies
+		return res, err
 	}
 
 	// Finally, update policies modes as requested
