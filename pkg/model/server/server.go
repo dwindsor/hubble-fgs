@@ -681,11 +681,14 @@ func getProcessModel(namespaces []string,
 				Protocol: dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
+			// Report the address via DestinationIP so it classifies as a plain
+			// IP downstream. Do not put it in DestinationNames, which would
+			// misfile it as a DNS name and emit it in world_entity.dns_name.
 			d = &types.Destination{
-				DestinationNames: []string{ep.CIDR.String()},
-				Port:             dstVal.Port,
-				Stats:            stats,
-				Protocol:         dstVal.Protocol,
+				DestinationIP: ep.CIDR.Addr().String(),
+				Port:          dstVal.Port,
+				Stats:         stats,
+				Protocol:      dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_SERVICE:
 			d = &types.Destination{
@@ -718,11 +721,13 @@ func getProcessModel(namespaces []string,
 				Protocol:         dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_CIDR:
+			// Report the address via DestinationIP so it classifies as a plain
+			// IP downstream, matching ENDPOINT_TYPE_IP.
 			d = &types.Destination{
-				DestinationNames: []string{ep.CIDR.String()},
-				Port:             dstVal.Port,
-				Stats:            stats,
-				Protocol:         dstVal.Protocol,
+				DestinationIP: ep.CIDR.Addr().String(),
+				Port:          dstVal.Port,
+				Stats:         stats,
+				Protocol:      dstVal.Protocol,
 			}
 		}
 

@@ -338,6 +338,8 @@ func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 		nwKey.DestinationResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_SERVICE
 	}
 
+	nwKey.DestinationIP = dst.DestinationIP
+
 	nwKey.DestinationPort = dst.Port
 	nwKey.Protocol = commonNetV1.IPProtocol(dst.Protocol)
 }

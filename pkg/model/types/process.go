@@ -87,6 +87,10 @@ type Destination struct {
 	Stats              *DestinationStats
 	DestinationService *Service
 	Protocol           uint32
+	// DestinationIP is the resolved peer IP address for plain-IP and CIDR
+	// destinations. It is set instead of DestinationNames so the destination
+	// classifies as a plain IP rather than being misfiled as a DNS name.
+	DestinationIP string
 }
 
 type Workload struct {

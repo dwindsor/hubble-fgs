@@ -377,3 +377,36 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 	require.True(t, found, "app process should be in monitor data")
 	assert.Equal(t, []string{"init", "systemd"}, appValue.Parents, "app should have both init and systemd as parents")
 }
+
+// TestProcessModelToApplicationModel_PlainIPClassification is a regression test
+// for the bug where a plain-IP destination was placed in DestinationNames and
+// thus misclassified as a DNS destination. A types.Destination carrying only a
+// DestinationIP (no DestinationNames) must convert to a Destination_Ip so it is
+// reported as a plain IP downstream, not as a DNS name.
+func TestProcessModelToApplicationModel_PlainIPClassification(t *testing.T) {
+	models := []*types.ProcessModel{
+		{
+			Binary:    "curl",
+			Namespace: HostNamespace,
+			Dest: []*types.Destination{
+				{
+					DestinationIP: "10.0.0.1",
+					Port:          443,
+					Stats:         &types.DestinationStats{TxBytes: 10, RxBytes: 20},
+				},
+			},
+		},
+	}
+
+	result := ProcessModelToApplicationModel(models, map[string]bool{})
+	require.NotNil(t, result.ApplicationModel.Host)
+	require.Len(t, result.ApplicationModel.Host.Processes, 1)
+	conns := result.ApplicationModel.Host.Processes[0].Connections
+	require.Len(t, conns, 1)
+
+	dst := conns[0].Destination
+	// Must be a plain IP, not a DNS name.
+	ipDst, ok := dst.Type.(*appModelV1.Destination_Ip)
+	require.Truef(t, ok, "expected Destination_Ip, got %T (plain IP misclassified)", dst.Type)
+	assert.Equal(t, "10.0.0.1", ipDst.Ip.Ip)
+}
