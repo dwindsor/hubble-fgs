@@ -203,6 +203,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.k8sWatcher.policy.enabled | bool | `true` | Enable watching Kubernetes API server for policy resources. If true, Tetragon watches all supported policy resources: TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and TetragonNetworkPolicy(Namespaced), unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely. |
 | tetragon.layer3.bpfSocketCacheSize | int | `32768` |  |
 | tetragon.layer3.bpfWatermarksCacheSize | int | `32768` |  |
+| tetragon.layer3.disabled | bool | `false` |  |
 | tetragon.layer3.icmp.bpfSocketCacheSize | int | `32768` |  |
 | tetragon.layer3.icmp.enabled | bool | `false` |  |
 | tetragon.layer3.icmp.socketTracking | bool | `false` |  |

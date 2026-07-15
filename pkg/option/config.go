@@ -90,6 +90,7 @@ type config struct {
 	UDPSocketMapSize               int
 	NetworkWatermarksMapSize       int
 	ICMPSocketMapSize              int
+	DisableLayer3                  bool
 	EnableIcmpTracking             bool
 	EnableDnsDebug                 bool
 	EnableBPFDNSParser             bool

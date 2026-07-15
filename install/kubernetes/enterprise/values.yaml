@@ -73,6 +73,7 @@ tetragon:
     network: true
   # Layer3
   layer3:
+    disabled: false
     bpfSocketCacheSize: 32768
     bpfWatermarksCacheSize: 32768
     tcp:

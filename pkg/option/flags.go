@@ -64,6 +64,7 @@ const (
 	keyUDPSocketMapSize                  = "bpf-udp-socket-cache-size"
 	keyNetworkWatermarksMapSize          = "bpf-network-watermarks-cache-size"
 	keyICMPSocketMapSize                 = "bpf-icmp-socket-cache-size"
+	KeyDisableLayer3                     = "disable-layer3"
 	keyEnableIcmpTracking                = "enable-icmp-tracking"
 	keyEnablePolicyK8sWatcher            = "enable-policy-k8swatcher"
 	keyEnableSandboxPolicies             = "enable-sandboxpolicies"
@@ -230,6 +231,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	// detach programs and left stale progs attached at cgroups and tc hooks.
 	flags.Bool(KeyDetatchOldBPF, false, "Detach old cgroup programs from their interfaces when loading Tetragon. Disabled by default.")
 
+	flags.Bool(KeyDisableLayer3, false, "Disable layer3 entirely; equivalent to setting all the layer3 BPF caches to 1")
 	// Options to specify layer3 map sizes.
 	flags.Int(keyLayer3SocketMapSize, 32768, "Set the number of network sockets to track in BPF. Higher values enable Tetragon to keep track of more sockets before evicting old ones")
 	flags.Int(keyTCPSocketMapSize, 32768, "Set the number of TCP sockets to track in BPF. Higher values enable Tetragon to keep track of more TCP sockets before evicting old ones")
@@ -355,6 +357,7 @@ func readAndSetEnterpriseFlags() {
 	Config.FlowExportFileMaxSizeMB = viper.GetInt(KeyFlowExportFileMaxSizeMB)
 	Config.FlowExportFileMaxBackups = viper.GetInt(KeyFlowExportFileMaxBackups)
 	Config.FlowExportFileCompress = viper.GetBool(KeyFlowExportFileCompress)
+	Config.DisableLayer3 = viper.GetBool(KeyDisableLayer3)
 	Config.Layer3SocketMapSize = viper.GetInt(keyLayer3SocketMapSize)
 	Config.TCPSocketMapSize = viper.GetInt(keyTCPSocketMapSize)
 	Config.UDPSocketMapSize = viper.GetInt(keyUDPSocketMapSize)
@@ -470,6 +473,10 @@ func validateConfig(config config) error {
 
 	if err := platformValidateConfig(config); err != nil {
 		return err
+	}
+
+	if config.Layer3CLIEnable && config.DisableLayer3 {
+		return fmt.Errorf("switch config --%s set together with a switch that enables layer3", KeyDisableLayer3)
 	}
 
 	if !config.EnableTCP {

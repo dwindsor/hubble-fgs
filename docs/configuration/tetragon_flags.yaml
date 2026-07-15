@@ -108,6 +108,10 @@ options:
     - name: disable-kprobe-multi
       default_value: "false"
       usage: Allow to disable kprobe multi interface
+    - name: disable-layer3
+      default_value: "false"
+      usage: |
+        Disable layer3 entirely; equivalent to setting all the layer3 BPF caches to 1
     - name: dns-cache-size
       default_value: "1024"
       usage: |

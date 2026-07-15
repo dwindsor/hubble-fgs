@@ -45,6 +45,7 @@ enable-syscall-tracking: "true"
 {{- else }}
 enable-syscall-tracking: "false"
 {{- end }}
+disable-layer3: {{ .Values.tetragon.layer3.disabled | quote }}
 bpf-layer3-socket-cache-size: {{ .Values.tetragon.layer3.bpfSocketCacheSize | quote }}
 bpf-network-watermarks-cache-size: {{ .Values.tetragon.layer3.bpfWatermarksCacheSize | quote }}
 enable-tcp: {{ .Values.tetragon.layer3.tcp.enabled | quote }}
