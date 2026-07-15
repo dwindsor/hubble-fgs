@@ -33,7 +33,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, __u64);
 	__type(value, __u64);
-	__uint(max_entries, 32000);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_tcp_accsk SEC(".maps");
 
 static inline __attribute__((always_inline)) int

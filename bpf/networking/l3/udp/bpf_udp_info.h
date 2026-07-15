@@ -22,11 +22,6 @@
  * Here we have the map and helper routines to setup keys and values.
  */
 
-/* Maximum number of simultaniously existing UDP sockets that we track
- * statistics for.
- */
-#define MAX_UDP_ENDPOINTS 32768
-
 /* Clock is defined in linux/time.h */
 #define CLOCK_REALTIME	0
 #define CLOCK_MONOTONIC 1
@@ -42,7 +37,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct udp_info_key);
 	__type(value, struct udp_info_value);
-	__uint(max_entries, MAX_UDP_ENDPOINTS);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_udpsk SEC(".maps");
 
 // We specifically do not use *_stats as the map name to hold the counts of tg_l3_udpsk
@@ -69,7 +64,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct udp_info_key);
 	__type(value, struct udp_timer_value);
-	__uint(max_entries, MAX_UDP_ENDPOINTS);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_udp_tmr SEC(".maps");
 #endif
 

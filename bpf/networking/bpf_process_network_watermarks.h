@@ -16,8 +16,6 @@
 #include "lib/iso_msg_types.h"
 #include "bpf_cookie.h"
 
-#define MAX_UDP_PROCESSES 32768
-
 struct process_network_watermarks_log {
 	__u64 process_start_time;
 	__u64 hist_vol;
@@ -39,7 +37,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, __u64);
 	__type(value, struct process_network_watermarks_log);
-	__uint(max_entries, MAX_UDP_PROCESSES);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_wtmk SEC(".maps");
 
 struct {

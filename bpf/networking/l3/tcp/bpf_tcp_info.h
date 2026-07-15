@@ -38,7 +38,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, u64);
 	__type(value, struct tcpsocketmap_value);
-	__uint(max_entries, 32768);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_tcpsk SEC(".maps");
 
 struct {
@@ -60,7 +60,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, u64);
 	__type(value, u64);
-	__uint(max_entries, 32768);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_tcp_finrx SEC(".maps");
 
 /* Handle the case where an entry already exists for this cookie. This could

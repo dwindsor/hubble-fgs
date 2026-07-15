@@ -62,7 +62,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct socket_tuple_key);
 	__type(value, u64);
-	__uint(max_entries, 32768);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_sk_tup SEC(".maps");
 
 struct {
@@ -76,14 +76,14 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, u64);
 	__type(value, struct socket_tuple_key);
-	__uint(max_entries, 32768);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_sk_revtup SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct socket_tuple_hint_key);
 	__type(value, struct socket_tuple_hint_value);
-	__uint(max_entries, 32768);
+	__uint(max_entries, 1); // will be resized by user space
 } tg_l3_sk_tuphnt SEC(".maps");
 
 struct {

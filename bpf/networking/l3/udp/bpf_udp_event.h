@@ -25,11 +25,6 @@
  * (e.g. by padding, layout).
  */
 
-/* Maximum number of simultaniously existing UDP payloads waiting for
- * process info (should be much smaller that MAX_UDP_ENDPOINTS).
- */
-#define MAX_UDP_PAYLOADS 512
-
 struct udp_packet_details {
 	union {
 		struct iphdr ip4;
