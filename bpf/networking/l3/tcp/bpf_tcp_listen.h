@@ -30,7 +30,7 @@
 #include "bpf_event_map.h"
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, __u64);
 	__type(value, __u64);
 	__uint(max_entries, 1); // will be resized by user space
