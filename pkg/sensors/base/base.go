@@ -331,6 +331,8 @@ func ConfigureMapSizes() {
 		SocketTupleRevMap.SetMaxEntries(enterpriseOption.Config.ICMPSocketMapSize)
 		SocketTupleHintMap.SetMaxEntries(enterpriseOption.Config.ICMPSocketMapSize)
 	}
+	TcpSocketMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
+	ProcessNetworkWatermarksMap.SetMaxEntries(enterpriseOption.Config.NetworkWatermarksMapSize)
 
 	// If Process Tree Modeling is enabled also set maps to minimal size
 	// to avoid unnecessary memory usage.
