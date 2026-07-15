@@ -14,6 +14,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -55,6 +56,7 @@ var (
 	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
+	TCPFinRxMap         = program.MapBuilder("tg_l3_tcp_finrx", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
 )
 
 /* Enabled from the layer3 sensor */
@@ -63,6 +65,7 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 
 	var progs []*program.Program
 
+	TCPFinRxMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
 	maps := []*program.Map{
 		SocketMap,
 		SocketMapStats,
@@ -72,6 +75,7 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 		SocketTupleRevMap,
 		SocketTupleHintMap,
 		ConfigMap,
+		TCPFinRxMap,
 	}
 
 	if utils.SupportFentry() {

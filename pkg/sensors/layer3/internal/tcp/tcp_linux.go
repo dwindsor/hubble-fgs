@@ -131,6 +131,8 @@ func EnableTcp() ([]*program.Program, []*program.Program, []*program.Map) {
 	progsInitSock := []*program.Program{}
 	progsCollectStats := []*program.Program{}
 
+	tcpconfig.SecurityAcceptMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
+
 	maps := []*program.Map{
 		tcpconfig.SocketMap,
 		tcpconfig.SocketMapStats,
@@ -146,7 +148,6 @@ func EnableTcp() ([]*program.Program, []*program.Program, []*program.Map) {
 		tcpconfig.TLSContext,
 		tcpconfig.TLSBottles,
 		tcpconfig.TLSBottleStats,
-		tcpconfig.ProcessNetworkWatermarksMap,
 		tcpconfig.FinRxMap,
 		tcpconfig.TcpSocketMap,
 		tcpconfig.TLSMapStats,

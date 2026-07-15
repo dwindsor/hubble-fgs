@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 )
 
 var (
@@ -173,10 +174,9 @@ var (
 	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
+	FinRxMap            = program.MapUserFrom(socktrack.TCPFinRxMap)
 
-	FinRxMap = program.MapBuilder("tg_l3_tcp_finrx", CloseKprobe, CloseFentry, TcpSockops)
-
-	SecurityAcceptMap = program.MapBuilder("tg_l3_tcp_accsk", SecurityAccept)
+	SecurityAcceptMap = program.MapBuilder("tg_l3_tcp_accsk", SecurityAcceptKprobe, SecurityGraftKprobe, SecurityAccept, SecurityGraft)
 
 	// TCP Runtime maps, created in internal/ip
 	TcpSocketMap   = program.MapUserFrom(base.TcpSocketMap)
@@ -188,9 +188,6 @@ var (
 	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", ConnectKprobe, ConnectFentry, TcpSockops)
 	TLSBottles     = program.MapBuilder("tg_bottles", TcpSockops)
 	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
-
-	// Maps for watermarks detection
-	ProcessNetworkWatermarksMap = program.MapBuilder("tg_l3_wtmk", SendCheck4)
 
 	// LPM maps, created in internal/ip
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)

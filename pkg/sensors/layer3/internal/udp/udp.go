@@ -302,6 +302,7 @@ func EnableUdp(cgroup bool) ([]*program.Program, []*program.Program, []*program.
 			InetSendRecvLazy,
 		}
 		progsInitSock = append(progsInitSock, bindProg())
+		UdpMapLazyKprobe.SetMaxEntries(enterpriseOption.Config.UDPSocketMapSize)
 		maps = append(maps,
 			UdpMapLazyKprobe,
 			UdpMapStatsLazyKprobe,

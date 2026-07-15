@@ -184,11 +184,12 @@ var (
 	dispatcherProgs                 = []*program.Program{EgressDispatcher, IngressDispatcher}
 	dispatcherProcessTreeProgs      = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
 	dispatcherProcessTreeTimerProgs = []*program.Program{EgressDispatcherProcessTreeTimer, IngressDispatcherProcessTreeTimer}
+	allDispatcherProgs              = append(dispatcherProgs, append(dispatcherProcessTreeProgs, dispatcherProcessTreeTimerProgs...)...)
 
 	// Dispatcher UDP maps, built here because they are only used by the dispatcher
-	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
-	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
-	udpTimerMap = program.MapBuilder(udp.UdpTimerMapName, EgressDispatcherProcessTreeTimer)
+	udpMap      = program.MapBuilder(udp.UdpMapName, allDispatcherProgs...)
+	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, allDispatcherProgs...)
+	udpTimerMap = program.MapBuilder(udp.UdpTimerMapName, dispatcherProcessTreeTimerProgs...)
 	udpMaps     = []*program.Map{udpMap, udpMapStats, protoCfgMap}
 
 	// DNS Parser maps
@@ -204,6 +205,8 @@ var (
 	CgroupIDToAllocIDMap = program.MapUserFrom(ip.CgroupIDToAllocIDMap)
 	// Layer3 configuration map, shared with many L3 programs
 	protoCfgMap = program.MapUserFrom(base.CfgMap)
+	// Maps for watermarks detection
+	ProcessNetworkWatermarksMap = program.MapUserFrom(base.ProcessNetworkWatermarksMap)
 
 	// LPM maps
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
@@ -260,6 +263,8 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 		udpProgsInit, udpProgsStats, udpMaps := udp.EnableUdp(cgroup)
 		progsInitSock = append(progsInitSock, udpProgsInit...)
 		progsCollectStats = append(progsCollectStats, udpProgsStats...)
+		udpMap.SetMaxEntries(enterpriseOption.Config.UDPSocketMapSize)
+		udpTimerMap.SetMaxEntries(enterpriseOption.Config.UDPSocketMapSize)
 		maps = append(maps, udpMaps...)
 		if cgroup {
 			needDispatcher = true
@@ -308,6 +313,8 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 		maps = append(maps, rawMaps...)
 		needDispatcher = true
 	}
+
+	maps = append(maps, ProcessNetworkWatermarksMap)
 
 	if needDispatcher {
 		if utils.CGroupSKBAvailable() {

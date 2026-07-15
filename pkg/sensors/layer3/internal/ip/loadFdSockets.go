@@ -34,6 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -115,6 +116,7 @@ var (
 	// TCP maps
 	TcpSocketMap      = program.MapUserFrom(base.TcpSocketMap)
 	TcpSocketMapStats = program.MapUserFrom(base.TcpSocketMapStats)
+	TCPFinRxMap       = program.MapUserFrom(socktrack.TCPFinRxMap)
 
 	// DNS parsers maps, shared between process tree and the parser
 	DNSIPToIDMaps        = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
@@ -232,6 +234,7 @@ func getFdLookupMaps() []*program.Map {
 		ExecveMap,
 		TcpSocketMap,
 		TcpSocketMapStats,
+		TCPFinRxMap,
 		DNSIPToIDMaps,
 		AllocationIDMap,
 		CgroupIDToAllocIDMap,
