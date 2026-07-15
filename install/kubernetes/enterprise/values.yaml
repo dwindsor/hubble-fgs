@@ -73,8 +73,11 @@ tetragon:
     network: true
   # Layer3
   layer3:
+    bpfSocketCacheSize: 32768
+    bpfWatermarksCacheSize: 32768
     tcp:
       enabled: false
+      bpfSocketCacheSize: 32768
       statsInterval: 0s
       watermarks:
         enabled: false
@@ -91,6 +94,7 @@ tetragon:
       disableEvents: []
     udp:
       enabled: false
+      bpfSocketCacheSize: 32768
       cgroup: true
       statsInterval: 0s
       idleSocketTimeout: 2m
@@ -111,6 +115,7 @@ tetragon:
       disableEvents: []
     icmp:
       enabled: false
+      bpfSocketCacheSize: 32768
       v6info: false
       socketTracking: false
     igmp:

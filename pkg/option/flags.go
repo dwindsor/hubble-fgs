@@ -59,6 +59,11 @@ const (
 	KeyApplicationModelExportFilename    = "application-model-export-filename"
 	KeyTelemetryExportFilename           = "telemetry-export-filename"
 	KeyConnectionLogFilename             = "connection-log-filename"
+	keyLayer3SocketMapSize               = "bpf-layer3-socket-cache-size"
+	keyTCPSocketMapSize                  = "bpf-tcp-socket-cache-size"
+	keyUDPSocketMapSize                  = "bpf-udp-socket-cache-size"
+	keyNetworkWatermarksMapSize          = "bpf-network-watermarks-cache-size"
+	keyICMPSocketMapSize                 = "bpf-icmp-socket-cache-size"
 	keyEnableIcmpTracking                = "enable-icmp-tracking"
 	keyEnablePolicyK8sWatcher            = "enable-policy-k8swatcher"
 	keyEnableSandboxPolicies             = "enable-sandboxpolicies"
@@ -225,6 +230,13 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	// detach programs and left stale progs attached at cgroups and tc hooks.
 	flags.Bool(KeyDetatchOldBPF, false, "Detach old cgroup programs from their interfaces when loading Tetragon. Disabled by default.")
 
+	// Options to specify layer3 map sizes.
+	flags.Int(keyLayer3SocketMapSize, 32768, "Set the number of network sockets to track in BPF. Higher values enable Tetragon to keep track of more sockets before evicting old ones")
+	flags.Int(keyTCPSocketMapSize, 32768, "Set the number of TCP sockets to track in BPF. Higher values enable Tetragon to keep track of more TCP sockets before evicting old ones")
+	flags.Int(keyUDPSocketMapSize, 32768, "Set the number of UDP sockets to track in BPF. Higher values enable Tetragon to keep track of more UDP sockets before evicting old ones")
+	flags.Int(keyNetworkWatermarksMapSize, 32768, "Set the number of processes for which to track network watermarks in BPF. Higher values enable Tetragon to keep track of more processes before evicting old ones")
+	flags.Int(keyICMPSocketMapSize, 32768, "Set the number of ICMP sockets to track in BPF. Higher values enable Tetragon to keep track of more ICMP sockets before evicting old ones")
+
 	// Provide option to enable extra socket tracking for ICMP matching.
 	flags.Bool(keyEnableIcmpTracking, false, "Enable additional socket tracking for ICMP")
 
@@ -343,6 +355,11 @@ func readAndSetEnterpriseFlags() {
 	Config.FlowExportFileMaxSizeMB = viper.GetInt(KeyFlowExportFileMaxSizeMB)
 	Config.FlowExportFileMaxBackups = viper.GetInt(KeyFlowExportFileMaxBackups)
 	Config.FlowExportFileCompress = viper.GetBool(KeyFlowExportFileCompress)
+	Config.Layer3SocketMapSize = viper.GetInt(keyLayer3SocketMapSize)
+	Config.TCPSocketMapSize = viper.GetInt(keyTCPSocketMapSize)
+	Config.UDPSocketMapSize = viper.GetInt(keyUDPSocketMapSize)
+	Config.NetworkWatermarksMapSize = viper.GetInt(keyNetworkWatermarksMapSize)
+	Config.ICMPSocketMapSize = viper.GetInt(keyICMPSocketMapSize)
 	Config.EnableIcmpTracking = viper.GetBool(keyEnableIcmpTracking)
 	Config.EnablePolicyK8sWatcher = viper.GetBool(keyEnablePolicyK8sWatcher)
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
@@ -621,5 +638,6 @@ func validateConfig(config config) error {
 	if config.ApplicationModelSplitMaxHostProcs < 2 {
 		return fmt.Errorf("%s must be greater than 1", KeyApplicationModelSplitMaxHostProcs)
 	}
+
 	return nil
 }

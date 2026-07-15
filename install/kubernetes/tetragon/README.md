@@ -201,6 +201,9 @@ Helm chart for Tetragon Enterprise
 | tetragon.image.repository | string | `"artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon"` |  |
 | tetragon.image.tag | string | `"v1.19.0-rc.1"` |  |
 | tetragon.k8sWatcher.policy.enabled | bool | `true` | Enable watching Kubernetes API server for policy resources. If true, Tetragon watches all supported policy resources: TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and TetragonNetworkPolicy(Namespaced), unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely. |
+| tetragon.layer3.bpfSocketCacheSize | int | `32768` |  |
+| tetragon.layer3.bpfWatermarksCacheSize | int | `32768` |  |
+| tetragon.layer3.icmp.bpfSocketCacheSize | int | `32768` |  |
 | tetragon.layer3.icmp.enabled | bool | `false` |  |
 | tetragon.layer3.icmp.socketTracking | bool | `false` |  |
 | tetragon.layer3.icmp.v6info | bool | `false` |  |
@@ -209,6 +212,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.rawsock.metrics.enabled | bool | `true` |  |
 | tetragon.layer3.rawsock.metrics.labelFilter | list | `[]` |  |
 | tetragon.layer3.rawsock.reportClose | bool | `false` |  |
+| tetragon.layer3.tcp.bpfSocketCacheSize | int | `32768` |  |
 | tetragon.layer3.tcp.disableEvents | list | `[]` |  |
 | tetragon.layer3.tcp.enabled | bool | `false` |  |
 | tetragon.layer3.tcp.metrics.enabled | bool | `true` |  |
@@ -221,6 +225,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.tcp.watermarks.dipTriggerPercent | int | `0` |  |
 | tetragon.layer3.tcp.watermarks.enabled | bool | `false` |  |
 | tetragon.layer3.tcp.watermarks.windowSizeMs | int | `0` |  |
+| tetragon.layer3.udp.bpfSocketCacheSize | int | `32768` |  |
 | tetragon.layer3.udp.cgroup | bool | `true` |  |
 | tetragon.layer3.udp.disableEvents | list | `[]` |  |
 | tetragon.layer3.udp.enabled | bool | `false` |  |

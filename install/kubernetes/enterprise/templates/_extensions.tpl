@@ -45,7 +45,10 @@ enable-syscall-tracking: "true"
 {{- else }}
 enable-syscall-tracking: "false"
 {{- end }}
+bpf-layer3-socket-cache-size: {{ .Values.tetragon.layer3.bpfSocketCacheSize | quote }}
+bpf-network-watermarks-cache-size: {{ .Values.tetragon.layer3.bpfWatermarksCacheSize | quote }}
 enable-tcp: {{ .Values.tetragon.layer3.tcp.enabled | quote }}
+bpf-tcp-socket-cache-size: {{ .Values.tetragon.layer3.tcp.bpfSocketCacheSize | quote }}
 tcp-stats-interval: {{ .Values.tetragon.layer3.tcp.statsInterval | quote }}
 enable-tcp-watermarks: {{ .Values.tetragon.layer3.tcp.watermarks.enabled | quote }}
 tcp-watermarks-window-size-ms: {{ .Values.tetragon.layer3.tcp.watermarks.windowSizeMs | quote }}
@@ -58,8 +61,14 @@ enable-tcp-metrics: {{ .Values.tetragon.layer3.tcp.metrics.enabled | quote }}
 tcp-metrics-label-filter: {{ .Values.tetragon.layer3.tcp.metrics.labelFilter | quote }}
 tcp-disable-events: {{ .Values.tetragon.layer3.tcp.disableEvents | quote }}
 enable-udp: {{ .Values.tetragon.layer3.udp.enabled | quote }}
+bpf-udp-socket-cache-size: {{ .Values.tetragon.layer3.udp.bpfSocketCacheSize | quote }}
 enable-udp-cgroup: {{ .Values.tetragon.layer3.udp.cgroup | quote }}
 udp-stats-interval: {{ .Values.tetragon.layer3.udp.statsInterval | quote }}
+enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
+bpf-icmp-socket-cache-size: {{ .Values.tetragon.layer3.icmp.bpfSocketCacheSize | quote }}
+enable-igmp: {{ .Values.tetragon.layer3.igmp.enabled | quote }}
+enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
+enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
 udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
 enable-udp-watermarks: {{ .Values.tetragon.layer3.udp.watermarks.enabled | quote }}

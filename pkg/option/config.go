@@ -85,6 +85,11 @@ type config struct {
 	EnableAWSSonar bool
 	AWSSonarRegion string
 
+	Layer3SocketMapSize            int
+	TCPSocketMapSize               int
+	UDPSocketMapSize               int
+	NetworkWatermarksMapSize       int
+	ICMPSocketMapSize              int
 	EnableIcmpTracking             bool
 	EnableDnsDebug                 bool
 	EnableBPFDNSParser             bool
@@ -202,6 +207,11 @@ var (
 		FimMaxFileSizeDigest:              1 * 1024 * 1024 * 1024, // 1GB
 		FimMaxTimeoutDigestSec:            30,
 		EnableDnsDebug:                    false,
+		Layer3SocketMapSize:               32768,
+		TCPSocketMapSize:                  32768,
+		UDPSocketMapSize:                  32768,
+		NetworkWatermarksMapSize:          32768,
+		ICMPSocketMapSize:                 32768,
 		EnableIcmpTracking:                false,
 		EnableCilium:                      false,
 		ProcessCacheStaleInterval:         time.Duration(60 * time.Minute),

@@ -49,9 +49,29 @@ options:
       default_value: "65536"
       usage: |
         Set the size of the internal BPF endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
+    - name: bpf-icmp-socket-cache-size
+      default_value: "32768"
+      usage: |
+        Set the number of ICMP sockets to track in BPF. Higher values enable Tetragon to keep track of more ICMP sockets before evicting old ones
+    - name: bpf-layer3-socket-cache-size
+      default_value: "32768"
+      usage: |
+        Set the number of network sockets to track in BPF. Higher values enable Tetragon to keep track of more sockets before evicting old ones
     - name: bpf-lib
       default_value: /var/lib/tetragon/
       usage: Location of Tetragon libs (btf and bpf files)
+    - name: bpf-network-watermarks-cache-size
+      default_value: "32768"
+      usage: |
+        Set the number of processes for which to track network watermarks in BPF. Higher values enable Tetragon to keep track of more processes before evicting old ones
+    - name: bpf-tcp-socket-cache-size
+      default_value: "32768"
+      usage: |
+        Set the number of TCP sockets to track in BPF. Higher values enable Tetragon to keep track of more TCP sockets before evicting old ones
+    - name: bpf-udp-socket-cache-size
+      default_value: "32768"
+      usage: |
+        Set the number of UDP sockets to track in BPF. Higher values enable Tetragon to keep track of more UDP sockets before evicting old ones
     - name: btf
       usage: Location of btf
     - name: cgroup-rate
