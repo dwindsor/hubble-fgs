@@ -324,6 +324,14 @@ func ConfigureMapSizes() {
 		RingBufEvents.SetMaxEntries(rbSize)
 		logger.GetLogger().Info("BPF ring buffer size (bytes)", "total", strutils.SizeWithSuffix(rbSize))
 	}
+
+	SocketMap.SetMaxEntries(enterpriseOption.Config.Layer3SocketMapSize)
+	if enterpriseOption.Config.EnableIcmpTracking {
+		SocketTupleMap.SetMaxEntries(enterpriseOption.Config.ICMPSocketMapSize)
+		SocketTupleRevMap.SetMaxEntries(enterpriseOption.Config.ICMPSocketMapSize)
+		SocketTupleHintMap.SetMaxEntries(enterpriseOption.Config.ICMPSocketMapSize)
+	}
+
 	// If Process Tree Modeling is enabled also set maps to minimal size
 	// to avoid unnecessary memory usage.
 	if !enterpriseOption.Config.EnableApplicationModel {
