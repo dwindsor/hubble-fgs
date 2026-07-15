@@ -28,6 +28,7 @@ const (
 	labelArch               = "tetragon.io/arch"
 	labelOS                 = "tetragon.io/os"
 	labelHostname           = "tetragon.io/hostname"
+	labelInternalIP         = "tetragon.io/internal-ip"
 	labelKernelBuildID      = "tetragon.io/kernel-build-id"
 	labelKernelMajorVersion = "tetragon.io/kernel-major-version"
 	labelKernelMinorVersion = "tetragon.io/kernel-minor-version"
@@ -40,6 +41,7 @@ var labelProviders = []struct {
 	get func() (string, error)
 }{
 	{labelHostname, os.Hostname},
+	{labelInternalIP, getFirstNonLoopbackIP},
 	{labelKernelBuildID, kernelBuildID},
 	{labelKernelMajorVersion, kernelMajorVersion},
 	{labelKernelMinorVersion, kernelMinorVersion},

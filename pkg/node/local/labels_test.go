@@ -32,6 +32,18 @@ func TestBaseHostLabels(t *testing.T) {
 	require.Equal(t, hostname, labels[labelHostname])
 }
 
+func TestHostLabelsInternalIP(t *testing.T) {
+	ip, err := getFirstNonLoopbackIP()
+	require.NoError(t, err)
+
+	labels := baseHostLabels()
+	if ip == "" {
+		require.NotContains(t, labels, labelInternalIP)
+		return
+	}
+	require.Equal(t, ip, labels[labelInternalIP])
+}
+
 func TestKernelVersion(t *testing.T) {
 	orig := ossOption.Config.KernelVersion
 	t.Cleanup(func() { ossOption.Config.KernelVersion = orig })
