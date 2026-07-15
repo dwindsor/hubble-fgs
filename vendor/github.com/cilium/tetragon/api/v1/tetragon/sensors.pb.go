@@ -45,6 +45,8 @@ const (
 	TracingPolicyState_TP_STATE_LOADING TracingPolicyState = 5
 	// in the process of unloading
 	TracingPolicyState_TP_STATE_UNLOADING TracingPolicyState = 6
+	// tracked but not loaded on this node, e.g. its nodeSelector does not match
+	TracingPolicyState_TP_STATE_SKIPPED TracingPolicyState = 7
 )
 
 // Enum value maps for TracingPolicyState.
@@ -57,6 +59,7 @@ var (
 		4: "TP_STATE_ERROR",
 		5: "TP_STATE_LOADING",
 		6: "TP_STATE_UNLOADING",
+		7: "TP_STATE_SKIPPED",
 	}
 	TracingPolicyState_value = map[string]int32{
 		"TP_STATE_UNKNOWN":    0,
@@ -66,6 +69,7 @@ var (
 		"TP_STATE_ERROR":      4,
 		"TP_STATE_LOADING":    5,
 		"TP_STATE_UNLOADING":  6,
+		"TP_STATE_SKIPPED":    7,
 	}
 )
 
@@ -2713,7 +2717,7 @@ const file_tetragon_sensors_proto_rawDesc = "" +
 	"\x10SetDebugResponse\x12(\n" +
 	"\x04flag\x18\x01 \x01(\x0e2\x14.tetragon.ConfigFlagR\x04flag\x12*\n" +
 	"\x05level\x18\x02 \x01(\x0e2\x12.tetragon.LogLevelH\x00R\x05levelB\x05\n" +
-	"\x03arg*\xb2\x01\n" +
+	"\x03arg*\xc8\x01\n" +
 	"\x12TracingPolicyState\x12\x14\n" +
 	"\x10TP_STATE_UNKNOWN\x10\x00\x12\x14\n" +
 	"\x10TP_STATE_ENABLED\x10\x01\x12\x15\n" +
@@ -2721,7 +2725,8 @@ const file_tetragon_sensors_proto_rawDesc = "" +
 	"\x13TP_STATE_LOAD_ERROR\x10\x03\x12\x12\n" +
 	"\x0eTP_STATE_ERROR\x10\x04\x12\x14\n" +
 	"\x10TP_STATE_LOADING\x10\x05\x12\x16\n" +
-	"\x12TP_STATE_UNLOADING\x10\x06*l\n" +
+	"\x12TP_STATE_UNLOADING\x10\x06\x12\x14\n" +
+	"\x10TP_STATE_SKIPPED\x10\a*l\n" +
 	"\x11TracingPolicyMode\x12\x13\n" +
 	"\x0fTP_MODE_UNKNOWN\x10\x00\x12\x13\n" +
 	"\x0fTP_MODE_ENFORCE\x10\x01\x12\x13\n" +

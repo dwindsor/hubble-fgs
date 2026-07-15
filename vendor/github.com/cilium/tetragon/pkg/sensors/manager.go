@@ -116,20 +116,39 @@ type TracingPolicy interface {
 	TpInfo() string
 }
 
+// newTracingPolicyAdd builds the add operation for tp.
+func newTracingPolicyAdd(ctx context.Context, tp tracingpolicy.TracingPolicy) (*tracingPolicyAdd, error) {
+	ck, err := newCollectionKey(tp.TpName(), tp.TpNamespace(), tp.TpDomain())
+	if err != nil {
+		return nil, err
+	}
+
+	return &tracingPolicyAdd{
+		ctx: ctx,
+		ck:  ck,
+		tp:  tp,
+	}, nil
+}
+
 // AddTracingPolicy adds a new sensor based on a tracing policy
 func (h *Manager) AddTracingPolicy(ctx context.Context, tp tracingpolicy.TracingPolicy) error {
-	ck, err := newCollectionKey(tp.TpName(), tp.TpNamespace(), tp.TpDomain())
+	op, err := newTracingPolicyAdd(ctx, tp)
 	if err != nil {
 		return err
 	}
 
-	op := &tracingPolicyAdd{
-		ctx: ctx,
-		ck:  ck,
-		tp:  tp,
+	return h.handler.addTracingPolicy(op)
+}
+
+// AddSkippedTracingPolicy tracks tp as skipped, without loading any BPF, so
+// that it is reported instead of being absent on this node.
+func (h *Manager) AddSkippedTracingPolicy(ctx context.Context, tp tracingpolicy.TracingPolicy) error {
+	op, err := newTracingPolicyAdd(ctx, tp)
+	if err != nil {
+		return err
 	}
 
-	return h.handler.addTracingPolicy(op)
+	return h.handler.addSkippedTracingPolicy(op)
 }
 
 // DeleteTracingPolicy deletes a new sensor based on a tracing policy
