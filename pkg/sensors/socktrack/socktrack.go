@@ -58,7 +58,9 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 
 	var progs []*program.Program
 
-	TCPFinRxMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
+	if !enterpriseOption.Config.DisableLayer3 {
+		TCPFinRxMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
+	}
 	maps := []*program.Map{
 		program.MapUserFrom(base.SocketMap),
 		program.MapUserFrom(base.SocketStats),

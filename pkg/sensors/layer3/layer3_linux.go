@@ -436,6 +436,10 @@ func (l3 *l3Sensor) PolicyHandler(
 
 	logger.GetLogger().Warn("Layer 3 tracing policies have been deprecated, and will be removed in v1.21. Please check the upgrade notes and use CLI switches instead.")
 
+	if enterpriseOption.Config.DisableLayer3 {
+		return nil, fmt.Errorf("layer3 has been disabled on start up; restart without the --%s switch to load layer3 policies", enterpriseOption.KeyDisableLayer3)
+	}
+
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("layer3 sensor does not implement policy filtering")
 	}
