@@ -116,9 +116,8 @@ func (f *fakeSensorManager) AddSkippedTracingPolicy(_ context.Context, tp tracin
 	return nil
 }
 
-func writeArchPolicy(t *testing.T, arch string) string {
-	t.Helper()
-	yaml := fmt.Sprintf(`apiVersion: cilium.io/v1alpha1
+func archPolicyYAML(arch string) string {
+	return fmt.Sprintf(`apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: %s-only
@@ -131,8 +130,12 @@ spec:
   kprobes:
     - call: tcp_connect
 `, arch, arch)
+}
+
+func writeArchPolicy(t *testing.T, arch string) string {
+	t.Helper()
 	f := filepath.Join(t.TempDir(), "policy.yaml")
-	require.NoError(t, os.WriteFile(f, []byte(yaml), 0o644))
+	require.NoError(t, os.WriteFile(f, []byte(archPolicyYAML(arch)), 0o644))
 	return f
 }
 
@@ -156,4 +159,19 @@ func TestOnTracingPolicyNodeSelector(t *testing.T) {
 		require.Equal(t, []string{"amd64-only"}, sm.added)
 		require.Empty(t, sm.skipped)
 	})
+}
+
+func TestNodeSelectorFilter(t *testing.T) {
+	require.Nil(t, NodeSelectorFilter(nil, slog.Default()), "no host labels yields no filter")
+
+	filter := NodeSelectorFilter(map[string]string{"tetragon.io/arch": "amd64"}, slog.Default())
+	require.NotNil(t, filter)
+
+	arm, err := tracingpolicy.FromYAML(archPolicyYAML("arm64"))
+	require.NoError(t, err)
+	require.True(t, filter(arm), "non-matching policy is filtered out")
+
+	amd, err := tracingpolicy.FromYAML(archPolicyYAML("amd64"))
+	require.NoError(t, err)
+	require.False(t, filter(amd), "matching policy is not filtered")
 }

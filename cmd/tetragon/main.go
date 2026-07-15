@@ -54,6 +54,7 @@ import (
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/rule"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/powershell"
+	eeserver "github.com/isovalent/hubble-fgs/pkg/server"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/bugtool"
@@ -676,8 +677,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		}
 	}
 
-	// Start gRPC server
-	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter, netpolManager, rule.New(alertsManager, observer.GetSensorManager()), eventlog.New(exporter, alertsManager)); err != nil {
+	// Start gRPC server. Gate AddTracingPolicy by spec.nodeSelector against
+	// the host labels, like the file loader (the server is left unwrapped when
+	// no host labels were resolved).
+	fgsServer := eeserver.NewFilterServer(pm.Server, observer.GetSensorManager(), log, nodeSelectorLabels)
+	if err = Serve(ctx, option.Config.ServerAddress, fgsServer, modelServer, mandatesrv.New(mandateMgr), alerter, netpolManager, rule.New(alertsManager, observer.GetSensorManager()), eventlog.New(exporter, alertsManager)); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 
@@ -916,7 +920,7 @@ func getExporter(ctx context.Context, server *server.Server) (*exporter.Exporter
 
 func Serve(
 	ctx context.Context, listenAddr string,
-	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server, eventlogSrv *eventlog.Server,
+	srv tetragon.FineGuidanceSensorsServer, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server, eventlogSrv *eventlog.Server,
 	extraOpts ...grpc.ServerOption) error {
 	if listenAddr == "" {
 		return nil
