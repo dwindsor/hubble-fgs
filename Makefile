@@ -20,6 +20,8 @@ GO_TEST_TIMEOUT ?= 20m
 GO_TEST_PACKAGES ?= ./pkg/... ./cmd/... ./operator/...
 CONTAINER_ENGINE_ARGS ?=
 LSEG ?= 0
+# renovate: datasource=github-releases depName=helm/helm
+HELM_VERSION := v4.2.3
 
 comma := ,
 TEST_TAGS := sudo_tests
@@ -454,14 +456,22 @@ ifeq ($(E2E_COVER),1)
 endif
 E2E_TESTS ?= ./tests/e2e/tests/helm/...
 
+.PHONY: check-helm-version
+check-helm-version:
+	@actual="$$(helm version --short 2>/dev/null | cut -d+ -f1)"; \
+	if [ "$$actual" != "$(HELM_VERSION)" ]; then \
+		echo "Helm $(HELM_VERSION) is required on PATH (found: $${actual:-not installed})" >&2; \
+		exit 1; \
+	fi
+
 ## e2e-test: ## run e2e tests
 ## e2e-test E2E_BUILD_IMAGES=0: ## run e2e tests without (re-)building images
 ## e2e-test E2E_TESTS=./tests/e2e/tests/helm/skeleton: ## run a specific e2e test
 .PHONY: e2e-test
 ifneq ($(E2E_BUILD_IMAGES), 0)
-e2e-test: image image-operator
+e2e-test: check-helm-version image image-operator
 else
-e2e-test:
+e2e-test: check-helm-version
 endif
 	$(GO) test -p 1 -parallel 1 $(E2E_COVER_FLAG) $(E2E_GO_BUILD_GCFLAGS)  \
 		-tags e2e_tests                                                \
@@ -505,9 +515,9 @@ build-helm-tetragon:
 ## kind-install-tetragon VALUES=values.yaml: ## Install Tetragon in a kind cluster using additional Helm values.
 .PHONY: kind-install-tetragon
 ifneq ($(KIND_BUILD_IMAGES), 0)
-kind-install-tetragon: image image-operator build-helm-tetragon
+kind-install-tetragon: check-helm-version image image-operator build-helm-tetragon
 else
-kind-install-tetragon: build-helm-tetragon
+kind-install-tetragon: check-helm-version build-helm-tetragon
 endif
 ifneq ($(VALUES),)
 	$(OSS_DIR)/contrib/kind/install-tetragon.sh -v $(VALUES) --force
