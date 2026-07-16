@@ -174,45 +174,23 @@ Issues found when validating the release in tetragon-staging might not block the
 
 ### Documentation
 
-- [ ] Navigate to the [cilium-enterprise-docs] and start working on a PR to document the new release of Tetragon Enterprise.
+- [ ] Navigate to the [isovalent-docs-reference] repo and start working on a PR to document the new release of Tetragon Enterprise.
   Check out a new release branch:
   ```
   git checkout main && git pull origin main
   git checkout -b pr/document-tetragon-$RELEASE
   ```
-- Add release notes to the docs
-  - [ ] Edit `docs/operations-guide/releases/release-notes/tetragon/index.rst` to add a new entry for the new version of Tetragon Enterprise. Example diff:
-    ```diff
-    diff --git a/docs/operations-guide/releases/release-notes/tetragon/index.rst b/docs/operations-guide/releases/release-notes/tetragon/index.rst
-    index 98284b7..92a1d34 100644
-    --- a/docs/operations-guide/releases/release-notes/tetragon/index.rst
-    +++ b/docs/operations-guide/releases/release-notes/tetragon/index.rst
-    @@ -4,6 +4,7 @@ Release Notes - Tetragon Enterprise
-     .. toctree::
-       :maxdepth: 1
-
-    +  v1.9.3
-       v1.9.2
-       v1.9.1
-       v1.9.0
+- [ ] Use the [update-docs-reference](https://github.com/isovalent/docs-reference/tree/main/iep/scripts/update-doc-references) scripts to add the new version.
+  - [ ] Navigate to the scripts folder in the repo
+  ```
+  cd iep/scripts/update-doc-references
+  ```
+  - [ ] Make sure to have `tgt-notes`, [gh cli](https://github.com/cli/cli) and `Python` installed. See [update-doc-references](https://github.com/isovalent/docs-reference/blob/main/iep/scripts/update-doc-references/README.md#prerequisites) pre-requisites.
+  - Run `tetragon-add-version` script:
     ```
-   - [ ] Create a new file `docs/operations-guide/releases/release-notes/tetragon/$RELEASE.md`. Use the release notes you generated for the GitHub release as a basis for what goes into the file. You can use the following as a template:
-     ```markdown
-     # vX.Y.Z
-
-     ## Upgrade notes
-     * Upgrade notes here
-
-     ## Features
-     * Major changes here
-
-     ## Enhancements
-     * Minor changes here
-     ```
-- [ ] Install [gh cli](https://github.com/cli/cli) locally and run the script
-`scripts/tetragon-update-doc-references.sh` to update helm charts, daemon flags and other references.
-- [ ] If there are any new features introduced, list them under the "Cilium Enterprise Feature Maturity List"
-  - [ ] See `docs/operations-guide/features/status.rst`
+    go run ./cmd/tetragon-add-version -tetragon-version 1.18.1 -interactive
+    ```
+- [ ] If there are any new features introduced, list them under the "Feature Maturity List". See `iep/docs/feature-status.rst`.
 - [ ] Ping feature owners to add documentation for undocumented new features
 
 [release blockers]: https://github.com/isovalent/hubble-fgs/labels/release-blocker
@@ -220,7 +198,7 @@ Issues found when validating the release in tetragon-staging might not block the
 [hubble-enterprise chart]: https://github.com/isovalent/hubble-enterprise-chart
 [hubble-enterprise chart release]: https://github.com/isovalent/hubble-enterprise-chart/releases/new
 [umbrella chart]: https://github.com/isovalent/helm-charts
-[cilium-enterprise-docs]: https://github.com/isovalent/cilium-enterprise-docs
+[isovalent-docs-reference]: https://github.com/isovalent/docs-reference
 [cilium-enterprise-dogfooding]: https://github.com/isovalent/cilium-enterprise-dogfooding
 [oss-release]: https://github.com/cilium/tetragon/issues/new?assignees=&labels=kind%2Frelease&template=release_template.md&title=vX.Y.Z+release
 [tagging]: https://github.com/isovalent/hubble-fgs/blob/master/docs/tagging.md
