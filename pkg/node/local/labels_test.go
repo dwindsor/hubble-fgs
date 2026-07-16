@@ -22,20 +22,20 @@ import (
 func TestBaseHostLabels(t *testing.T) {
 	labels := baseHostLabels()
 
-	require.Equal(t, runtime.GOARCH, labels[LabelArch])
-	require.Equal(t, runtime.GOOS, labels[LabelOS])
+	require.Equal(t, runtime.GOARCH, labels[labelArch])
+	require.Equal(t, runtime.GOOS, labels[labelOS])
 
 	hostname, err := os.Hostname()
 	require.NoError(t, err)
-	require.Equal(t, hostname, labels[LabelHostname])
+	require.Equal(t, hostname, labels[labelHostname])
 }
 
 func TestNoopMetadataService_GetLabels(t *testing.T) {
 	svc := &NoopMetadataService{}
 	labels, err := svc.GetLabels(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, runtime.GOARCH, labels[LabelArch])
-	require.Equal(t, runtime.GOOS, labels[LabelOS])
+	require.Equal(t, runtime.GOARCH, labels[labelArch])
+	require.Equal(t, runtime.GOOS, labels[labelOS])
 }
 
 func TestGenericMetadataService_GetLabels_HostLabels(t *testing.T) {
@@ -43,6 +43,6 @@ func TestGenericMetadataService_GetLabels_HostLabels(t *testing.T) {
 	require.NoError(t, err)
 	labels, err := svc.GetLabels(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, runtime.GOARCH, labels[LabelArch])
+	require.Equal(t, runtime.GOARCH, labels[labelArch])
 	require.Equal(t, "generic", labels["tetragon.io/environment"])
 }

@@ -11,8 +11,13 @@
 package local
 
 import (
+	"maps"
 	"os"
 	"runtime"
+	"sync"
+
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 // Node label keys derived from the local host. They are used only in
@@ -20,21 +25,40 @@ import (
 // Node labels), so they carry a tetragon.io prefix to avoid being confused with
 // kubelet-assigned kubernetes.io labels.
 const (
-	LabelArch     = "tetragon.io/arch"
-	LabelOS       = "tetragon.io/os"
-	LabelHostname = "tetragon.io/hostname"
+	labelArch     = "tetragon.io/arch"
+	labelOS       = "tetragon.io/os"
+	labelHostname = "tetragon.io/hostname"
 )
 
-// baseHostLabels returns labels derived from the local host (architecture, OS,
-// and hostname). These are always knowable regardless of the environment and
-// let nodeSelector target non-Kubernetes agents by arch, OS, or hostname.
-func baseHostLabels() map[string]string {
+// labelProviders resolve the optional host labels; an error or empty value
+// omits the label.
+var labelProviders = []struct {
+	key string
+	get func() (string, error)
+}{
+	{labelHostname, os.Hostname},
+}
+
+// hostLabels resolves once: the values are fixed for the life of the process,
+// while GetLabels runs on the periodic model-export path.
+var hostLabels = sync.OnceValue(func() map[string]string {
 	labels := map[string]string{
-		LabelArch: runtime.GOARCH,
-		LabelOS:   runtime.GOOS,
+		labelArch: runtime.GOARCH,
+		labelOS:   runtime.GOOS,
 	}
-	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-		labels[LabelHostname] = hostname
+	for _, p := range labelProviders {
+		v, err := p.get()
+		if err != nil || v == "" {
+			logger.GetLogger().Debug("host label omitted", "label", p.key, logfields.Error, err)
+			continue
+		}
+		labels[p.key] = v
 	}
 	return labels
+})
+
+// baseHostLabels returns a copy of the host labels, so callers can merge their
+// own into it.
+func baseHostLabels() map[string]string {
+	return maps.Clone(hostLabels())
 }
