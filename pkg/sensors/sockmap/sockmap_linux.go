@@ -96,6 +96,7 @@ var (
 	// Socket links
 	TcpSocketMap   = layer3.TcpSocketMap()
 	TcpSocketStats = layer3.TcpSocketStats()
+	SocketMap      = layer3.SocketMap()
 
 	// HTTP maps
 	HTTPMap       = http.HTTPContext
@@ -217,6 +218,7 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.
 				Bottle, BottleStats,
 				FilterMap, ParserStats,
 				TcpSocketMap, TcpSocketStats,
+				SocketMap,
 				sockops.TlsSockMap,
 				sockops.HttpSockMap,
 				sockops.NopSockMap,
@@ -245,6 +247,7 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.
 				CGTailCalls,
 				FilterMap, ParserStats,
 				TcpSocketMap, TcpSocketStats,
+				SocketMap,
 			)
 		} else {
 			logger.GetLogger().Warn("Cannot Enable TLS CGroup on kernel <5.10")
