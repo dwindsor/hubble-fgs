@@ -67,18 +67,18 @@ type sensor struct {
 }
 
 func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := sk.LoadSkProgram(args.BPFDir, args.Load, sockops.NopSockMap, args.Verbose)
+	err := sk.LoadSkProgram(args.BPFDir, args.Load, args.Maps, sockops.NopSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, sockops.NopSockMap, args.Verbose)
+		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, args.Maps, sockops.NopSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	return sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, sockops.NopSockMap, args.Verbose)
+	return sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, args.Maps, sockops.NopSockMap, args.Verbose)
 }
 
 func (nop *sensor) PolicyHandler(

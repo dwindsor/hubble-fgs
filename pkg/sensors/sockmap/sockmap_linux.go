@@ -117,17 +117,17 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		return err
 	}
 
-	err = sk.LoadSkProgram(args.BPFDir, args.Load, sockops.TlsSockMap, args.Verbose)
+	err = sk.LoadSkProgram(args.BPFDir, args.Load, args.Maps, sockops.TlsSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, sockops.TlsSockMap, args.Verbose)
+		err = sk.LoadSkProgram(args.BPFDir, SkSkbParser, args.Maps, sockops.TlsSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	err = sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, sockops.TlsSockMap, args.Verbose)
+	err = sk.LoadSkProgram(args.BPFDir, SkSkbVerdict, args.Maps, sockops.TlsSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}

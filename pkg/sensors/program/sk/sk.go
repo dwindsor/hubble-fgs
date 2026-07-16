@@ -17,6 +17,7 @@ import (
 func LoadSkProgram(
 	bpfDir string,
 	load *program.Program,
+	maps []*program.Map,
 	sockmap *program.Map,
 	verbose int,
 ) error {
@@ -28,6 +29,7 @@ func LoadSkProgram(
 
 	opts := &program.LoadOpts{
 		Attach: program.RawAttach(fd),
+		Maps:   maps,
 	}
 	return program.LoadProgramOpts(bpfDir, load, opts, verbose)
 }
