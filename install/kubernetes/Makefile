@@ -156,6 +156,7 @@ tetragon/charts: ## Copy Helm dependencies (subcharts) into the EE Helm chart (f
 		$(MAKE) enterprise/charts; \
 	fi
 	cp -f $(EE_PATCHES)/Chart.lock $(EE_CHART)/Chart.lock
+	rm -rf $(EE_CHART)/charts
 	cp -rf $(EE_PATCHES)/charts $(EE_CHART)/charts
 
 ##@ Cleanup
