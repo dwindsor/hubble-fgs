@@ -16,12 +16,17 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	slimv1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
+	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 )
 
@@ -95,41 +100,31 @@ func TestSkipTracingPolicyForNode(t *testing.T) {
 				Metadata: tracingpolicy.ObjectMeta{Name: "test"},
 				Spec:     v1alpha1.TracingPolicySpec{NodeSelector: tt.sel},
 			}
-			got := skipTracingPolicyForNode(tp, tt.labels, slog.Default())
+			got := SkipTracingPolicyForNode(tp, tt.labels, slog.Default())
 			require.Equal(t, tt.wantSkip, got)
 		})
 	}
 }
 
-type fakeSensorManager struct {
-	added   []string
-	skipped []string
-}
-
-func (f *fakeSensorManager) AddTracingPolicy(_ context.Context, tp tracingpolicy.TracingPolicy) error {
-	f.added = append(f.added, tp.TpName())
-	return nil
-}
-
-func (f *fakeSensorManager) AddSkippedTracingPolicy(_ context.Context, tp tracingpolicy.TracingPolicy) error {
-	f.skipped = append(f.skipped, tp.TpName())
-	return nil
-}
-
 func archPolicyYAML(arch string) string {
+	return namedArchPolicyYAML(arch+"-only", arch)
+}
+
+// namedArchPolicyYAML renders a policy gated on one architecture. It carries no
+// kprobes so the real tracing policy handler needs no kernel BTF, keeping the
+// tests independent of the host kernel.
+func namedArchPolicyYAML(name, arch string) string {
 	return fmt.Sprintf(`apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
-  name: %s-only
+  name: %s
 spec:
   nodeSelector:
     matchExpressions:
       - key: tetragon.io/arch
         operator: In
         values: ["%s"]
-  kprobes:
-    - call: tcp_connect
-`, arch, arch)
+`, name, arch)
 }
 
 func writeArchPolicy(t *testing.T, arch string) string {
@@ -145,33 +140,80 @@ func TestOnTracingPolicyNodeSelector(t *testing.T) {
 	host := map[string]string{"tetragon.io/arch": "amd64"}
 
 	t.Run("non-matching is skipped", func(t *testing.T) {
-		sm := &fakeSensorManager{}
-		loader := &defaultLoader{sm: sm, log: slog.Default(), nodeSelectorLabels: host}
+		mgr := startRealManager(t)
+		loader := &defaultLoader{sm: mgr, log: slog.Default(), nodeSelectorLabels: host}
 		require.NoError(t, loader.OnTracingPolicy(context.Background(), writeArchPolicy(t, "arm64"), nil))
-		require.Equal(t, []string{"arm64-only"}, sm.skipped)
-		require.Empty(t, sm.added)
+		state, _ := policyStatus(t, mgr, "arm64-only")
+		require.Equal(t, tetragon.TracingPolicyState_TP_STATE_SKIPPED, state)
 	})
 
 	t.Run("matching is loaded", func(t *testing.T) {
-		sm := &fakeSensorManager{}
-		loader := &defaultLoader{sm: sm, log: slog.Default(), nodeSelectorLabels: host}
+		mgr := startRealManager(t)
+		loader := &defaultLoader{sm: mgr, log: slog.Default(), nodeSelectorLabels: host}
 		require.NoError(t, loader.OnTracingPolicy(context.Background(), writeArchPolicy(t, "amd64"), nil))
-		require.Equal(t, []string{"amd64-only"}, sm.added)
-		require.Empty(t, sm.skipped)
+		state, _ := policyStatus(t, mgr, "amd64-only")
+		require.Equal(t, tetragon.TracingPolicyState_TP_STATE_ENABLED, state)
 	})
 }
 
-func TestNodeSelectorFilter(t *testing.T) {
-	require.Nil(t, NodeSelectorFilter(nil, slog.Default()), "no host labels yields no filter")
+type dummyPolicyHandler struct{}
 
-	filter := NodeSelectorFilter(map[string]string{"tetragon.io/arch": "amd64"}, slog.Default())
-	require.NotNil(t, filter)
+func (dummyPolicyHandler) PolicyHandler(_ tracingpolicy.TracingPolicy, _ policyfilter.PolicyID) (sensors.SensorIface, error) {
+	return &sensors.Sensor{Name: "nodeselector-test-sensor"}, nil
+}
 
-	arm, err := tracingpolicy.FromYAML(archPolicyYAML("arm64"))
+// registerDummyOnce guards the global handler registry, which panics on
+// duplicate registration.
+var registerDummyOnce sync.Once
+
+func startRealManager(t *testing.T) *sensors.Manager {
+	t.Helper()
+	registerDummyOnce.Do(func() {
+		sensors.RegisterPolicyHandlerAtInit("nodeselector-test-dummy", dummyPolicyHandler{})
+	})
+	mgr, err := sensors.StartSensorManager("")
 	require.NoError(t, err)
-	require.True(t, filter(arm), "non-matching policy is filtered out")
+	return mgr
+}
 
-	amd, err := tracingpolicy.FromYAML(archPolicyYAML("amd64"))
+// policyStatus returns the state and domain of policyName as reported by the
+// manager, failing the test when the policy is absent.
+func policyStatus(t *testing.T, mgr *sensors.Manager, policyName string) (tetragon.TracingPolicyState, string) {
+	t.Helper()
+	res, err := mgr.ListTracingPolicies(t.Context(), "")
 	require.NoError(t, err)
-	require.False(t, filter(amd), "matching policy is not filtered")
+	for _, pol := range res.GetPolicies() {
+		if pol.GetName() == policyName {
+			return pol.GetState(), pol.GetDomain()
+		}
+	}
+	t.Fatalf("policy %q not found", policyName)
+	return tetragon.TracingPolicyState_TP_STATE_UNKNOWN, ""
+}
+
+func TestNodeSelectorRealManager(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	host := map[string]string{"tetragon.io/arch": "amd64"}
+	mgr := startRealManager(t)
+
+	t.Run("file loader", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "match.yaml"),
+			[]byte(archPolicyYAML("amd64")), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "nomatch.yaml"),
+			[]byte(archPolicyYAML("arm64")), 0o644))
+
+		loader := NewDefaultLoader(nil, mgr, slog.Default(), host)
+		require.NoError(t, LoadFromDir(ctx, dir, loader))
+
+		state, domain := policyStatus(t, mgr, "amd64-only")
+		require.Equal(t, tetragon.TracingPolicyState_TP_STATE_ENABLED, state)
+		require.Equal(t, tracingpolicy.StaticDomain, domain)
+
+		state, domain = policyStatus(t, mgr, "arm64-only")
+		require.Equal(t, tetragon.TracingPolicyState_TP_STATE_SKIPPED, state)
+		require.Equal(t, tracingpolicy.StaticDomain, domain)
+	})
 }
