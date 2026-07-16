@@ -146,6 +146,26 @@ func countEntities(am *appModelV1.ApplicationModel) map[appmodelmetrics.EntityKi
 	return counts
 }
 
+// isSizeLimitError reports whether err is lumberjack rejecting a write larger
+// than the configured maximum file size. Lumberjack returns a plain fmt.Errorf
+// with no sentinel or typed error, so a substring match on its stable message
+// is the only way to detect this case.
+func isSizeLimitError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "exceeds maximum file size")
+}
+
+// logAppModelEncodeError logs a failed application model encode. When the
+// failure is the export file size limit, it appends an actionable remedy naming
+// the levers the operator can pull; other errors are logged as-is to avoid
+// misdirecting the reader.
+func logAppModelEncodeError(err error, msg, sizeLimitHint string) {
+	if isSizeLimitError(err) {
+		msg = msg + "; " + sizeLimitHint
+	}
+	logger.GetLogger().Error(msg, logfields.Error, err)
+	appmodelmetrics.RecordError(appmodelmetrics.PhaseExportAppModel)
+}
+
 // exportTick processes a single export cycle: converts process models to an
 // application model, encodes it (non-fatal on failure), and exports telemetry
 // and connection diffs. Extracted from ExportApplicationModel so the
@@ -176,14 +196,14 @@ func exportTick(
 			fragments := model.SplitApplicationModelEvent(newModel)
 			for _, fragment := range fragments {
 				if err := appModelEncoder.Encode(fragment); err != nil {
-					logger.GetLogger().Error("Failed to encode application model fragment as JSON", logfields.Error, err)
-					appmodelmetrics.RecordError(appmodelmetrics.PhaseExportAppModel)
+					logAppModelEncodeError(err, "Failed to encode application model fragment as JSON",
+						"raise export-file-max-size-mb or lower application-model-split-max-host-processes")
 				}
 			}
 		} else {
 			if err := appModelEncoder.Encode(newModel); err != nil {
-				logger.GetLogger().Error("Failed to encode application model as JSON", logfields.Error, err)
-				appmodelmetrics.RecordError(appmodelmetrics.PhaseExportAppModel)
+				logAppModelEncodeError(err, "Failed to encode application model as JSON",
+					"raise export-file-max-size-mb or set application-model-export-fragments=true")
 			}
 		}
 	}

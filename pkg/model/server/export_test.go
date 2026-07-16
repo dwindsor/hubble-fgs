@@ -17,9 +17,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/cilium/lumberjack/v2"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -560,4 +562,39 @@ func TestExportTickSetsEntityGauges(t *testing.T) {
 	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("container")))
 	assert.Equal(t, float64(4), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("process")))
 	assert.Equal(t, float64(4), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("connection")))
+}
+
+// TestIsSizeLimitErrorRealLumberjack drives a real lumberjack writer past its
+// MaxSize so isSizeLimitError is validated against the actual error lumberjack
+// produces, rather than a hardcoded copy of its message.
+func TestIsSizeLimitErrorRealLumberjack(t *testing.T) {
+	writer := &lumberjack.Logger{
+		Filename: filepath.Join(t.TempDir(), "app-model.log"),
+		MaxSize:  1, // 1 MiB, the smallest meaningful cap
+	}
+	t.Cleanup(func() { _ = writer.Close() })
+
+	// A single write larger than MaxSize is rejected outright (lumberjack never
+	// splits a write). 2 MiB comfortably exceeds the 1 MiB cap.
+	_, err := writer.Write(make([]byte, 2*1024*1024))
+	require.Error(t, err, "expected lumberjack to reject an oversized write")
+	assert.True(t, isSizeLimitError(err),
+		"isSizeLimitError should catch the real lumberjack error: %v", err)
+}
+
+func TestIsSizeLimitError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"unrelated error", errors.New("connection reset by peer"), false},
+		{"marshalling error", errors.New("json: unsupported type"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isSizeLimitError(tt.err))
+		})
+	}
 }
