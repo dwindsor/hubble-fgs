@@ -25,9 +25,12 @@ import (
 // Node labels), so they carry a tetragon.io prefix to avoid being confused with
 // kubelet-assigned kubernetes.io labels.
 const (
-	labelArch     = "tetragon.io/arch"
-	labelOS       = "tetragon.io/os"
-	labelHostname = "tetragon.io/hostname"
+	labelArch               = "tetragon.io/arch"
+	labelOS                 = "tetragon.io/os"
+	labelHostname           = "tetragon.io/hostname"
+	labelKernelBuildID      = "tetragon.io/kernel-build-id"
+	labelKernelMajorVersion = "tetragon.io/kernel-major-version"
+	labelKernelMinorVersion = "tetragon.io/kernel-minor-version"
 )
 
 // labelProviders resolve the optional host labels; an error or empty value
@@ -37,6 +40,9 @@ var labelProviders = []struct {
 	get func() (string, error)
 }{
 	{labelHostname, os.Hostname},
+	{labelKernelBuildID, kernelBuildID},
+	{labelKernelMajorVersion, kernelMajorVersion},
+	{labelKernelMinorVersion, kernelMinorVersion},
 }
 
 // hostLabels resolves once: the values are fixed for the life of the process,
