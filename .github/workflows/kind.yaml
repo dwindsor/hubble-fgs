@@ -6,6 +6,8 @@ on:
 
 env:
   HELM_CHART_REPOSITORY: oci://${{ vars.ARTIFACTORY_HOST }}/isovalent-eng-helmoci/tetragon
+  # renovate: datasource=github-releases depName=helm/helm
+  HELM_VERSION: v4.2.3
 
 jobs:
   kind-integration-test:
@@ -48,6 +50,11 @@ jobs:
 
     - name: Install Kind and create cluster
       uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+
+    - name: Set up Helm
+      uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      with:
+        version: ${{ env.HELM_VERSION }}
 
     - name: Login to Artifactory
       run: |
