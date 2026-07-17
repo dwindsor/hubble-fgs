@@ -110,6 +110,8 @@ func GetSelectorsMetadata(sel []v1alpha1.FileSelector) (*SelectorsMetadata, erro
 	if meta.HasMatchOperations {
 		for _, s := range sel {
 			if len(s.MatchOperations) == 0 {
+				// a selector without matchOperations matches every operation
+				meta.OperationsSet = NewSet(getAllOps()...)
 				continue
 			} else if len(s.MatchOperations) > 1 {
 				return nil, fmt.Errorf("only support a single matchOperation selector")

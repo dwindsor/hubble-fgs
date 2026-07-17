@@ -211,7 +211,7 @@ func TestGetSelectorsMetadata8(t *testing.T) {
 	assert.True(t, o.HasMatchBinaries)
 	assert.True(t, o.HasMatchFilename)
 	assert.True(t, o.HasMatchOperations)
-	assert.Equal(t, o.OperationsSet, NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...))
+	assert.Equal(t, o.OperationsSet, NewSet(getAllOps()...))
 }
 
 func TestGetSelectorsMetadataMatchCapabilities(t *testing.T) {
