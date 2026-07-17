@@ -18,14 +18,20 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/cilium/lumberjack/v2"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/version"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -476,6 +482,78 @@ func TestAppModelEncodeFailureDoesNotBlockTelemetry(t *testing.T) {
 
 	assert.NotEmpty(t, telemetryBuf.Bytes(), "telemetry encoder should have received data")
 	assert.NotEmpty(t, connectionBuf.Bytes(), "connection encoder should have received data")
+}
+
+func TestExportTickSetsObserver(t *testing.T) {
+	prev := option.Config.ClusterName
+	t.Cleanup(func() { option.Config.ClusterName = prev })
+
+	for _, tc := range []struct {
+		name       string
+		cluster    string
+		identifier string
+	}{
+		{"no cluster", "", node.GetNodeNameForExport()},
+		{"cluster", "my-cluster", "my-cluster/" + node.GetNodeNameForExport()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			option.Config.ClusterName = tc.cluster
+
+			// A destination absent from the last model makes the tick
+			// emit a connection log.
+			lastProcessModels := []*types.ProcessModel{
+				{
+					Binary:     "curl",
+					BinaryArgs: "https://example.com",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  model.HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+				},
+			}
+			newProcessModels := []*types.ProcessModel{
+				{
+					Binary:     "curl",
+					BinaryArgs: "https://example.com",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  model.HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+					Dest: []*types.Destination{
+						{
+							DestinationNames: []string{"example.com"},
+							Port:             443,
+							Stats:            &types.DestinationStats{TxBytes: 1024},
+						},
+					},
+				},
+			}
+
+			emptyFilter := make(map[string]bool)
+			lastAppModel, _ := model.ProcessModelToApplicationModelWithProcessData(lastProcessModels, emptyFilter, nil)
+
+			telemetryEncoder := json.NewEncoder(&bytes.Buffer{})
+			var connectionBuf bytes.Buffer
+			connectionEncoder := json.NewEncoder(&connectionBuf)
+
+			lastTime := time.Now().Add(-10 * time.Second)
+
+			_, _ = exportTick(t.Context(), newProcessModels, nil, telemetryEncoder, connectionEncoder,
+				lastAppModel, lastTime, emptyFilter, nil, &local.NoopMetadataService{})
+
+			require.NotEmpty(t, connectionBuf.Bytes(), "connection encoder should have received data")
+
+			var log graphV1.ConnectionLog
+			require.NoError(t, json.Unmarshal(connectionBuf.Bytes(), &log))
+			observer := log.GetEmitter().GetObserver()
+			require.NotNil(t, observer, "connection log should carry an observer")
+			assert.Equal(t, "Tetragon", observer.GetName())
+			assert.Equal(t, strings.TrimPrefix(version.Version, "v"), observer.GetVersion())
+			assert.Equal(t, tc.identifier, observer.GetIdentifier())
+		})
+	}
 }
 
 func TestExportTickSetsEntityGauges(t *testing.T) {

@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/node"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
@@ -103,11 +106,17 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 	}
 
 	if connection != nil && len(conns) > 0 {
+		agentVersion := strings.TrimPrefix(version.Version, "v")
 		log := graphV1.ConnectionLog{
 			Uuid: uuid.New().String(),
 			Emitter: &commonV1.Emitter{
 				Name:    "Tetragon",
-				Version: strings.TrimPrefix(version.Version, "v"),
+				Version: agentVersion,
+				Observer: &commonV1.Observer{
+					Name:       "Tetragon",
+					Version:    agentVersion,
+					Identifier: observerIdentifier(),
+				},
 			},
 			WindowStart: timestamppb.New(last),
 			WindowEnd:   timestamppb.New(now),
@@ -119,6 +128,18 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 		}
 	}
 	return now, nil
+}
+
+// observerIdentifier returns the identifier for this observer instance,
+// following the Hubble "cluster/node" convention. When no cluster name is
+// configured it falls back to the bare node name, mirroring the flow export
+// path in pkg/encoder/json_encoder.go.
+func observerIdentifier() string {
+	nodeName := node.GetNodeNameForExport()
+	if cluster := option.Config.ClusterName; cluster != "" {
+		return fmt.Sprintf("%s/%s", cluster, nodeName)
+	}
+	return nodeName
 }
 
 // countEntities tallies all entity kinds in an application model. It is a pure
