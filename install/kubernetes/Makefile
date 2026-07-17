@@ -26,6 +26,7 @@ JQ_IMAGE = ghcr.io/jqlang/jq:1.8.2@sha256:b9c68867e5766576263a222e91db3de422d802
 # renovate: datasource=github-releases depName=yannh/kubeconform
 KUBECONFORM_VERSION = v0.6.7
 K8S_VERSION = master
+HELM_KUBE_VERSION_ARG = $(if $(filter-out master,$(K8S_VERSION)),--kube-version $(K8S_VERSION))
 
 #
 # -- Variables
@@ -190,7 +191,7 @@ kubeconform: ## Validate Helm chart using kubeconform
 	mv $(ROOT_DIR)/install/kubernetes/*-cilium.io.json $(JSON_SCHEMAS)/
 	$(MAKE) $(EE_CHART)/charts
 	@echo "## Testing Helm chart: \"$(EE_CHART)\""
-	$(HELM) template $(EE_CHART) . \
+	$(HELM) template $(EE_CHART) . $(HELM_KUBE_VERSION_ARG) \
 	-f values.yaml \
 	-f /$(HELM_VALUES_OVERRIDE) \
 	| docker run --rm -i -v $(JSON_SCHEMAS):/schemas $(KUBECONFORM_IMAGE) \
