@@ -7,9 +7,9 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.30
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.30
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.2
 	github.com/breml/jsondiffprinter v0.0.12
-	github.com/cilium/cilium v1.19.5
+	github.com/cilium/cilium v1.19.6
 	github.com/cilium/ebpf v0.22.0
 	github.com/cilium/lumberjack/v2 v2.4.2
 	github.com/cilium/tetragon v1.8.0-pre.0.0.20260720102139-0611c2af21cf
@@ -21,7 +21,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.19.0
 	github.com/gdamore/tcell/v2 v2.13.10
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/protobuf v1.5.4
 	github.com/google/cel-go v0.29.2
