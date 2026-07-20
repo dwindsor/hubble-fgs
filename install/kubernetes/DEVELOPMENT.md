@@ -35,6 +35,19 @@ host. Install Helm 4 as `helm` on `PATH` before running either target:
 The root Makefile rejects missing or different Helm versions before invoking
 the install or e2e tooling.
 
+## Upgrade and roll back existing releases
+
+Helm 4 can manage releases created by Helm 3 without a separate release-state
+migration. New Helm 4 releases use server-side apply by default. Upgrades and
+rollbacks keep the apply method recorded by the previous release, so a release
+created by Helm 3 continues to use client-side apply unless `--server-side` is
+set explicitly.
+
+When validating a migration, create the release with Helm 3, upgrade it with
+Helm 4, and roll it back to the previous revision. Use
+`--server-side=false` when the test must explicitly preserve Helm 3's
+client-side apply behavior.
+
 ## Add enterprise-only functionality
 
 To add an enterprise-only functionality, you must first edit the `enterprise`,

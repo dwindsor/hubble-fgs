@@ -66,7 +66,7 @@ jobs:
           --password-stdin
 
     - name: Wait for Helm dev chart to be available
-      timeout-minutes: 15
+      timeout-minutes: 20
       shell: bash
       run: |
         until helm pull ${{ env.HELM_CHART_REPOSITORY }} --version ${{ steps.version.outputs.version }}; do sleep 30s; done
