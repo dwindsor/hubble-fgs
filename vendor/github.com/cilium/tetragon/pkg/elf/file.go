@@ -101,25 +101,9 @@ func (se *SafeELFFile) Offset(name string) (uint64, error) {
 			continue
 		}
 
-		offset := sym.Value
-
-		// Loop over ELF segments.
-		for _, prog := range se.Progs {
-			// Skip uninteresting segments.
-			if prog.Type != elf.PT_LOAD || (prog.Flags&elf.PF_X) == 0 {
-				continue
-			}
-
-			if prog.Vaddr <= sym.Value && sym.Value < (prog.Vaddr+prog.Memsz) {
-				// If the symbol value is contained in the segment, calculate
-				// the symbol offset.
-				//
-				// fn symbol offset = fn symbol VA - .text VA + .text offset
-				//
-				// stackoverflow.com/a/40249502
-				offset = sym.Value - prog.Vaddr + prog.Off
-				break
-			}
+		offset, err := se.OffsetFromAddr(sym.Value)
+		if err != nil {
+			offset = sym.Value
 		}
 		return offset, nil
 	}
@@ -128,8 +112,6 @@ func (se *SafeELFFile) Offset(name string) (uint64, error) {
 }
 
 func (se *SafeELFFile) OffsetFromAddr(addr uint64) (uint64, error) {
-	offset := uint64(0)
-
 	// Loop over ELF segments.
 	for _, prog := range se.Progs {
 		// Skip uninteresting segments.
@@ -144,14 +126,27 @@ func (se *SafeELFFile) OffsetFromAddr(addr uint64) (uint64, error) {
 			// fn address offset = fn address VA - .text VA + .text offset
 			//
 			// stackoverflow.com/a/40249502
-			offset = addr - prog.Vaddr + prog.Off
-			break
+			return addr - prog.Vaddr + prog.Off, nil
 		}
 	}
-	if offset == 0 {
-		return 0, fmt.Errorf("failed to find offset for address %x", addr)
+	return 0, fmt.Errorf("failed to find offset for address %x", addr)
+}
+
+func (se *SafeELFFile) AddrFromOffset(offset uint64) (uint64, error) {
+	// Loop over ELF segments.
+	for _, prog := range se.Progs {
+		// Skip uninteresting segments.
+		if prog.Type != elf.PT_LOAD || (prog.Flags&elf.PF_X) == 0 {
+			continue
+		}
+
+		if prog.Off <= offset && offset < (prog.Off+prog.Filesz) {
+			// Inverse of OffsetFromAddr:
+			// addr = offset - segment file offset + segment virtual address
+			return offset - prog.Off + prog.Vaddr, nil
+		}
 	}
-	return offset, nil
+	return 0, fmt.Errorf("failed to find address for offset %x", offset)
 }
 
 // SectionsByType returns all sections in the file with the specified section type.

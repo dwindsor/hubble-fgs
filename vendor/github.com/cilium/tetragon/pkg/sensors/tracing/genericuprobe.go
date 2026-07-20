@@ -8,9 +8,12 @@ package tracing
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -51,11 +54,35 @@ type observerUprobeSensor struct {
 	name string
 }
 
-const disableNotAllowedReasonLinkByFD = "target linked by file descriptor"
+const disableNotAllowedReasonBinaryDigests = "binaryDigests configured"
 
 var (
 	uprobeTable idtable.Table
 )
+
+func getOrOpenFile(path string, openedFilesMap map[string]*os.File) (*os.File, error) {
+	if f, ok := openedFilesMap[path]; ok {
+		return f, nil
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	openedFilesMap[path] = f
+	return f, nil
+}
+
+// DigestMismatchError indicates that a calculated digest does not match the
+// configured digest value.
+type DigestMismatchError struct {
+	Detail string
+}
+
+func (e *DigestMismatchError) Error() string {
+	return e.Detail
+}
 
 type uprobeLoadArgs struct {
 	selectors kprobeSelectors
@@ -478,10 +505,11 @@ func validateMultiUprobeConsistency(uprobes []v1alpha1.UProbeSpec) error {
 }
 
 type uprobeConfigState struct {
-	symbols       int
-	offsets       int
-	addrs         int
-	refCtrOffsets int
+	symbols        int
+	offsets        int
+	addrs          int
+	refCtrOffsets  int
+	overrideSymbol bool
 
 	selectors kprobeSelectors
 
@@ -545,6 +573,11 @@ func validateUprobeSpec(spec *v1alpha1.UProbeSpec, state *uprobeConfigState) err
 		}
 	}
 
+	numArgNewArgs := selectors.CountOverrideArgNewSymbolAddrOffset(spec.Selectors)
+	if numArgNewArgs > 1 {
+		return fmt.Errorf("uprobe Override action needs exactly one of either argNewSymbol, argNewOffset or argNewAddr defined; %d found", numArgNewArgs)
+	}
+	state.overrideSymbol = numArgNewArgs == 1
 	return nil
 }
 
@@ -573,14 +606,74 @@ func validateUprobeFeatures(spec *v1alpha1.UProbeSpec, has *uprobeHas) error {
 	return nil
 }
 
-func initUprobeSelectors(spec *v1alpha1.UProbeSpec, in *addUprobeIn, state *uprobeConfigState, nextIdx int) error {
+func computeArgNewOffset(spec *v1alpha1.UProbeSpec, f *elf.SafeELFFile, symbolAddr uint64) (int64, error) {
+	var err error
+	for _, sel := range spec.Selectors {
+		for _, matchAct := range sel.MatchActions {
+			if matchAct.Action == "Override" {
+				// Load override-symbol VA
+				var overrideSymbAddr uint64
+				if matchAct.ArgNewSymbol != "" {
+					overrideSymbAddr, err = f.Address(matchAct.ArgNewSymbol)
+				} else if matchAct.ArgNewAddr != 0 {
+					overrideSymbAddr = matchAct.ArgNewAddr
+				} else {
+					overrideSymbAddr, err = f.AddrFromOffset(uint64(matchAct.ArgNewOffset))
+				}
+				if err != nil {
+					return 0, err
+				}
+
+				// Store the relative-to-traced-symbol delta.
+				// This is computed based on virtual address for both symbols.
+				// Since ASLR just changes the base address,
+				// the relative delta are stable.
+				// In bpf, we will compute the override symbol address as:
+				// * curr_ip = PT_REGS_IP(ctx);
+				// * next_ip = curr_ip + delta
+				return int64(overrideSymbAddr - symbolAddr), nil
+			}
+		}
+	}
+	return 0, errors.New("state.overrideSymbol is true but no corresponding Override action found in spec.Selectors")
+}
+
+func initOverrideSymbolOffset(spec *v1alpha1.UProbeSpec, state *uprobeConfigState, f *elf.SafeELFFile) (int64, error) {
+	if !state.overrideSymbol {
+		return 0, nil
+	}
+
+	// Load probed symbol offset
+	var (
+		symbolAddr uint64
+		err        error
+	)
+	if state.symbols > 0 {
+		symbolAddr, err = f.Address(spec.Symbols[0])
+	} else if state.addrs > 0 {
+		symbolAddr = spec.Addrs[0]
+	} else {
+		symbolAddr, err = f.AddrFromOffset(spec.Offsets[0])
+	}
+	if err != nil {
+		return 0, err
+	}
+	return computeArgNewOffset(spec, f, symbolAddr)
+}
+
+func initUprobeSelectors(spec *v1alpha1.UProbeSpec, in *addUprobeIn, state *uprobeConfigState, f *elf.SafeELFFile, nextIdx int) error {
+	ipDelta, err := initOverrideSymbolOffset(spec, state, f)
+	if err != nil {
+		return err
+	}
 	entry, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
-		Selectors: spec.Selectors,
-		Args:      spec.Args,
-		Data:      spec.Data,
-		IsUprobe:  true,
-		UprobeID:  nextIdx,
-		CelExprs:  in.celExprs,
+		Selectors:             spec.Selectors,
+		Args:                  spec.Args,
+		Data:                  spec.Data,
+		IsUprobe:              true,
+		UprobeID:              nextIdx,
+		OverrideActionIPDelta: ipDelta,
+		CelExprs:              in.celExprs,
 	})
 	if err != nil {
 		return err
@@ -604,7 +697,7 @@ func initUprobeSelectors(spec *v1alpha1.UProbeSpec, in *addUprobeIn, state *upro
 	return nil
 }
 
-func cleanupUprobeEntries(ids []idtable.EntryID, openedFiles []*os.File) error {
+func cleanupUprobeEntries(ids []idtable.EntryID, openedFiles map[string]*os.File) error {
 	var errs error
 
 	for _, id := range ids {
@@ -627,13 +720,140 @@ func cleanupUprobeEntries(ids []idtable.EntryID, openedFiles []*os.File) error {
 		}
 	}
 
-	for _, entryFile := range openedFiles {
-		if err := entryFile.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
-			errs = errors.Join(errs, fmt.Errorf("problem closing path %q: %w", entryFile.Name(), err))
+	for path, entryFile := range openedFiles {
+		if err := entryFile.Close(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("problem closing path %q: %w", path, err))
 		}
 	}
 
 	return errs
+}
+
+func computeHash(algo string, file *os.File) (string, error) {
+	if algo == "build-id" {
+		// There is no need to call safeELF.Close() because that function only closes the underlying *os.File.
+		// Further, safeELF.Close() won't attempt to close the underlying file when the SafeELFFile is created with
+		// NewSafeELFFile().
+		// We don't want to close the underlying file here because it needs to remain open for the uprobe to be
+		// attached to its file descriptor.
+		safeELF, err := elf.NewSafeELFFile(file)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse ELF: %w", err)
+		}
+
+		buildID, err := safeELF.ParseBuildID()
+		if err != nil {
+			return "", fmt.Errorf("failed to extract build ID: %w", err)
+		}
+		return hex.EncodeToString(buildID), nil
+	}
+
+	var hashType crypto.Hash
+	switch algo {
+	case "sha256":
+		hashType = crypto.SHA256
+	case "sha384":
+		hashType = crypto.SHA384
+	case "sha512":
+		hashType = crypto.SHA512
+	case "sha1":
+		hashType = crypto.SHA1
+	default:
+		return "", fmt.Errorf("unsupported digest algorithm '%s'", algo)
+	}
+
+	h := hashType.New()
+	if _, err := io.Copy(h, file); err != nil {
+		return "", fmt.Errorf("failed to calculate digest: %w", err)
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// verifyFileDigest verifies that an open file's digest matches the configured digest.
+// digestConfig format is "<algo>:<hash>" (e.g., "sha256:abc123..." or "build-id:deadbeef...")
+func verifyFileDigest(file *os.File, digestConfig string, fileHashCache map[string]string) (retErr error) {
+	if digestConfig == "" {
+		return nil
+	}
+
+	digestConfig = strings.TrimSpace(digestConfig)
+	algo, expectedHash, found := strings.Cut(digestConfig, ":")
+	if !found {
+		return fmt.Errorf("invalid digest format, expected '<algo>:<hash>' but got '%s'", digestConfig)
+	}
+
+	algo = strings.ToLower(strings.TrimSpace(algo))
+	expectedHash = strings.ToLower(strings.TrimSpace(expectedHash))
+	if algo == "" || expectedHash == "" {
+		return fmt.Errorf("invalid digest format, expected '<algo>:<hash>' but got '%s'", digestConfig)
+	}
+
+	if hash, ok := fileHashCache[algo]; ok {
+		if hash != expectedHash {
+			return &DigestMismatchError{
+				Detail: fmt.Sprintf("digest mismatch: expected %s:%s but got %s:%s", algo, expectedHash, algo, hash),
+			}
+		}
+		logger.GetLogger().Debug(fmt.Sprintf("Digest verified: %s:%s (cached)", algo, hash))
+		return nil
+	}
+
+	currentOffset, err := file.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return fmt.Errorf("error getting offset: %w", err)
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek file: %w", err)
+	}
+
+	defer func() {
+		if _, err := file.Seek(currentOffset, io.SeekStart); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("failed to restore file offset: %w", err))
+		}
+	}()
+
+	calculatedHash, err := computeHash(algo, file)
+	if err != nil {
+		return err
+	}
+
+	fileHashCache[algo] = calculatedHash
+
+	if calculatedHash != expectedHash {
+		return &DigestMismatchError{
+			Detail: fmt.Sprintf("digest mismatch: expected %s:%s but got %s:%s", algo, expectedHash, algo, calculatedHash),
+		}
+	}
+
+	logger.GetLogger().Debug(fmt.Sprintf("Digest verified: %s:%s", algo, calculatedHash))
+	return nil
+}
+
+func verifyBinaryDigests(uprobe *v1alpha1.UProbeSpec, entryFile *os.File) error {
+	if entryFile == nil {
+		return nil
+	}
+
+	digestCache := make(map[string]string)
+	for _, digest := range uprobe.BinaryDigests {
+		err := verifyFileDigest(entryFile, digest, digestCache)
+		if err == nil {
+			return nil
+		}
+
+		// Keep trying other configured digests only when the current digest
+		// mismatches. Operational errors should be returned immediately.
+		if _, ok := errors.AsType[*DigestMismatchError](err); !ok {
+			return err
+		}
+		logger.GetLogger().Debug(err.Error())
+	}
+
+	return &DigestMismatchError{
+		Detail: fmt.Sprintf("digest verification failed for path %q", uprobe.Path),
+	}
 }
 
 func createGenericUprobeSensor(
@@ -672,7 +892,7 @@ func createGenericUprobeSensor(
 		}
 	}
 
-	var openedFiles []*os.File
+	openedFiles := make(map[string]*os.File)
 
 	defer func() {
 		if retErr != nil {
@@ -683,7 +903,7 @@ func createGenericUprobeSensor(
 	}()
 
 	var selectorStatsBase uint32
-	for _, uprobe := range spec.UProbes {
+	for cfgIdx, uprobe := range spec.UProbes {
 		if err = appendMacrosSelectors(uprobe.Selectors, spec.SelectorsMacros); err != nil {
 			return nil, fmt.Errorf("append macros selectors: %w", err)
 		}
@@ -699,18 +919,19 @@ func createGenericUprobeSensor(
 
 		var entryFile *os.File
 
-		ids, err = addUprobe(&uprobe, entryFile, ids, &in, &has)
-		if err != nil {
-			if entryFile != nil {
-				if closeErr := entryFile.Close(); closeErr != nil && !errors.Is(closeErr, os.ErrClosed) {
-					err = errors.Join(err, closeErr)
-				}
+		if len(uprobe.BinaryDigests) != 0 {
+			entryFile, err = getOrOpenFile(absPath, openedFiles)
+			if err != nil {
+				return nil, err
 			}
-			return nil, err
 		}
 
-		if entryFile != nil {
-			openedFiles = append(openedFiles, entryFile)
+		if err := verifyBinaryDigests(&uprobe, entryFile); err != nil {
+			return nil, fmt.Errorf("spec.uprobes[%d]: %w", cfgIdx, err)
+		}
+
+		if ids, err = addUprobe(&uprobe, entryFile, ids, &in, &has); err != nil {
+			return nil, err
 		}
 	}
 
@@ -745,9 +966,9 @@ func createGenericUprobeSensor(
 		},
 		PostLoadHook: func() error {
 			var errs error
-			for _, entryFile := range openedFiles {
-				if err = entryFile.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
-					errs = errors.Join(errs, fmt.Errorf("problem closing path %q: %w", entryFile.Name(), err))
+			for path, entryFile := range openedFiles {
+				if err = entryFile.Close(); err != nil {
+					errs = errors.Join(errs, fmt.Errorf("problem closing path %q: %w", path, err))
 				}
 			}
 			return errs
@@ -976,7 +1197,7 @@ func getLinkPath(file *os.File, targetPath string) string {
 	return targetPath
 }
 
-func addUprobeEntries(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, state *uprobeConfigState, has *uprobeHas) ([]idtable.EntryID, error) {
+func addUprobeEntries(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, state *uprobeConfigState, has *uprobeHas, f *elf.SafeELFFile) ([]idtable.EntryID, error) {
 	addUprobeEntry := func(sym string, offset uint64, idx int) error {
 		var refCtrOffset uint64
 		var err error
@@ -1010,7 +1231,7 @@ func addUprobeEntries(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, state *u
 		// and as such their file descriptors are no longer valid after that point. So, it's not safe to load the sensor again
 		// when we re-enable a policy after it's been disabled, because the configured targetPaths would point to closed/re-used file descriptors.
 		if state.entryFile != nil {
-			has.disableNotAllowedReason = disableNotAllowedReasonLinkByFD
+			has.disableNotAllowedReason = disableNotAllowedReasonBinaryDigests
 		}
 
 		uprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent[*tracing.MsgGenericUprobeUnix]](option.Config.RetprobesCacheSize)
@@ -1025,22 +1246,6 @@ func addUprobeEntries(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, state *u
 
 		ids = append(ids, id)
 		return nil
-	}
-
-	var f *elf.SafeELFFile
-	var err error
-	if state.entryFile != nil {
-		f, err = elf.NewSafeELFFile(state.entryFile)
-	} else {
-		f, err = elf.OpenSafeELFFile(spec.Path)
-	}
-
-	if err != nil {
-		return ids, err
-	}
-
-	if state.entryFile == nil {
-		defer f.Close()
 	}
 
 	if state.symbols != 0 && f.IsStrippedPureGoBinary() {
@@ -1066,14 +1271,14 @@ func addUprobeEntries(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, state *u
 			if err := checkSymbol(sym); err != nil {
 				return ids, fmt.Errorf("failed to parse symbol: %w", err)
 			}
-			err = addUprobeEntry(sym, 0, idx)
+			err := addUprobeEntry(sym, 0, idx)
 			if err != nil {
 				return ids, err
 			}
 		}
 	} else if state.offsets != 0 {
 		for idx, off := range spec.Offsets {
-			err = addUprobeEntry("", off, idx)
+			err := addUprobeEntry("", off, idx)
 			if err != nil {
 				return ids, err
 			}
@@ -1111,6 +1316,22 @@ func addUprobe(spec *v1alpha1.UProbeSpec, entryFile *os.File, ids []idtable.Entr
 		}
 	}()
 
+	var f *elf.SafeELFFile
+	var err error
+	if state.entryFile != nil {
+		f, err = elf.NewSafeELFFile(state.entryFile)
+	} else {
+		f, err = elf.OpenSafeELFFile(spec.Path)
+	}
+
+	if err != nil {
+		return ids, err
+	}
+
+	if state.entryFile == nil {
+		defer f.Close()
+	}
+
 	if err := validateUprobeSpec(spec, &state); err != nil {
 		return ids, err
 	}
@@ -1119,7 +1340,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, entryFile *os.File, ids []idtable.Entr
 		return ids, err
 	}
 
-	if err := initUprobeSelectors(spec, in, &state, len(ids)); err != nil {
+	if err := initUprobeSelectors(spec, in, &state, f, len(ids)); err != nil {
 		return ids, err
 	}
 
@@ -1131,7 +1352,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, entryFile *os.File, ids []idtable.Entr
 		return ids, err
 	}
 
-	return addUprobeEntries(spec, ids, &state, has)
+	return addUprobeEntries(spec, ids, &state, has, f)
 }
 
 func multiUprobePinPath(sensorPath string) string {

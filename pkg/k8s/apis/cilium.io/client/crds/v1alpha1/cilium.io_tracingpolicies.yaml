@@ -519,7 +519,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -546,8 +558,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -598,6 +631,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchArgs:
                             description: A list of argument filters. MatchArgs are
@@ -956,7 +995,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -983,8 +1034,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -1035,6 +1107,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchReturnArgs:
                             description: A list of argument filters. MatchReturnArgs
@@ -2502,7 +2580,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -2529,8 +2619,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -2581,6 +2692,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchArgs:
                             description: A list of argument filters. MatchArgs are
@@ -2939,7 +3056,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -2966,8 +3095,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -3018,6 +3168,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchReturnArgs:
                             description: A list of argument filters. MatchReturnArgs
@@ -3478,7 +3634,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -3505,8 +3673,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -3557,6 +3746,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchArgs:
                             description: A list of argument filters. MatchArgs are
@@ -3915,7 +4110,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -3942,8 +4149,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -3994,6 +4222,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchReturnArgs:
                             description: A list of argument filters. MatchReturnArgs
@@ -4976,7 +5210,18 @@ spec:
                       items:
                         properties:
                           action:
-                            description: Action to execute.
+                            description: "Action to execute.\nThe Override action
+                              has three variants, depending on what arguments are
+                              set\n  1. Override the return value of function\n       Supported
+                              hooks: kprobes, uprobes, lsm\n       Arguments: ArgError
+                              (return value)\n  2. Override the value of a register\n
+                              \      Supported hooks: uprobes\n       Arguments: ArgRegs\n
+                              \ 3. Override a function call\n       Supported hooks:
+                              uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                              override call to a new symbol (in the binary)\n\t      -
+                              ArgNewAddr: override call to a new address (in the binary)\n\t
+                              \     - ArgNewOffset: override call to an offset (in
+                              the binary)"
                             enum:
                             - Post
                             - Sigkill
@@ -5002,8 +5247,29 @@ spec:
                             description: An arg index for the set action
                             format: int32
                             type: integer
+                          argNewAddr:
+                            description: |-
+                              An arg value for the override action, uprobe only.
+                              The new symbol's address.
+                              Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                            format: int64
+                            type: integer
+                          argNewOffset:
+                            description: |-
+                              An arg value for the override action, uprobe only.
+                              The new symbol's offset.
+                              Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                            format: int64
+                            type: integer
+                          argNewSymbol:
+                            description: |-
+                              An arg value for the override action, uprobe only.
+                              The new symbol name.
+                              Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                            type: string
                           argRegs:
-                            description: An arg value for the regs action
+                            description: An arg value for the override action, uprobe
+                              only.
                             items:
                               type: string
                             type: array
@@ -5054,6 +5320,12 @@ spec:
                         required:
                         - action
                         type: object
+                        x-kubernetes-validations:
+                        - message: override action needs at most one of argNewSymbol,
+                            argNewAddr or argNewOffset defined
+                          rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                            && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                            && !(has(self.argNewAddr) && has(self.argNewOffset))'
                       type: array
                     matchArgs:
                       description: A list of argument filters. MatchArgs are ANDed.
@@ -5407,7 +5679,18 @@ spec:
                       items:
                         properties:
                           action:
-                            description: Action to execute.
+                            description: "Action to execute.\nThe Override action
+                              has three variants, depending on what arguments are
+                              set\n  1. Override the return value of function\n       Supported
+                              hooks: kprobes, uprobes, lsm\n       Arguments: ArgError
+                              (return value)\n  2. Override the value of a register\n
+                              \      Supported hooks: uprobes\n       Arguments: ArgRegs\n
+                              \ 3. Override a function call\n       Supported hooks:
+                              uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                              override call to a new symbol (in the binary)\n\t      -
+                              ArgNewAddr: override call to a new address (in the binary)\n\t
+                              \     - ArgNewOffset: override call to an offset (in
+                              the binary)"
                             enum:
                             - Post
                             - Sigkill
@@ -5433,8 +5716,29 @@ spec:
                             description: An arg index for the set action
                             format: int32
                             type: integer
+                          argNewAddr:
+                            description: |-
+                              An arg value for the override action, uprobe only.
+                              The new symbol's address.
+                              Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                            format: int64
+                            type: integer
+                          argNewOffset:
+                            description: |-
+                              An arg value for the override action, uprobe only.
+                              The new symbol's offset.
+                              Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                            format: int64
+                            type: integer
+                          argNewSymbol:
+                            description: |-
+                              An arg value for the override action, uprobe only.
+                              The new symbol name.
+                              Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                            type: string
                           argRegs:
-                            description: An arg value for the regs action
+                            description: An arg value for the override action, uprobe
+                              only.
                             items:
                               type: string
                             type: array
@@ -5485,6 +5789,12 @@ spec:
                         required:
                         - action
                         type: object
+                        x-kubernetes-validations:
+                        - message: override action needs at most one of argNewSymbol,
+                            argNewAddr or argNewOffset defined
+                          rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                            && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                            && !(has(self.argNewAddr) && has(self.argNewOffset))'
                       type: array
                     matchReturnArgs:
                       description: A list of argument filters. MatchReturnArgs are
@@ -5896,7 +6206,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -5923,8 +6245,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -5975,6 +6318,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchArgs:
                             description: A list of argument filters. MatchArgs are
@@ -6333,7 +6682,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -6360,8 +6721,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -6412,6 +6794,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchReturnArgs:
                             description: A list of argument filters. MatchReturnArgs
@@ -6810,6 +7198,15 @@ spec:
                         - type
                         type: object
                       type: array
+                    binaryDigests:
+                      description: |-
+                        BinaryDigests specifies a set of digests for the traced binary.
+                        The uprobe is installed only if the digest of the traced binary matches a digest in the set.
+                        Currently, if the digest is not matched, the policy is rejected. Subsequent work will skip
+                        loading the uprobe instead of rejecting the policy.
+                      items:
+                        type: string
+                      type: array
                     btfPath:
                       description: path for a BTF file for the traced binary
                       type: string
@@ -7095,7 +7492,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -7122,8 +7531,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -7174,6 +7604,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchArgs:
                             description: A list of argument filters. MatchArgs are
@@ -7532,7 +7968,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -7559,8 +8007,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -7611,6 +8080,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchReturnArgs:
                             description: A list of argument filters. MatchReturnArgs
@@ -8053,7 +8528,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -8080,8 +8567,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -8132,6 +8640,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchArgs:
                             description: A list of argument filters. MatchArgs are
@@ -8490,7 +9004,19 @@ spec:
                             items:
                               properties:
                                 action:
-                                  description: Action to execute.
+                                  description: "Action to execute.\nThe Override action
+                                    has three variants, depending on what arguments
+                                    are set\n  1. Override the return value of function\n
+                                    \      Supported hooks: kprobes, uprobes, lsm\n
+                                    \      Arguments: ArgError (return value)\n  2.
+                                    Override the value of a register\n       Supported
+                                    hooks: uprobes\n       Arguments: ArgRegs\n  3.
+                                    Override a function call\n       Supported hooks:
+                                    uprobes\n       Arguments: One of:\n       - ArgNewSymbol:
+                                    override call to a new symbol (in the binary)\n\t
+                                    \     - ArgNewAddr: override call to a new address
+                                    (in the binary)\n\t      - ArgNewOffset: override
+                                    call to an offset (in the binary)"
                                   enum:
                                   - Post
                                   - Sigkill
@@ -8517,8 +9043,29 @@ spec:
                                   description: An arg index for the set action
                                   format: int32
                                   type: integer
+                                argNewAddr:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's address.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewOffset:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol's offset.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  format: int64
+                                  type: integer
+                                argNewSymbol:
+                                  description: |-
+                                    An arg value for the override action, uprobe only.
+                                    The new symbol name.
+                                    Beware that the symbol MUST be binary compatible with the traced uprobe symbol.
+                                  type: string
                                 argRegs:
-                                  description: An arg value for the regs action
+                                  description: An arg value for the override action,
+                                    uprobe only.
                                   items:
                                     type: string
                                   type: array
@@ -8569,6 +9116,12 @@ spec:
                               required:
                               - action
                               type: object
+                              x-kubernetes-validations:
+                              - message: override action needs at most one of argNewSymbol,
+                                  argNewAddr or argNewOffset defined
+                                rule: '!(has(self.argNewSymbol) && has(self.argNewAddr))
+                                  && !(has(self.argNewSymbol) && has(self.argNewOffset))
+                                  && !(has(self.argNewAddr) && has(self.argNewOffset))'
                             type: array
                           matchReturnArgs:
                             description: A list of argument filters. MatchReturnArgs
