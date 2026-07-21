@@ -39,7 +39,7 @@ require (
 	github.com/moby/moby/client v0.5.0
 	github.com/operator-framework/api v0.44.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1
-	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/client_golang v1.24.0
 	github.com/prometheus/client_model v0.6.2
 	github.com/rivo/tview v0.42.0
 	github.com/sirupsen/logrus v1.9.4
@@ -147,7 +147,7 @@ require (
 	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/isovalent/metricstool v0.1.4 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
-	github.com/klauspost/compress v1.18.6 // indirect
+	github.com/klauspost/compress v1.19.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
