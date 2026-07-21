@@ -36,14 +36,23 @@
       ]
     },
     {
-      // Chainguard images from Artifactory
-      "groupName": "Chainguard Images",
+      "groupName": "artifactory images",
       "matchPackageNames": [
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/go",
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl",
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/static",
+      ],
+      "pinDigests": false
+    },
+    {
+      // versioning follows vXXXXX-YYYY.MM.DD structure, e.g. v20230214-2026.06.26.
+      "groupName": "artifactory images compatibility versioning",
+      "matchPackageNames": [
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/chainguard-base"
       ],
+      "versionCompatibility": "^(?<compatibility>.*)-(?<version>.*)$",
+      "versioning": "docker",
+      "pinDigests": false
     },
     {
       "enabled": true,
