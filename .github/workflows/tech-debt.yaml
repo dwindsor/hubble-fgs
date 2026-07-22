@@ -1,0 +1,176 @@
+---
+name: Generate Tech Debt Report (Tetragon)
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Runs every Sunday at midnight
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  READONLY_GITHUB_APP_ID: ""
+  READONLY_GITHUB_APP_PEM: ""
+
+jobs:
+  get-tech-debt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Github App Credentials
+        uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+        env:
+          SECRETS_PATH: secret/data/release-mgmt/${{ github.repository_owner }}
+        with:
+          url: ${{ vars.VAULT_URL }}
+          method: ${{ vars.VAULT_METHOD }}
+          namespace: ${{ vars.VAULT_NAMESPACE }}
+          secrets: |
+            ${{ env.SECRETS_PATH }} github_app_id | READONLY_GITHUB_APP_ID;
+            ${{ env.SECRETS_PATH }} github_app_pem | READONLY_GITHUB_APP_PEM;
+
+      - name: Generate Github App Token
+        id: generate-token
+        uses: actions/create-github-app-token@21cfef2b496dd8ef5b904c159339626a10ad380e # v1.11.6
+        with:
+          app-id: ${{ env.READONLY_GITHUB_APP_ID }}
+          private-key: ${{ env.READONLY_GITHUB_APP_PEM }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+
+      - name: Checkout Repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Add Open Source as remote
+        run: |
+          git remote add upstream https://github.com/cilium/tetragon.git
+
+      - name: Get Tech Debt for all branches
+        id: get-tech-debt
+        env:
+          STABLE_BRANCHES: ${{ vars.STABLE_BRANCHES }}
+        run: |
+          mapfile -t branches < <(
+            jq -rn --arg branches "$STABLE_BRANCHES" '
+              def split_branches: split("[\\s,]+"; "g");
+
+              (try ($branches | fromjson) catch ($branches | split_branches))
+              | if type == "array" then . else error("STABLE_BRANCHES must be a JSON array or a comma/whitespace-separated list") end
+              | map(tostring | gsub("^\\s+|\\s+$"; ""))
+              | map(select(length > 0))
+              | .[]
+            '
+          )
+
+          if [ "${#branches[@]}" -eq 0 ]; then
+            echo "STABLE_BRANCHES must contain at least one branch" >&2
+            exit 1
+          fi
+
+          # Initialize GitHub step summary
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          # OSS Tech Debt Report (Tetragon)
+
+          | Branch | Commits | Merge Base | Current HEAD |
+          |--------|---------|------------|--------------|
+          EOF
+
+          # Collect data first
+          declare -A commits_map
+          declare -A merge_base_map
+          declare -A head_map
+          declare -A upstream_branch_map
+
+          for branch in "${branches[@]}"; do
+            echo "Processing branch: ${branch}"
+
+            # Fetch the enterprise branch
+            git fetch origin "${branch}"
+            git checkout "${branch}"
+
+            # Get the upstream branch from submodule config
+            upstream_branch=$(git config -f .gitmodules submodule.modules/tetragon-oss.branch)
+
+            # Fetch the upstream branch
+            git fetch upstream "${upstream_branch}"
+
+            # Get the submodule commit (merge base)
+            merge_base=$(git ls-tree HEAD modules/tetragon-oss/ --object-only)
+            merge_base_short="${merge_base:0:12}"
+
+            # Count commits between merge base and upstream HEAD
+            commit_count=$(git rev-list --count "${merge_base}..upstream/${upstream_branch}")
+
+            # Get upstream HEAD
+            head_commit=$(git rev-parse "upstream/${upstream_branch}")
+            head_commit_short="${head_commit:0:12}"
+
+            commits_map["${branch}"]="${commit_count}"
+            merge_base_map["${branch}"]="${merge_base_short}"
+            head_map["${branch}"]="${head_commit_short}"
+            upstream_branch_map["${branch}"]="${upstream_branch}"
+
+            echo "| ${branch} | ${commit_count} | \`${merge_base_short}\` | \`${head_commit_short}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "Branch ${branch}: ${commit_count} commits behind (merge base: ${merge_base_short}, HEAD: ${head_commit_short})"
+          done
+
+          # Build formatted table for Slack (fixed-width columns)
+          {
+            printf "%-10s  %-12s  %8s  %-14s  %-14s\n" "EE Branch" "OSS Branch" "Commits" "EE Module HEAD" "OSS Branch HEAD"
+            printf "%-10s  %-12s  %8s  %-14s  %-14s\n" "----------" "------------" "--------" "--------------" "---------------"
+            for branch in "${branches[@]}"; do
+              printf "%-10s  %-12s  %8s  %-14s  %-14s\n" "${branch}" "${upstream_branch_map[${branch}]}" "${commits_map[${branch}]}" "${merge_base_map[${branch}]}" "${head_map[${branch}]}"
+            done
+          } > summary.txt
+
+          # Output the summary for Slack using delimiter
+          {
+            echo "summary<<EOFSLACK"
+            cat summary.txt
+            echo "EOFSLACK"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create Slack Payload
+        id: create-payload
+        env:
+          SLACK_CHANNEL: ${{ vars.SLACK_CHANNEL }}
+          SUMMARY: ${{ steps.get-tech-debt.outputs.summary }}
+        run: |
+          jq -n \
+            --arg channel "$SLACK_CHANNEL" \
+            --arg summary "$SUMMARY" \
+            '{
+              channel: $channel,
+              username: "Runtime Security Backporter",
+              icon_emoji: ":isovalent-runtime-security:",
+              text: "OSS Tech Debt Report",
+              blocks: [
+                {
+                  type: "header",
+                  text: {
+                    type: "plain_text",
+                    text: ":chart_with_upwards_trend: OSS Tech Debt Report"
+                  }
+                },
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: ("```\n" + $summary + "\n```")
+                  }
+                }
+              ]
+            }' > slack-payload.json
+
+      - name: Send Slack Notification
+        id: slack-post
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          method: chat.postMessage
+          payload-file-path: ./slack-payload.json
