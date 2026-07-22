@@ -12,6 +12,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/watchermetrics"
+	"github.com/cilium/tetragon/pkg/option"
 )
 
 type deletedPodCacheEntry struct {
@@ -24,7 +25,21 @@ type DeletedPodCache struct {
 }
 
 func NewDeletedPodCache() (*DeletedPodCache, error) {
-	c, err := lru.New[string, deletedPodCacheEntry](128)
+	c, err := lru.NewWithEvict[string, deletedPodCacheEntry](option.Config.DeletedPodCacheSize, func(key string, value deletedPodCacheEntry) {
+		podNamespace := ""
+		podName := ""
+		if value.pod != nil {
+			podNamespace = value.pod.Namespace
+			podName = value.pod.Name
+		}
+
+		logger.GetLogger().Debug("Evicted entry from deleted pod cache",
+			"key", key,
+			"pod.namespace", podNamespace,
+			"pod.name", podName,
+		)
+		watchermetrics.GetWatcherDeletedPodCacheEvictions().Inc()
+	})
 	if err != nil {
 		return nil, err
 	}

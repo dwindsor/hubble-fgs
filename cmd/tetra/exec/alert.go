@@ -56,7 +56,7 @@ func encodeEvents(a *alertStrings) *bytes.Buffer {
 }
 
 func prettyPrintAlert(alertMap map[string][]*tetragon.Alert, counts map[string]int) {
-	colorer := ossEncoder.NewColorer(ossEncoder.ColorMode(ossEncoder.ColorMode(getevents.Options.Color)))
+	colorer := ossEncoder.NewColorer(ossEncoder.ColorMode(ossEncoder.ColorMode(getevents.Options.Color.Value)))
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 
 	// order printers
