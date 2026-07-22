@@ -48,15 +48,8 @@ var (
 		"tg_security_sk_free",
 		"socktrack_fentry")
 
-	SocketMap           = program.MapUserFrom(base.SocketMap)
-	SocketMapStats      = program.MapUserFrom(base.SocketStats)
-	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
-	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
-	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
-	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
-	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
-	ConfigMap           = program.MapUserFrom(base.CfgMap)
-	TCPFinRxMap         = program.MapBuilder("tg_l3_tcp_finrx", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
+	ConfigMap   = program.MapUserFrom(base.CfgMap)
+	TCPFinRxMap = program.MapBuilder("tg_l3_tcp_finrx", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
 )
 
 /* Enabled from the layer3 sensor */
@@ -67,13 +60,13 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 
 	TCPFinRxMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
 	maps := []*program.Map{
-		SocketMap,
-		SocketMapStats,
-		SocketVersionMap,
-		SocketTupleMap,
-		SocketTupleMapStats,
-		SocketTupleRevMap,
-		SocketTupleHintMap,
+		program.MapUserFrom(base.SocketMap),
+		program.MapUserFrom(base.SocketStats),
+		program.MapUserFrom(base.SocketVersionMap),
+		program.MapUserFrom(base.SocketTupleMap),
+		program.MapUserFrom(base.SocketTupleStats),
+		program.MapUserFrom(base.SocketTupleRevMap),
+		program.MapUserFrom(base.SocketTupleHintMap),
 		ConfigMap,
 		TCPFinRxMap,
 	}

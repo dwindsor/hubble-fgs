@@ -892,11 +892,11 @@ func HTTPContext() *program.Map {
 }
 
 func SocketMap() *program.Map {
-	return tcpconfig.SocketMap
+	return program.MapUserFrom(base.SocketMap)
 }
 
 func SocketStats() *program.Map {
-	return tcpconfig.SocketMapStats
+	return program.MapUserFrom(base.SocketStats)
 }
 
 func TcpSocketMap() *program.Map {

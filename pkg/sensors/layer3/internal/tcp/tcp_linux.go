@@ -134,13 +134,13 @@ func EnableTcp() ([]*program.Program, []*program.Program, []*program.Map) {
 	tcpconfig.SecurityAcceptMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
 
 	maps := []*program.Map{
-		tcpconfig.SocketMap,
-		tcpconfig.SocketMapStats,
-		tcpconfig.SocketVersionMap,
-		tcpconfig.SocketTupleMap,
-		tcpconfig.SocketTupleMapStats,
-		tcpconfig.SocketTupleRevMap,
-		tcpconfig.SocketTupleHintMap,
+		program.MapUserFrom(base.SocketMap),
+		program.MapUserFrom(base.SocketStats),
+		program.MapUserFrom(base.SocketVersionMap),
+		program.MapUserFrom(base.SocketTupleMap),
+		program.MapUserFrom(base.SocketTupleStats),
+		program.MapUserFrom(base.SocketTupleRevMap),
+		program.MapUserFrom(base.SocketTupleHintMap),
 		tcpconfig.ConfigMap,
 		tcpconfig.SecurityAcceptMap,
 		tcpconfig.TcpSocketStats,

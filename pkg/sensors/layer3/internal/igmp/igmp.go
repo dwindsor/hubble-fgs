@@ -94,15 +94,12 @@ var (
 		"tg_igmp_netdev_event",
 		"layer3_sensor",
 	)
-
-	// Shared socket cookie infrastructure
-	SocketMap = program.MapUserFrom(base.SocketMap)
 )
 
 func EnableIgmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	var progsCollectStats []*program.Program
 	maps := []*program.Map{
-		SocketMap,
+		program.MapUserFrom(base.SocketMap),
 	}
 
 	// We initially gate the IGMP observability at v5.15. It will be possible to support earlier versions

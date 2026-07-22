@@ -79,9 +79,6 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketMap        = program.MapUserFrom(base.SocketMap)
-	SocketMapStats   = program.MapUserFrom(base.SocketStats)
-	SocketVersionMap = program.MapUserFrom(base.SocketVersionMap)
 )
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
@@ -108,9 +105,9 @@ func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
 
 	var progsInitSock []*program.Program
 	maps := []*program.Map{
-		SocketMap,
-		SocketMapStats,
-		SocketVersionMap,
+		program.MapUserFrom(base.SocketMap),
+		program.MapUserFrom(base.SocketStats),
+		program.MapUserFrom(base.SocketVersionMap),
 	}
 
 	if utils.SupportFentry() {

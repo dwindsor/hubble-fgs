@@ -166,15 +166,8 @@ var (
 	)
 
 	// Maps for TCP Sockets
-	SocketMap           = program.MapUserFrom(base.SocketMap)
-	SocketMapStats      = program.MapUserFrom(base.SocketStats)
-	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
-	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
-	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
-	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
-	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
-	ConfigMap           = program.MapUserFrom(base.CfgMap)
-	FinRxMap            = program.MapUserFrom(socktrack.TCPFinRxMap)
+	ConfigMap = program.MapUserFrom(base.CfgMap)
+	FinRxMap  = program.MapUserFrom(socktrack.TCPFinRxMap)
 
 	SecurityAcceptMap = program.MapBuilder("tg_l3_tcp_accsk", SecurityAcceptKprobe, SecurityGraftKprobe, SecurityAccept, SecurityGraft)
 

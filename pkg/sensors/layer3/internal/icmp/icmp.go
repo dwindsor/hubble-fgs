@@ -90,27 +90,20 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketMap           = program.MapUserFrom(base.SocketMap)
-	SocketMapStats      = program.MapUserFrom(base.SocketStats)
-	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
-	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
-	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
-	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
-	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
-	ConfigMap           = program.MapUserFrom(base.CfgMap)
+	ConfigMap = program.MapUserFrom(base.CfgMap)
 )
 
 func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	var progsInitSock []*program.Program
 	var progsCollectStats []*program.Program
 	maps := []*program.Map{
-		SocketMap,
-		SocketMapStats,
-		SocketVersionMap,
-		SocketTupleMap,
-		SocketTupleMapStats,
-		SocketTupleRevMap,
-		SocketTupleHintMap,
+		program.MapUserFrom(base.SocketMap),
+		program.MapUserFrom(base.SocketStats),
+		program.MapUserFrom(base.SocketVersionMap),
+		program.MapUserFrom(base.SocketTupleMap),
+		program.MapUserFrom(base.SocketTupleStats),
+		program.MapUserFrom(base.SocketTupleRevMap),
+		program.MapUserFrom(base.SocketTupleHintMap),
 		ConfigMap,
 	}
 
