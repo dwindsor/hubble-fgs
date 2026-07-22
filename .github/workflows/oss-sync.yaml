@@ -1,0 +1,253 @@
+name: OSS Sync
+
+on:
+#   schedule:
+#     - cron: '0 9 * * 1' # Runs every Monday morning at 09:00 UTC
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to sync'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+
+env:
+  GH_READWRITE_APP_PEM: ""
+  GH_READWRITE_APP_ID: ""
+  GH_SIGNING_KEY: ""
+  GH_SIGNING_KEY_PUB: ""
+
+jobs:
+  get-branches:
+    runs-on: ubuntu-slim
+    outputs:
+      branches: ${{ steps.branches.outputs.branches }}
+    steps:
+      - name: Get branches
+        id: branches
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          STABLE_BRANCHES: ${{ vars.STABLE_BRANCHES }}
+        with:
+          script: |
+            let branches;
+
+            if (context.eventName === 'workflow_dispatch') {
+              branches = ['${{ inputs.branch }}'];
+            } else {
+              const stableBranches = process.env.STABLE_BRANCHES.trim();
+
+              try {
+                branches = JSON.parse(stableBranches);
+              } catch {
+                branches = stableBranches.split(/[\s,]+/);
+              }
+            }
+
+            if (!Array.isArray(branches)) {
+              throw new Error('STABLE_BRANCHES must be a JSON array or a comma/whitespace-separated list');
+            }
+
+            const matrix = {
+              include: branches
+                .map(branch => branch.trim())
+                .filter(Boolean)
+                .map(branch => ({ branch })),
+            };
+
+            core.setOutput('branches', JSON.stringify(matrix));
+
+  oss-sync:
+    name: OSS Sync (${{ matrix.branch }})
+    needs: get-branches
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.get-branches.outputs.branches) }}
+    steps:
+      - name: Get Release Management Github App Credentials
+        uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
+        with:
+          url: ${{ vars.VAULT_URL }}
+          method: ${{ vars.VAULT_METHOD }}
+          namespace: ${{ vars.VAULT_NAMESPACE }}
+          secrets: |
+            secret/data/release-mgmt/${{ github.repository_owner }} github_app_pem | GH_READWRITE_APP_PEM;
+            secret/data/release-mgmt/${{ github.repository_owner }} github_app_id | GH_READWRITE_APP_ID;
+            secret/data/release-mgmt/${{ github.repository_owner }} isovalent_bot_signing_key | GH_SIGNING_KEY;
+            secret/data/release-mgmt/${{ github.repository_owner }} isovalent_bot_signing_key_pub | GH_SIGNING_KEY_PUB;
+
+      - name: Set up GPG Signing Key
+        id: setup-gpg-signing-key
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ env.GH_SIGNING_KEY }}" >> ~/.ssh/id_ed25519_signing
+          chmod 600 ~/.ssh/id_ed25519_signing
+          echo "${{ env.GH_SIGNING_KEY_PUB }}" >> ~/.ssh/id_ed25519_signing.pub
+
+      - name: Generate GitHub Token
+        id: generate-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ env.GH_READWRITE_APP_ID }}
+          private-key: ${{ env.GH_READWRITE_APP_PEM }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ matrix.branch }}
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Retrieve GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.generate-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+
+      - name: Configure Git
+        id: configure-git
+        shell: bash
+        run: |
+          git config user.name "isovalent-bot"
+          git config user.email "isovalent-bot@users.noreply.github.com"
+
+      - name: Configure Git
+        id: configure-ssh-signing
+        shell: bash
+        run: |
+          git config gpg.format ssh
+          git config commit.gpgsign true
+          git config tag.gpgsign true
+          git config user.signingkey ~/.ssh/id_ed25519_signing.pub
+
+      - name: Set up GO PRIVATE MODULE Auth
+        id: setup-go-private-modules
+        shell: bash
+        env:
+          GH_READ_PRIVATE_REPOSITORIES_TOKEN: ${{ secrets.ISOVALENT_BOT_READ_PRIVATE_REPOSITORIES }}
+        run: |
+          private_repos=(
+            cilium
+            ipa
+          )
+
+          for repo in "${private_repos[@]}"; do
+            git config --global \
+              url."https://x-access-token:${GH_READ_PRIVATE_REPOSITORIES_TOKEN}@github.com/${{ github.repository_owner }}/${repo}".insteadOf \
+              "https://github.com/${{ github.repository_owner }}/${repo}"
+          done
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run oss-checkout
+        id: oss-checkout
+        shell: bash
+        run: make oss-checkout
+
+      - name: Run oss-sync
+        id: oss-sync
+        shell: bash
+        run: make oss-sync
+
+      - name: Check for changes
+        id: check-changes
+        shell: bash
+        run: |
+          if [ $(git rev-list --count HEAD@{1}..HEAD) -gt 0 ]; then
+            COMMIT_BODY=$(git log -1 --format=%b)
+            echo "commit_body<<EOF" >> $GITHUB_OUTPUT
+            echo "$COMMIT_BODY" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            git push origin HEAD:refs/heads/pr/oss-sync/${{ matrix.branch }} --force-with-lease
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        id: create-pr
+        if: steps.check-changes.outputs.result == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const owner = '${{ github.repository_owner }}';
+            const repo = '${{ github.event.repository.name }}';
+            const base = '${{ matrix.branch }}';
+            const head = `pr/oss-sync/${base}`;
+            const headWithOwner = `${owner}:${head}`;
+
+            const existingPulls = await github.rest.pulls.list({
+              owner: owner,
+              repo: repo,
+              state: 'open',
+              base: base,
+              head: headWithOwner,
+            });
+
+            if (existingPulls.data.length > 0) {
+              core.setOutput('pr_url', existingPulls.data[0].html_url);
+              core.setOutput('pr_status', 'existing');
+              return;
+            }
+
+            const result = await github.rest.pulls.create({
+              owner: owner,
+              repo: repo,
+              title: "[${{ matrix.branch }}] chore: OSS Sync",
+              base: base,
+              head: head,
+              body: `${{ steps.check-changes.outputs.commit_body }}`,
+            });
+
+            core.setOutput('pr_url', result.data.html_url);
+            core.setOutput('pr_status', 'created');
+
+            await github.rest.issues.addLabels({
+              owner: owner,
+              repo: repo,
+              issue_number: result.data.number,
+              labels: ["release-note/ignore", "kind/oss-sync"]
+            });
+
+      - name: Output summary
+        id: summary
+        shell: bash
+        run: |
+          if [ "${{ steps.create-pr.outputs.pr_status }}" == "created" ]; then
+            echo "✅ OSS sync complete - PR created"
+          elif [ "${{ steps.create-pr.outputs.pr_status }}" == "existing" ]; then
+            echo "✅ OSS sync complete - existing PR updated"
+          else
+            echo "✅ OSS sync complete - no changes detected"
+          fi
+
+      - name: Send Slack Notification
+        if: always()
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ vars.SLACK_CHANNEL }}
+            text: ${{ job.status == 'success' && '✅ OSS Sync Workflow' || '❌ OSS Sync Workflow' }}
+            blocks:
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: ${{ job.status == 'success' && steps.check-changes.outputs.result == 'true' && format('*✅ OSS Sync Completed*\n<{0}|View Pull Request>', steps.create-pr.outputs.pr_url) || job.status == 'success' && '*✅ OSS Sync Completed*\nNo changes detected' || format('*❌ OSS Sync Failed*\n<https://github.com/{0}/actions/runs/{1}|View Workflow Run>', github.repository, github.run_id) }}
+              - type: context
+                elements:
+                  - type: mrkdwn
+                    text: |
+                      Branch: `${{ matrix.branch }}`
+                      Repo: ${{ github.repository }}
