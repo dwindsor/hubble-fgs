@@ -427,14 +427,10 @@ func (l3 *l3Sensor) PolicyHandler(
 		return nil, nil
 	}
 
+	logger.GetLogger().Warn("Layer 3 tracing policies have been deprecated, and will be removed in v1.21. Please check the upgrade notes and use CLI switches instead.")
+
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("layer3 sensor does not implement policy filtering")
-	}
-
-	// Check if a protocol enable has been set in policy and warn that this is deprecated.
-	if (spec.Parser.Tcp != nil && spec.Parser.Tcp.Enable) || (spec.Parser.Udp != nil && spec.Parser.Udp.Enable) || spec.Parser.Dns.Enable ||
-		(spec.Parser.Icmp != nil && spec.Parser.Icmp.Enable) || (spec.Parser.Rawsock != nil && spec.Parser.Rawsock.Enable) {
-		logger.GetLogger().Info("CLI switches (--enable-tcp, --enable-udp, etc) are preferred over protocol enabling in policies. We recommend using CLI switches and removing protocol enabling in policies.")
 	}
 
 	udpCgroup := true
