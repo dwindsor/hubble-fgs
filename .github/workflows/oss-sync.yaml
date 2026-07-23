@@ -233,7 +233,7 @@ jobs:
 
       - name: Build Slack Notification Payload
         id: slack-payload
-        if: always()
+        if: failure()
         shell: bash
         env:
           CHANNEL: ${{ vars.SLACK_CHANNEL }}
@@ -244,17 +244,8 @@ jobs:
           HAS_CHANGES: ${{ steps.check-changes.outputs.result }}
           PR_URL: ${{ steps.create-pr.outputs.pr_url }}
         run: |
-          if [[ "${JOB_STATUS}" == "success" ]]; then
-            text="✅ OSS Sync Workflow"
-            if [[ "${HAS_CHANGES}" == "true" ]]; then
-              message=$'*✅ OSS Sync Completed*\n'"<${PR_URL}|View Pull Request>"
-            else
-              message=$'*✅ OSS Sync Completed*\nNo changes detected'
-            fi
-          else
-            text="❌ OSS Sync Workflow"
-            message=$'*❌ OSS Sync Failed*\n'"<${RUN_URL}|View Workflow Run>"
-          fi
+          text="❌ OSS Sync Workflow"
+          message=$'*❌ OSS Sync Failed*\n'"<${RUN_URL}|View Workflow Run>"
 
           payload="$(jq -cn \
             --arg channel "${CHANNEL}" \
@@ -264,6 +255,8 @@ jobs:
             --arg repo "${REPO}" \
             '{
               channel: $channel,
+              username: "Runtime Security OSS Syncer",
+              icon_emoji: ":isovalent-runtime-security:",
               text: $text,
               blocks: [
                 {
@@ -290,7 +283,7 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Send Slack Notification
-        if: always()
+        if: failure()
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           method: chat.postMessage
