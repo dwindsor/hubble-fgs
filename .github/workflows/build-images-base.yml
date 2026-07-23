@@ -226,16 +226,17 @@ jobs:
           path: Makefile.digests
           retention-days: ${{ inputs.is_release && 90 || 7 }}
 
-  helm-chart:
+  chart-metadata:
     if: ${{ success() }}
-    name: Push OCI Helm Chart
+    name: Resolve Helm Chart Metadata
     runs-on: ubuntu-24.04
-    env:
-      # renovate: datasource=github-releases depName=helm/helm
-      HELM_VERSION: v4.2.3
     permissions:
       contents: read
     needs: build-and-push
+    outputs:
+      chart_version: ${{ steps.version.outputs.chart_version }}
+      image_path: ${{ steps.image.outputs.path }}
+      registry_path: ${{ steps.registry.outputs.path }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -276,43 +277,47 @@ jobs:
 
           echo "path=${IMAGE_PATH}" >> $GITHUB_OUTPUT
 
-      - name: Set up Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
-        with:
-          version: ${{ env.HELM_VERSION }}
-
-      - name: Push OCI Helm dev chart
-        uses: cilium/reusable-workflows/.github/actions/push-helm-chart@6ae27958f2f37545bf48e44106b73df05b1f6d12 # v0.1.0
-        with:
-          name: tetragon
-          path: install/kubernetes/tetragon
-          version: ${{ steps.version.outputs.chart_version }}
-          values_file_changes: |
-            {
-              "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon${{
-                inputs.is_release && '' || '-ci'
-              }}",
-              "tetragon.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
-              "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon-aggregator${{
-                inputs.is_release && '' || '-ci'
-              }}",
-              "tetragonAggregator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
-              "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon-operator${{
-                inputs.is_release && '' || '-ci'
-              }}",
-              "tetragonOperator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
-              "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ steps.image.outputs.path }}/tetragon-rthooks${{
-                inputs.is_release && '' || '-ci'
-              }}",
-              "rthooks.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
-            }
-          registry: ${{ vars.ARTIFACTORY_HOST }}
-          registry_namespace: ${{ steps.registry.outputs.path }}
-          registry_username: ${{ vars.ARTIFACTORY_USERNAME }}
-          registry_password: ${{ secrets.ARTIFACTORY_PASSWORD }}
-
       - name: Print helm command
         run: |
           echo "Example commands:"
           echo helm template -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon --version ${{ steps.version.outputs.chart_version }}
           echo helm install tetragon -n tetragon oci://${{ vars.ARTIFACTORY_HOST }}/${{ steps.registry.outputs.path }}/tetragon --version ${{ steps.version.outputs.chart_version }}
+
+  helm-chart:
+    if: ${{ success() }}
+    name: Push OCI Helm Chart
+    needs: chart-metadata
+    permissions:
+      contents: read
+    uses: isovalent/reusable-workflows/.github/workflows/push-helm-chart.yml@8bb1c063743bce48b692df124808131a0cf80cfc # v0.14.0
+    with:
+      chartRepository: oci://${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.registry_path }}
+      chartName: tetragon
+      chartPath: install/kubernetes/tetragon
+      chartVersion: ${{ needs.chart-metadata.outputs.chart_version }}
+      helmRegistry: ${{ vars.ARTIFACTORY_HOST }}
+      # renovate: datasource=github-releases depName=helm/helm
+      helmVersion: v4.2.3
+      checkout_ref: ${{ inputs.sha }}
+      valuesFileChanges: |
+        {
+          "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon${{
+            inputs.is_release && '' || '-ci'
+          }}",
+          "tetragon.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
+          "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon-aggregator${{
+            inputs.is_release && '' || '-ci'
+          }}",
+          "tetragonAggregator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
+          "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon-operator${{
+            inputs.is_release && '' || '-ci'
+          }}",
+          "tetragonOperator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
+          "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon-rthooks${{
+            inputs.is_release && '' || '-ci'
+          }}",
+          "rthooks.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
+        }
+    secrets:
+      HELM_REGISTRY_USERNAME: ${{ vars.ARTIFACTORY_USERNAME }}
+      HELM_REGISTRY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
