@@ -247,13 +247,13 @@ jobs:
           if [[ "${JOB_STATUS}" == "success" ]]; then
             text="✅ OSS Sync Workflow"
             if [[ "${HAS_CHANGES}" == "true" ]]; then
-              message="*✅ OSS Sync Completed*\n<${PR_URL}|View Pull Request>"
+              message=$'*✅ OSS Sync Completed*\n'"<${PR_URL}|View Pull Request>"
             else
-              message="*✅ OSS Sync Completed*\nNo changes detected"
+              message=$'*✅ OSS Sync Completed*\nNo changes detected'
             fi
           else
             text="❌ OSS Sync Workflow"
-            message="*❌ OSS Sync Failed*\n<${RUN_URL}|View Workflow Run>"
+            message=$'*❌ OSS Sync Failed*\n'"<${RUN_URL}|View Workflow Run>"
           fi
 
           payload="$(jq -cn \
@@ -295,4 +295,5 @@ jobs:
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: ${{ steps.slack-payload.outputs.payload }}
+          payload: |
+            ${{ steps.slack-payload.outputs.payload }}
