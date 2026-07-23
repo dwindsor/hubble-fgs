@@ -231,23 +231,68 @@ jobs:
             echo "✅ OSS sync complete - no changes detected"
           fi
 
+      - name: Build Slack Notification Payload
+        id: slack-payload
+        if: always()
+        shell: bash
+        env:
+          CHANNEL: ${{ vars.SLACK_CHANNEL }}
+          BRANCH: ${{ matrix.branch }}
+          REPO: ${{ github.repository }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          HAS_CHANGES: ${{ steps.check-changes.outputs.result }}
+          PR_URL: ${{ steps.create-pr.outputs.pr_url }}
+        run: |
+          if [[ "${JOB_STATUS}" == "success" ]]; then
+            text="✅ OSS Sync Workflow"
+            if [[ "${HAS_CHANGES}" == "true" ]]; then
+              message="*✅ OSS Sync Completed*\n<${PR_URL}|View Pull Request>"
+            else
+              message="*✅ OSS Sync Completed*\nNo changes detected"
+            fi
+          else
+            text="❌ OSS Sync Workflow"
+            message="*❌ OSS Sync Failed*\n<${RUN_URL}|View Workflow Run>"
+          fi
+
+          payload="$(jq -cn \
+            --arg channel "${CHANNEL}" \
+            --arg text "${text}" \
+            --arg message "${message}" \
+            --arg branch "${BRANCH}" \
+            --arg repo "${REPO}" \
+            '{
+              channel: $channel,
+              text: $text,
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: $message
+                  }
+                },
+                {
+                  type: "context",
+                  elements: [
+                    {
+                      type: "mrkdwn",
+                      text: ("Branch: `" + $branch + "`\nRepo: " + $repo)
+                    }
+                  ]
+                }
+              ]
+            }')"
+
+          echo "payload<<EOF" >> "$GITHUB_OUTPUT"
+          echo "${payload}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Send Slack Notification
         if: always()
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: ${{ vars.SLACK_CHANNEL }}
-            text: ${{ job.status == 'success' && '✅ OSS Sync Workflow' || '❌ OSS Sync Workflow' }}
-            blocks:
-              - type: section
-                text:
-                  type: mrkdwn
-                  text: ${{ job.status == 'success' && steps.check-changes.outputs.result == 'true' && format('*✅ OSS Sync Completed*\n<{0}|View Pull Request>', steps.create-pr.outputs.pr_url) || job.status == 'success' && '*✅ OSS Sync Completed*\nNo changes detected' || format('*❌ OSS Sync Failed*\n<https://github.com/{0}/actions/runs/{1}|View Workflow Run>', github.repository, github.run_id) }}
-              - type: context
-                elements:
-                  - type: mrkdwn
-                    text: |
-                      Branch: `${{ matrix.branch }}`
-                      Repo: ${{ github.repository }}
+          payload: ${{ steps.slack-payload.outputs.payload }}
