@@ -256,7 +256,11 @@ for more information.
 
 ### Running FGS Locally in KinD
 
-First, ensure that you have an up-to-date version of [Docker][docker] and [KinD][kind].
+First, ensure that you have an up-to-date version of [Docker][docker] and
+[KinD][kind], and Helm 4 is available as `helm` on `PATH`. The
+`kind-install-tetragon` and `e2e-test` targets reject incompatible Helm versions.
+Chart generation and validation use the repository's pinned Helm 4 container
+instead of the host binary.
 Also update the `inotify` sysctl variables in accordance with the 
 [KinD documentation](https://kind.sigs.k8s.io/docs/user/known-issues#pod-errors-due-to-too-many-open-files).
 
@@ -277,7 +281,8 @@ section](#running-fgs-in-kvm) for details).
 We run FGS end-to-end tests using our e2e framework package, which is defined in
 [`tests/e2e`](./tests/e2e/). The easiest way to run end-to-end tests is using a local KinD
 cluster. First, ensure that you have an up-to-date version of [Docker][docker] and
-[KinD][kind]. With the necessary tooling installed, you can simply run `make e2e-test` to
+[KinD][kind], with Helm 4 available as `helm`. With the necessary tooling
+installed, you can simply run `make e2e-test` to
 compile and run the e2e tests. The e2e framework will automatically bootstrap a KinD
 cluster for each test, installing a local development version of FGS alongside the latest
 Cilium.

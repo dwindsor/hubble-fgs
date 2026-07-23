@@ -22,6 +22,19 @@ To validate the chart, run:
 
 This will lint the chart and validate the default ruleset policies.
 
+Chart generation and validation use the Helm 4 container pinned in the
+chart Makefile, so they do not depend on a host Helm installation.
+
+## Test the chart with Kind or e2e
+
+The root `kind-install-tetragon` and `e2e-test` targets invoke Helm from the
+host. Install Helm 4 as `helm` on `PATH` before running either target:
+
+    helm version --short
+
+The root Makefile rejects missing or different Helm versions before invoking
+the install or e2e tooling.
+
 ## Add enterprise-only functionality
 
 To add an enterprise-only functionality, you must first edit the `enterprise`,
