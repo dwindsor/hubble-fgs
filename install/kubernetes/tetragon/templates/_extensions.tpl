@@ -65,11 +65,7 @@ enable-udp: {{ .Values.tetragon.layer3.udp.enabled | quote }}
 bpf-udp-socket-cache-size: {{ .Values.tetragon.layer3.udp.bpfSocketCacheSize | quote }}
 enable-udp-cgroup: {{ .Values.tetragon.layer3.udp.cgroup | quote }}
 udp-stats-interval: {{ .Values.tetragon.layer3.udp.statsInterval | quote }}
-enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
 bpf-icmp-socket-cache-size: {{ .Values.tetragon.layer3.icmp.bpfSocketCacheSize | quote }}
-enable-igmp: {{ .Values.tetragon.layer3.igmp.enabled | quote }}
-enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
-enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
 udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
 enable-udp-watermarks: {{ .Values.tetragon.layer3.udp.watermarks.enabled | quote }}
