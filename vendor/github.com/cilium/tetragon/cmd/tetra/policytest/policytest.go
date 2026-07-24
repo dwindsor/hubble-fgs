@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -180,16 +181,21 @@ func runCmd() *cobra.Command {
 					return ok
 				}
 			}
+
 			tests := policytest.AllPolicyTests.GetByFunction(ptFilterFn)
+			runnerTimeout := time.Minute * time.Duration(len(tests))
+
 			runner, err := policytest.NewLocalRunner(ctx, log, &policytest.Conf{
 				GrpcAddr:       common.ServerAddress,
 				BinsDir:        testBinsPath,
 				DumpPolicyPath: dumpPolicyPath,
+				Timeout:        &runnerTimeout,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to start local runner: %w", err)
 			}
 
+			summary := policytest.NewResultsSummary()
 			var results []*policytest.NamedResult
 			for _, t := range tests {
 				for paramValues := range getParamValues(t) {
@@ -200,6 +206,7 @@ func runCmd() *cobra.Command {
 						MonitorMode: monitorMode,
 						ParamValues: paramValues,
 					})
+					summary.Update(res.Result)
 					results = append(results, res)
 				}
 			}
@@ -227,7 +234,7 @@ func runCmd() *cobra.Command {
 			case "text":
 				policytest.DumpResults(out, results)
 			}
-			return nil
+			return summary.Err()
 		},
 	}
 	flags := cmd.Flags()

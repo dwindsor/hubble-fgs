@@ -64,7 +64,12 @@ func NewLocalRunner(
 		}
 	}
 
-	cli, err := cli.NewClient(ctx, cnf.GrpcAddr, time.Second*20)
+	timeout := time.Second * 20
+	if cnf.Timeout != nil {
+		timeout = *(cnf.Timeout)
+	}
+
+	cli, err := cli.NewClient(ctx, cnf.GrpcAddr, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
@@ -170,10 +175,12 @@ func (r *LocalRunner) AddPolicy(l *slog.Logger, test *T) (*PolicyHandler, error)
 // RunTest runs a policy test
 func (r *LocalRunner) RunTest(l *slog.Logger, test *T, testConf *TestConf) *Result {
 	if test.ShouldSkip != nil {
-		if reason := test.ShouldSkip(&SkipInfo{r.info}); reason != "" {
+		if reason := test.ShouldSkip(&SkipInfo{r.info, testConf.ParamValues}); reason != "" {
 			return &Result{Skipped: reason}
 		}
 	}
+
+	t0 := time.Now()
 
 	// set and clear run configuration after we are done
 	r.conf.TestConf = testConf
@@ -183,14 +190,14 @@ func (r *LocalRunner) RunTest(l *slog.Logger, test *T, testConf *TestConf) *Resu
 
 	polHandler, err := r.AddPolicy(l, test)
 	if err != nil {
-		return &Result{Err: JSONError{Err: err}}
+		return &Result{Err: JSONError{Err: err}, TotalTime: time.Since(t0)}
 	}
 
 	if testConf.MonitorMode {
 		err := polHandler.Configure(l, r.cli, nil, new(tetragon.TracingPolicyMode_TP_MODE_MONITOR))
 		if err != nil {
 			err = errors.Join(err, polHandler.Cleanup(l, r.conf, r.cli))
-			return &Result{Err: JSONError{Err: err}}
+			return &Result{Err: JSONError{Err: err}, TotalTime: time.Since(t0)}
 		}
 	}
 
@@ -212,6 +219,7 @@ func (r *LocalRunner) RunTest(l *slog.Logger, test *T, testConf *TestConf) *Resu
 	if err != nil {
 		res.Err.Err = errors.Join(res.Err.Err, fmt.Errorf("failed to cleanup policy: %w", err))
 	}
+	res.TotalTime = time.Since(t0)
 	return &res
 }
 

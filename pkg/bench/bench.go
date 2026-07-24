@@ -258,6 +258,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		&wg,
 		observer.GetSensorManager(),
 		glblHookRunner,
+		nil,
 	)
 	if err != nil {
 		return err

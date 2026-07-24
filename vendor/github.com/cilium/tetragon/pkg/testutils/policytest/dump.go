@@ -48,7 +48,7 @@ func DumpResults(out io.Writer, results []*NamedResult) {
 			}
 			note = fmt.Sprintf("%d/%d scenario(s) succeeded", nSuccesses, nScenarios)
 		}
-		fmt.Fprintf(w, "P: %-40s\t%s\t%s\n", result.Name, icon, note)
+		fmt.Fprintf(w, "P: %-40s\t%s\t%s (%.2fs)\n", result.Name, icon, note, result.Result.TotalTime.Seconds())
 		for i, sc := range res.ScenariosRes {
 			scIcon := "🟢"
 			scNote := ""
@@ -64,4 +64,40 @@ func DumpResults(out io.Writer, results []*NamedResult) {
 		}
 	}
 	w.Flush()
+}
+
+type ResultsSummary struct {
+	Total   int
+	Skipped int
+	Errs    int
+}
+
+func NewResultsSummary() *ResultsSummary {
+	return &ResultsSummary{}
+}
+
+func (s *ResultsSummary) Update(res *Result) {
+	s.Total++
+	if res.Err.Err != nil {
+		s.Errs++
+		return
+	}
+	if res.Skipped != "" {
+		s.Skipped++
+		return
+	}
+
+	for _, sr := range res.ScenariosRes {
+		if sr.Err() != nil {
+			s.Errs++
+			return
+		}
+	}
+}
+
+func (s *ResultsSummary) Err() error {
+	if s.Errs == 0 {
+		return nil
+	}
+	return fmt.Errorf("result errors: %d/%d", s.Errs, s.Total)
 }

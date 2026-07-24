@@ -22,18 +22,25 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	tpath "github.com/cilium/tetragon/pkg/reader/path"
 	"github.com/cilium/tetragon/pkg/testutils/policytest"
-	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
 // This file contains tests on kernel functions.
 
 var _ = policytest.NewBuilder("kprobe-lseek").WithLabels("kprobes").
-	WithParameter(policytest.Parameter{
-		Name:    "Hook",
-		Default: "kprobes",
-		Values:  []any{"kprobes", "fentries"},
-		Help:    "type of hook to use in the policy",
-	}).WithPolicyTemplate(`
+	WithSkip(func(si *policytest.SkipInfo) string {
+		if si.ParamValues["Hook"] == "fentries" {
+			if !si.AgentInfo.Probes[bpf.Fentry] {
+				return "fentry hook depends on fentry support"
+			}
+			return ""
+		}
+		return ""
+	}).WithParameter(policytest.Parameter{
+	Name:    "Hook",
+	Default: "kprobes",
+	Values:  []any{"kprobes", "fentries"},
+	Help:    "type of hook to use in the policy",
+}).WithPolicyTemplate(`
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -273,7 +280,7 @@ spec:
 		checker := ec.NewProcessKprobeChecker("").
 			WithFunctionName(sm.Full("security_socket_bind")).
 			WithProcess(ec.NewProcessChecker().
-				WithBinary(sm.Suffix(tus.Conf().SelfBinary))).
+				WithBinary(sm.Suffix(filepath.Base(os.Args[0])))).
 			WithArgs(ec.NewKprobeArgumentListMatcher().
 				WithOperator(lc.Ordered).
 				WithValues(
