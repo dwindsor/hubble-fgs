@@ -1,10 +1,30 @@
 # v1.20.0-pre.1
 
+## Summary
+
+Improvements / Bugfixes:
+
+* [uprobes: reduce size of preload map](#uprobes-reduce-size-of-preload-map)
+
 Features:
 
 * [uprobes: function override](#uprobes-function-override)
 
-## uprobes: function override
+## Improvements / bugfixes
+
+
+### uprobes: reduce size of preload map
+
+* Issue: https://github.com/cisco-sbg-emu/live-protect/issues/21
+
+The string preload map used in uprobes, was consuming a significant ammount of memory (~140MiB per
+policy). It was configured so that memory for the entries are not preallocated, resulting in reduced
+memory usage (<1MiB). For policy examples, consult
+https://github.com/cisco-sbg-emu/live-protect/tree/main/examples/v1.19.0-pre.5#substring-matching.
+
+## Features
+
+### uprobes: function override
 
 * Issue: https://github.com/cisco-sbg-emu/live-protect/issues/11
 * Documentation: https://tetragon.io/docs/concepts/tracing-policy/selectors/#override-action
