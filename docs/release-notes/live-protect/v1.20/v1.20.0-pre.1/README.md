@@ -9,6 +9,7 @@ Improvements / Bugfixes:
 Features:
 
 * [uprobes: function override](#uprobes-function-override)
+* [grpc: persistent policies](#grpc-persistent-policies)
 
 ## Improvements / bugfixes
 
@@ -104,6 +105,93 @@ spec:
     - matchActions:
       - action: Override
         argNewAddr: 0x1180
+```
+
+</details>
+
+
+### grpc: persistent policies
+
+* Issue: https://github.com/cisco-sbg-emu/live-protect/issues/17
+* Documentation: https://tetragon.io/docs/concepts/enforcement/persistent-grpc-policies/
+
+Using `--persist-grpc-policies` will configure the Tetragon agent to persist policies loaded via
+gRPC. When the agent restarts, the policies will be reloaded. This feature is meant to be used with
+`--keep-sensors-on-exit` which instructs the agent to not remove the BPF programs when it exits.
+
+<details>
+
+#### Example
+
+Start the Tetragon agent with `--keep-sensors-on-exit --release-pinned-bpf=false
+--persist-grpc-policies --persist-grpc-policies-dir /var/run/tetragon/grpc-policies`.
+
+The demo uses `/mnt/aa.txt` and a policy that blocks open calls on that file. More specifically:
+
+```console
+$ cat /mnt/aa.txt
+a
+$ cat pol1.yaml
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "lsm-file-open"
+spec:
+  lsmhooks:
+  - hook: "file_open"
+    args:
+      - index: 0
+        type: "file"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Prefix"
+        values:
+        - "/mnt/aa.txt"
+      matchActions:
+      - action: Override
+        argError: -1
+      - action: Post
+```
+
+Add the tracing policy. Also check that enforcement works.
+
+```console
+$ sudo ./tetra tracingpolicy add ./pol1.yaml
+tracing policy "./pol1.yaml" added
+$ sudo ./tetra tracingpolicy list
+ID   NAME            DOMAIN   STATE     FILTERID   NAMESPACE   SENSORS       KERNELMEMORY   MODE      NPOST   NENFORCE   NMONITOR
+2    lsm-file-open   grpc     enabled   0          (global)    generic_lsm   1.12 MB        enforce   0       0          0
+$ sudo ls -la /var/run/tetragon/grpc-policies/
+total 4
+drwx------ 2 root root  60 Jul 24 19:25 .
+drwxr-xr-x 4 root root 140 Jul 24 19:25 ..
+-rw------- 1 root root 442 Jul 24 19:25 lsm-file-open::grpc.json
+$ cat /mnt/aa.txt
+cat: /mnt/aa.txt: Operation not permitted (os error 1)
+```
+
+If the Tetragon agent is terminated, the policy enforcement will continue to work (the BPF programs
+are not removed).
+
+```console
+$ cat /mnt/aa.txt
+cat: /mnt/aa.txt: Operation not permitted (os error 1)
+```
+
+Starting the tetragon agent, the policies installed via gRPC will be re-loaded.
+
+```console
+$ cat /mnt/aa.txt
+cat: /mnt/aa.txt: Operation not permitted (os error 1)
+```
+
+And `tetra tracingpolicy list` shows that the policy is loaded.
+
+```console
+$ sudo ./tetra tracingpolicy list
+ID   NAME            DOMAIN   STATE     FILTERID   NAMESPACE   SENSORS       KERNELMEMORY   MODE      NPOST   NENFORCE   NMONITOR
+2    lsm-file-open   grpc     enabled   0          (global)    generic_lsm   1.12 MB        enforce   0       1          0
 ```
 
 </details>
