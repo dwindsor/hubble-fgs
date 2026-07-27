@@ -135,8 +135,8 @@ Helm chart for Tetragon Enterprise
 | tetragon.deletedPodCacheSize | int | `1024` | Tetragon keeps recently deleted pod/container mappings in an LRU cache to resolve pod metadata for late-arriving events. |
 | tetragon.dns.enabled | bool | `false` |  |
 | tetragon.dns.metrics.enabled | bool | `true` |  |
-| tetragon.dns.metrics.labelFilter | list | `[]` |  |
-| tetragon.dns.ports | list | `[]` |  |
+| tetragon.dns.metrics.labelFilter | string | `""` |  |
+| tetragon.dns.ports | string | `""` |  |
 | tetragon.dns.reportQuestions | bool | `false` |  |
 | tetragon.dnsStatsPerSocket | bool | `false` |  |
 | tetragon.enableApplicationModel | bool | `false` | Enable application model. |
@@ -214,13 +214,13 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.igmp.enabled | bool | `false` |  |
 | tetragon.layer3.rawsock.enabled | bool | `false` |  |
 | tetragon.layer3.rawsock.metrics.enabled | bool | `true` |  |
-| tetragon.layer3.rawsock.metrics.labelFilter | list | `[]` |  |
+| tetragon.layer3.rawsock.metrics.labelFilter | string | `""` |  |
 | tetragon.layer3.rawsock.reportClose | bool | `false` |  |
 | tetragon.layer3.tcp.bpfSocketCacheSize | int | `32768` |  |
-| tetragon.layer3.tcp.disableEvents | list | `[]` |  |
+| tetragon.layer3.tcp.disableEvents | string | `""` |  |
 | tetragon.layer3.tcp.enabled | bool | `false` |  |
 | tetragon.layer3.tcp.metrics.enabled | bool | `true` |  |
-| tetragon.layer3.tcp.metrics.labelFilter | list | `[]` |  |
+| tetragon.layer3.tcp.metrics.labelFilter | string | `""` |  |
 | tetragon.layer3.tcp.rtt.enabled | bool | `false` |  |
 | tetragon.layer3.tcp.rtt.max | int | `0` |  |
 | tetragon.layer3.tcp.rtt.min | int | `0` |  |
@@ -231,14 +231,14 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.tcp.watermarks.windowSizeMs | int | `0` |  |
 | tetragon.layer3.udp.bpfSocketCacheSize | int | `32768` |  |
 | tetragon.layer3.udp.cgroup | bool | `true` |  |
-| tetragon.layer3.udp.disableEvents | list | `[]` |  |
+| tetragon.layer3.udp.disableEvents | string | `""` |  |
 | tetragon.layer3.udp.enabled | bool | `false` |  |
 | tetragon.layer3.udp.idleSocketTimeout | string | `"2m"` |  |
 | tetragon.layer3.udp.inKernelManaged | bool | `false` |  |
 | tetragon.layer3.udp.metrics.enabled | bool | `true` |  |
-| tetragon.layer3.udp.metrics.labelFilter | list | `[]` |  |
+| tetragon.layer3.udp.metrics.labelFilter | string | `""` |  |
 | tetragon.layer3.udp.multicast.app | string | `""` |  |
-| tetragon.layer3.udp.multicast.ports | list | `[]` |  |
+| tetragon.layer3.udp.multicast.ports | string | `""` |  |
 | tetragon.layer3.udp.multicast.samplePercent | int | `0` |  |
 | tetragon.layer3.udp.multicast.seqCheck | bool | `false` |  |
 | tetragon.layer3.udp.statsInterval | string | `"0s"` |  |

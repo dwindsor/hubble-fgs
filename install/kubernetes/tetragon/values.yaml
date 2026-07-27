@@ -384,8 +384,8 @@ tetragon:
         max: 0
       metrics:
         enabled: true
-        labelFilter: []
-      disableEvents: []
+        labelFilter: ""
+      disableEvents: ""
     udp:
       enabled: false
       bpfSocketCacheSize: 32768
@@ -395,7 +395,7 @@ tetragon:
       inKernelManaged: false
       multicast:
         app: ""
-        ports: []
+        ports: ""
         seqCheck: false
         samplePercent: 0
       watermarks:
@@ -405,8 +405,8 @@ tetragon:
         dipTriggerPercent: 0
       metrics:
         enabled: true
-        labelFilter: []
-      disableEvents: []
+        labelFilter: ""
+      disableEvents: ""
     icmp:
       enabled: false
       bpfSocketCacheSize: 32768
@@ -419,18 +419,18 @@ tetragon:
       reportClose: false
       metrics:
         enabled: true
-        labelFilter: []
+        labelFilter: ""
     watermarksExitGen:
       enabled: true
       interval: 1s
   # DNS
   dns:
     enabled: false
-    ports: []
+    ports: ""
     reportQuestions: false
     metrics:
       enabled: true
-      labelFilter: []
+      labelFilter: ""
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
   # @ignored
   awsSonar:
