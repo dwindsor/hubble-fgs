@@ -979,7 +979,7 @@ static inline __attribute__((always_inline)) void clear_policy_template_flag(str
 		__sync_fetch_and_and(&dest->flags, ~DEST_FLAG_POLICY_TEMPLATE_ONLY);
 }
 
-static int send(int deny, struct destination_endpoint_key *key, __u64 len, struct __sk_buff *skb)
+static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len)
 {
 	struct destination_endpoint_value *dest;
 
@@ -1058,7 +1058,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	rewrite = repair_socket_nsid(&v->dst_key, skb->sk);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
 	if (!rewrite) {
-		verdict = send(v->deny, &v->dst_key, len, skb);
+		verdict = send(skb, v->deny, &v->dst_key, len);
 		if (verdict < 0)
 			goto err_out;
 		return verdict;
@@ -1066,7 +1066,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 err_out:
 	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
-	verdict = send(v->deny, &v->dst_key, len, skb);
+	verdict = send(skb, v->deny, &v->dst_key, len);
 	if (verdict < 0)
 		return SK_PASS;
 	return verdict;
