@@ -11,6 +11,7 @@ Features:
 
 * [uprobes: function override](#uprobes-function-override)
 * [grpc: persistent policies](#grpc-persistent-policies)
+* [policy: apply only on specific kernels](#policy-apply-only-on-specific-kernels)
 
 ## Improvements / bugfixes
 
@@ -214,3 +215,115 @@ ID   NAME            DOMAIN   STATE     FILTERID   NAMESPACE   SENSORS       KER
 ```
 
 </details>
+
+### policy: apply only on specific kernels
+
+* Issue: https://github.com/cisco-sbg-emu/live-protect/issues/12
+
+This feature allows users to conditionally apply a policy based on kernel build ID. If the policy is not applied, because the configured kernel build ID does not match the running kernel, then the policy's status reflects this by having state "skipped".
+
+
+<details>
+
+#### Example
+
+The demo is run on a kernel with build-id ce6060ae99b59e73cf2d3236fbc2c5d06a1a29c9.
+
+```yaml
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "build-id-node-selector"
+spec:
+  nodeSelector:
+    matchExpressions:
+      - key: "tetragon.io/kernel-build-id"
+        operator: In
+        values: ["ce6060ae99b59e73cf2d3236fbc2c5d06a1a29c9"]
+  kprobes:
+    - call: "tcp_connect"
+      syscall: false
+```
+
+After adding the above policy you can confirm that the policy was not filtered due to build-id mismatch by checking the policy status:
+
+```console
+root@kind-bpf-next:~# tetra tracingpolicy list
+ID   NAME                     DOMAIN   STATE     FILTERID   NAMESPACE   SENSORS          KERNELMEMORY   MODE           NPOST   NENFORCE   NMONITOR
+4    build-id-node-selector   grpc     enabled   0          (global)    generic_kprobe   501.26 kB      monitor_only   0       0          0
+
+```
+
+Note how the state of the policy is "enabled". If we change spec.nodeSelector.matchExpressions[0].values[0] to be `ce6060ae99b59e73cf2d3236fbc2c5d06a1a29c0` (the last nibble was changed from 9 to 0), then the status looks like:
+
+```console
+root@kind-bpf-next:~# tetra tracingpolicy list
+ID   NAME                     DOMAIN   STATE     FILTERID   NAMESPACE   SENSORS   KERNELMEMORY   MODE      NPOST   NENFORCE   NMONITOR
+5    build-id-node-selector   grpc     skipped   0          (global)              0 B            unknown   0       0          0
+
+```
+
+Note how the policy's state is "skipped".
+
+You can verify that the policy was really skipped by initiating a connection from the host:
+
+```console
+telnet www.google.com 80
+```
+
+When the policy is skipped, initiating that connection should not cause an event to be generated. When the build-id does match the running kernel, you can see that there is an event generated.
+
+```console
+root@kind-bpf-next:~# tetra getevents -o json | jq 'select(.process_kprobe != null and .process_kprobe.policy_name == "build-id-node-selector")'
+{
+  "process_kprobe": {
+    "process": {
+      "exec_id": "a2luZC1icGYtbmV4dDo1NTM4MzUxNTI3NDE3Mzo4MzIz",
+      "pid": 8323,
+      "uid": 0,
+      "cwd": "/root",
+      "binary": "/usr/bin/telnet",
+      "arguments": "www.google.com 80",
+      "flags": "execve clone",
+      "start_time": "2026-07-28T18:30:26.288035850Z",
+      "auid": 4294967295,
+      "parent_exec_id": "a2luZC1icGYtbmV4dDo1Mzg0MTkwMzE3NjE1NTo3MjUx",
+      "refcnt": 1,
+      "tid": 8323,
+      "in_init_tree": false
+    },
+    "parent": {
+      "exec_id": "a2luZC1icGYtbmV4dDo1Mzg0MTkwMzE3NjE1NTo3MjUx",
+      "pid": 7251,
+      "uid": 0,
+      "cwd": "/root",
+      "binary": "/bin/bash",
+      "flags": "execve clone",
+      "start_time": "2026-07-28T18:04:44.675938038Z",
+      "auid": 4294967295,
+      "parent_exec_id": "a2luZC1icGYtbmV4dDo1Mzg0MTg5NTQ3MTczMTo3MjUw",
+      "tid": 7251,
+      "in_init_tree": false
+    },
+    "function_name": "tcp_connect",
+    "action": "KPROBE_ACTION_POST",
+    "policy_name": "build-id-node-selector",
+    "return_action": "KPROBE_ACTION_POST"
+  },
+  "node_name": "kind-bpf-next",
+  "time": "2026-07-28T18:30:26.290082303Z",
+  "node_labels": {
+    "tetragon.io/arch": "amd64",
+    "tetragon.io/hostname": "kind-bpf-next",
+    "tetragon.io/internal-ip": "10.0.2.15",
+    "tetragon.io/kernel-build-id": "ce6060ae99b59e73cf2d3236fbc2c5d06a1a29c9",
+    "tetragon.io/kernel-major-version": "7",
+    "tetragon.io/kernel-minor-version": "2",
+    "tetragon.io/os": "linux"
+  }
+}
+
+```
+
+</details>
+
