@@ -20,16 +20,21 @@ import (
 // Precedence order is assumed to same as numeric order which
 // is required by BPF datapath implementation. So that order
 // is Deny >> Allow >> None.
+//
+// These values must match defines in bpf/process/process_endpoint.h.
 const (
 	PolicyNone     = uint64(0x00)
 	PolicyAllow    = uint64(0x01)
 	PolicyDeny     = uint64(0x02)
 	PolicyFallthru = uint64(0x04)
+	// PolicyReject behaves like PolicyDeny but also sends back an error
+	// message to the sender.
+	PolicyReject = uint64(0x10)
 )
 
 // Policy mask out datapath bookkeeping bits.
 const (
-	PolicyMask = uint64(3)
+	PolicyMask = PolicyAllow | PolicyDeny | PolicyReject
 )
 
 // For initial landing lets ignore process hierarchy in this unrolled
@@ -73,6 +78,8 @@ func (a *DatapathAction) String() string {
 		policy = "allow"
 	case PolicyDeny:
 		policy = "deny"
+	case PolicyReject:
+		policy = "reject"
 	}
 	return fmt.Sprintf("Quota %d Reset %d Policy %s", a.QuotaLimit, a.ResetTime, policy)
 }

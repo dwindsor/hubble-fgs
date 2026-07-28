@@ -158,6 +158,7 @@ struct {
 #define TNP_POLICY_DENY	    0x02
 #define TNP_POLICY_FALLTHRU 0x04
 #define TNP_POLICY_CACHED   0x08
+#define TNP_POLICY_REJECT   0x10 // like DENY but also sends an error message back to the sender
 
 #define TNP_POLICY_REFRESH 0xC
 
