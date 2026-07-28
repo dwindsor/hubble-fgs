@@ -72,6 +72,9 @@ func calculateAction(a *types.TetragonNetworkAction) (*record.DatapathAction, er
 		if a.EnforceAction.Allow {
 			deny |= record.PolicyAllow
 		}
+		if a.EnforceAction.Reject {
+			deny |= record.PolicyReject | record.PolicyDeny
+		}
 	}
 
 	return &record.DatapathAction{
