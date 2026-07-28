@@ -191,8 +191,9 @@ type TetragonQuotaAction struct {
 }
 
 type TetragonEnforceAction struct {
-	Deny  bool
-	Allow bool
+	Deny   bool
+	Allow  bool
+	Reject bool // Reject behaves like Deny but also sends an error message to the sender.
 }
 
 type TetragonNetworkAction struct {

@@ -13,6 +13,7 @@
 package netpol
 
 import (
+	"errors"
 	"fmt"
 	"net/netip"
 	"strings"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpolstate"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 func toSubject(np *v1alpha1.TetragonNetworkPolicy) (types.TetragonNetworkSubject, error) {
@@ -68,30 +70,22 @@ func toSubject(np *v1alpha1.TetragonNetworkPolicy) (types.TetragonNetworkSubject
 	return subj, nil
 }
 
-func toDefaultAction(np *v1alpha1.TetragonNetworkPolicy) types.TetragonNetworkAction {
-	dfltEnforce := &types.TetragonEnforceAction{}
-	if strings.Compare(np.Spec.DefaultAction, "deny") == 0 {
-		dfltEnforce.Deny = true
-	}
-	if strings.Compare(np.Spec.DefaultAction, "allow") == 0 {
-		dfltEnforce.Allow = true
-	}
-	return types.TetragonNetworkAction{
-		EnforceAction: dfltEnforce,
-	}
-}
-
-func toAction(r *v1alpha1.NetworkPolicyRule) types.TetragonNetworkAction {
+func toAction(policyAction string) (types.TetragonNetworkAction, error) {
 	enforce := &types.TetragonEnforceAction{}
-	if strings.Compare(r.Action, "deny") == 0 {
+	switch policyAction {
+	case "deny":
 		enforce.Deny = true
-	}
-	if strings.Compare(r.Action, "allow") == 0 {
+	case "allow":
 		enforce.Allow = true
+	case "reject":
+		if !utils.HasBPFICMPSendResult() {
+			return types.TetragonNetworkAction{}, errors.New("reject action is not supported by the kernel")
+		}
+		enforce.Reject = true
 	}
 	return types.TetragonNetworkAction{
 		EnforceAction: enforce,
-	}
+	}, nil
 }
 
 func ensureCIDR(ipBlock string) string {
@@ -181,8 +175,14 @@ func parseConnectPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.NetworkP
 	if err != nil {
 		return nil, err
 	}
-	dfltAction := toDefaultAction(np)
-	act := toAction(r)
+	dfltAction, err := toAction(np.Spec.DefaultAction)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported default action: %w", err)
+	}
+	act, err := toAction(r.Action)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported rule action: %w", err)
+	}
 	for _, d := range r.Destination {
 		dest, err := toDestination(&d)
 		if err != nil {
@@ -204,12 +204,12 @@ func parseConnectPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.NetworkP
 // Normalize K8s Tetragon Network Policy into internal representation
 func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.TetragonNetworkPolicy, error) {
 	result := []*types.TetragonNetworkPolicy{}
-	for _, r := range np.Spec.Rules {
+	for i, r := range np.Spec.Rules {
 		switch r.Hook {
 		case "connect":
 			rulePolicy, err := parseConnectPolicy(np, &r)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("rule[%d]: %w", i, err)
 			}
 			result = append(result, rulePolicy...)
 		default:
