@@ -5,6 +5,7 @@
 Improvements / Bugfixes:
 
 * [uprobes: reduce size of preload map](#uprobes-reduce-size-of-preload-map)
+* [layer3: reduce memory footprint when unused](#layer3-reduce-memory-footprint-when-unused)
 
 Features:
 
@@ -22,6 +23,24 @@ The string preload map used in uprobes, was consuming a significant ammount of m
 policy). It was configured so that memory for the entries are not preallocated, resulting in reduced
 memory usage (<1MiB). For policy examples, consult
 https://github.com/cisco-sbg-emu/live-protect/tree/main/examples/v1.19.0-pre.5#substring-matching.
+
+### layer3: reduce memory footprint when unused
+
+* Issue: https://github.com/isovalent/hubble-fgs/issues/8581
+
+The layer3 BPF maps (socket tracking, TCP sockets, process network watermarks and ICMP tuples) were
+sized at 32768 entries, and some of them were loaded at agent start up in order to track sockets
+before a layer3 tracing policy is added. This consumed memory even on agents that never use layer3.
+The maps are now declared with a single entry and resized from user space only when needed.
+
+A new `--disable-layer3` switch skips the resize altogether, and the individual cache sizes can be
+tuned with `--bpf-layer3-socket-cache-size`, `--bpf-tcp-socket-cache-size`,
+`--bpf-udp-socket-cache-size`, `--bpf-network-watermarks-cache-size` and
+`--bpf-icmp-socket-cache-size`. The equivalent Helm values live under `tetragon.layer3`.
+
+Measured on the slim image with no policy loaded, `--disable-layer3` reduces the memory locked by
+the agent's BPF maps from 54.5MiB to 34.3MiB. Layer3 tracing policies are rejected at load time
+while the switch is set.
 
 ## Features
 
