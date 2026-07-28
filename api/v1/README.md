@@ -2988,6 +2988,8 @@ from https://elixir.bootlin.com/linux/v6.14.4/source/include/uapi/asm-generic/er
 | TNP_POLICY_DENY | 2 |  |
 | TNP_POLICY_DEFAULT_ALLOW | 3 |  |
 | TNP_POLICY_DEFAULT_DENY | 4 |  |
+| TNP_POLICY_REJECT | 5 | REJECT behaves like DENY (or drop) but also sends an error message back to the sender. |
+| TNP_POLICY_DEFAULT_REJECT | 6 |  |
 
 
 

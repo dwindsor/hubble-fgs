@@ -152,11 +152,13 @@ func (ServiceKind) EnumDescriptor() ([]byte, []int) {
 type TNPAction int32
 
 const (
-	TNPAction_TNP_POLICY_UNKNOWN       TNPAction = 0
-	TNPAction_TNP_POLICY_ALLOW         TNPAction = 1
-	TNPAction_TNP_POLICY_DENY          TNPAction = 2
-	TNPAction_TNP_POLICY_DEFAULT_ALLOW TNPAction = 3
-	TNPAction_TNP_POLICY_DEFAULT_DENY  TNPAction = 4
+	TNPAction_TNP_POLICY_UNKNOWN        TNPAction = 0
+	TNPAction_TNP_POLICY_ALLOW          TNPAction = 1
+	TNPAction_TNP_POLICY_DENY           TNPAction = 2
+	TNPAction_TNP_POLICY_DEFAULT_ALLOW  TNPAction = 3
+	TNPAction_TNP_POLICY_DEFAULT_DENY   TNPAction = 4
+	TNPAction_TNP_POLICY_REJECT         TNPAction = 5 // REJECT behaves like DENY (or drop) but also sends an error message back to the sender.
+	TNPAction_TNP_POLICY_DEFAULT_REJECT TNPAction = 6
 )
 
 // Enum value maps for TNPAction.
@@ -167,13 +169,17 @@ var (
 		2: "TNP_POLICY_DENY",
 		3: "TNP_POLICY_DEFAULT_ALLOW",
 		4: "TNP_POLICY_DEFAULT_DENY",
+		5: "TNP_POLICY_REJECT",
+		6: "TNP_POLICY_DEFAULT_REJECT",
 	}
 	TNPAction_value = map[string]int32{
-		"TNP_POLICY_UNKNOWN":       0,
-		"TNP_POLICY_ALLOW":         1,
-		"TNP_POLICY_DENY":          2,
-		"TNP_POLICY_DEFAULT_ALLOW": 3,
-		"TNP_POLICY_DEFAULT_DENY":  4,
+		"TNP_POLICY_UNKNOWN":        0,
+		"TNP_POLICY_ALLOW":          1,
+		"TNP_POLICY_DENY":           2,
+		"TNP_POLICY_DEFAULT_ALLOW":  3,
+		"TNP_POLICY_DEFAULT_DENY":   4,
+		"TNP_POLICY_REJECT":         5,
+		"TNP_POLICY_DEFAULT_REJECT": 6,
 	}
 )
 
@@ -6285,13 +6291,15 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x17SERVICE_KIND_CLUSTER_IP\x10\x01\x12\x1a\n" +
 	"\x16SERVICE_KIND_NODE_PORT\x10\x02\x12\x1e\n" +
 	"\x1aSERVICE_KIND_LOAD_BALANCER\x10\x03\x12\x1e\n" +
-	"\x1aSERVICE_KIND_EXTERNAL_NAME\x10\x04*\x89\x01\n" +
+	"\x1aSERVICE_KIND_EXTERNAL_NAME\x10\x04*\xbf\x01\n" +
 	"\tTNPAction\x12\x16\n" +
 	"\x12TNP_POLICY_UNKNOWN\x10\x00\x12\x14\n" +
 	"\x10TNP_POLICY_ALLOW\x10\x01\x12\x13\n" +
 	"\x0fTNP_POLICY_DENY\x10\x02\x12\x1c\n" +
 	"\x18TNP_POLICY_DEFAULT_ALLOW\x10\x03\x12\x1b\n" +
-	"\x17TNP_POLICY_DEFAULT_DENY\x10\x04*\xe1\x01\n" +
+	"\x17TNP_POLICY_DEFAULT_DENY\x10\x04\x12\x15\n" +
+	"\x11TNP_POLICY_REJECT\x10\x05\x12\x1d\n" +
+	"\x19TNP_POLICY_DEFAULT_REJECT\x10\x06*\xe1\x01\n" +
 	"\x13IgmpGroupRecordType\x12\x1a\n" +
 	"\x16IGMPV3_MODE_IS_INVALID\x10\x00\x12\x1a\n" +
 	"\x16IGMPV3_MODE_IS_INCLUDE\x10\x01\x12\x1a\n" +
