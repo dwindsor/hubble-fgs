@@ -132,7 +132,14 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		if ok {
 			var action tetragon.TNPAction
 			verdict := event.Verdict
-			if verdict&record.PolicyDeny == record.PolicyDeny {
+			// Check PolicyReject first since it also has PolicyDeny set
+			if verdict&record.PolicyReject == record.PolicyReject {
+				if verdict&record.PolicyFallthru == record.PolicyFallthru {
+					action = tetragon.TNPAction_TNP_POLICY_DEFAULT_REJECT
+				} else {
+					action = tetragon.TNPAction_TNP_POLICY_REJECT
+				}
+			} else if verdict&record.PolicyDeny == record.PolicyDeny {
 				if verdict&record.PolicyFallthru == record.PolicyFallthru {
 					action = tetragon.TNPAction_TNP_POLICY_DEFAULT_DENY
 				} else {
