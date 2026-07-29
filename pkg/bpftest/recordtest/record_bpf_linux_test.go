@@ -42,6 +42,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/workloadid"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 )
@@ -51,8 +52,9 @@ var (
 )
 
 type recordCheck struct {
-	check      string
-	expectDeny bool // If true, this specific check should fail (be denied)
+	check        string
+	expectDeny   bool // If true, this specific check should fail (be denied)
+	expectReject bool // If true, expect fast failure instead of timeout
 }
 
 type recordTest struct {
@@ -60,6 +62,8 @@ type recordTest struct {
 	records []record.DatapathRecord
 	checks  []recordCheck
 	deny    bool // Default deny expectation for checks without explicit expectDeny
+	// Skip test if bpf_icmp_send kfunc is not available
+	skipIfNoICMPSend bool
 }
 
 // Policy record building blocks
@@ -344,6 +348,24 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
+	// Reject policy, like deny but sends ICMP unreachable
+	ipLo1RejectPolicy = record.DatapathRecord{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyReject1",
+			RuleName:   "testRuleReject1",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
+				CIDR: netip.MustParsePrefix("127.0.0.1/32"),
+			},
+			Port: 0,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyReject | record.PolicyDeny,
+		},
+	}
 )
 
 // checks
@@ -579,6 +601,15 @@ var tests = []recordTest{
 		},
 		deny: false,
 	},
+	{ // Test reject policy sends ICMP and fails fast
+		name:             "testRejectFastFailure",
+		records:          []record.DatapathRecord{ipLo1RejectPolicy},
+		skipIfNoICMPSend: true,
+		checks: []recordCheck{
+			{check: "curl", expectDeny: true, expectReject: true},
+		},
+		deny: true,
+	},
 }
 
 // registerTestPolicies registers test policies with the global policy repository
@@ -663,6 +694,23 @@ func unloadRecords(r *recordTest, t *testing.T) {
 	require.NoError(t, err)
 }
 
+func checkCurlResult(t *testing.T, err error, expectDeny, expectReject bool) {
+	t.Helper()
+	if expectDeny {
+		var exitErr *exec.ExitError
+		require.ErrorAs(t, err, &exitErr)
+		if expectReject {
+			require.Equal(t, 7, exitErr.ExitCode(),
+				"reject should return exit code 7 (connection refused)")
+		} else {
+			require.Equal(t, 28, exitErr.ExitCode(),
+				"deny should return exit code 28 (timeout)")
+		}
+	} else {
+		require.NoError(t, err)
+	}
+}
+
 func runCmds(r *recordTest, t *testing.T) {
 	for _, cmd := range r.checks {
 		// Use per-check expectDeny if set, otherwise use test-level deny
@@ -673,25 +721,15 @@ func runCmds(r *recordTest, t *testing.T) {
 
 		switch cmd.check {
 		case "curl":
-			curlArg := []string{"--max-time", "0.5", "--ipv4", "127.0.0.1:8080"}
-			curlCmd := exec.Command("curl", curlArg...)
+			curlCmd := exec.Command("curl", "--max-time", "0.5", "--ipv4", "127.0.0.1:8080")
 			err := curlCmd.Run()
 			t.Log("curl 8080...")
-			if expectDeny {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+			checkCurlResult(t, err, expectDeny, cmd.expectReject)
 		case "curl8081":
-			curlArg := []string{"--max-time", "0.5", "--ipv4", "127.0.0.1:8081"}
-			curlCmd := exec.Command("curl", curlArg...)
+			curlCmd := exec.Command("curl", "--max-time", "0.5", "--ipv4", "127.0.0.1:8081")
 			err := curlCmd.Run()
 			t.Log("curl 8081...")
-			if expectDeny {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+			checkCurlResult(t, err, expectDeny, cmd.expectReject)
 		case "dig":
 			digCmd := exec.Command("dig", "localhost")
 			err := digCmd.Run()
@@ -729,6 +767,9 @@ func TestRecords(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.skipIfNoICMPSend && !utils.HasBPFICMPSendResult() {
+				t.Skip("bpf_icmp_send kfunc not available")
+			}
 			loadRecords(&test, t)
 			runCmds(&test, t)
 			unloadRecords(&test, t)
