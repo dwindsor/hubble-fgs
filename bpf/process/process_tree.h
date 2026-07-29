@@ -995,7 +995,8 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 		if (deny & TNP_POLICY_FALLTHRU)
 			__sync_fetch_and_add(&dest->deny_default, len);
 
-		if (bpf_ksym_exists(bpf_icmp_send)) {
+		// Only send ICMP unreachable for reject, not silent deny
+		if ((deny & TNP_POLICY_REJECT) && bpf_ksym_exists(bpf_icmp_send)) {
 			if (skb->protocol == bpf_htons(ETH_P_IP))
 				bpf_icmp_send(skb, ICMP_DEST_UNREACH, ICMP_PKT_FILTERED);
 			else if (skb->protocol == bpf_htons(ETH_P_IPV6))
