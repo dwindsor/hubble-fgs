@@ -48,3 +48,7 @@ func RawHooksAvailable() bool {
 func RTTHookAvailable() bool {
 	return false
 }
+
+func HasBPFICMPSendResult() bool {
+	return false
+}

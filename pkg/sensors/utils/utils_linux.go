@@ -52,6 +52,8 @@ var (
 
 	checkBPFTimerAvailable = sync.OnceValue(_checkBPFTimerAvailable)
 	checkBPFTimerUsable    = sync.OnceValue(_checkBPFTimerUsable)
+
+	checkHasBPFICMPSend = sync.OnceValue(doCheckHasBPFICMPSend)
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -644,4 +646,18 @@ func _checkSockopsSupportsCgAncestorHelper() error {
 	prog.Close()
 
 	return nil
+}
+
+func doCheckHasBPFICMPSend() error {
+	spec, err := btf.LoadKernelSpec()
+	if err != nil {
+		return fmt.Errorf("failed loading kernel BTF spec: %w", err)
+	}
+	_, err = spec.AnyTypeByName("bpf_icmp_send")
+	return err
+}
+
+func HasBPFICMPSendResult() bool {
+	err := checkHasBPFICMPSend()
+	return err == nil
 }
