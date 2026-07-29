@@ -45,7 +45,7 @@ var (
 	Execve = program.Builder(
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
-		"tracepoint/sys_execve",
+		"raw_tracepoint/sys_execve",
 		"event_execve",
 		"execve",
 	).SetPolicy(sensors.BaseSensorName)
@@ -53,7 +53,7 @@ var (
 	ExecveV53 = program.Builder(
 		"bpf_execve_event_v53.o",
 		"sched/sched_process_exec",
-		"tracepoint/sys_execve",
+		"raw_tracepoint/sys_execve",
 		"event_execve",
 		"execve",
 	).SetPolicy(sensors.BaseSensorName)
@@ -61,7 +61,7 @@ var (
 	ExecveV511 = program.Builder(
 		"bpf_execve_event_v511.o",
 		"sched/sched_process_exec",
-		"tracepoint/sys_execve",
+		"raw_tracepoint/sys_execve",
 		"event_execve",
 		"execve",
 	).SetPolicy(sensors.BaseSensorName)
@@ -69,7 +69,7 @@ var (
 	ExecveV61 = program.Builder(
 		"bpf_execve_event_v61.o",
 		"sched/sched_process_exec",
-		"tracepoint/sys_execve",
+		"raw_tracepoint/sys_execve",
 		"event_execve",
 		"execve",
 	).SetPolicy(sensors.BaseSensorName)
@@ -77,7 +77,7 @@ var (
 	ExecveV612 = program.Builder(
 		"bpf_execve_event_v612.o",
 		"sched/sched_process_exec",
-		"tracepoint/sys_execve",
+		"raw_tracepoint/sys_execve",
 		"event_execve",
 		"execve",
 	).SetPolicy(sensors.BaseSensorName)
@@ -195,10 +195,10 @@ var (
 
 func setupSensor() {
 	// execve program tail calls details
-	Execve.SetTailCall("tracepoint", ExecveTailCallsMap)
-	ExecveV53.SetTailCall("tracepoint", ExecveTailCallsMap)
-	ExecveV511.SetTailCall("tracepoint", ExecveTailCallsMap)
-	ExecveV61.SetTailCall("tracepoint", ExecveTailCallsMap)
+	Execve.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
+	ExecveV53.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
+	ExecveV511.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
+	ExecveV61.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
 
 	ks, err := ksyms.KernelSymbols()
 	if err == nil {

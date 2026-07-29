@@ -30,12 +30,12 @@ func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, s
 	}
 
 	var baseProgs = []tus.SensorProg{
-		0: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+		0: tus.SensorProg{Name: "event_execve", Type: ebpf.RawTracepoint},
 		1: tus.SensorProg{Name: "event_exit", Type: ebpf.Kprobe, Match: tus.ProgMatchPartial},
 		2: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
-		3: tus.SensorProg{Name: send, Type: ebpf.TracePoint},
+		3: tus.SensorProg{Name: send, Type: ebpf.RawTracepoint},
 		4: tus.SensorProg{Name: "tg_kp_bprm_committing_creds", Type: ebpf.Kprobe},
-		5: tus.SensorProg{Name: "execve_rate", Type: ebpf.TracePoint},
+		5: tus.SensorProg{Name: "execve_rate", Type: ebpf.RawTracepoint},
 		6: tus.SensorProg{Name: "execve_map_update", Type: ebpf.SocketFilter},
 		7: tus.SensorProg{Name: "event_exit_acct_process", Type: ebpf.Kprobe},
 	}
