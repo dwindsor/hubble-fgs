@@ -258,6 +258,8 @@ Helm chart for Tetragon Enterprise
 | tetragon.nameOverride | string | `""` |  |
 | tetragon.networkInterfaceStats.enabled | bool | `false` |  |
 | tetragon.networkInterfaceStats.interval | string | `"10s"` |  |
+| tetragon.nop.enabled | bool | `false` |  |
+| tetragon.nop.ports | string | `""` |  |
 | tetragon.podAnnotations.enabled | bool | `false` |  |
 | tetragon.pprof.address | string | `"localhost"` | The address at which to expose pprof. |
 | tetragon.pprof.enabled | bool | `false` | Whether to enable exposing pprof server. |

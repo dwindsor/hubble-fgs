@@ -192,6 +192,9 @@ type config struct {
 	EnableTLSMetrics      bool
 	TLSMetricsLabelFilter []string
 
+	EnableNopSensor bool
+	NopSensorPorts  []int
+
 	EnableAlertProfiling bool
 
 	// K8sServiceAccountAuth is the base64 string for authenticating with k8s control plane

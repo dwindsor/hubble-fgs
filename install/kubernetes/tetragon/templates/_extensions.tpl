@@ -107,6 +107,8 @@ tls-sensor-mode: {{ .Values.tetragon.tls.mode | quote }}
 tls-sensor-ports: {{ .Values.tetragon.tls.ports | quote }}
 enable-tls-sensor-metrics: {{ .Values.tetragon.tls.metrics.enabled | quote }}
 tls-sensor-metrics-label-filter: {{ .Values.tetragon.tls.metrics.labelFilter | quote }}
+enable-nop-sensor: {{ .Values.tetragon.nop.enabled | quote }}
+nop-sensor-ports: {{ .Values.tetragon.nop.ports | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}

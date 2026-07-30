@@ -150,6 +150,9 @@ tetragon:
     metrics:
       enabled: true
       labelFilter: ""
+  nop:
+    enabled: false
+    ports: ""
   networkInterfaceStats:
     enabled: false
     interval: 10s

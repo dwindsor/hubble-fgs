@@ -143,6 +143,8 @@ const (
 	keyTLSSensorPorts                    = "tls-sensor-ports"
 	keyEnableTLSMetrics                  = "enable-tls-sensor-metrics"
 	keyTLSMetricsLabelFilter             = "tls-sensor-metrics-label-filter"
+	keyEnableNopSensor                   = "enable-nop-sensor"
+	keyNopSensorPorts                    = "nop-sensor-ports"
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
 	keyTetragonNodeNamespace             = "node-namespace"
@@ -339,6 +341,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.IntSlice(keyTLSSensorPorts, []int{}, fmt.Sprintf("Specify the ports to observe TLS over (requires --%s)", keyEnableTLSSensor))
 	flags.Bool(keyEnableTLSMetrics, true, fmt.Sprintf("Enable TLS metrics (requires --%s)", keyEnableTLSSensor))
 	flags.StringSlice(keyTLSMetricsLabelFilter, []string{}, fmt.Sprintf("TLS metrics label filter (requires --%s and --%s)", keyEnableTLSSensor, keyEnableTLSMetrics))
+	flags.Bool(keyEnableNopSensor, false, "Enable the NOP sensor")
+	flags.IntSlice(keyNopSensorPorts, []int{}, fmt.Sprintf("Ports to configure Nop sensor (requires --%s)", keyEnableNopSensor))
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	flags.MarkHidden(keyK8sServiceAccountAuth)
@@ -507,6 +511,8 @@ func readAndSetEnterpriseFlags() error {
 	Config.TLSSensorPorts = viper.GetIntSlice(keyTLSSensorPorts)
 	Config.EnableTLSMetrics = viper.GetBool(keyEnableTLSMetrics)
 	Config.TLSMetricsLabelFilter = viper.GetStringSlice(keyTLSMetricsLabelFilter)
+	Config.EnableNopSensor = viper.GetBool(keyEnableNopSensor)
+	Config.NopSensorPorts = viper.GetIntSlice(keyNopSensorPorts)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
 	// then we ignore enable/disable in policies.
@@ -717,6 +723,19 @@ func validateConfig(config config) error {
 	} else {
 		if len(config.TLSSensorPorts) > 0 {
 			return fmt.Errorf("TLS sensor ports specified but TLS sensor not enabled. Enable it with --%s", keyEnableTLSSensor)
+		}
+	}
+
+	if config.EnableNopSensor {
+		if len(config.NopSensorPorts) == 0 {
+			return fmt.Errorf("NOP observability requires the ports to be specified with --%s", keyNopSensorPorts)
+		}
+		if len(config.NopSensorPorts) > TLS_MAX_PORTS {
+			return fmt.Errorf("NOP observability only supports up to %d ports, got %d", TLS_MAX_PORTS, len(config.NopSensorPorts))
+		}
+	} else {
+		if len(config.NopSensorPorts) > 0 {
+			return fmt.Errorf("NOP sensor ports specified but NOP sensor not enabled. Enable it with --%s", keyEnableNopSensor)
 		}
 	}
 

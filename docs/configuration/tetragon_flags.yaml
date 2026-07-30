@@ -244,6 +244,9 @@ options:
       default_value: "true"
       usage: |
         Enable generation of network watermarks exit events from user space when required (requires --network-watermarks-exit-gen-interval)
+    - name: enable-nop-sensor
+      default_value: "false"
+      usage: Enable the NOP sensor
     - name: enable-pid-set-filter
       default_value: "false"
       usage: |
@@ -515,6 +518,9 @@ options:
         Specify the network watermarks exit event generation interval (requires --enable-network-watermarks-exit-gen)
     - name: node-namespace
       usage: The namespace to register tetragon node if required
+    - name: nop-sensor-ports
+      default_value: '[]'
+      usage: Ports to configure Nop sensor (requires --enable-nop-sensor)
     - name: ocsf-export-file-compress
       default_value: "false"
       usage: Compress rotated OCSF JSON export files
