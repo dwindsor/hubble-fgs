@@ -12,6 +12,7 @@ Features:
 * [uprobes: function override](#uprobes-function-override)
 * [grpc: persistent policies](#grpc-persistent-policies)
 * [policy: apply only on specific kernels](#policy-apply-only-on-specific-kernels)
+* [uprobes: apply only on specific versions of binaries](#uprobes-apply-only-on-specific-versions-of-binaries)
 
 ## Improvements / bugfixes
 
@@ -327,3 +328,103 @@ root@kind-bpf-next:~# tetra getevents -o json | jq 'select(.process_kprobe != nu
 
 </details>
 
+### uprobes: apply only on specific versions of binaries
+
+* Issue: https://github.com/cisco-sbg-emu/live-protect/issues/2
+
+This feature allows users to attach uprobe hooks based on the binary digest. This way, users can
+attach uprobes to specific versions of binaries and reject the non-matching ones.
+
+
+<details>
+
+#### Example
+
+Given a binary compiled in two different versions:
+* `foo.c` (v1):
+```C
+#include <stdio.h>
+
+int main() {
+    printf("hello\n");
+}
+```
+* `foo.c` (v2):
+```C
+#include <stdio.h>
+
+int main() {
+    printf("world\n");
+}
+```
+and given their digests (sha256):
+* `foo` (v1): `d26f021c34dd57c4b079688cd6dc94b13972ff1f7d6183c6f1def24c7d7044b1`
+* `foo` (v2): `32024efcab97917963a0186515c7d775793902868904e52736a464f114259d3c`
+
+We can write a policy that will attach an uprobe to `foo` (v1) and reject the uprobe on `foo.c` (v2):
+```yaml
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "uprobe-digest-example"
+spec:
+  uprobes:
+    - path: "/home/fdipierr/foo"
+      symbols:
+      - "main"
+      binaryDigests:
+        - "sha256:d26f021c34dd57c4b079688cd6dc94b13972ff1f7d6183c6f1def24c7d7044b1"
+    - path: "/home/fdipierr/foo"
+      symbols:
+      - "main"
+      binaryDigests:
+        - "sha256:32024efcab97917963a0186515c7d775793902868904e52736a464f114259d3c"
+      ignore:
+        digestVerificationFailure: true
+```
+
+In this example, we will see that the first hook attaches only for binary version v1, and fails for v2;
+the second hook, instead, will be skipped for v1 and attaches only for v2.
+
+First scenario, `foo` v1 is used:
+```console
+$ tetra tracingpolicy add ~/pol.yaml
+tracing policy "/home/fdipierr/pol.yaml" added
+
+$ tetra tracingpolicy list
+ID   NAME                    DOMAIN   STATE               FILTERID   NAMESPACE   SENSORS          KERNELMEMORY   MODE           NPOST   NENFORCE   NMONITOR
+2    uprobe-digest-example   grpc     partially_enabled   0          (global)    generic_uprobe   1.13 MB        monitor_only   0       0          0
+     SECTION   CFGIDX   DESCRIPTION          STATUS
+     uprobes   0        /home/fdipierr/foo   loaded
+     uprobes   1        /home/fdipierr/foo   digest_rejected
+```
+
+As you can see from the `tetra tracingpolicy list` output, the first hook is loaded, while the second is rejected because of a digest mismatch.
+
+Now, let's try to use `foo` v2:
+```console
+$ tetra tracingpolicy add ~/pol.yaml
+Error: failed to add tracing policy: rpc error: code = Unknown desc = policy handler 'tracing' failed loading policy 'uprobe-digest-example': spec.uprobes[0]: digest verification failed for path "/home/fdipierr/foo"
+
+$ tetra tracingpolicy list
+ID   NAME                    DOMAIN   STATE        FILTERID   NAMESPACE   SENSORS   KERNELMEMORY   MODE      NPOST   NENFORCE   NMONITOR
+2    uprobe-digest-example   grpc     load_error   0          (global)              0 B            unknown   0       0          0
+```
+
+This time, since the first policy hook does not have the `ignore.digestVerificationFailure` property,
+and the hook fails to attach, the policy is rejected and thus marked as `load_error`.
+If we update the policy and add the `ignore.digestVerificationFailure` property, it will result in the
+policy being loaded with only the second hook attached:
+```console
+$ tetra tracingpolicy add ~/pol.yaml
+tracing policy "/home/fdipierr/pol.yaml" added
+
+$ tetra tracingpolicy list
+ID   NAME                    DOMAIN   STATE               FILTERID   NAMESPACE   SENSORS          KERNELMEMORY   MODE           NPOST   NENFORCE   NMONITOR
+3    uprobe-digest-example   grpc     partially_enabled   0          (global)    generic_uprobe   1.13 MB        monitor_only   0       0          0
+     SECTION   CFGIDX   DESCRIPTION          STATUS
+     uprobes   0        /home/fdipierr/foo   digest_rejected
+     uprobes   1        /home/fdipierr/foo   loaded
+```
+
+</details>
