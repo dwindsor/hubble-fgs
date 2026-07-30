@@ -88,7 +88,7 @@ processors:
 receivers:
   filelog:
     include:
-      - /var/run/cilium/tetragon/**/*.log
+      - /var/log/tetragon/**/*.log
     multiline:
       line_start_pattern: "^{"
     start_at: end
