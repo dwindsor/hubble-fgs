@@ -1,13 +1,13 @@
 name: OSS Sync
 
 on:
-#   schedule:
-#     - cron: '0 9 * * 1' # Runs every Monday morning at 09:00 UTC
+  schedule:
+    - cron: '0 9 * * 1' # Runs every Monday morning at 09:00 UTC
   workflow_dispatch:
     inputs:
       branch:
         description: 'Branch to sync'
-        required: true
+        required: false
         type: string
 
 permissions:
