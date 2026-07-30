@@ -63,6 +63,10 @@ Depending on your setup, changes listed here might require a manual intervention
   prevent issues when upgrading in the future.
 * Application Model related exports (appmodel, telemetry and connections log) default values for MaxSizeMB and MaxBackups have been updated to 25M and 1; before, they were 10M and 5.
 * New flags to manage application model exports options: `--application-model-export-file-max-size-mb`, `--application-model-export-file-max-backups`, `--application-model-export-file-compress`.
+* The `--enable-network-interface-stats` and `--network-interface-stats-interval`
+  switches were added to configure the network interface sensor. These are now the
+  recommended way to configure this sensor. Support for network interface tracing
+  policies will be removed in the next release.
 
 ### Helm Values
 
