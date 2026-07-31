@@ -436,7 +436,7 @@ jobs:
         shell: pwsh
         run: |
           go build -ldflags="-s -w" -o .\Tetra.exe .\cmd\tetra\
-          go build -ldflags="-s -w" -o .\Tetragon.exe .\cmd\bin\tetragon\
+          go build -ldflags="-s -w" -o .\Tetragon.exe .\cmd\tetragon\
           New-Item -ItemType Directory -Path ${{ env.TEMP }}\Tetragon-Windows
           Copy-Item *.exe -Destination ${{ env.TEMP }}\Tetragon-Windows
           Compress-Archive -Path ${{ env.TEMP }}\Tetragon-Windows\* -DestinationPath ${{ env.TEMP }}\Tetragon-Windows.zip

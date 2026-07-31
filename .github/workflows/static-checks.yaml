@@ -161,8 +161,8 @@ jobs:
 
       - name: Build tetragon Windows binaries
         run: |
-          GOOS=windows GOARCH=amd64 go build ./cmd/bin/tetragon/
-          GOOS=windows GOARCH=arm64 go build ./cmd/bin/tetragon/
+          GOOS=windows GOARCH=amd64 go build ./cmd/tetragon/
+          GOOS=windows GOARCH=arm64 go build ./cmd/tetragon/
 
   build-nok8s:
     runs-on: ubuntu-latest
@@ -181,7 +181,7 @@ jobs:
       # paths the slim tetrabox build excludes.
       - name: Build nok8s (with cloud)
         run: |
-          go build -tags nok8s ./cmd/bin/tetragon ./cmd/tetra
+          go build -tags nok8s ./cmd/tetragon ./cmd/tetra
 
   errmetrics-fileids-check:
     runs-on: ubuntu-latest

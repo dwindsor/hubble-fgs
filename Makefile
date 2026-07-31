@@ -141,11 +141,11 @@ clean: tarball-clean
 
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
-	$(GO_BUILD) $(TETRAGON_TAGS_ARG) ./cmd/bin/tetragon
+	$(GO_BUILD) $(TETRAGON_TAGS_ARG) ./cmd/tetragon
 
 .PHONY: tetragon-nok8s
 tetragon-nok8s: tetragon-fs-scanner ## Compile the Tetragon agent (nok8s build).
-	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetragon
+	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetragon
 
 .PHONY: tetragon-aggregator
 tetragon-aggregator: ## Compile the Tetragon aggregator
