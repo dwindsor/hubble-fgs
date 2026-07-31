@@ -181,7 +181,7 @@ jobs:
       # paths the slim tetrabox build excludes.
       - name: Build nok8s (with cloud)
         run: |
-          go build -tags nok8s ./cmd/bin/tetragon ./cmd/bin/tetra
+          go build -tags nok8s ./cmd/bin/tetragon ./cmd/tetra
 
   errmetrics-fileids-check:
     runs-on: ubuntu-latest

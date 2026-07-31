@@ -157,11 +157,11 @@ tetragon-operator: ## Compile the Tetragon operator.
 
 .PHONY: tetra
 tetra: ## Compile the Tetragon gRPC client.
-	$(GO_BUILD) ./cmd/bin/tetra
+	$(GO_BUILD) ./cmd/tetra
 
 .PHONY: tetra-nok8s
 tetra-nok8s: ## Compile the Tetragon gRPC client (nok8s build)
-	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/bin/tetra
+	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetra
 
 .PHONY: tetrabox
 tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
