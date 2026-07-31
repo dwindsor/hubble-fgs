@@ -23,8 +23,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
-	eecommon "github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
+	eecommon "github.com/isovalent/hubble-fgs/pkg/tetra/common"
 )
 
 func listCmd() *cobra.Command {

@@ -15,7 +15,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra/exec"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/exec"
 )
 
 func addCommands(rootCmd *cobra.Command) {

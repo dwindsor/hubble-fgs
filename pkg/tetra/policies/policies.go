@@ -26,11 +26,11 @@ import (
 	grpcCodes "google.golang.org/grpc/codes"
 	grpcStatus "google.golang.org/grpc/status"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
-	common2 "github.com/isovalent/hubble-fgs/cmd/tetra/common"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
 	"github.com/isovalent/hubble-fgs/pkg/policies"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/alertrule"
+	common2 "github.com/isovalent/hubble-fgs/pkg/tetra/common"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/network"
 )
 
 func addCmd(domain *string) *cobra.Command {

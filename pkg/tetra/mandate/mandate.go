@@ -19,9 +19,9 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
-	eecommon "github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/pkg/mandate/cli"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/alertrule"
+	eecommon "github.com/isovalent/hubble-fgs/pkg/tetra/common"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"

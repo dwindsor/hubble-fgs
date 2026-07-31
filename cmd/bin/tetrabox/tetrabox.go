@@ -15,9 +15,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra"
 	"github.com/isovalent/hubble-fgs/cmd/tetragon"
 	fs_scanner "github.com/isovalent/hubble-fgs/cmd/tetragon-fs-scanner"
+	"github.com/isovalent/hubble-fgs/pkg/tetra"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"

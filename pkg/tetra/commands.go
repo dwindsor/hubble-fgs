@@ -18,12 +18,12 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/version"
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/getalerts"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/getevents"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/record"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/rules"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/alertrule"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/getalerts"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/getevents"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/network"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/record"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/rules"
 )
 
 // addBaseCommands adds commands that build and make sense on all platform:

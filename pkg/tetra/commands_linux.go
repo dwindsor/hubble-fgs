@@ -27,19 +27,19 @@ import (
 
 	sandboxpolicypkg "github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra/policies"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/policies"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/common"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/alertrule"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/common"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/network"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra/dns"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/exec"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/mandate"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/probe"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/sandboxpolicy"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/syscallentries"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/dns"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/exec"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/file"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/mandate"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/probe"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/sandboxpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/syscallentries"
 )
 
 func addCommands(rootCmd *cobra.Command) {

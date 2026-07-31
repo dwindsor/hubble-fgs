@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetra"
+	"github.com/isovalent/hubble-fgs/pkg/tetra"
 )
 
 func main() {
