@@ -14,15 +14,6 @@ import (
 	"os"
 
 	"github.com/isovalent/hubble-fgs/pkg/tetragon"
-
-	// Imported to allow sensors to be initialized inside init().
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-
-	// Add enterprise-specific filters to the global registry
-	_ "github.com/isovalent/hubble-fgs/pkg/filters"
-
-	// sensor init
-	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
 )
 
 func main() {
