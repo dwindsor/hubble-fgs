@@ -108,7 +108,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 		if (egress) {
 			update_tx_value(value, payload_sz);
 #ifdef PROCESS_TREE
-			send(skb, value->deny, &value->dst_key, payload_sz);
+			send(skb, value->deny, &value->dst_key, payload_sz, false);
 #endif
 		} else {
 			update_rx_value(value, payload_sz);
@@ -167,7 +167,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	add_udp_map(key, value);
 #ifdef PROCESS_TREE
 	if (egress)
-		send(skb, value->deny, &value->dst_key, payload_sz);
+		send(skb, value->deny, &value->dst_key, payload_sz, false);
 	else
 		recv(value->deny, &value->dst_key, payload_sz);
 #endif

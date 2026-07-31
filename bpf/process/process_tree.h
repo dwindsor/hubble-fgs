@@ -979,7 +979,7 @@ static inline __attribute__((always_inline)) void clear_policy_template_flag(str
 		__sync_fetch_and_and(&dest->flags, ~DEST_FLAG_POLICY_TEMPLATE_ONLY);
 }
 
-static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len)
+static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len, bool enforce)
 {
 	struct destination_endpoint_value *dest;
 
@@ -995,8 +995,8 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 		if (deny & TNP_POLICY_FALLTHRU)
 			__sync_fetch_and_add(&dest->deny_default, len);
 
-		// Only send ICMP unreachable for reject, not silent deny
-		if ((deny & TNP_POLICY_REJECT) && bpf_ksym_exists(bpf_icmp_send)) {
+		// enforce flag can be removed when UDP supports enforcement
+		if (enforce && (deny & TNP_POLICY_REJECT) && bpf_ksym_exists(bpf_icmp_send)) {
 			if (skb->protocol == bpf_htons(ETH_P_IP))
 				bpf_icmp_send(skb, ICMP_DEST_UNREACH, ICMP_PKT_FILTERED);
 			else if (skb->protocol == bpf_htons(ETH_P_IPV6))
@@ -1059,7 +1059,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	rewrite = repair_socket_nsid(&v->dst_key, skb->sk);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
 	if (!rewrite) {
-		verdict = send(skb, v->deny, &v->dst_key, len);
+		verdict = send(skb, v->deny, &v->dst_key, len, true);
 		if (verdict < 0)
 			goto err_out;
 		return verdict;
@@ -1067,7 +1067,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 err_out:
 	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
-	verdict = send(skb, v->deny, &v->dst_key, len);
+	verdict = send(skb, v->deny, &v->dst_key, len, true);
 	if (verdict < 0)
 		return SK_PASS;
 	return verdict;
