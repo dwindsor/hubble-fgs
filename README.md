@@ -18,6 +18,13 @@ was fully closed source. On May 2022, we released parts of FGS as open source un
 everywhere, and Tetragon OSS and Tetragon EE to distinguish between the OSS and enterprise offering,
 but as of the 1.9 release this has not happened yet.
 
+## New Team Members
+
+If you are new to the project, start with [Onboarding for New Team Members](docs/onboarding.md).
+It walks through the OSS/EE split, first-time setup, building and testing, running on a
+specific kernel with LVH, and some common pitfalls and gotchas that may not be obvious at
+first.
+
 ## Features
 
 | Feature                    | OSS / 💰                |
