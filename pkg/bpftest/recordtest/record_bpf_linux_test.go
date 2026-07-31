@@ -294,6 +294,20 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
+	defaultReject = record.DatapathRecord{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyPod",
+			RuleName:   "testRulePod",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP:   nil,
+			Port: 0,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyDeny | record.PolicyReject,
+		},
+	}
 	// Port-specific policies for testing wildcard local_id + specific port lookup
 	// These policies use wildcard src (local_id=0) but specific ports
 	ipLoPort8080DenyPolicy = record.DatapathRecord{
@@ -606,6 +620,16 @@ var tests = []recordTest{
 		records:          []record.DatapathRecord{ipLo1RejectPolicy},
 		skipIfNoICMPSend: true,
 		checks: []recordCheck{
+			{check: "curl", expectDeny: true, expectReject: true},
+		},
+		deny: true,
+	},
+	{ // test default reject with dns curl
+		name:             "testDefaultRejectDNS",
+		records:          []record.DatapathRecord{defaultReject},
+		skipIfNoICMPSend: true,
+		checks: []recordCheck{
+			{check: "dig"},
 			{check: "curl", expectDeny: true, expectReject: true},
 		},
 		deny: true,
