@@ -15,7 +15,7 @@ hostNetwork: true
 tetragon:
   image:
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon
-    tag: v1.19.0-rc.1
+    tag: v1.20.0-pre.1
   metadata:
     enabled: false
     image:
@@ -227,7 +227,7 @@ tetragonAggregator:
   image:
     override: ~
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-aggregator
-    tag: v1.19.0-rc.1
+    tag: v1.20.0-pre.1
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Aggregator Deployment.
   extraVolumes: []
@@ -235,10 +235,11 @@ tetragonAggregator:
 rthooks:
   image:
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-rthooks
+    tag: v1.20.0-pre.1
 tetragonOperator:
   image:
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-operator
-    tag: v1.19.0-rc.1
+    tag: v1.20.0-pre.1
   podInfo:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
