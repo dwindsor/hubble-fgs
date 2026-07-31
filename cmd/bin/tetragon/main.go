@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/isovalent/hubble-fgs/cmd/tetragon"
+	"github.com/isovalent/hubble-fgs/pkg/tetragon"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
