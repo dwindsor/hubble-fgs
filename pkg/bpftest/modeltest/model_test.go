@@ -18,7 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/isovalent/ipa/application_model/v1alpha"
 	commonNetV1 "github.com/isovalent/ipa/common/net/v1alpha"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -671,7 +673,6 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 	},
 
 	"TestContainerExitAndRestart": {
-		Skip: "Evidently flaky in github actions, nc is being SIGKILLed",
 		Namespaces: model.Namespaces{
 			"default": {
 				"restarting-nc": {
@@ -690,18 +691,66 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 			},
 		},
 		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
-			func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, _ *modelserver.Server, harness *harness.Harness) {
+			func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness) {
 				// We exec into the pod and connect to the nc instance. This
 				// will cause the nc container to exit and be restarted.
-				_, stderr, err := harness.PodExec(ctx, "default", "restarting-nc", "nc-container", []string{"/bin/nc", "localhost", "9182", "-w", "1"}, 30*time.Second)
-				require.NoError(tb, err, "failed to execute pod command: %s", stderr)
+				stdout, stderr, err := harness.PodExec(ctx, "default", "restarting-nc", "nc-container", []string{"/bin/nc", "localhost", "9182", "-w", "1"}, 30*time.Second)
+				// There's a potential race between the container exit and the exec, so allow
+				if err != nil && err.Error() != "command terminated with exit code 137" {
+					tb.Errorf("failed to execute pod command: err=%v, stdout=%s, stderr=%s", err, stdout, stderr)
+				} else {
+					// This is expected if the command was terminated with exit code 137
+					tb.Logf("Pod exec command terminated with exit code 137, which is expected if the container was restarted: stdout=%s, stderr=%s", stdout, stderr)
+				}
 
 				harness.WaitForContainerRestart(ctx, tb, "default", "restarting-nc", "nc-container", 30*time.Second)
 
-				// Remove the pod from the model so the harness doesn't try to
-				// validate it. This is intentional. A later PR #8882 will
-				// actually fix bugs in the app model server related to
-				// restarting containers.
+				// The application model must have 2 nc-container containers.
+				// One for the restarted container, and one for the container
+				// that is still running. We need to check for both in the
+				// application model.
+				model, err := server.GetModel(ctx, &v1alpha.GetModelRequest{
+					Host: false,
+				})
+				require.NoError(tb, err, "failed to get model")
+
+				amodel := model.GetModel().GetApplicationModel()
+
+				foundRestarted := false
+				foundRunning := false
+				var containers []*v1alpha.ApplicationContainer
+
+				for _, ns := range amodel.GetNamespaces() {
+					if ns.Name == "default" {
+						for _, wl := range ns.GetWorkloads() {
+							if wl.Name == "restarting-nc" {
+								containers = wl.GetContainers()
+							}
+						}
+					}
+				}
+
+				require.NotNil(tb, containers, "failed to find restarting-nc workload in application model")
+				assert.Equal(tb, 2, len(containers))
+
+				for _, cont := range containers {
+					for _, proc := range cont.GetProcesses() {
+						if proc.GetName() == "/bin/nc" && proc.GetArguments() == "-l -p 9182" {
+							if proc.GetExitCount() > 0 {
+								foundRestarted = true
+							} else {
+								foundRunning = true
+							}
+						}
+					}
+				}
+
+				assert.True(tb, foundRestarted, "did not find restarted nc container in application model")
+				assert.True(tb, foundRunning, "did not find running nc container in application model")
+
+				// Remove the workload from the testcase. We already validated
+				// it here and model.Check() will fail depending on the order of
+				// the containers in the model.
 				delete(tc.Namespaces["default"], "restarting-nc")
 			},
 		},
