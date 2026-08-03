@@ -524,7 +524,7 @@ type TlsSpec struct {
 	// TLS enable parser
 	Enable bool `json:"enable"`
 	// +kubebuilder:validation:Enum=socket;tc;cgroup;
-	// +kubebuilder:default=tc
+	// +kubebuilder:default=cgroup
 	// TLS parser type
 	Mode string `json:"mode,omitempty"`
 	// +kubebuilder:validation:Optional

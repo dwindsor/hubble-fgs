@@ -5489,7 +5489,7 @@
                   "additionalProperties": false
                 },
                 "mode": {
-                  "default": "tc",
+                  "default": "cgroup",
                   "description": "TLS parser type",
                   "enum": [
                     "socket",
