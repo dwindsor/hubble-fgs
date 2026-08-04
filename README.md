@@ -182,13 +182,12 @@ of the one in the Cilium to get kernel version `5.10.68+`:
 
 #### 2. Install the latest Tetragon EE
 
-To install hubble-enterprise using the latest Helm chart, run:
+To install Tetragon EE using the latest Helm chart, run:
 
     helm repo add isovalent https://helm.isovalent.com
-    helm install -n kube-system hubble-enterprise isovalent/hubble-enterprise \
-      --version 9999.9999.9999-dev \
-      --set enterprise.image.tag=latest \
-      --set hubbleEnterpriseOperator.image.tag=latest \
+    helm install -n kube-system tetragon isovalent/tetragon \
+      --set tetragon.image.tag=latest \
+      --set tetragonOperator.image.tag=latest \
       --set imagePullPolicy=Always
 
 #### 3. Deploy CRD with set of recent features
@@ -221,26 +220,26 @@ Tetragon EE has been tested with minikube v1.15.1 on Mac using Virtualbox as the
 #### 3. Install the latest Tetragon EE
 
     helm repo add isovalent https://helm.isovalent.com
-    helm install -n kube-system --version 9999.9999.9999-dev cilium-enterprise isovalent/cilium-enterprise --set hubble-enterprise.enterprise.metadataImage.tag=minikube-current
+    helm install -n kube-system tetragon isovalent/tetragon
 
 ### Verifying the Installation
 
-The Tetragon EE container is called `enterprise`. If everything went well, you should see
-something like:
+The DaemonSet is named after the Helm release, and the agent container is called
+`tetragon`. If everything went well, you should see something like:
 
-    kubectl logs -n kube-system ds/hubble-enterprise -c enterprise
+    kubectl logs -n kube-system ds/tetragon -c tetragon
     ...
     time="2020-11-11T03:45:23Z" level=info msg="Listening for events..."
 
 There is `export-stdout` container that prints Tetragon EE events to stdout:
 
-    kubectl logs -n kube-system ds/hubble-enterprise -c export-stdout -f
+    kubectl logs -n kube-system ds/tetragon -c export-stdout -f
 
 Note that the default installation comes with pre-defined event filters that exclude
-certain events. If you don't see any events in `export-stdout` log, you might need to
-edit `EXPORT_{ALLOW,DENY}_LIST` environment variables:
+certain events. If you don't see any events in `export-stdout` log, you might need to edit
+the `export-allowlist` and `export-denylist` keys in the agent ConfigMap:
 
-    kubectl edit ds -n kube-system hubble-enterprise
+    kubectl edit cm -n kube-system tetragon-config
 
 ### Running on minikube with 5.4 Kernel
 
@@ -255,7 +254,7 @@ to spin up a GKE cluster.
 
     helm repo add isovalent https://helm.isovalent.com
     helm repo update
-    helm install -n kube-system cilium-enterprise isovalent/cilium-enterprise
+    helm install -n kube-system tetragon isovalent/tetragon
 
 ## Testing
 
@@ -317,8 +316,8 @@ following:
 
 ```
 go test -p 1 -parallel 1  -gcflags="" -timeout 20m -failfast ./tests/e2e/tests/... -fail-fast \
-  -tetragon.helm.set enterprise.image.override="isovalent/hubble-fgs:latest" \
-  -tetragon.helm.set hubbleEnterpriseOperator.image.override="isovalent/hubble-enterprise-operator:latest"
+  -tetragon.helm.set tetragon.image.override="isovalent/tetragon:latest" \
+  -tetragon.helm.set tetragonOperator.image.override="isovalent/tetragon-operator:latest"
 ```
 
 In case you want to write a new e2e test using the framework, we have provided a skeleton
