@@ -592,8 +592,12 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		pcGCInterval = defaults.DefaultProcessCacheGCInterval
 	}
 
-	if err := process.InitCache(podAccessor, option.Config.ProcessCacheSize, pcGCInterval); err != nil {
-		return fmt.Errorf("failed to init process cache: %w", err)
+	if option.Config.DisableProcessCache {
+		log.Info("Process cache is disabled")
+	} else {
+		if err := process.InitCache(podAccessor, option.Config.ProcessCacheSize, pcGCInterval); err != nil {
+			return fmt.Errorf("failed to init process cache: %w", err)
+		}
 	}
 
 	// cleanupWg is needed to ensure that gRPC code cleanly finishes before we exit (e.g,
