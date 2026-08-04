@@ -68,7 +68,15 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(debugCmd)
 	rootCmd.AddCommand(mandate.New())
 	rootCmd.AddCommand(policies.New())
-	rootCmd.AddCommand(policytest.New())
+	ptCmd := policytest.New()
+	// "run" returns errors on test failures, not usage errors, so don't
+	// show the flags block on failure.
+	for _, c := range ptCmd.Commands() {
+		if c.Name() == "run" {
+			c.SilenceUsage = true
+		}
+	}
+	rootCmd.AddCommand(ptCmd)
 }
 
 func ifConfig(commander bugtoolpkg.Commander) error {
