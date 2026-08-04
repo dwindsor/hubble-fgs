@@ -60,6 +60,11 @@ type Harness struct {
 	fsscanner      fsscan.FsScanner
 	cgmap          cgidmap.Map
 	fakeK8sWatcher *watcher.FakeK8sWatcher
+
+	// Maps from "namespace name:pod name:container name" to the number of times
+	// the container has restarted. This is used to determine if a container has
+	// restarted since the last time we checked.
+	restartCounts map[string]int32
 }
 
 func New(tb testing.TB) Harness {
@@ -317,6 +322,58 @@ func (harness *Harness) WaitForContainerExit(ctx context.Context, tb testing.TB,
 		return false
 	}), wait.WithContext(waitCtx))
 	require.NoError(tb, err, "failed waiting for container %q in pod %q/%q to exit", containerName, namespace, podName)
+}
+
+func (harness *Harness) WaitForContainerRestart(ctx context.Context, tb testing.TB, namespace, podName, containerName string, timeout time.Duration) {
+	tb.Helper()
+
+	resources := harness.client.Resources(namespace)
+	podInfo := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+		},
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	if harness.restartCounts == nil {
+		harness.restartCounts = make(map[string]int32)
+	}
+
+	key := namespace + ":" + podName + ":" + containerName
+	_, exists := harness.restartCounts[key]
+	if !exists {
+		harness.restartCounts[key] = 0
+	}
+
+	err := wait.For(conditions.New(resources).ResourceMatch(podInfo, func(object k8s.Object) bool {
+		pod, ok := object.(*corev1.Pod)
+		if !ok {
+			return false
+		}
+
+		for _, status := range pod.Status.ContainerStatuses {
+			if status.Name != containerName {
+				continue
+			}
+			if status.State.Running != nil && status.RestartCount > harness.restartCounts[key] {
+				harness.restartCounts[key] = status.RestartCount
+				return true
+			}
+		}
+
+		return false
+
+	}), wait.WithContext(waitCtx))
+	require.NoError(tb, err, "failed waiting for container %q in pod %q/%q to restart", containerName, namespace, podName)
+
+	// Now that the container has restarted, we need to update the container
+	// info in the watcher and various maps. In a non-test environment, the
+	// informer would be doing this.
+	harness.clearPodState(tb, podInfo)
+	harness.addPodState(tb, podInfo)
 }
 
 func fixupClusterName(name string) string {
