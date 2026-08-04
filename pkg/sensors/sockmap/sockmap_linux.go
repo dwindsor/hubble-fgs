@@ -195,11 +195,32 @@ func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS_CONT, HandleTLSCont)
 }
 
-func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.Sensor {
+func enableTLSParser(policy tracingpolicy.TracingPolicy, cg bool) *sensors.Sensor {
 	var progs []*program.Program
 	var maps []*program.Map
 
-	if tls {
+	if cg {
+		// CGroups only work on 5.10 onwards
+		if kernels.MinKernelVersion("5.10.0") {
+			logger.GetLogger().Info("Enable TLS CGroup")
+			progs = append(progs,
+				CGEgress,
+				CGIngress,
+			)
+
+			maps = append(maps,
+				Map, MapStats,
+				Bottle, BottleStats,
+				CGParserStats,
+				CGTailCalls,
+				FilterMap, ParserStats,
+				TcpSocketMap, TcpSocketStats,
+				SocketMap,
+			)
+		} else {
+			logger.GetLogger().Warn("Cannot Enable TLS CGroup on kernel <5.10")
+		}
+	} else {
 		// Socket mode only work on 5.10 onwards
 		if kernels.MinKernelVersion("5.10.0") {
 			logger.GetLogger().Info("Enable TLS")
@@ -230,29 +251,6 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.
 		}
 	}
 
-	if cg {
-		// CGroups only work on 5.10 onwards
-		if kernels.MinKernelVersion("5.10.0") {
-			logger.GetLogger().Info("Enable TLS CGroup")
-			progs = append(progs,
-				CGEgress,
-				CGIngress,
-			)
-
-			maps = append(maps,
-				Map, MapStats,
-				Bottle, BottleStats,
-				CGParserStats,
-				CGTailCalls,
-				FilterMap, ParserStats,
-				TcpSocketMap, TcpSocketStats,
-				SocketMap,
-			)
-		} else {
-			logger.GetLogger().Warn("Cannot Enable TLS CGroup on kernel <5.10")
-		}
-	}
-
 	return sensors.SensorBuilder(policy, "__parser_sensors__", progs, maps)
 }
 
@@ -262,7 +260,6 @@ func (tls *tlsSensor) PolicyHandler(
 ) (sensors.SensorIface, error) {
 	parser := policy.TpSpec().Parser
 
-	enableTLS := false
 	enableTLSCG := false
 	if !parser.Tls.Enable {
 		return nil, nil
@@ -279,8 +276,10 @@ func (tls *tlsSensor) PolicyHandler(
 
 	switch parser.Tls.Mode {
 	case "socket":
-		enableTLS = true
+		// explicitly disable cgroup
+		enableTLSCG = false
 	case "tc":
+		// tc is deprecated; we implement cgroup instead
 		enableTLSCG = true
 	case "cgroup":
 		enableTLSCG = true
@@ -305,7 +304,7 @@ func (tls *tlsSensor) PolicyHandler(
 		tlsconfig.MetricsLabelFilter = tlsconfig.DefaultLabelFilter()
 	}
 
-	return enableTLSParser(policy, enableTLS, enableTLSCG), nil
+	return enableTLSParser(policy, enableTLSCG), nil
 }
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
