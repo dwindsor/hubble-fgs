@@ -1,8 +1,9 @@
-# Hubble-FGS: The Hubble Fine Guidance Sensors
+# Tetragon Enterprise
 
-> The Fine Guidance Sensor (FGS) is an optical sensor used on the Hubble Space
-> Telescope to provide pointing information for the spacecraft and as a scientific
-> instrument for astrometric science
+Tetragon Enterprise (Tetragon EE) is the Isovalent Enterprise Platform (IEP) component that
+enables enhanced visibility into in-kernel process events via eBPF. It builds on
+[Tetragon](https://github.com/cilium/tetragon/) (Tetragon OSS), which is included here as a
+submodule.
 
 User-facing documentation can be found in:
  * https://docs.isovalent.com/quick-start/security_visibility.html
@@ -10,13 +11,14 @@ User-facing documentation can be found in:
 
 ## Naming
 
-FGS is the internal name for the Cilium enterprise component that enables enhanced visibility into
-in-kernel process events via eBPF. FGS is, also, sometimes referred as "hubble-enteprise" which is
-the pod name that runs the FGS component in cilium-enterprise installations. Until version 1.8, FGS
-was fully closed source. On May 2022, we released parts of FGS as open source under the name
-[Tetragon](https://github.com/cilium/tetragon/). We want to transition to using the name Tetragon
-everywhere, and Tetragon OSS and Tetragon EE to distinguish between the OSS and enterprise offering,
-but as of the 1.9 release this has not happened yet.
+Tetragon EE was originally called FGS, short for Fine Guidance Sensors, the optical sensors
+the Hubble Space Telescope uses for pointing information. It was fully closed source until
+version 1.8; in May 2022 parts of it were released as open source under the name Tetragon.
+Both old names still appear in places: the repo itself is `hubble-fgs`, and tools like
+`fgs-bench` and `fgs-verify-programs` keep the old prefix. The agent, though, is `tetragon`,
+and its runtime paths are under `/var/lib/tetragon` and `/var/run/tetragon`. Prefer
+"Tetragon EE" and "Tetragon OSS" in prose; the old names in identifiers are legacy, not a
+separate thing.
 
 ## New Team Members
 
@@ -58,7 +60,7 @@ These events are called "generic events" because they allow users, via a proper 
 insert functionality on arbitrary points in the kernel (mainly on functions/tracepoints).
 
 Users can define where the hooks are added (e.g., in what system calls) and
-what they do. Typically, they will generate events exported by FGS, but they
+what they do. Typically, they will generate events exported by Tetragon EE, but they
 can also take other actions (e.g., send the KILL signal). Users can also
 define what information is added into generated events (e.g., function
 arguments/return value), filters that define certain conditions of when the
@@ -82,7 +84,7 @@ Tetragon.
 
 ## BTF
 
-FGS distributes its bpf programs as object files. As a result, it depends on
+Tetragon EE distributes its bpf programs as object files. As a result, it depends on
 proper relocations (e.g., for struct offsets) that depend on internal kernel
 information. This information is encoded using
 [BTF](https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html).
@@ -91,11 +93,11 @@ README](https://github.com/isovalent/hubble-builder/tree/master/fgs-btf/README.m
 of the  [hubble-builder](https://github.com/isovalent/hubble-builder/)
 repository for more details.
 
-## Running FGS
+## Running Tetragon EE
 
 ### Building and running on a Linux machine
 
-FGS has two components to build:
+Tetragon EE has two components to build:
   * the bpf programs under `./bpf` (written in C)
   * the agent code (written in Go)
 
@@ -178,7 +180,7 @@ of the one in the Cilium to get kernel version `5.10.68+`:
       --num-nodes 1 \
       --cluster-version 1.22.3-gke.700
 
-#### 2. Install the latest FGS
+#### 2. Install the latest Tetragon EE
 
 To install hubble-enterprise using the latest Helm chart, run:
 
@@ -205,7 +207,7 @@ See the [AWS EKS guide](docs/aws-eks-guide.md).
 
 #### 1. Check minikube version
 
-FGS has been tested with minikube v1.15.1 on Mac using Virtualbox as the driver:
+Tetragon EE has been tested with minikube v1.15.1 on Mac using Virtualbox as the driver:
 
     % minikube version
     minikube version: v1.15.1
@@ -216,20 +218,21 @@ FGS has been tested with minikube v1.15.1 on Mac using Virtualbox as the driver:
     minikube start --network-plugin=cni --memory=4096 --driver=virtualbox
     minikube ssh -- sudo mount bpffs -t bpf /sys/fs/bpf
 
-#### 3. Install the latest FGS
+#### 3. Install the latest Tetragon EE
 
     helm repo add isovalent https://helm.isovalent.com
     helm install -n kube-system --version 9999.9999.9999-dev cilium-enterprise isovalent/cilium-enterprise --set hubble-enterprise.enterprise.metadataImage.tag=minikube-current
 
 ### Verifying the Installation
 
-The FGS container is called `enterprise`. If everything went well, you should see something like:
+The Tetragon EE container is called `enterprise`. If everything went well, you should see
+something like:
 
     kubectl logs -n kube-system ds/hubble-enterprise -c enterprise
     ...
     time="2020-11-11T03:45:23Z" level=info msg="Listening for events..."
 
-There is `export-stdout` container that prints FGS events to stdout:
+There is `export-stdout` container that prints Tetragon EE events to stdout:
 
     kubectl logs -n kube-system ds/hubble-enterprise -c export-stdout -f
 
@@ -256,13 +259,13 @@ to spin up a GKE cluster.
 
 ## Testing
 
-### Running FGS in KVM
+### Running Tetragon EE in KVM
 
 The `contrib/kvm` directory contains a Makefile to help you run Tetragon inside
 a little-vm-helper KVM virtual machine. Consult [contrib/kvm/README.md](contrib/kvm/README.md)
 for more information.
 
-### Running FGS Locally in KinD
+### Running Tetragon EE Locally in KinD
 
 First, ensure that you have an up-to-date version of [Docker][docker] and
 [KinD][kind], and Helm 4 is available as `helm` on `PATH`. The
@@ -275,24 +278,24 @@ Also update the `inotify` sysctl variables in accordance with the
 Once you have installed the necessary tooling, you can bootstrap a cluster for testing
 with `make kind`.
 
-After bootstrapping the cluster, you can install the latest FGS from source by running
+After bootstrapping the cluster, you can install the latest Tetragon EE from source by running
 `make kind-install-tetragon`.
 
-Finally, run the [e2e tests in the cluster](#testing-fgs-locally-using-the-e2e-framework)
+Finally, run the [e2e tests in the cluster](#testing-tetragon-ee-locally-using-the-e2e-framework)
 
 In case you need to test under a different kernel, you can use the `contrib/kvm` scripts
-to bootstrap a minimal environment for running FGS in a KinD cluster (see the [previous
-section](#running-fgs-in-kvm) for details).
+to bootstrap a minimal environment for running Tetragon EE in a KinD cluster (see the [previous
+section](#running-tetragon-ee-in-kvm) for details).
 
-### Testing FGS Locally Using the e2e Framework
+### Testing Tetragon EE Locally Using the e2e Framework
 
-We run FGS end-to-end tests using our e2e framework package, which is defined in
+We run Tetragon EE end-to-end tests using our e2e framework package, which is defined in
 [`tests/e2e`](./tests/e2e/). The easiest way to run end-to-end tests is using a local KinD
 cluster. First, ensure that you have an up-to-date version of [Docker][docker] and
 [KinD][kind], with Helm 4 available as `helm`. With the necessary tooling
 installed, you can simply run `make e2e-test` to
 compile and run the e2e tests. The e2e framework will automatically bootstrap a KinD
-cluster for each test, installing a local development version of FGS alongside the latest
+cluster for each test, installing a local development version of Tetragon EE alongside the latest
 Cilium.
 
 Should you wish to use an alternative cluster instead of bootstrapping a local KinD
@@ -372,8 +375,8 @@ on a system with a new test program, but it's also a bit annoying on the code si
 
 ### fgs-bench
 
-For benchmarking and general low-level FGS BPF development a useful tool
-is the fgs-bench, a benchmarking tool that runs FGS alongside some load,
+For benchmarking and general low-level Tetragon EE BPF development a useful tool
+is the fgs-bench, a benchmarking tool that runs Tetragon EE alongside some load,
 e.g. tcp, tls, netperf, http, etc. See [docs/BENCHMARK.md](docs/BENCHMARK.md) for details and [pkg/bench](pkg/bench)
 for the implementation.
 
@@ -382,7 +385,7 @@ for the implementation.
 One is also often hitting verifier limitations when writing BPF programs
 and it's useful to be able to quickly get feedback whether or not
 your latest change will pass the verifier or not. For this we've added,
-"fgs-verify-programs", a script around bpftool that loads FGS BPF objects
+"fgs-verify-programs", a script around bpftool that loads Tetragon EE BPF objects
 and dumps some useful stats:
 
 	Verifying bpf/objs/bpf_tls_skmsg.o...
@@ -400,15 +403,15 @@ suitable `clang` on your `PATH`.
 ### Testing on other kernels
 
 Another often arising issue is having BPF programs rejected on older kernels. To aid with
-testing FGS on arbitrary kernel versions we have little-vm-helper tooling in `contrib/kvm`,
+testing Tetragon EE on arbitrary kernel versions we have little-vm-helper tooling in `contrib/kvm`,
 which can also fetch and build kernels from source. See [the KVM
-section](#running-fgs-in-kvm) and [contrib/kvm/README.md](contrib/kvm/README.md) for more
+section](#running-tetragon-ee-in-kvm) and [contrib/kvm/README.md](contrib/kvm/README.md) for more
 info.
 
-## Troubleshooting FGS errors for developers
+## Troubleshooting Tetragon EE errors for developers
 
-This section contains common error scenarios when running FGS while developing
-and how to resolve them. These include errors where FGS fails to start up or
+This section contains common error scenarios when running Tetragon EE while developing
+and how to resolve them. These include errors where Tetragon EE fails to start up or
 events aren't generated properly, etc.
 
 ### Kernel verifier blocks program loading or Unable to pin map: -4007
@@ -427,7 +430,7 @@ compiler installed on your system. Try the following steps:
 3. `make -j $(nproc) tetragon`
 
 This will return the repository to a clean slate, compile the BPF programs with
-a known working compiler, and compile FGS itself.
+a known working compiler, and compile Tetragon EE itself.
 
 ## More Info
  * Natalia's blog about  [container escape](https://www.isovalent.com/blog/post/2021-11-container-escape)
@@ -437,4 +440,4 @@ a known working compiler, and compile FGS itself.
     * [FGS events and other info](https://drive.google.com/drive/folders/1ZwsXk9vEmmofhrfSOGLDSWBRIcvdrl1b)
     * [the followfd primitive for generic kprobes](https://drive.google.com/drive/folders/1Vq7GHREAEf358IikZT32uVYmGlwoWO7T)
     * [event checker demo](https://drive.google.com/drive/folders/1Gwqpv9BICP3nVoJlFBZVVqg8V7FVKaBW)
- * [Hacking on FGS](docs/HACKING.md)
+ * [Hacking on Tetragon EE](docs/HACKING.md)
