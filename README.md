@@ -375,7 +375,7 @@ is the fgs-bench, a benchmarking tool that runs FGS alongside some load,
 e.g. tcp, tls, netperf, http, etc. See [docs/BENCHMARK.md](docs/BENCHMARK.md) for details and [pkg/bench](pkg/bench)
 for the implementation.
 
-### hubble-bpf-verify
+### tetragon-bpf-verify
 
 One is also often hitting verifier limitations when writing BPF programs
 and it's useful to be able to quickly get feedback whether or not
@@ -383,22 +383,25 @@ your latest change will pass the verifier or not. For this we've added,
 "fgs-verify-programs", a script around bpftool that loads FGS BPF objects
 and dumps some useful stats:
 
-	Verifying /var/lib/hubble-fgs/bpf_skmsg.o...
+	Verifying bpf/objs/bpf_tls_skmsg.o...
 	OK:
-	; int bpf_sk_msg_fgs(struct sk_msg_md *skmsg)
+	; int bpf_tls_sk_msg_fgs(struct sk_msg_md *skmsg)
 	verification time 2663524 usec
 	stack depth 200
 	processed 93226 insns (limit 1000000) max_states_per_insn 16 total_states 7809 peak_states 1497 mark_read 202
 
-You can compile the BPF objects and invoke the tool with `make hubble-bpf-verify`.
-It assumes you have the right `clang` in PATH (`make clang-install` to get it to `bin/`).
+You can compile the BPF objects and invoke the tool with `make tetragon-bpf-verify`.
+Note that `make tetragon-bpf` compiles the BPF programs in a container with a pinned
+`clang` by default, so no compiler setup is needed. Only `LOCAL_CLANG=1` builds require a
+suitable `clang` on your `PATH`.
 
-### fgs vmtest
+### Testing on other kernels
 
-Another often arising issue is having BPF programs rejected on older kernels.
-To aid with testing FGS on arbitrary kernel versions we have tooling around
-qemu-kvm in `contrib/vmtest` that allows running the fgs-bench against a
-kernel compiled from sources. See `contrib/vmtest/README.md` for more info.
+Another often arising issue is having BPF programs rejected on older kernels. To aid with
+testing FGS on arbitrary kernel versions we have little-vm-helper tooling in `contrib/kvm`,
+which can also fetch and build kernels from source. See [the KVM
+section](#running-fgs-in-kvm) and [contrib/kvm/README.md](contrib/kvm/README.md) for more
+info.
 
 ## Troubleshooting FGS errors for developers
 
@@ -418,8 +421,8 @@ This can be caused by the BPF object files being compiled by an incompatible
 compiler installed on your system. Try the following steps:
 
 1. `make -j $(nproc) clean`
-2. `make -j $(nproc) hubble-bpf-container`
-3. `make -j $(nproc) hubble-fgs`
+2. `make -j $(nproc) tetragon-bpf-container`
+3. `make -j $(nproc) tetragon`
 
 This will return the repository to a clean slate, compile the BPF programs with
 a known working compiler, and compile FGS itself.
