@@ -74,8 +74,9 @@ see: [docs/FIM.md](docs/FIM.md)
 ## Configuration
 
 The configuration specification for above events can be found in the CRD
-[spec](pkg/k8s/apis/isovalent.com/client/crds/v1alpha1/cilium.io_tracingpolicies.yaml).
-There are also [examples](/crds/examples/) of how the CRD can be used to configure Tetragon.
+[spec](pkg/k8s/apis/cilium.io/client/crds/v1alpha1/cilium.io_tracingpolicies.yaml).
+There are also [examples](examples/tracingpolicy/) of how the CRD can be used to configure
+Tetragon.
 
 (TODO: complete this section)
 
@@ -302,7 +303,8 @@ Run all e2e test locally:
 ```
 make e2e-test HOST_PROC=/procRoot E2E_EXTRA_TEST_FLAGS="-tetragon.helm.set tetragon.extraArgs.fim-fifo-path=/tetragonExport"
 ```
-Also have a look at the [CI workflow](./.github/workflows/kvm-e2e-tests.yaml) for further details.
+Also have a look at the [CI
+workflow](./.github/workflows/packages-e2e-tests.yml) for further details.
 
 
 More complex test commands can be run manually by targeting the appropriate test(s) in
@@ -318,7 +320,7 @@ go test -p 1 -parallel 1  -gcflags="" -timeout 20m -failfast ./tests/e2e/tests/.
 
 In case you want to write a new e2e test using the framework, we have provided a skeleton
 file you can use as the basis for your new test, which contains some in-line documentation
-in the comments. See [`tests/e2e/tests/skeleton`](./tests/e2e/tests/skeleton).
+in the comments. See [`tests/e2e/tests/helm/skeleton`](./tests/e2e/tests/helm/skeleton).
 
 [docker]: https://docs.docker.com/engine/install/
 [kind]: https://kind.sigs.k8s.io/docs/user/quick-start/
