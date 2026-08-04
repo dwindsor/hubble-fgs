@@ -367,12 +367,6 @@ objs/bpf_exit.o: $(ISOPROCESS)bpf_exit.c
 deps/bpf_exit.d: $(ISOPROCESS)bpf_exit.c
 	$(rule_d)
 
-objs/bpf_exit_v511.o: $(ISOPROCESS)bpf_exit.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
-
-deps/bpf_exit_511.d: $(ISOPROCESS)bpf_exit.c
-	$(rule_d)
-
 # bpf_ee_execve_event: special case because the enterprise version is different than OSS
 # IS_KPROBE is needed for const define on old kernels (see lib/config.h)
 objs/bpf_execve_event.o: $(ISOPROCESS)bpf_ee_execve_event.c
@@ -470,6 +464,7 @@ objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_execve_event_v53.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_fork_v511.o: $(PROCESSDIR)/bpf_fork.c
+objs/bpf_exit_v511.o: $(ISOPROCESS)bpf_exit.c
 objs/bpf_generic_kprobe_v53.o: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_multi_kprobe_v53.o: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -539,6 +534,10 @@ deps/bpf_generic_retuprobe_v511.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
 deps/bpf_multi_retuprobe_v511.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
 deps/bpf_generic_tracepoint_v511.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_generic_rawtp_v511.d: $(PROCESSDIR)/bpf_generic_rawtp.c
+deps/bpf_generic_fentry_v511.d: $(PROCESSDIR)/bpf_generic_fentry.c
+deps/bpf_generic_fexit_v511.d: $(PROCESSDIR)/bpf_generic_fexit.c
+deps/bpf_fork_v511.d: $(PROCESSDIR)/bpf_fork.c
+deps/bpf_exit_v511.d: $(ISOPROCESS)/bpf_exit.c
 deps/bpf_execve_event_v53.d: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
@@ -608,6 +607,9 @@ $(DEPSDIR)%_v419.d:
 
 $(DEPSDIR)%_v53.d:
 	$(call rule_d,-D__LARGE_BPF_PROG)
+
+$(DEPSDIR)%_v511.d:
+	$(call rule_d,-D__LARGE_BPF_PROG -D__V511_BPF_PROG)
 
 objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_generic_kprobe_v511.o: $(PROCESSDIR)/bpf_generic_kprobe.c
