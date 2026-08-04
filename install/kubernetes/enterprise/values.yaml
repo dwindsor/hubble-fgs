@@ -143,7 +143,13 @@ tetragon:
     bpfContextCacheSize: 1000
   # TLS
   tls:
+    enabled: false
     bpfContextCacheSize: 32000
+    mode: cgroup
+    ports: ""
+    metrics:
+      enabled: true
+      labelFilter: ""
   networkInterfaceStats:
     enabled: false
     interval: 10s

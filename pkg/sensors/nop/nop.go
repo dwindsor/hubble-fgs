@@ -23,6 +23,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -96,8 +97,8 @@ func (nop *sensor) PolicyHandler(
 	}
 
 	filters = ParseNopSpec(nopParser)
-	if len(filters) > sockops.TLS_MAX_PORTS {
-		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
+	if len(filters) > enterpriseOption.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", enterpriseOption.TLS_MAX_PORTS, len(filters))
 	}
 
 	return EnableNopParser(policy), nil

@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
@@ -288,8 +289,8 @@ func (tls *tlsSensor) PolicyHandler(
 	}
 
 	tlsFilters = ParseTLSSpec(&parser.Tls, parserHttps)
-	if len(tlsFilters) > sockops.TLS_MAX_PORTS {
-		return nil, fmt.Errorf("TLS parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(tlsFilters))
+	if len(tlsFilters) > enterpriseOption.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("TLS parser only supports up to %d MatchPorts selectors, got %d", enterpriseOption.TLS_MAX_PORTS, len(tlsFilters))
 	}
 
 	if !kernels.MinKernelVersion("5.10") {

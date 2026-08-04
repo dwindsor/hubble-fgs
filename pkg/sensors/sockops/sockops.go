@@ -47,11 +47,6 @@ var (
 	NopFilterMap  = program.MapBuilder("tg_nop_filter_map", SockopsEstablished)
 )
 
-const (
-	// Needs to be in sync with TLS_MAX_PORTS from tls_map.h
-	TLS_MAX_PORTS = 512
-)
-
 func init() {
 	sockops := &sockopsSensor{
 		name: "sockops loader",

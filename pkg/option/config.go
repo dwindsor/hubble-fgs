@@ -186,6 +186,12 @@ type config struct {
 	EnableNetworkInterfaceStats   bool
 	NetworkInterfaceStatsInterval time.Duration
 
+	EnableTLSSensor       bool
+	TLSSensorMode         string
+	TLSSensorPorts        []int // see comment above for DNSPorts
+	EnableTLSMetrics      bool
+	TLSMetricsLabelFilter []string
+
 	EnableAlertProfiling bool
 
 	// K8sServiceAccountAuth is the base64 string for authenticating with k8s control plane
@@ -199,6 +205,11 @@ type config struct {
 
 	AdditionalNodeLabels map[string]string
 }
+
+const (
+	// Needs to be in sync with TLS_MAX_PORTS from tls_map.h
+	TLS_MAX_PORTS = 512
+)
 
 var (
 	// Config contains all the configuration used by Tetragon.
@@ -244,5 +255,7 @@ var (
 		UDPIdleSocketTimeout:              time.Duration(2) * time.Minute,
 		EnableRawsockMetrics:              true,
 		NetworkInterfaceStatsInterval:     NetworkStatInterval,
+		TLSSensorMode:                     "cgroup",
+		EnableTLSMetrics:                  true,
 	}
 )

@@ -138,6 +138,11 @@ const (
 	keyEnableNetworkEvents               = "enable-network-events"
 	keyEnableNetworkInterfaceStats       = "enable-network-interface-stats"
 	keyNetworkInterfaceStatsInterval     = "network-interface-stats-interval"
+	keyEnableTLSSensor                   = "enable-tls-sensor"
+	keyTLSSensorMode                     = "tls-sensor-mode"
+	keyTLSSensorPorts                    = "tls-sensor-ports"
+	keyEnableTLSMetrics                  = "enable-tls-sensor-metrics"
+	keyTLSMetricsLabelFilter             = "tls-sensor-metrics-label-filter"
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
 	keyTetragonNodeNamespace             = "node-namespace"
@@ -329,6 +334,11 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
 	flags.Bool(keyEnableNetworkInterfaceStats, false, "Enable network interface statistics")
 	flags.Duration(keyNetworkInterfaceStatsInterval, NetworkStatInterval, fmt.Sprintf("Network interface statistics interval (requires --%s)", keyEnableNetworkInterfaceStats))
+	flags.Bool(keyEnableTLSSensor, false, fmt.Sprintf("Enable TLS observability (requires --%s)", KeyEnableTCP))
+	flags.String(keyTLSSensorMode, "cgroup", fmt.Sprintf("Specify the TLS sensor mode (cgroup or socket, requires --%s)", keyEnableTLSSensor))
+	flags.IntSlice(keyTLSSensorPorts, []int{}, fmt.Sprintf("Specify the ports to observe TLS over (requires --%s)", keyEnableTLSSensor))
+	flags.Bool(keyEnableTLSMetrics, true, fmt.Sprintf("Enable TLS metrics (requires --%s)", keyEnableTLSSensor))
+	flags.StringSlice(keyTLSMetricsLabelFilter, []string{}, fmt.Sprintf("TLS metrics label filter (requires --%s and --%s)", keyEnableTLSSensor, keyEnableTLSMetrics))
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	flags.MarkHidden(keyK8sServiceAccountAuth)
@@ -492,6 +502,11 @@ func readAndSetEnterpriseFlags() error {
 	Config.EnableNetworkEvents = viper.GetBool(keyEnableNetworkEvents)
 	Config.EnableNetworkInterfaceStats = viper.GetBool(keyEnableNetworkInterfaceStats)
 	Config.NetworkInterfaceStatsInterval = viper.GetDuration(keyNetworkInterfaceStatsInterval)
+	Config.EnableTLSSensor = viper.GetBool(keyEnableTLSSensor)
+	Config.TLSSensorMode = viper.GetString(keyTLSSensorMode)
+	Config.TLSSensorPorts = viper.GetIntSlice(keyTLSSensorPorts)
+	Config.EnableTLSMetrics = viper.GetBool(keyEnableTLSMetrics)
+	Config.TLSMetricsLabelFilter = viper.GetStringSlice(keyTLSMetricsLabelFilter)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
 	// then we ignore enable/disable in policies.
@@ -684,6 +699,25 @@ func validateConfig(config config) error {
 
 	if config.EnableNetworkInterfaceStats && config.NetworkInterfaceStatsInterval == 0 {
 		return fmt.Errorf("network interface stats requires an interval > 0, specified with --%s", keyNetworkInterfaceStatsInterval)
+	}
+
+	if config.EnableTLSSensor {
+		if !config.EnableTCP {
+			return fmt.Errorf("TLS observability requires TCP enabled with --%s", KeyEnableTCP)
+		}
+		if config.TLSSensorMode != "cgroup" && config.TLSSensorMode != "socket" {
+			return fmt.Errorf("TLS sensor mode must be one of 'cgroup' or 'socket'")
+		}
+		if len(config.TLSSensorPorts) == 0 {
+			return fmt.Errorf("TLS observability requires the ports to be specified with --%s", keyTLSSensorPorts)
+		}
+		if len(config.TLSSensorPorts) > TLS_MAX_PORTS {
+			return fmt.Errorf("TLS observability only supports up to %d ports, got %d", TLS_MAX_PORTS, len(config.TLSSensorPorts))
+		}
+	} else {
+		if len(config.TLSSensorPorts) > 0 {
+			return fmt.Errorf("TLS sensor ports specified but TLS sensor not enabled. Enable it with --%s", keyEnableTLSSensor)
+		}
 	}
 
 	// Network policies can be loaded via the k8s resource watcher as well

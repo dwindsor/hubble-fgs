@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/chunks"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
@@ -165,8 +166,8 @@ func (http *httpSensor) PolicyHandler(
 		return nil, fmt.Errorf("http sensor does not implement policy filtering")
 	}
 	filters = ParseHTTPSpec(httpParser)
-	if len(filters) > sockops.TLS_MAX_PORTS {
-		return nil, fmt.Errorf("HTTP parser only supports up to %d MatchPorts selectors, got %d", sockops.TLS_MAX_PORTS, len(filters))
+	if len(filters) > enterpriseOption.TLS_MAX_PORTS {
+		return nil, fmt.Errorf("HTTP parser only supports up to %d MatchPorts selectors, got %d", enterpriseOption.TLS_MAX_PORTS, len(filters))
 	}
 
 	if !kernels.MinKernelVersion("6.1.56") {

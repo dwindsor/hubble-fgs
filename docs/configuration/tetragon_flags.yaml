@@ -303,6 +303,12 @@ options:
     - name: enable-tcp-watermarks
       default_value: "false"
       usage: Enable TCP watermarks detection (requires --enable-tcp)
+    - name: enable-tls-sensor
+      default_value: "false"
+      usage: Enable TLS observability (requires --enable-tcp)
+    - name: enable-tls-sensor-metrics
+      default_value: "true"
+      usage: Enable TLS metrics (requires --enable-tls-sensor)
     - name: enable-tracing-policy-crd
       default_value: "true"
       usage: |
@@ -657,6 +663,18 @@ options:
       default_value: "1024"
       usage: |
         Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones
+    - name: tls-sensor-metrics-label-filter
+      default_value: '[]'
+      usage: |
+        TLS metrics label filter (requires --enable-tls-sensor and --enable-tls-sensor-metrics)
+    - name: tls-sensor-mode
+      default_value: cgroup
+      usage: |
+        Specify the TLS sensor mode (cgroup or socket, requires --enable-tls-sensor)
+    - name: tls-sensor-ports
+      default_value: '[]'
+      usage: |
+        Specify the ports to observe TLS over (requires --enable-tls-sensor)
     - name: tracing-policy
       usage: Tracing policy file to load at startup
     - name: tracing-policy-dir
