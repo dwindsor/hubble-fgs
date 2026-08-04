@@ -104,6 +104,9 @@ func GetDefaultMaps() []*program.Map {
 	if option.Config.ParentsMapEnabled {
 		maps = append(maps, ParentBinariesMap)
 	}
+	if config.EnableV511Progs() {
+		maps = append(maps, RodataConfigMap)
+	}
 
 	ConfigureMapSizes()
 	return maps
