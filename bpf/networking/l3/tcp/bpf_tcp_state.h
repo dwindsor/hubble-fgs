@@ -26,7 +26,7 @@ struct {
 } tg_h_tcpsk SEC(".maps");
 
 static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcpsocketmap_value(
-	struct msg_execve_key *key, u16 family, u32 flags, u64 create_time, u64 version, struct msg_ip_tuple *tuple)
+	struct msg_execve_key *key, u32 flags, u64 create_time, u64 version, struct msg_ip_tuple *tuple)
 {
 	struct tcpsocketmap_value *v;
 	int zero = 0;

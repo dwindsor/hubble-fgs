@@ -113,7 +113,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	}
 
 	cookie_version = cookie_inc_version();
-	accept_socket = init_tcpsocketmap_value(&listen_process->key, family, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version, 0);
+	accept_socket = init_tcpsocketmap_value(&listen_process->key, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version, 0);
 	if (!accept_socket)
 		return 0;
 

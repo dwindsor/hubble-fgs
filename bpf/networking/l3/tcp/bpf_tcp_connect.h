@@ -146,7 +146,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 	val->tuple.conn_id = 0;
 
 	if (key && socket)
-		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
+		v = init_tcpsocketmap_value(key, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (v) {
 #ifdef PROCESS_TREE
 		// We're not actually denying anything at this point. The deny happens

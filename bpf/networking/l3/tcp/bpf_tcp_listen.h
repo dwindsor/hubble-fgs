@@ -123,7 +123,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 	}
 
 	if (key && socket)
-		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
+		v = init_tcpsocketmap_value(key, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
 	if (v)
 		add_tcpsocketmap(&cookie, v, true);
 

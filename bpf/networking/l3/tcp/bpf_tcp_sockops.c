@@ -139,7 +139,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 					 sizeof(struct msg_ip_event));
 	}
 
-	v = init_tcpsocketmap_value(&val->key, _(skops->family), SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
+	v = init_tcpsocketmap_value(&val->key, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
 	if (!v)
 		return 0;
 	add_tcpsocketmap(&cookie, v, true);
@@ -189,7 +189,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	val->rule_id = 0;
 	val->verdict = 0;
 
-	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, _(skops->family), SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
+	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (v) {
 		// We're not actually denying anything at this point. The deny happens
 		// at send/recv time. But it's interesting to export what the verdict
