@@ -516,9 +516,6 @@ objs/%_v53.o:
 objs/%_v511.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V511_BPF_PROG -c $< -o $@
 
-objs/%_v612.o:
-	$(call rule_o,-D__V612_BPF_PROG -D__V61_BPF_PROG -D__LARGE_BPF_PROG)
-
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(rule_d)
 
