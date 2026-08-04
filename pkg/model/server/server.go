@@ -120,10 +120,13 @@ type Server struct {
 	// tg_cgtracker_map deletes entries when the cgroup is removed.
 	cgTrackerIdCache *lru.Cache[uint64, uint64]
 
-	// Similarly, this holds mappings from cgroup id to container id. We *don't*
-	// need to actually hold mappings between container ids and container
-	// information, as the pod accessor keeps its own cache of deleted pods.
-	containerIdCache *lru.Cache[uint64, string]
+	// Similarly, this holds mappings from cgroup id to container information.
+	// We need to hold a separate mapping because the application model includes
+	// information for deleted pods and containers. Deleted pod information is
+	// actually available via the pod accessor and the deleted pod cache, but
+	// it's possible that containers restart within a pod, and the pod accessor
+	// does not keep track of deleted containers.
+	cgroupIdToContainerInfoCache *lru.Cache[uint64, *types.ContainerInfo]
 
 	// The function used to get the current time. Can be overridden in tests.
 	TimeNow func() time.Time
@@ -426,7 +429,7 @@ func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, en
 // - the cgroup id to workload id map
 // - the cgtracker id cache
 // - the container id cache
-func removeCgroupFromModel(cgroupid uint64, cgTrackerIdCache *lru.Cache[uint64, uint64], containerIdCache *lru.Cache[uint64, string]) {
+func removeCgroupFromModel(cgroupid uint64, cgTrackerIdCache *lru.Cache[uint64, uint64], cgroupIdToContainerInfoCache *lru.Cache[uint64, *types.ContainerInfo]) {
 	if cgroupid == 0 {
 		return
 	}
@@ -457,17 +460,17 @@ func removeCgroupFromModel(cgroupid uint64, cgTrackerIdCache *lru.Cache[uint64, 
 		}
 	}
 
-	if containerIdCache != nil {
-		containerIdCache.Remove(cgroupid)
+	if cgroupIdToContainerInfoCache != nil {
+		cgroupIdToContainerInfoCache.Remove(cgroupid)
 	} else {
-		logger.GetLogger().Warn("containerIdCache is nil during cgroup cleanup", "cgroupid", cgroupid)
+		logger.GetLogger().Warn("cgroupIdToContainerInfoCache is nil during cgroup cleanup", "cgroupid", cgroupid)
 	}
 }
 
 func getProcessModel(namespaces []string,
 	debug bool,
 	cgTrackerIdCache *lru.Cache[uint64, uint64],
-	containerIdCache *lru.Cache[uint64, string],
+	cgroupIdToContainerInfoCache *lru.Cache[uint64, *types.ContainerInfo],
 	binaryArgsCache *lru.Cache[uint64, cachedBinaryInfo],
 	timeNow func() time.Time) ([]*types.ProcessModel, error) {
 	start := timeNow()
@@ -1014,25 +1017,7 @@ func getProcessModel(namespaces []string,
 
 		if cgroupid != 0 {
 			logger.GetLogger().Debug("Looking up container info", "binary", selfBin, "args", selfArgs, "cgroupid", cgroupid)
-			cid, found := getContainerID(cgroupid, containerIdCache)
-			if found && cid != "" {
-				containerInfo = &types.ContainerInfo{}
-
-				logger.GetLogger().Debug("Found container id for cgroupid", "cgroupid", cgroupid, "cid", cid)
-				containerInfo.Id = cid
-
-				podInfo := process.GetPodInfo(containerInfo.Id, "", "", 0)
-				if podInfo == nil {
-					logger.GetLogger().Error("No pod info found", "containerInfo.Id", containerInfo.Id)
-					appmodelmetrics.RecordLookupError(appmodelmetrics.LookupPod)
-				} else {
-					containerInfo.Name = podInfo.Container.Name
-					containerInfo.Image = podInfo.Container.Image.Name
-				}
-			} else {
-				logger.GetLogger().Debug("No container info found for process", "cgroupid", cgroupid)
-				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupContainer)
-			}
+			containerInfo = getContainerInfo(cgroupid, cgroupIdToContainerInfoCache)
 		}
 
 		procEntries = append(procEntries, processEntry{
@@ -1117,7 +1102,7 @@ func getProcessModel(namespaces []string,
 			}
 		}
 		if allStale {
-			removeCgroupFromModel(cgroupid, cgTrackerIdCache, containerIdCache)
+			removeCgroupFromModel(cgroupid, cgTrackerIdCache, cgroupIdToContainerInfoCache)
 		}
 	}
 
@@ -1147,7 +1132,7 @@ func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]
 	if !option.Config.EnableApplicationModel {
 		return nil, ErrApplicationModelNotEnabled
 	}
-	return getProcessModel(ns, debug, s.cgTrackerIdCache, s.containerIdCache, s.binaryArgsCache, s.TimeNow)
+	return getProcessModel(ns, debug, s.cgTrackerIdCache, s.cgroupIdToContainerInfoCache, s.binaryArgsCache, s.TimeNow)
 }
 
 func (s *Server) GetApplicationModel(ctx context.Context, nsFilter map[string]bool) (*appModelV1.ApplicationModelEvent, error) {
@@ -1314,7 +1299,7 @@ func NewServer(enableBpfId bool) (*Server, error) {
 		return nil, err
 	}
 
-	containerIdCacheInstance, err := lru.New[uint64, string](option.Config.ProcessTreeCacheSize)
+	cgroupIdToContainerInfoCacheInstance, err := lru.New[uint64, *types.ContainerInfo](option.Config.ProcessTreeCacheSize)
 	if err != nil {
 		logger.GetLogger().Error("Failed to create LRU cache for container IDs", logfields.Error, err)
 		return nil, err
@@ -1333,11 +1318,11 @@ func NewServer(enableBpfId bool) (*Server, error) {
 	}
 
 	return &Server{
-		cgTrackerIdCache:         cgTrackerIdCacheInstance,
-		containerIdCache:         containerIdCacheInstance,
-		binaryArgsCache:          binaryArgsCacheInstance,
-		TimeNow:                  time.Now,
-		metadataService:          mService,
-		nodeLabelsUpdateInterval: defaultNodeLabelsInterval,
+		cgTrackerIdCache:             cgTrackerIdCacheInstance,
+		cgroupIdToContainerInfoCache: cgroupIdToContainerInfoCacheInstance,
+		binaryArgsCache:              binaryArgsCacheInstance,
+		TimeNow:                      time.Now,
+		metadataService:              mService,
+		nodeLabelsUpdateInterval:     defaultNodeLabelsInterval,
 	}, nil
 }

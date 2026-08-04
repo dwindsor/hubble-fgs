@@ -12,12 +12,14 @@
 
 package server
 
+import "github.com/isovalent/hubble-fgs/pkg/model/types"
+
 func initContainerIDMap() error {
 	return nil
 }
 
-func getContainerID(cgroupid uint64, dummy any) (string, bool) {
-	return "", false
+func getContainerInfo(cgroupid uint64, dummy any) *types.ContainerInfo {
+	return nil
 }
 
 // newKtimeConverter returns a zero-value converter on Windows. Windows does

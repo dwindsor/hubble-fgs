@@ -16,8 +16,13 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/cgidmap"
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/process"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/sys/unix"
+
+	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 // newKtimeConverter reads CLOCK_BOOTTIME once and records the offset.
@@ -47,14 +52,35 @@ func initContainerIDMap() error {
 	return nil
 }
 
-func getContainerID(cgroupid uint64, deletedContainerIdCache *lru.Cache[uint64, string]) (string, bool) {
-	cid, ok := deletedContainerIdCache.Get(cgroupid)
-	if !ok {
-		cid, ok = cgmap.Get(cgroupid)
-		if ok {
-			deletedContainerIdCache.Add(cgroupid, cid)
-		}
+func getContainerInfo(cgroupid uint64, cgroupIdToContainerInfoCache *lru.Cache[uint64, *types.ContainerInfo]) *types.ContainerInfo {
+	containerInfo, ok := cgroupIdToContainerInfoCache.Get(cgroupid)
+	if ok {
+		return containerInfo
 	}
 
-	return cid, ok
+	cid, ok := cgmap.Get(cgroupid)
+	if !ok || cid == "" {
+		logger.GetLogger().Debug("No container info found for process", "cgroupid", cgroupid)
+		appmodelmetrics.RecordLookupError(appmodelmetrics.LookupContainer)
+		return nil
+	}
+
+	containerInfo = &types.ContainerInfo{}
+	logger.GetLogger().Debug("Found container id for cgroupid", "cgroupid", cgroupid, "cid", cid)
+	containerInfo.Id = cid
+
+	podInfo := process.GetPodInfo(containerInfo.Id, "", "", 0)
+	if podInfo == nil {
+		logger.GetLogger().Error("No pod info found", "containerInfo.Id", containerInfo.Id)
+		appmodelmetrics.RecordLookupError(appmodelmetrics.LookupPod)
+		return nil
+	}
+
+	containerInfo.Name = podInfo.Container.Name
+	containerInfo.Image = podInfo.Container.Image.Name
+
+	cgroupIdToContainerInfoCache.Add(cgroupid, containerInfo)
+
+	return containerInfo
+
 }
