@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.34
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.4
 	github.com/breml/jsondiffprinter v0.0.12
-	github.com/cilium/cilium v1.19.6
+	github.com/cilium/cilium v1.20.0
 	github.com/cilium/ebpf v0.22.0
 	github.com/cilium/lumberjack/v2 v2.4.2
 	github.com/cilium/tetragon v1.8.0-pre.0.0.20260731092648-b8f7fe7c5d12
@@ -34,11 +34,11 @@ require (
 	github.com/isovalent/ipa/k8s v1.19.2
 	github.com/mennanov/fieldmask-utils v1.1.6
 	github.com/miekg/dns v1.1.72
-	github.com/moby/go-archive v0.2.1
+	github.com/moby/go-archive v0.3.2
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.1
 	github.com/operator-framework/api v0.45.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.93.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.2
 	github.com/rivo/tview v0.42.0
@@ -48,7 +48,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 	github.com/stretchr/testify v1.11.1
-	github.com/vishvananda/netlink v1.3.2-0.20260629151558-4e35dc940f49
+	github.com/vishvananda/netlink v1.3.2-0.20260803231012-156a440d85e5
 	github.com/vishvananda/netns v0.0.5
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/xlab/treeprint v1.2.0
@@ -57,7 +57,7 @@ require (
 	golang.org/x/net v0.57.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/time v0.15.0
-	google.golang.org/api v0.290.0
+	google.golang.org/api v0.291.0
 	google.golang.org/grpc v1.83.0
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gopkg.in/yaml.v3 v3.0.1
@@ -77,7 +77,7 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 // indirect
 	cel.dev/expr v0.25.2 // indirect
-	cloud.google.com/go/auth v0.20.0 // indirect
+	cloud.google.com/go/auth v0.22.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	github.com/Microsoft/hcsshim v0.15.0-rc.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
@@ -189,7 +189,7 @@ require (
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260720211330-0afa2a65878a // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260720211330-0afa2a65878a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260724162435-b2f20204f0df // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.36.3 // indirect
@@ -226,7 +226,7 @@ require (
 	github.com/gobuffalo/flect v1.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.3.18 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.3.19 // indirect
 	github.com/googleapis/gax-go/v2 v2.23.0 // indirect
 	github.com/iceber/iouring-go v0.0.0-20230403020409-002cfd2e2a90
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
