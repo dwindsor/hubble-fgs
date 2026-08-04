@@ -13,7 +13,7 @@
 
 #include "vmlinux.h"
 #include "bpf_task.h"
-#include "config.h"
+#include "l3_config.h"
 
 #include "dns.h"
 #include "process/process_endpoint.h"

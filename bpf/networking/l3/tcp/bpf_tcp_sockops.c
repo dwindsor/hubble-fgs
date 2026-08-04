@@ -16,7 +16,7 @@
 #include "bpf_ktime.h"
 #include "parsers/http/http_parser.h"
 #include "parsers/bottle.h"
-#include "config.h"
+#include "l3_config.h"
 
 int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *socket)
 {

@@ -12,7 +12,7 @@
 #define __BPF_UDP_INFO_H_
 
 #include "networkmsg.h"
-#include "config.h"
+#include "l3_config.h"
 #include "bpf_ktime.h"
 #include "bpf_cookie.h"
 #include "bpf_event_map.h"

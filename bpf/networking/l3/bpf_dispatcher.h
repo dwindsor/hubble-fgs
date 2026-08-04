@@ -3,7 +3,7 @@
 #include "./icmp/bpf_icmp.h"
 #include "./udp/bpf_udp_inet.h"
 #include "./tcp/bpf_tcp_recv.h"
-#include "config.h"
+#include "l3_config.h"
 
 volatile __CONST bool CGROUP_PROBE_READ = false;
 

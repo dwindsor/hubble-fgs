@@ -16,7 +16,7 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "bpf_udp_event.h"
-#include "config.h"
+#include "l3_config.h"
 #include "bpf_process_network_watermarks.h"
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"

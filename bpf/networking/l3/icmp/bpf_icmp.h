@@ -18,11 +18,10 @@
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"
 #include "lib/address_family.h"
-#include "lib/config.h"
+#include "l3_config.h"
 #include "bpf_icmp_cookie.h"
 #include "bpf_tracing.h"
 #include "bpf_event_map.h"
-#include "config.h"
 
 #define ICMP_HDR_LEN	  4
 #define ICMP_HDR_DATA_OFF 4

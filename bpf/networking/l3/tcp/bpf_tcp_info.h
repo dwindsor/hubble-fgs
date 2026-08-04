@@ -20,7 +20,7 @@
 #include "../udp/bpf_udp_info.h"
 #include "bpf_tracing.h"
 #include "process/process_endpoint.h"
-#include "config.h"
+#include "l3_config.h"
 
 struct tcpsocketmap_value {
 	struct msg_execve_key key;

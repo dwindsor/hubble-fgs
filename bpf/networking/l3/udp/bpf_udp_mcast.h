@@ -19,7 +19,7 @@
 #include "lib/iso_msg_types.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
-#include "config.h"
+#include "l3_config.h"
 #include "bpf_udp_lseg_mtp.h"
 #include "bpf_udp_rtp.h"
 #include "jhash.h"

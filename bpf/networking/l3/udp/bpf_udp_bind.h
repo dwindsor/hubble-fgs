@@ -18,7 +18,7 @@
 #include "bpf_task.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
-#include "config.h"
+#include "l3_config.h"
 #include "bpf_event_map.h"
 
 static inline __attribute__((always_inline)) int

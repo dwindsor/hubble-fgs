@@ -23,7 +23,7 @@
 #include "lib/address_family.h"
 #include "bpf_tcp_listen.h"
 #include "bpf_event_map.h"
-#include "config.h"
+#include "l3_config.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);

@@ -17,7 +17,7 @@
 #include "dns.h"
 #include "dns_pstree.h"
 #include "lib/address_family.h"
-#include "lib/config.h"
+#include "l3_config.h"
 #include "lib/strncmp.h"
 
 volatile __CONST __u8 DNS_PARSER_ENABLED;

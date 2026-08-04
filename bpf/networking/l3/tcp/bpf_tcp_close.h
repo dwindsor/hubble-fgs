@@ -23,7 +23,7 @@
 #include "parsers/http/http.h"
 #include "parsers/bottle.h"
 #include "bpf_tcp_state.h"
-#include "config.h"
+#include "l3_config.h"
 
 static inline __attribute__((always_inline)) int
 __event_tcp_close(void *ctx, struct sock *skp, int state)

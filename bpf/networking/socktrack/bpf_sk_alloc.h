@@ -17,7 +17,7 @@
 #include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
 #include "../l3/tcp/bpf_tcp_close.h"
-#include "config.h"
+#include "l3_config.h"
 #include "bpf_event_map.h"
 
 static inline __attribute__((always_inline)) void

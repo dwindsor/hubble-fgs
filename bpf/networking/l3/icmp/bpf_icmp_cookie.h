@@ -13,7 +13,7 @@
 
 #include "vmlinux.h"
 #include "../lib/iso_msg_types.h"
-#include "../lib/config.h"
+#include "l3_config.h"
 #include "../lib/address_family.h"
 #include "bpf_tracing.h"
 

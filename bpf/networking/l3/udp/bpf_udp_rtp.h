@@ -18,7 +18,7 @@
 #include "bpf_network_helpers.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
-#include "config.h"
+#include "l3_config.h"
 #include "bpf_udp_mcast.h"
 #include "jhash.h"
 
