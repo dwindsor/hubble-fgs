@@ -151,16 +151,16 @@ Use the following command to build a container image without BTF metadata:
 make image
 ```
 
-If BTF link is omitted hubble-fgs will attempt to search for it in the list of
+If BTF link is omitted the agent will attempt to search for it in the list of
 known kernels using the running kernels `uname -r`. If it is still not found an
 error will be reported.
 ```
 docker run --rm --name tetragon --env TETRAGON_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -ti isovalent/tetragon
 ```
 
-To run Docker image with custom BTF link in `/var/lib/hubble-fgs/btf` use:
+To run Docker image with custom BTF link in `/var/lib/tetragon/btf` use:
 ```
-docker run --rm --name tetragon --env TETRAGON_BTF=/var/lib/hubble-fgs/btf --env TETRAGON_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti isovalent/tetragon
+docker run --rm --name tetragon --env TETRAGON_BTF=/var/lib/tetragon/btf --env TETRAGON_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/tetragon/btf -ti isovalent/tetragon
 ```
 
 ### Running on GKE
@@ -356,7 +356,7 @@ a goal. The following basic steps are needed to add a new event feature.
 
    Create a pretty printer in reader pkg.
 
-4. Teach hubble-fgs_main.go about the new bpf program.
+4. Teach cmd/tetragon/main.go about the new bpf program.
 
 5. TBD ship message over Unix socket currently only single type accepted will fix
    soon.
@@ -366,7 +366,7 @@ Work that would be nice to have, but is not critical yet. First we should abstra
 pretty printers and message generators to an interface and include in the observer
 object. This way folks creating events can completely avoid editing core code.
 
-At the moment hubble-fgs_main.go needs a link to the program name. Reasonable defaults
+At the moment cmd/tetragon/main.go needs a link to the program name. Reasonable defaults
 should be added, so we can skip this step. It is a bit useful to replace a program
 on a system with a new test program, but it's also a bit annoying on the code side.
 
