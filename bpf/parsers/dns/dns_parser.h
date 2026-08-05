@@ -20,8 +20,6 @@
 #include "l3_config.h"
 #include "lib/strncmp.h"
 
-volatile __CONST __u8 DNS_PARSER_ENABLED;
-
 // parse_dns_name_label parses a label in a uncompressed DNS name and write it
 // into the name heap map. If skip is true, nothing is written in the domain
 // name buffer. It returns the offset needed to advance into the data to skip

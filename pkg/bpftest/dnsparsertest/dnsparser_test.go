@@ -66,20 +66,23 @@ func TestDNSParserPerPodFeature(t *testing.T) {
 	require.NoError(t, err)
 	outputString := string(output)
 
-	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":1", dnsparser.ParserEnabledName))
 	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":%d", dnsparser.KubepodsCgidConstName, arbitraryCgroupID))
 
-	// DNS_PARSER_PER_POD_ENABLED lives in hubble-fgs's own fgs_rodata_config
-	// map rather than a per-program rewritten constant, so it doesn't show
-	// up in the generic ".rodata" dump above - check its pinned map directly.
+	// DNS_PARSER_PER_POD_ENABLED and DNS_PARSER_ENABLED live in hubble-fgs's
+	// own fgs_rodata_config map rather than as per-program rewritten
+	// constants, so they don't show up in the generic ".rodata" dump above -
+	// check the pinned map directly.
 	fgsRodataMap, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), "fgs_rodata_config"), nil)
 	require.NoError(t, err)
 	defer fgsRodataMap.Close()
 
 	contents, err := fgsRodataMap.LookupBytes(uint32(0))
 	require.NoError(t, err)
-	require.NotEmpty(t, contents)
+	require.Len(t, contents, 8)
 	assert.Equal(t, byte(1), contents[0], "DNS_PARSER_PER_POD_ENABLED flag")
+	if utils.SupportProcessTree() {
+		assert.Equal(t, byte(1), contents[3], "DNS_PARSER_ENABLED flag")
+	}
 }
 
 func startMockDNSServer(t *testing.T, listenPort uint16, mockDomain string, mockIP string) func() {

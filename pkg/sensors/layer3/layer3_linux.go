@@ -326,7 +326,6 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 					maps = append(maps, dispatcherProcessTreeTimerMaps...)
 				}
 				for _, prog := range ourDispatcherProcessTreeProgs {
-					prog.RewriteConstants[dnsparser.ParserEnabledName] = enterpriseOption.Config.EnableBPFDNSParser
 					if enterpriseOption.Config.EnableBPFDNSPerPod {
 						err := dnsparser.RewritePerPodConstants(prog.RewriteConstants)
 						if err != nil {

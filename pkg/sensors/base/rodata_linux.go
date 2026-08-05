@@ -38,7 +38,8 @@ type fgsRodataConfig struct {
 	DNSParserPerPodEnabled     uint8
 	MulticastInspectionEnabled uint8
 	CgroupProbeReadEnabled     uint8
-	Pad                        [5]uint8
+	DNSParserEnabled           uint8
+	Pad                        [4]uint8
 }
 
 func b2u8(b bool) uint8 {
@@ -58,9 +59,17 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 
 	cgroupProbeReadEnabled := b2u8(utils.SupportCGroupSKBProbeRead())
 
+	// layer3 only ever rewrote this constant on its process-tree
+	// dispatcher variant - the plain dispatcher (no process tree
+	// support) always kept DNS parsing off regardless of config.
+	// Preserve that gate here since this is now one shared value.
+	dnsParserEnabled := b2u8(utils.SupportProcessTree() &&
+		enterpriseOption.Config.EnableBPFDNSParser)
+
 	return fgsRodataConfig{
 		DNSParserPerPodEnabled:     dnsParserPerPodEnabled,
 		MulticastInspectionEnabled: multicastInspectionEnabled,
 		CgroupProbeReadEnabled:     cgroupProbeReadEnabled,
+		DNSParserEnabled:           dnsParserEnabled,
 	}, nil
 }
