@@ -30,14 +30,10 @@ import (
 )
 
 const (
-	IGMPv3MaxPMCsName    = "TG_IGMPV3_MAX_PMCS"
 	IGMPv3MaxSourcesName = "TG_IGMPV3_MAX_SOURCES"
 
-	kernelVersionGroupRecords     = "6.6"
-	kernelVersionMoreGroupRecords = "6.12"
-	maxGroupRecords6_6            = uint16(64)
-	maxGroupRecords6_12           = uint16(128)
-	maxSources                    = uint16(256)
+	kernelVersionGroupRecords = "6.6"
+	maxSources                = uint16(256)
 )
 
 var (
@@ -141,24 +137,19 @@ func EnableIgmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	// Due to changes in the verifier at or before v6.6 (but after v6.1), our programs can loop over
 	// group records; prior to the change these loops exceed complexity constraints. We therefore do
 	// not support collecting group records (introduced in IGMPv3) on kernels <v6.6.
-	// In addition, further changes after v6.6 but before v6.12 allow more loop iterations.
+	// In addition, further changes after v6.6 but before v6.12 allow more loop iterations - see
+	// fgsRodataCurrent() in pkg/sensors/base/rodata_linux.go for TG_IGMPV3_MAX_PMCS's own version gate.
 	// If group records are required for kernels <v6.6 or more group records are required than
 	// complexity allows for, then the IGMP programs could be reworked to observe IGMP packets instead
 	// of the functions that create the packets. There will be a perf hit as a result of hooking a
 	// busy packet hook, such as ip_local_out(), however.
-	IGMPv3MaxPMCs := maxGroupRecords6_6
 	IGMPv3MaxSources := maxSources
 
-	if kernels.MinKernelVersion(kernelVersionMoreGroupRecords) {
-		IGMPv3MaxPMCs = maxGroupRecords6_12
-	}
-
 	for _, prog := range progsCollectStats {
-		prog.RewriteConstants[IGMPv3MaxPMCsName] = IGMPv3MaxPMCs
 		prog.RewriteConstants[IGMPv3MaxSourcesName] = IGMPv3MaxSources
 	}
 
-	logger.GetLogger().Info("Enable IGMP", "supportGroupRecords", supportGroupRecords, "IGMPv3MaxPMCs", IGMPv3MaxPMCs, "IGMPv3MaxSources", IGMPv3MaxSources)
+	logger.GetLogger().Info("Enable IGMP", "supportGroupRecords", supportGroupRecords, "IGMPv3MaxSources", IGMPv3MaxSources)
 	return nil, progsCollectStats, maps
 }
 

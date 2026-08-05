@@ -40,7 +40,7 @@ type fgsRodataConfig struct {
 	CgroupProbeReadEnabled     uint8
 	DNSParserEnabled           uint8
 	IGMPv3MaxEventFrags        uint16
-	Pad                        [2]uint8
+	IGMPv3MaxPMCs              uint16
 }
 
 func b2u8(b bool) uint8 {
@@ -71,11 +71,24 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 	// TG_IGMPV3_MAX_PMCS which scales with kernel version.
 	igmpV3MaxEventFrags := uint16(16)
 
+	igmpV3MaxPMCs := igmpMaxPMCs()
+
 	return fgsRodataConfig{
 		DNSParserPerPodEnabled:     dnsParserPerPodEnabled,
 		MulticastInspectionEnabled: multicastInspectionEnabled,
 		CgroupProbeReadEnabled:     cgroupProbeReadEnabled,
 		DNSParserEnabled:           dnsParserEnabled,
 		IGMPv3MaxEventFrags:        igmpV3MaxEventFrags,
+		IGMPv3MaxPMCs:              igmpV3MaxPMCs,
 	}, nil
+}
+
+func igmpMaxPMCs() uint16 {
+	// Further verifier changes after 6.6 but before 6.12 allow more loop
+	// iterations - see igmp.go's EnableIgmp() for the matching >=6.6 gate
+	// on group-record support itself.
+	if kernels.MinKernelVersion("6.12") {
+		return 128
+	}
+	return 64
 }

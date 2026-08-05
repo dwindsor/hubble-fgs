@@ -26,7 +26,6 @@
 #define IGMPV3_REPORT_ADDRESS 0x160000E0 // 224.0.0.22 as LSB u32
 #define IGMP_ALL_HOSTS	      0x010000E0 // 224.0.0.1 as LSB u32
 
-extern volatile __CONST u16 TG_IGMPV3_MAX_PMCS;
 extern volatile __CONST u16 TG_IGMPV3_MAX_SOURCES;
 
 static inline __attribute__((always_inline)) int
@@ -247,7 +246,7 @@ add_pmcs(u64 *pmc_ptr)
 	// We need to replicate for_each_pmc_rcu(in_dev, pmc) but the verifier will struggle
 	// to accept that the loop will end. Instead, we'll do a for loop over a set range
 	// and exit the loop when there are no more IP lists, or our event is full.
-	for (u16 i = 0; i < TG_IGMPV3_MAX_PMCS; i++) {
+	for (u16 i = 0; i < FGS_CONFIG(TG_IGMPV3_MAX_PMCS); i++) {
 		if (!*pmc_ptr) {
 			event->num_group_records = num_gr;
 			event->common.size = offset & (MAX_EVENT_SIZE / 2 - 1);
@@ -540,7 +539,7 @@ ip_mc_rejoin_groups(void *ctx, struct in_device *in_dev)
 	// to accept that the loop will end. Instead, we'll do a for loop over a set range
 	// and exit the loop when there are no more IP lists.
 	probe_read_kernel(&im, sizeof(im), _(&in_dev->mc_list));
-	for (int i = 0; i < TG_IGMPV3_MAX_PMCS; i++) {
+	for (int i = 0; i < FGS_CONFIG(TG_IGMPV3_MAX_PMCS); i++) {
 		if (!im)
 			break;
 

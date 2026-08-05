@@ -13,7 +13,6 @@
 #include "vmlinux.h"
 #include "bpf_igmp.h"
 
-volatile __CONST u16 TG_IGMPV3_MAX_PMCS = 128;
 volatile __CONST u16 TG_IGMPV3_MAX_SOURCES = 256;
 
 char _license[] __attribute__((section("license"), used)) = "GPL";

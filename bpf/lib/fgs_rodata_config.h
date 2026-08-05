@@ -33,7 +33,7 @@ struct fgs_rodata_config {
 	__u8 CGROUP_PROBE_READ;
 	__u8 DNS_PARSER_ENABLED;
 	__u16 TG_IGMPV3_MAX_EVENT_FRAGS;
-	__u8 pad[2];
+	__u16 TG_IGMPV3_MAX_PMCS;
 };
 
 volatile const struct fgs_rodata_config fgs_rodata_config
