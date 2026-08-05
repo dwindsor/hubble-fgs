@@ -252,7 +252,30 @@ Note:
 - Backports are manual cherry-picks with `[ upstream commit <sha> ]` in the message. See
   [`docs/backporting.md`](backporting.md).
 
-## 7. Gotchas
+Usually, you will receive feedback from reviewers. Once you have addressed the feedback, re-request
+a review from the reviewers that provided feedback by clicking on the button next to their name in
+the list of reviewers. This ensures that the reviewers are notified again that your PR is ready for
+subsequent review.
+
+## 7. Reviewing
+
+As a member of the tetragon team, you are responsible for reviewing PRs in `isovalent/` repos.
+
+During onboarding, you can be excluded from reviews:
+https://github.com/isovalent/team-management/blob/bcb9efce61a08c96bebcfa72b0e27d4a4a439acd/isovalent-team-assignments.yaml#L7229.
+If you are not already excluded, create a PR to do so. By the time you are done with onboarding,
+create a PR to remove the exclusion so that you can participate in reviews.
+
+One way to monitor for your requested reviews is via: https://github.com/pulls/search?q=is%3Apr+is%3Aopen+draft%3Afalse+user-review-requested%3A%40me+sort%3Aupdated-asc+%28org%3Acilium+OR+org%3Aisovalent%29.
+
+You can replace `user-review-requested` with `review-requested` to see the requested reviews for your team: https://github.com/pulls/search?q=is%3Apr+is%3Aopen+draft%3Afalse+review-requested%3A%40me+sort%3Aupdated-asc+%28org%3Acilium+OR+org%3Aisovalent%29
+
+See
+https://docs.cilium.io/en/latest/contributing/development/reviewers_committers/review_process/#id1
+for some general advice on reviewing.
+
+
+## 8. Gotchas
 
 **OSS submodule**
 - Do not commit inside `modules/tetragon-oss/`. Fix belongs upstream in `cilium/tetragon`,
@@ -275,7 +298,7 @@ Note:
 - Stale pins in `/sys/fs/bpf/tetragon` can survive across runs and across upgrades. If you see
   impossible map contents, unload cleanly or clear the pins.
 
-## 8. Kubernetes-side dev loop
+## 9. Kubernetes-side dev loop
 
 ```bash
 make kind                      # kind cluster with the EE kind-config (needed for FIM)
@@ -295,7 +318,7 @@ make kind-down
   raw `go test` command if you want to hand-tune it. `tests/e2e/tests/skeleton` is the
   documented template for a new test.
 
-## 9. Relevant docs to check out
+## 10. Relevant docs to check out
 
 - [`README.md`](../README.md): build/run, GKE/EKS/minikube, troubleshooting.
 - [`AGENTS.md`](../AGENTS.md): concise architecture + conventions summary.
