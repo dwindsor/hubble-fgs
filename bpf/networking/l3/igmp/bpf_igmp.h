@@ -26,8 +26,6 @@
 #define IGMPV3_REPORT_ADDRESS 0x160000E0 // 224.0.0.22 as LSB u32
 #define IGMP_ALL_HOSTS	      0x010000E0 // 224.0.0.1 as LSB u32
 
-extern volatile __CONST u16 TG_IGMPV3_MAX_SOURCES;
-
 static inline __attribute__((always_inline)) int
 ip_mc_join_group(void *ctx, u64 cookie, struct ip_mreqn *imr, unsigned int mode)
 {
@@ -185,7 +183,7 @@ add_grec(u16 offset, u64 pmc_ptr, int type)
 	// We need to walk the source list. As per below, we will use a simple for
 	// loop over a range and break when there are no more source addresses.
 	probe_read_kernel(&psf, sizeof(psf), _(&pmc->sources));
-	for (u16 i = 0; i < TG_IGMPV3_MAX_SOURCES; i++) {
+	for (u16 i = 0; i < FGS_CONFIG(TG_IGMPV3_MAX_SOURCES); i++) {
 		if (!psf)
 			break;
 

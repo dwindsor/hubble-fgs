@@ -41,6 +41,7 @@ type fgsRodataConfig struct {
 	DNSParserEnabled           uint8
 	IGMPv3MaxEventFrags        uint16
 	IGMPv3MaxPMCs              uint16
+	IGMPv3MaxSources           uint16
 }
 
 func b2u8(b bool) uint8 {
@@ -73,6 +74,9 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 
 	igmpV3MaxPMCs := igmpMaxPMCs()
 
+	// IGMP source-list loop bound - never varies today.
+	igmpV3MaxSources := uint16(256)
+
 	return fgsRodataConfig{
 		DNSParserPerPodEnabled:     dnsParserPerPodEnabled,
 		MulticastInspectionEnabled: multicastInspectionEnabled,
@@ -80,6 +84,7 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 		DNSParserEnabled:           dnsParserEnabled,
 		IGMPv3MaxEventFrags:        igmpV3MaxEventFrags,
 		IGMPv3MaxPMCs:              igmpV3MaxPMCs,
+		IGMPv3MaxSources:           igmpV3MaxSources,
 	}, nil
 }
 

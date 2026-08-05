@@ -29,12 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
-const (
-	IGMPv3MaxSourcesName = "TG_IGMPV3_MAX_SOURCES"
-
-	kernelVersionGroupRecords = "6.6"
-	maxSources                = uint16(256)
-)
+const kernelVersionGroupRecords = "6.6"
 
 var (
 	// Ensure every program has a type defined by the layer3 sensor to force loading
@@ -143,13 +138,8 @@ func EnableIgmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	// complexity allows for, then the IGMP programs could be reworked to observe IGMP packets instead
 	// of the functions that create the packets. There will be a perf hit as a result of hooking a
 	// busy packet hook, such as ip_local_out(), however.
-	IGMPv3MaxSources := maxSources
 
-	for _, prog := range progsCollectStats {
-		prog.RewriteConstants[IGMPv3MaxSourcesName] = IGMPv3MaxSources
-	}
-
-	logger.GetLogger().Info("Enable IGMP", "supportGroupRecords", supportGroupRecords, "IGMPv3MaxSources", IGMPv3MaxSources)
+	logger.GetLogger().Info("Enable IGMP", "supportGroupRecords", supportGroupRecords)
 	return nil, progsCollectStats, maps
 }
 

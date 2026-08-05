@@ -13,8 +13,6 @@
 #include "vmlinux.h"
 #include "bpf_igmp.h"
 
-volatile __CONST u16 TG_IGMPV3_MAX_SOURCES = 256;
-
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
