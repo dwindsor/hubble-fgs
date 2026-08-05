@@ -13,7 +13,6 @@
 #include "vmlinux.h"
 #include "bpf_igmp.h"
 
-volatile __CONST u16 TG_IGMPV3_MAX_EVENT_FRAGS = 16;
 volatile __CONST u16 TG_IGMPV3_MAX_PMCS = 128;
 volatile __CONST u16 TG_IGMPV3_MAX_SOURCES = 256;
 

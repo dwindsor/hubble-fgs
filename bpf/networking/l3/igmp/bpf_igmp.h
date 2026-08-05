@@ -13,6 +13,7 @@
 #include "bpf_event.h"
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"
+#include "fgs_rodata_config.h"
 
 // Copied from /include/uapi/linux/igmp.h
 #define IGMP_HOST_MEMBERSHIP_REPORT   0x12
@@ -25,7 +26,6 @@
 #define IGMPV3_REPORT_ADDRESS 0x160000E0 // 224.0.0.22 as LSB u32
 #define IGMP_ALL_HOSTS	      0x010000E0 // 224.0.0.1 as LSB u32
 
-extern volatile __CONST u16 TG_IGMPV3_MAX_EVENT_FRAGS;
 extern volatile __CONST u16 TG_IGMPV3_MAX_PMCS;
 extern volatile __CONST u16 TG_IGMPV3_MAX_SOURCES;
 
@@ -376,7 +376,7 @@ igmpv3_send_report_without_pmc(void *ctx, struct in_device *in_dev)
 	probe_read_kernel(&pmc_ptr, sizeof(pmc_ptr), _(&in_dev->mc_list));
 	// We need to add pmcs until the event is full, send it, and then repeat until
 	// there are no more pmcs to send.
-	for (u8 i = 0; i < TG_IGMPV3_MAX_EVENT_FRAGS; i++) {
+	for (u8 i = 0; i < FGS_CONFIG(TG_IGMPV3_MAX_EVENT_FRAGS); i++) {
 		size = add_pmcs(&pmc_ptr);
 		if (size <= 0)
 			return 0;

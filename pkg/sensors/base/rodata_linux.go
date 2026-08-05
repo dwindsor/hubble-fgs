@@ -39,7 +39,8 @@ type fgsRodataConfig struct {
 	MulticastInspectionEnabled uint8
 	CgroupProbeReadEnabled     uint8
 	DNSParserEnabled           uint8
-	Pad                        [4]uint8
+	IGMPv3MaxEventFrags        uint16
+	Pad                        [2]uint8
 }
 
 func b2u8(b bool) uint8 {
@@ -66,10 +67,15 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 	dnsParserEnabled := b2u8(utils.SupportProcessTree() &&
 		enterpriseOption.Config.EnableBPFDNSParser)
 
+	// IGMP group-record loop bound - never varies today, unlike
+	// TG_IGMPV3_MAX_PMCS which scales with kernel version.
+	igmpV3MaxEventFrags := uint16(16)
+
 	return fgsRodataConfig{
 		DNSParserPerPodEnabled:     dnsParserPerPodEnabled,
 		MulticastInspectionEnabled: multicastInspectionEnabled,
 		CgroupProbeReadEnabled:     cgroupProbeReadEnabled,
 		DNSParserEnabled:           dnsParserEnabled,
+		IGMPv3MaxEventFrags:        igmpV3MaxEventFrags,
 	}, nil
 }
