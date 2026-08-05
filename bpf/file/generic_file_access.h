@@ -16,6 +16,8 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	struct path path;
 	struct msg_file_ops *msg;
 	struct inode_val *file_val = 0;
+	__u64 ino;
+	__u32 dev;
 	__u32 operation = 0, msg_id = 0;
 	struct io_uring_op_key key = {
 		.file_ptr = (__u64)file,
@@ -28,6 +30,29 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 
 	if (!file)
 		return -FILE_ERR_FILE_ARG;
+
+	probe_read_kernel(&inode, sizeof(inode), _(&file->f_inode));
+	if (!inode)
+		return -FILE_ERR_INODE_FROM_FILE;
+
+	probe_read_kernel(&path, sizeof(path), _(&file->f_path));
+	if (!path.dentry)
+		return -FILE_ERR_DENTRY_FROM_FILE;
+
+	dentry = path.dentry;
+
+	// find this file inside the file inode map
+	// we don't care if we cannot find this in the map
+	// or the action is FILTER_IGNORE
+	get_inode_map_key(inode, dentry, &ino, &dev);
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
+				     ino, dev);
+	if (!file_val)
+		return 0;
+	if (file_val->mode != HASH_MAP_FILE_MODE_FILE) // we care only for files here
+		return 0;
+	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
+		return 0;
 
 	msg = get_msg_init();
 	if (!msg)
@@ -43,35 +68,14 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	}
 
 	// get current inode and fs info
-	probe_read_kernel(&inode, sizeof(inode), _(&file->f_inode));
-	if (!inode)
-		return -FILE_ERR_INODE_FROM_FILE;
-
-	// get parent inode and fs info
-	probe_read_kernel(&path, sizeof(path), _(&file->f_path));
-	if (!path.dentry)
-		return -FILE_ERR_DENTRY_FROM_FILE;
-
-	dentry = path.dentry;
 	get_ino_fs(msg, inode, dentry);
 
+	// get parent inode and fs info
 	probe_read_kernel(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return -FILE_ERR_PARENT_FROM_DENTRY;
 
 	get_parent_ino_fs(msg, parent_dentry);
-
-	// find this file inside the file inode map
-	// we don't care if we cannot find this in the map
-	// or the action is FILTER_IGNORE
-	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc,
-				     msg->ino, msg->fs.dev);
-	if (!file_val)
-		return 0;
-	if (file_val->mode != HASH_MAP_FILE_MODE_FILE) // we care only for files here
-		return 0;
-	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
-		return 0;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

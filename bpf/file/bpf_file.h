@@ -1645,6 +1645,22 @@ static inline __attribute__((always_inline)) void fix_dev_id_ovl(struct inode *i
 	ovl_getattr(inode, dentry, ino, dev);
 }
 
+// Read only the fields needed for an inode map lookup. This lets high-volume
+// file access hooks reject unmonitored inodes before collecting full fs info.
+static inline __attribute__((always_inline)) void
+get_inode_map_key(struct inode *inode, struct dentry *dentry, __u64 *ino, __u32 *dev)
+{
+	struct super_block *sb = BPF_CORE_READ(inode, i_sb);
+
+	*ino = BPF_CORE_READ(dentry, d_inode, i_ino);
+	*dev = BPF_CORE_READ(sb, s_dev);
+
+#ifdef __LARGE_BPF_PROG
+	if (bpf_core_type_exists(struct ovl_entry))
+		fix_dev_id_ovl(inode, dentry, ino, dev);
+#endif
+}
+
 static inline __attribute__((always_inline)) void
 get_fs_info(struct msg_fs_info *msg, __u64 *ino, struct inode *inode, struct dentry *dentry)
 {
