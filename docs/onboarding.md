@@ -228,7 +228,17 @@ output. Also worth reading: [`contrib/kvm/README.md`](../contrib/kvm/README.md).
 - On failure the workflow scp's `/tmp/*.json`, `/tmp/*bugtool*`, `TestModel*` dumps out as
   artifacts. Grab those before re-running.
 
-## 6. Committing
+## 6. Submitting a Pull Request (PR)
+
+See https://tetragon.io/docs/contribution-guide/, and especially
+- https://tetragon.io/docs/contribution-guide/submitting-a-pull-request/
+- https://tetragon.io/docs/contribution-guide/developer-certificate-of-origin/
+- https://tetragon.io/docs/contribution-guide/release-notes/
+- https://tetragon.io/docs/contribution-guide/contributor-ladder/
+
+We use the same princinples in both OSS and EE repos.
+
+Note:
 
 - Commit messages: conventional commits, 50/72 limits, `git commit -s` is mandatory (DCO).
 - Commit messages in general should be descriptive:
