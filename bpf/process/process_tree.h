@@ -206,6 +206,10 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	k->self.uid = uid & 0xffffffff;
 	k->self.cpu = uid >> 32; /* retains ignore_args bit in high bit */
 	k->wlid = find_my_wlid(cgid);
+	// If the workload id is non-zero, fill in the cgid so the app model server
+	// can separate containers for the same workload.
+	if (k->wlid != 0)
+		k->cgid = cgid;
 
 	/* Retrieve the per-CPU scratch populated by find_my_self with
 	 * binary path and args for this process.

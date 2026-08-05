@@ -90,6 +90,10 @@ struct {
 
 struct process_tree_key {
 	__u64 wlid;
+	// When wlid is non-zero, the cgroup id for this process. Allows differentiating
+	// processes between containers for a given workload. Will be set in userspace
+	// when building the application model.
+	__u64 cgid;
 	__u64 depth;
 	struct tree_id self;
 	struct tree_id path[8];

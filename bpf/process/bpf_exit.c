@@ -38,9 +38,9 @@ FUNC_INLINE void update_process_tree_exit(__u32 tgid)
 	if (!tree_val) {
 		// There really shouldn't be a process tree key but no mapping from the
 		// key to a value. This could occur if the process was new (wlid was 0)
-		// and the app model server updated the wlid with workload info. We
-		// might need to update the value in tg_ee_pid_data (which has a
-		// separate process tree key) with the new workload.
+		// and the app model server updated the wlid and cgid with workload
+		// info. We might need to update the value in tg_ee_pid_data (which has
+		// a separate process tree key) with the new workload.
 
 		__u64 cgid = tg_get_current_cgroup_id();
 		__u64 *my_wlid = map_lookup_elem(&tg_cgid_wlid, &cgid);
@@ -50,6 +50,7 @@ FUNC_INLINE void update_process_tree_exit(__u32 tgid)
 
 		tree_key_copy = *tree_key;
 		tree_key_copy.wlid = *my_wlid;
+		tree_key_copy.cgid = cgid;
 		map_update_elem(&tg_ee_pid_data, &tgid, &tree_key_copy, 0);
 
 		tree_val = map_lookup_elem(&process_tree_map, &tree_key_copy);

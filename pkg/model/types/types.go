@@ -23,6 +23,7 @@ type ProcessExecveKey struct {
 
 type ProcessTreeKey struct {
 	WLID  uint64
+	CGID  uint64
 	Depth uint64
 	Self  uint64
 	Path  [8]uint64

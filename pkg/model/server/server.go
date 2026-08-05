@@ -849,6 +849,7 @@ func getProcessModel(namespaces []string,
 	type WLIDUpdate struct {
 		oldValue      types.ProcessTreeValue
 		newWorkloadID uint64
+		newCgroupID   uint64
 	}
 	pendingNSIDUpdates := make(map[types.ProcessTreeKey]WLIDUpdate)
 	var skippedEntries int
@@ -967,6 +968,7 @@ func getProcessModel(namespaces []string,
 				pendingNSIDUpdates[key] = WLIDUpdate{
 					oldValue:      val,
 					newWorkloadID: updatedNSID,
+					newCgroupID:   cgroupid,
 				}
 				key.WLID = updatedNSID
 			}
@@ -1113,6 +1115,7 @@ func getProcessModel(namespaces []string,
 		m.Delete(&k)
 		// Fix up new WorkloadID and remove the flag
 		k.WLID = v.newWorkloadID
+		k.CGID = v.newCgroupID
 		v.oldValue.MaybeMissingWLID = false
 		// Update process tree map with the new value
 		if err := m.Update(&k, &v.oldValue, ebpf.UpdateAny); err != nil {
