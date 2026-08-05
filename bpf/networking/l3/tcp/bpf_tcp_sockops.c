@@ -276,11 +276,9 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 					 BPF_F_CURRENT_CPU, val, size);
 	}
 
-	if (!socket->tuple.ipv6) {
-		del_tlsmap(&cookie);
-		map_delete_elem(&tg_http_map, &cookie);
-		bottle_drop(&cookie);
-	}
+	del_tlsmap(&cookie);
+	map_delete_elem(&tg_http_map, &cookie);
+	bottle_drop(&cookie);
 
 	return 0;
 }

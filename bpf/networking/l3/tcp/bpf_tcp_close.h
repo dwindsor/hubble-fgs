@@ -97,11 +97,9 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 					 size);
 	}
 
-	if (!socket->tuple.ipv6) {
-		del_tlsmap(&cookie);
-		map_delete_elem(&tg_http_map, &cookie);
-		bottle_drop(&cookie);
-	}
+	del_tlsmap(&cookie);
+	map_delete_elem(&tg_http_map, &cookie);
+	bottle_drop(&cookie);
 
 	return 1;
 }
