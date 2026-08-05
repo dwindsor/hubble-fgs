@@ -76,10 +76,12 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 	fgsProcess := proc.UnsafeGetProcess()
 
 	parentId := fgsProcess.ParentExecId
-	parent, err := process.Get(parentId)
-	if err == nil {
-		parent.RefInc("parent")
-		fgsParent = parent.UnsafeGetProcess()
+	if !option.Config.DisableProcessCache {
+		parent, err := process.Get(parentId)
+		if err == nil {
+			parent.RefInc("parent")
+			fgsParent = parent.UnsafeGetProcess()
+		}
 	}
 
 	// Set the cap field only if --enable-process-cred flag is set.
@@ -317,6 +319,10 @@ func (msg *MsgCloneEventUnix) Retry(internal *process.ProcessInternal, _ notify.
 
 // HandleCloneMessage -- don't generate any events. Just add the process to the cache.
 func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	if option.Config.DisableProcessCache {
+		return nil
+	}
+
 	switch msg.Common.Op {
 	case ops.MSG_OP_CLONE:
 		ec := eventcache.Get()
@@ -560,6 +566,9 @@ func (msg *MsgProcessCleanupEventUnix) Retry(_ *process.ProcessInternal, _ notif
 }
 
 func (msg *MsgProcessCleanupEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	if option.Config.DisableProcessCache {
+		return nil
+	}
 	msg.RefCntDone = [2]bool{false, false}
 	if process, parent := process.GetParentProcessInternal(msg.PID, msg.Ktime); process != nil && parent != nil {
 		process.RefDec("process")

@@ -25,6 +25,8 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
+	"github.com/cilium/tetragon/pkg/option"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -38,13 +40,16 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	var proc *tetragon.Process
 	var code uint32
 	var err error
+	var processInt *process.ProcessInternal
 
 	fgsHttpResponse := &tetragon.HttpResponse{}
 	fgsHttpRequest := &tetragon.HttpRequest{}
 
 	processID := process.GetProcessID(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
-	processInt, err := process.Get(processID)
-	if err != nil {
+	if !option.Config.DisableProcessCache {
+		processInt, _ = process.Get(processID)
+	}
+	if processInt == nil {
 		proc = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
