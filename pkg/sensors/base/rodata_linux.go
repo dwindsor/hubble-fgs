@@ -13,6 +13,7 @@
 package base
 
 import (
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
@@ -34,8 +35,9 @@ var (
 // independent frozen rodata config map
 // Its BPF-side counterpart is bpf/lib/fgs_rodata_config.h.
 type fgsRodataConfig struct {
-	DNSParserPerPodEnabled uint8
-	Pad                    [7]uint8
+	DNSParserPerPodEnabled     uint8
+	MulticastInspectionEnabled uint8
+	Pad                        [6]uint8
 }
 
 func b2u8(b bool) uint8 {
@@ -49,7 +51,12 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 	dnsParserPerPodEnabled := b2u8(enterpriseOption.Config.EnableBPFDNSPerPod &&
 		utils.SockopsSupportsCgroupAncestorHelper())
 
+	// Only available from 6.12, same condition used today by
+	// layer3's own multicast sampling rewrite.
+	multicastInspectionEnabled := b2u8(kernels.MinKernelVersion("6.12"))
+
 	return fgsRodataConfig{
-		DNSParserPerPodEnabled: dnsParserPerPodEnabled,
+		DNSParserPerPodEnabled:     dnsParserPerPodEnabled,
+		MulticastInspectionEnabled: multicastInspectionEnabled,
 	}, nil
 }

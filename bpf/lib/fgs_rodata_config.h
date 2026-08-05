@@ -29,7 +29,8 @@
 // unrelated to OSS's own rodata_config map, for enterprise-only feature flags.
 struct fgs_rodata_config {
 	__u8 DNS_PARSER_PER_POD_ENABLED;
-	__u8 pad[7];
+	__u8 TG_MULTICAST_INSPECTION;
+	__u8 pad[6];
 };
 
 volatile const struct fgs_rodata_config fgs_rodata_config

@@ -55,8 +55,7 @@ import (
 )
 
 const (
-	CgroupProbeReadName     = "CGROUP_PROBE_READ"
-	MulticastInspectionName = "TG_MULTICAST_INSPECTION"
+	CgroupProbeReadName = "CGROUP_PROBE_READ"
 )
 
 var (
@@ -329,14 +328,6 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 				} else {
 					ourDispatcherProcessTreeProgs = dispatcherProcessTreeTimerProgs
 					maps = append(maps, dispatcherProcessTreeTimerMaps...)
-					// Set the const bool to indicate whether to sample packets. Only available from 6.12.
-					if kernels.MinKernelVersion("6.12") {
-						for _, prog := range ourDispatcherProcessTreeProgs {
-							if prog.Attach == "cgroup_egress" || prog.Attach == "cgroup_ingress" {
-								prog.RewriteConstants[MulticastInspectionName] = true
-							}
-						}
-					}
 				}
 				for _, prog := range ourDispatcherProcessTreeProgs {
 					prog.RewriteConstants[dnsparser.ParserEnabledName] = enterpriseOption.Config.EnableBPFDNSParser
