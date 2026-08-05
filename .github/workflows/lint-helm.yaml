@@ -68,19 +68,59 @@ jobs:
       - name: Run Kubeconform with minimum supported K8s version
         if: success() || steps.validate_openapi2jsonschema_script.outcome == 'failure'
         id: kubeconform_min_k8s_version
-        uses: mathiasvr/command-output@34408ea3d0528273faff3d9e201761ae96106cd0 # v2.0.0
-        with:
-          shell: bash
-          run: |
-            make -C install/kubernetes kubeconform K8S_VERSION=${{ env.MIN_K8S_VERSION }}
+        run: |
+          set +e
+          stdout_file="$(mktemp)"
+          stderr_file="$(mktemp)"
+          trap 'rm -f "$stdout_file" "$stderr_file"' EXIT
+
+          make -C install/kubernetes kubeconform K8S_VERSION=${{ env.MIN_K8S_VERSION }} \
+            >"$stdout_file" 2>"$stderr_file"
+          exit_code=$?
+
+          cat "$stdout_file"
+          cat "$stderr_file" >&2
+
+          delimiter="kubeconform_${RANDOM}_${RANDOM}"
+          {
+            echo "stdout<<$delimiter"
+            cat "$stdout_file"
+            echo "$delimiter"
+            echo "stderr<<$delimiter"
+            cat "$stderr_file"
+            echo "$delimiter"
+            echo "exitcode=$exit_code"
+          } >> "$GITHUB_OUTPUT"
+
+          exit "$exit_code"
       - name: Run Kubeconform with latest K8s version
         if: success() || steps.validate_openapi2jsonschema_script.outcome == 'failure'
         id: kubeconform_latest_k8s_version
-        uses: mathiasvr/command-output@34408ea3d0528273faff3d9e201761ae96106cd0 # v2.0.0
-        with:
-          shell: bash
-          run: |
-            make -C install/kubernetes kubeconform
+        run: |
+          set +e
+          stdout_file="$(mktemp)"
+          stderr_file="$(mktemp)"
+          trap 'rm -f "$stdout_file" "$stderr_file"' EXIT
+
+          make -C install/kubernetes kubeconform \
+            >"$stdout_file" 2>"$stderr_file"
+          exit_code=$?
+
+          cat "$stdout_file"
+          cat "$stderr_file" >&2
+
+          delimiter="kubeconform_${RANDOM}_${RANDOM}"
+          {
+            echo "stdout<<$delimiter"
+            cat "$stdout_file"
+            echo "$delimiter"
+            echo "stderr<<$delimiter"
+            cat "$stderr_file"
+            echo "$delimiter"
+            echo "exitcode=$exit_code"
+          } >> "$GITHUB_OUTPUT"
+
+          exit "$exit_code"
 
       # Post Kubeconform issues as comment on the GH PR, if there are any
       - name: Comment Kubeconform Output

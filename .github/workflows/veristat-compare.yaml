@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'bpf/**'
+      - '.github/actions/veristat/**'
 
 jobs:
   veristat-compare:
@@ -29,7 +30,7 @@ jobs:
           make -C base tetragon-bpf
 
       - name: Run veristat comparison
-        uses: mtardy/veristat-action@f8aaf0aff94a274fea229c37e1165b3083d43611 # v1.0.1
+        uses: ./branch/.github/actions/veristat
         with:
           compare: true
           baseline-programs: "base/bpf/objs/*.o"

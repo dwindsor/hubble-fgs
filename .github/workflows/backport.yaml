@@ -25,7 +25,7 @@ jobs:
         with:
           token: ${{ secrets.ISOVALENT_BACKPORTER_TOKEN }}
       - name: Create backport pull requests
-        uses: isovalent/backport-action@7841e9b4aca996cbaca3e1b0a6972747ca1ec38d # v1.0.0
+        uses: isovalent/backport-action@b2998e28c7f0239019f543b0d2506d7db68a51fc # v4.7.0
         with:
           github_token: ${{ secrets.ISOVALENT_BACKPORTER_TOKEN }}
           branch_name: backport/${target_branch}/${pull_number}

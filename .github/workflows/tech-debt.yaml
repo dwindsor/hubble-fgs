@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get Github App Credentials
-        uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+        uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
         env:
           SECRETS_PATH: secret/data/release-mgmt/${{ github.repository_owner }}
         with:
@@ -32,9 +32,9 @@ jobs:
 
       - name: Generate Github App Token
         id: generate-token
-        uses: actions/create-github-app-token@21cfef2b496dd8ef5b904c159339626a10ad380e # v1.11.6
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ env.READONLY_GITHUB_APP_ID }}
+          client-id: ${{ env.READONLY_GITHUB_APP_ID }}
           private-key: ${{ env.READONLY_GITHUB_APP_PEM }}
           owner: ${{ github.repository_owner }}
           repositories: |
@@ -169,7 +169,7 @@ jobs:
 
       - name: Send Slack Notification
         id: slack-post
-        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           method: chat.postMessage

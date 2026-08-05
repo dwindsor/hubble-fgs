@@ -72,7 +72,7 @@ runs:
   using: composite
   steps:
     - name: Get Artifactory Credentials from Vault
-      uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+      uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
       with:
         url: ${{ inputs.vault_url }}
         method: ${{ inputs.vault_method }}
@@ -80,7 +80,7 @@ runs:
         secrets: ${{ inputs.vault_secrets }}
 
     - name: Setup access to Artifactory
-      uses: jfrog/setup-jfrog-cli@ff5cb544114ffc152db9cea1cd3d5978d5074946 # v4.5.11
+      uses: jfrog/setup-jfrog-cli@deda456d982fc5e9a7a020b63eb0d2968aedd33e # v5.1.0
       env:
         JF_URL: ${{ inputs.artifactory_url }}
       with:
