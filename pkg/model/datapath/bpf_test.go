@@ -105,6 +105,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
 			WLID:  1,
+			CGID:  1,
 			Self:  18446744069414584321,
 			Depth: 0,
 		},
@@ -171,6 +172,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
 			WLID:  1,
+			CGID:  1,
 			Self:  18446744069414584321,
 			Depth: 0,
 		},
@@ -265,6 +267,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
 			WLID:  1,
+			CGID:  1,
 			Self:  18446744069414584321,
 			Depth: 0,
 		},
@@ -384,7 +387,7 @@ func newMockBpfProgrammer() (*BPFProgrammer, *mockRecordBackend) {
 	return p, mock
 }
 
-func makeTestRecord(wlid, self uint64, port uint32, epName string) *record.DatapathRecord {
+func makeTestRecord(wlid, cgid, self uint64, port uint32, epName string) *record.DatapathRecord {
 	var ep *endpoint.Endpoint
 	if epName != "" {
 		ep = &endpoint.Endpoint{
@@ -395,6 +398,7 @@ func makeTestRecord(wlid, self uint64, port uint32, epName string) *record.Datap
 	return &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
 			WLID: wlid,
+			CGID: cgid,
 			Self: self,
 		},
 		Endpoint: record.DatapathEndpoint{
@@ -410,7 +414,7 @@ func makeTestRecord(wlid, self uint64, port uint32, epName string) *record.Datap
 func TestAddRecords_SkipsCachedRecords(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
 
 	// First AddRecords should call addRecord
 	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
@@ -426,8 +430,8 @@ func TestAddRecords_SkipsCachedRecords(t *testing.T) {
 func TestAddRecords_AddsToCache(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
-	r2 := makeTestRecord(1, 100, 443, "ep2")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
+	r2 := makeTestRecord(1, 1, 100, 443, "ep2")
 
 	// Add first record
 	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
@@ -444,9 +448,9 @@ func TestAddRecords_AddsToCache(t *testing.T) {
 func TestAddRecords_MultipleRecordsInSingleCall(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
-	r2 := makeTestRecord(1, 100, 443, "ep2")
-	r3 := makeTestRecord(2, 200, 8080, "ep3")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
+	r2 := makeTestRecord(1, 1, 100, 443, "ep2")
+	r3 := makeTestRecord(2, 2, 200, 8080, "ep3")
 
 	err := p.AddRecords([]record.DatapathRecord{*r1, *r2, *r3}, false)
 	require.NoError(t, err)
@@ -457,7 +461,7 @@ func TestAddRecords_MultipleRecordsInSingleCall(t *testing.T) {
 func TestAddRecords_DuplicatesInSingleCall(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
 
 	// Same record twice in one call - second should be skipped after first is cached
 	err := p.AddRecords([]record.DatapathRecord{*r1, *r1}, false)
@@ -470,7 +474,7 @@ func TestAddRecords_DoesNotCacheOnError(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 	mock.addRecordErr = fmt.Errorf("BPF error")
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
 
 	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.Error(t, err)
@@ -480,7 +484,7 @@ func TestAddRecords_DoesNotCacheOnError(t *testing.T) {
 func TestRemoveRecords_SkipsNonCachedRecords(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
 
 	// Try to remove a record that was never added
 	err := p.RemoveRecords([]record.DatapathRecord{*r1})
@@ -491,7 +495,7 @@ func TestRemoveRecords_SkipsNonCachedRecords(t *testing.T) {
 func TestRemoveRecords_RemovesFromCache(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
 
 	// Add record first
 	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
@@ -508,7 +512,7 @@ func TestRemoveRecords_RemovesFromCache(t *testing.T) {
 func TestRemoveRecords_DoesNotRemoveFromCacheOnError(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
 
 	// Add record first
 	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
@@ -527,8 +531,8 @@ func TestRemoveRecords_DoesNotRemoveFromCacheOnError(t *testing.T) {
 func TestAddRemoveRecords_RoundTrip(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
-	r2 := makeTestRecord(1, 100, 443, "ep2")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
+	r2 := makeTestRecord(1, 1, 100, 443, "ep2")
 
 	// Add both records
 	err := p.AddRecords([]record.DatapathRecord{*r1, *r2}, false)
@@ -555,9 +559,9 @@ func TestAddRemoveRecords_RoundTrip(t *testing.T) {
 func TestRemoveRecords_PartialRemoval(t *testing.T) {
 	p, mock := newMockBpfProgrammer()
 
-	r1 := makeTestRecord(1, 100, 80, "ep1")
-	r2 := makeTestRecord(1, 100, 443, "ep2")
-	r3 := makeTestRecord(2, 200, 8080, "ep3")
+	r1 := makeTestRecord(1, 1, 100, 80, "ep1")
+	r2 := makeTestRecord(1, 1, 100, 443, "ep2")
+	r3 := makeTestRecord(2, 2, 200, 8080, "ep3")
 
 	// Add only r1 and r2
 	err := p.AddRecords([]record.DatapathRecord{*r1, *r2}, false)

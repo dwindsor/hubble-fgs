@@ -33,6 +33,7 @@ func TestDiffEmptySets(t *testing.T) {
 func getRecordSlice() []DatapathRecord {
 	src := &types.ProcessTreeKey{
 		WLID:  uint64(1),
+		CGID:  uint64(1),
 		Depth: 0,
 		Self:  0,
 	}
@@ -167,6 +168,7 @@ func TestRecordDisjoint(t *testing.T) {
 func BenchmarkDiffRecord(b *testing.B) {
 	src := &types.ProcessTreeKey{
 		WLID:  uint64(1),
+		CGID:  uint64(1),
 		Depth: 0,
 		Self:  0,
 	}
@@ -220,6 +222,7 @@ func BenchmarkDiffRecord(b *testing.B) {
 func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 	src := &types.ProcessTreeKey{
 		WLID:  uint64(1),
+		CGID:  uint64(1),
 		Depth: 0,
 		Self:  0,
 	}
