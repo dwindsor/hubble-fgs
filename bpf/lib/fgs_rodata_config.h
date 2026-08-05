@@ -30,7 +30,8 @@
 struct fgs_rodata_config {
 	__u8 DNS_PARSER_PER_POD_ENABLED;
 	__u8 TG_MULTICAST_INSPECTION;
-	__u8 pad[6];
+	__u8 CGROUP_PROBE_READ;
+	__u8 pad[5];
 };
 
 volatile const struct fgs_rodata_config fgs_rodata_config

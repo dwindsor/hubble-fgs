@@ -24,8 +24,6 @@
 #include "bpf_tcp_info.h"
 #include "process/process_tree.h"
 
-extern volatile __CONST bool CGROUP_PROBE_READ;
-
 static inline __attribute__((always_inline)) bool
 get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bool ipv6)
 {
@@ -212,12 +210,12 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 int tcp_handler_ip4(struct __sk_buff *skb, int send)
 {
 	if (send) {
-		if (CGROUP_PROBE_READ)
+		if (FGS_CONFIG(CGROUP_PROBE_READ))
 			return tcp_handler_send(skb);
 		return SK_PASS;
 	}
 
-	if (CGROUP_PROBE_READ) {
+	if (FGS_CONFIG(CGROUP_PROBE_READ)) {
 		void *data_end = (void *)(long)skb->data_end;
 		void *data = (long *)(long)skb->data;
 		struct handler_vars *vars;
@@ -239,7 +237,7 @@ int tcp_handler_ip4(struct __sk_buff *skb, int send)
 }
 int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
 {
-	if (CGROUP_PROBE_READ) {
+	if (FGS_CONFIG(CGROUP_PROBE_READ)) {
 		struct handler_vars *vars;
 		struct ipv6hdr *ip6;
 		int zero = 0;

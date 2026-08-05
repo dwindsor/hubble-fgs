@@ -37,7 +37,8 @@ var (
 type fgsRodataConfig struct {
 	DNSParserPerPodEnabled     uint8
 	MulticastInspectionEnabled uint8
-	Pad                        [6]uint8
+	CgroupProbeReadEnabled     uint8
+	Pad                        [5]uint8
 }
 
 func b2u8(b bool) uint8 {
@@ -55,8 +56,11 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 	// layer3's own multicast sampling rewrite.
 	multicastInspectionEnabled := b2u8(kernels.MinKernelVersion("6.12"))
 
+	cgroupProbeReadEnabled := b2u8(utils.SupportCGroupSKBProbeRead())
+
 	return fgsRodataConfig{
 		DNSParserPerPodEnabled:     dnsParserPerPodEnabled,
 		MulticastInspectionEnabled: multicastInspectionEnabled,
+		CgroupProbeReadEnabled:     cgroupProbeReadEnabled,
 	}, nil
 }

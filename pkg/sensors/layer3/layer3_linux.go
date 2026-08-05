@@ -54,10 +54,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
-const (
-	CgroupProbeReadName = "CGROUP_PROBE_READ"
-)
-
 var (
 	cgrp_ingress_configured = false
 	cgrp_egress_configured  = false
@@ -340,11 +336,6 @@ func ProgsAndMaps(cgroup bool) ([]*program.Program, []*program.Map) {
 					}
 				}
 				progsCollectStats = append(progsCollectStats, ourDispatcherProcessTreeProgs...)
-			}
-			for _, prog := range progsCollectStats {
-				if prog.Attach == "cgroup_egress" || prog.Attach == "cgroup_ingress" {
-					prog.RewriteConstants[CgroupProbeReadName] = utils.SupportCGroupSKBProbeRead()
-				}
 			}
 		} else {
 			logger.GetLogger().Info("Cgroup support requires a later kernel (v5.4+ or RHEL equivalent)")

@@ -5,8 +5,6 @@
 #include "./tcp/bpf_tcp_recv.h"
 #include "l3_config.h"
 
-volatile __CONST bool CGROUP_PROBE_READ = false;
-
 int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
