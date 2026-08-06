@@ -40,6 +40,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/tetra/probe"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/syscallentries"
+
+	_ "github.com/isovalent/hubble-fgs/tests/policytests" // so that enterprise tests are registered
 )
 
 func addCommands(rootCmd *cobra.Command) {
