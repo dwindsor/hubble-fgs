@@ -14,6 +14,7 @@
 #include "vmlinux.h"
 #include "bpf_task.h"
 #include "l3_config.h"
+#include "fgs_rodata_config.h"
 
 #include "dns.h"
 #include "process/process_endpoint.h"
@@ -105,7 +106,6 @@ struct {
 } tg_dns_cgid_aid SEC(".maps");
 
 volatile __CONST uint64_t KUBEPODS_SLICE_CGID;
-volatile __CONST __u8 DNS_PARSER_PER_POD_ENABLED;
 
 #define MAX_CGROUP_DEPTH 30
 
@@ -183,7 +183,7 @@ FUNC_INLINE int find_alloc_id(uint64_t cgroup_id)
 	// if cgroup_id is equal to zero, that means either that the process
 	// does not belong to a Pod (is a "host process") or that the cgroup ID
 	// lookup failed. In both cases, default to alloc ID zero.
-	if (cgroup_id != 0 && DNS_PARSER_PER_POD_ENABLED) {
+	if (cgroup_id != 0 && FGS_CONFIG(DNS_PARSER_PER_POD_ENABLED)) {
 		alloc_id = map_lookup_elem(&tg_dns_cgid_aid, &cgroup_id);
 		if (!alloc_id) {
 			// lookup the global variable counter
@@ -209,7 +209,7 @@ FUNC_INLINE void find_dns_key(struct destination_endpoint_key *key, struct ip_ad
 	struct dns_endpoint_id_value *dns_value;
 	void *tg_dns_ip_id_map;
 
-	if (DNS_PARSER_PER_POD_ENABLED)
+	if (FGS_CONFIG(DNS_PARSER_PER_POD_ENABLED))
 		alloc_id = find_alloc_id(find_parent_cgroupid_tracing());
 
 	if (alloc_id >= 0) {
@@ -267,7 +267,7 @@ FUNC_INLINE int assign_dns_id_mapping(struct __sk_buff *skb, struct ip_addr *ip,
 			return -DNS_ERR_ASSIGN_IDFQDN_UPDATE_FAILED;
 	}
 
-	if (DNS_PARSER_PER_POD_ENABLED) {
+	if (FGS_CONFIG(DNS_PARSER_PER_POD_ENABLED)) {
 		alloc_id = find_alloc_id(find_parent_cgroupid_network(skb->sk));
 		if (alloc_id < 0)
 			return alloc_id;

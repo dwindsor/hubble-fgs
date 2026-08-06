@@ -34,7 +34,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 const (
@@ -54,6 +53,11 @@ const (
 	KubepodsCgidConstName = "KUBEPODS_SLICE_CGID"
 
 	ParserEnabledName = "DNS_PARSER_ENABLED"
+
+	// PerPodFeatureName no longer corresponds to a per-program rewritten
+	// constant - the flag now lives in hubble-fgs's own fgs_rodata_config
+	// map (see pkg/sensors/base/rodata_linux.go, bpf FGS_CONFIG()). Kept
+	// here for identification (e.g. test assertions).
 	PerPodFeatureName = "DNS_PARSER_PER_POD_ENABLED"
 
 	dnsMaxNameSize = 255
@@ -79,8 +83,10 @@ type DNSID struct {
 	Source uint64
 }
 
-// RewritePerPodConstants writes constant value into the consts map input for
-// the DNS parser programs.
+// RewritePerPodConstants writes the kubepods.slice cgroup ID constant into
+// the consts map input for the DNS parser programs. The per-pod feature
+// flag itself now lives in the fgs_rodata_config map instead (see
+// PerPodFeatureName).
 func RewritePerPodConstants(consts map[string]any) error {
 	toWrite := map[string]any{}
 
@@ -89,10 +95,6 @@ func RewritePerPodConstants(consts map[string]any) error {
 		return fmt.Errorf("failed to get kubepods.slice cgroupID: %w", err)
 	}
 	toWrite[KubepodsCgidConstName] = kubepodsCgid
-
-	// Configuration validation should prevent EnableBPFDNSPerPod to be
-	// enabled if sockos does not support the cgroup ancestor helper
-	toWrite[PerPodFeatureName] = option.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper()
 
 	// Copy at the very end to avoid partial write in case of error
 	maps.Copy(consts, toWrite)

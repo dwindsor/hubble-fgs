@@ -15,6 +15,9 @@ package base
 import (
 	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 var (
@@ -31,9 +34,22 @@ var (
 // independent frozen rodata config map
 // Its BPF-side counterpart is bpf/lib/fgs_rodata_config.h.
 type fgsRodataConfig struct {
-	Pad [8]uint8
+	DNSParserPerPodEnabled uint8
+	Pad                    [7]uint8
+}
+
+func b2u8(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func fgsRodataCurrent() (fgsRodataConfig, error) {
-	return fgsRodataConfig{}, nil
+	dnsParserPerPodEnabled := b2u8(enterpriseOption.Config.EnableBPFDNSPerPod &&
+		utils.SockopsSupportsCgroupAncestorHelper())
+
+	return fgsRodataConfig{
+		DNSParserPerPodEnabled: dnsParserPerPodEnabled,
+	}, nil
 }
