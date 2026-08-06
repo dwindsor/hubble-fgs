@@ -65,7 +65,7 @@ func ListRules() (*tetragon.ListRulesResponse, error) {
 	}
 	defer c.Close()
 
-	res, err := c.Client.ListRules(c.ctx, &tetragon.ListRulesRequest{})
+	res, err := c.Client.ListRules(c.Ctx, &tetragon.ListRulesRequest{})
 	if err != nil || res == nil {
 		return nil, fmt.Errorf("failed to list alert rules: %w", err)
 	}

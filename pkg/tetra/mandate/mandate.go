@@ -24,8 +24,6 @@ import (
 	eecommon "github.com/isovalent/hubble-fgs/pkg/tetra/common"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func statusCmd() *cobra.Command {
@@ -43,17 +41,12 @@ func statusCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
 			defer cancel()
 
-			conn, err := grpc.NewClient(common.ResolveServerAddress(),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
-				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
-			)
+			ret, err := common.NewConnWithContext(ctx, common.ResolveServerAddress(), common.Timeout, "tetragon.MandateService")
 			if err != nil {
 				return err
 			}
-			defer conn.Close()
-
-			client := tetragon.NewMandateServiceClient(conn)
+			defer ret.Close()
+			client := tetragon.NewMandateServiceClient(ret.Conn)
 			res, err := client.GetMandateStatus(ctx, &tetragon.GetMandateStatusReq{})
 			if err != nil || res == nil {
 				return fmt.Errorf("failed to retrieve mandate status: %w", err)
@@ -116,17 +109,13 @@ func refreshCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
 			defer cancel()
 
-			conn, err := grpc.NewClient(common.ResolveServerAddress(),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
-				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
-			)
+			ret, err := common.NewConnWithContext(ctx, common.ResolveServerAddress(), common.Timeout, "tetragon.MandateService")
 			if err != nil {
 				return err
 			}
-			defer conn.Close()
+			defer ret.Close()
 
-			client := tetragon.NewMandateServiceClient(conn)
+			client := tetragon.NewMandateServiceClient(ret.Conn)
 			res, err := client.MandateConfigure(ctx, &tetragon.MandateConfigureReq{
 				Refresh: true,
 			})
@@ -151,17 +140,14 @@ func setURLCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
 			defer cancel()
 
-			conn, err := grpc.NewClient(common.ResolveServerAddress(),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
-				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
-			)
+			ret, err := common.NewConnWithContext(ctx, common.ResolveServerAddress(), common.Timeout, "tetragon.MandateService")
 			if err != nil {
 				return err
 			}
-			defer conn.Close()
+			defer ret.Close()
 
-			client := tetragon.NewMandateServiceClient(conn)
+			client := tetragon.NewMandateServiceClient(ret.Conn)
+
 			res, err := client.MandateConfigure(ctx, &tetragon.MandateConfigureReq{
 				Url:     new(args[0]),
 				Refresh: refresh,

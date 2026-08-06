@@ -13,41 +13,26 @@ package alertrule
 import (
 	"context"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
 	"github.com/cilium/tetragon/cmd/tetra/common"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 type ClientWithContext struct {
-	conn          *grpc.ClientConn
-	Client        tetragon.AlertServiceClient
-	ctx           context.Context
-	timeoutCancel context.CancelFunc
-}
-
-func (c ClientWithContext) Close() {
-	c.conn.Close()
-	c.timeoutCancel()
+	common.ConnWithContext
+	Client tetragon.AlertServiceClient
 }
 
 func NewClient() (*ClientWithContext, error) {
-	c := &ClientWithContext{}
-	c.ctx, c.timeoutCancel = context.WithTimeout(context.Background(), common.Timeout)
-
-	var err error
-	c.conn, err = grpc.NewClient(
-		common.ResolveServerAddress(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(common.MaxRecvMsgSize)),
-	)
+	ret, err := common.NewConnWithContext(context.Background(), common.ResolveServerAddress(), common.Timeout, "tetragon.AlertService")
 	if err != nil {
 		return nil, err
 	}
-	c.Client = tetragon.NewAlertServiceClient(c.conn)
+
+	c := &ClientWithContext{
+		ConnWithContext: *ret,
+		Client:          tetragon.NewAlertServiceClient(ret.Conn),
+	}
 
 	return c, nil
 }

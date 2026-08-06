@@ -45,7 +45,7 @@ func New() *cobra.Command {
 				return fmt.Errorf("failed to read yaml file %s: %w", args[0], err)
 			}
 
-			_, err = c.Client.AddAlertRuleFromYAML(c.ctx, &tetragon.AddAlertRuleFromYAMLRequest{
+			_, err = c.Client.AddAlertRuleFromYAML(c.Ctx, &tetragon.AddAlertRuleFromYAMLRequest{
 				Yaml:   string(yamlb),
 				Domain: domain,
 			})
@@ -69,7 +69,7 @@ func New() *cobra.Command {
 			}
 			defer c.Close()
 
-			_, err = c.Client.DeleteAlertRule(c.ctx, &tetragon.DeleteAlertRuleRequest{
+			_, err = c.Client.DeleteAlertRule(c.Ctx, &tetragon.DeleteAlertRuleRequest{
 				Name:   args[0],
 				Domain: domain,
 			})
@@ -103,7 +103,7 @@ func New() *cobra.Command {
 			}
 			defer c.Close()
 
-			res, err := c.Client.GetAlertRule(c.ctx, &tetragon.GetAlertRuleRequest{
+			res, err := c.Client.GetAlertRule(c.Ctx, &tetragon.GetAlertRuleRequest{
 				Name:   args[0],
 				Domain: domain,
 			})
@@ -182,7 +182,7 @@ func ListAlertRules(domain string) (*tetragon.ListAlertRulesResponse, error) {
 	}
 	defer c.Close()
 
-	res, err := c.Client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{Domain: domain})
+	res, err := c.Client.ListAlertRules(c.Ctx, &tetragon.ListAlertRulesRequest{Domain: domain})
 	if err != nil || res == nil {
 		return nil, fmt.Errorf("failed to list alert rules: %w", err)
 	}

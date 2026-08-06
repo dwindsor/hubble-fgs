@@ -43,7 +43,7 @@ func New() *cobra.Command {
 				return fmt.Errorf("failed to read yaml file %s: %w", args[0], err)
 			}
 
-			_, err = c.Client.AddNetworkPolicyFromYAML(c.ctx, &tetragon.AddNetworkPolicyFromYAMLRequest{
+			_, err = c.Client.AddNetworkPolicyFromYAML(c.Ctx, &tetragon.AddNetworkPolicyFromYAMLRequest{
 				Yaml: string(yamlb),
 			})
 			if err != nil {
@@ -66,7 +66,7 @@ func New() *cobra.Command {
 			}
 			defer c.Close()
 
-			_, err = c.Client.DeleteNetworkPolicy(c.ctx, &tetragon.DeleteNetworkPolicyRequest{
+			_, err = c.Client.DeleteNetworkPolicy(c.Ctx, &tetragon.DeleteNetworkPolicyRequest{
 				Name: args[0],
 			})
 			if err != nil {
@@ -101,7 +101,7 @@ func New() *cobra.Command {
 			}
 			defer c.Close()
 
-			res, err := c.Client.GetNetworkPolicy(c.ctx, &tetragon.GetNetworkPolicyRequest{
+			res, err := c.Client.GetNetworkPolicy(c.Ctx, &tetragon.GetNetworkPolicyRequest{
 				Name: args[0],
 			})
 			if err != nil || res == nil {
@@ -177,7 +177,7 @@ func ListNetworkPolicies() (*tetragon.ListNetworkPolicyResponse, error) {
 	}
 	defer c.Close()
 
-	res, err := c.Client.ListNetworkPolicy(c.ctx, &tetragon.ListNetworkPolicyRequest{})
+	res, err := c.Client.ListNetworkPolicy(c.Ctx, &tetragon.ListNetworkPolicyRequest{})
 	if err != nil || res == nil {
 		return nil, fmt.Errorf("failed to list network policy: %w", err)
 	}
