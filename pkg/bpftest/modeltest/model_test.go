@@ -322,9 +322,46 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						Port:     model.UInt64Exactly(8080),
 						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
 						Stats: model.StatsCheck{
-							TxBytes: model.UInt64GreaterThan(0),
-							RxBytes: model.UInt64GreaterThan(0),
-							TxDrops: model.UInt64Exactly(0),
+							TxBytes:  model.UInt64GreaterThan(0),
+							RxBytes:  model.UInt64GreaterThan(0),
+							TxDrops:  model.UInt64Exactly(0),
+							Sessions: model.UInt64Exactly(1),
+						},
+					},
+				},
+			},
+		},
+	},
+
+	// python3's http.server speaks HTTP/1.0 and closes after each response, so
+	// curl opens a separate connection per URL. They all land on the same
+	// destination, which lets us check that the session counter accumulates
+	// rather than just being set once.
+	"HTTPServerRepeatConnections": {
+		Host: model.Binaries{
+			{
+				Cmd:             "python3",
+				Args:            []string{"-m", "http.server", "8081"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+			},
+			{
+				Cmd:  "curl",
+				Args: []string{"-4", "http://localhost:8081", "http://localhost:8081", "http://localhost:8081"},
+				Dependencies: []deps.Dependency{
+					deps.NewTCPPortOpen(8081),
+				},
+				Timeout: 10 * time.Second,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:    []string{"localhost."},
+						Port:     model.UInt64Exactly(8081),
+						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
+						Stats: model.StatsCheck{
+							TxBytes:  model.UInt64GreaterThan(0),
+							RxBytes:  model.UInt64GreaterThan(0),
+							TxDrops:  model.UInt64Exactly(0),
+							Sessions: model.UInt64Exactly(3),
 						},
 					},
 				},
@@ -357,9 +394,10 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
 						Stats: model.StatsCheck{
 							// Exact lengths as reported
-							TxBytes: model.UInt64GreaterThan(0),
-							RxBytes: model.UInt64GreaterThan(0),
-							TxDrops: model.UInt64Exactly(0),
+							TxBytes:  model.UInt64GreaterThan(0),
+							RxBytes:  model.UInt64GreaterThan(0),
+							TxDrops:  model.UInt64Exactly(0),
+							Sessions: model.UInt64Exactly(1),
 						},
 					},
 				},
@@ -391,7 +429,10 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						Names:    []string{"localhost."},
 						Port:     model.UInt64Exactly(9998),
 						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
-						Stats:    model.StatsCheck{TxBytes: model.UInt64GreaterThan(0)},
+						Stats: model.StatsCheck{
+							TxBytes:  model.UInt64GreaterThan(0),
+							Sessions: model.UInt64Exactly(1),
+						},
 					},
 				},
 			},
@@ -429,7 +470,10 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						Names:    []string{"localhost."},
 						Port:     model.UInt64Exactly(9997),
 						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
-						Stats:    model.StatsCheck{TxBytes: model.UInt64GreaterThan(0)},
+						Stats: model.StatsCheck{
+							TxBytes:  model.UInt64GreaterThan(0),
+							Sessions: model.UInt64Exactly(1),
+						},
 					},
 				},
 			},
@@ -448,7 +492,10 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						Names:    []string{"localhost."},
 						Port:     model.UInt64Exactly(9997),
 						Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
-						Stats:    model.StatsCheck{TxBytes: model.UInt64GreaterThan(0)},
+						Stats: model.StatsCheck{
+							TxBytes:  model.UInt64GreaterThan(0),
+							Sessions: model.UInt64Exactly(1),
+						},
 					},
 				},
 			},

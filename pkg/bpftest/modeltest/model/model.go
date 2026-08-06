@@ -417,6 +417,7 @@ type StatsCheck struct {
 	TxDrops      UInt64Checker
 	TxQuota      UInt64Checker
 	TxQuotaUsage UInt64Checker
+	Sessions     UInt64Checker
 }
 
 func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
@@ -443,6 +444,11 @@ func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
 	if check.TxQuotaUsage != nil {
 		if err := check.TxQuotaUsage(stats.TxQuotaUsage); err != nil {
 			return fmt.Errorf("TxQuotaUsage check failed: %w", err)
+		}
+	}
+	if check.Sessions != nil {
+		if err := check.Sessions(stats.Sessions); err != nil {
+			return fmt.Errorf("Sessions check failed: %w", err)
 		}
 	}
 	return nil
