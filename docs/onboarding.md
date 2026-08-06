@@ -51,18 +51,7 @@ Paths are relative to the repository root unless stated otherwise.
 git clone git@github.com:isovalent/hubble-fgs.git
 cd hubble-fgs
 make oss-init                   # git submodule update --init modules/tetragon-oss
-sudo apt install libelf-dev libcap-dev libaio-dev liburing-dev libnet1-dev gcc-multilib libc6-dev-i386 pahole
-```
-
-If you want to build BPF with `LOCAL_CLANG=1` you also need a recent clang. The distro one
-is usually too old:
-```bash
-wget https://apt.llvm.org/llvm.sh
-sudo ./llvm.sh 22 # pick a recent/latest version
-
-sudo update-alternatives --install /usr/bin/llvm-objcopy llvm-objcopy /usr/bin/llvm-objcopy-22 220
-sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-22 220
-sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-22 220
+sudo apt install libelf-dev libcap-dev libaio-dev liburing-dev libnet1-dev gcc-multilib libc6-dev-i386 pahole make golang
 ```
 
 - `GOPRIVATE=github.com/isovalent` is set by `Makefile.defs`, so `go` commands go through
@@ -85,7 +74,16 @@ make                               # or: all = bpf + agent + tetra + bench + tes
 - `make tetragon-bpf` compiles the BPF C. By default it runs clang **in a container**
   (`quay.io/cilium/clang:...`, a custom clang pinned in the Makefile). Pass `LOCAL_CLANG=1`
   to use your host clang instead, which is much faster but only correct if your clang is
-  compatible. If BPF objects mysteriously fail to load or the verifier rejects them,
+  compatible. The distro one is usually too old. To build a recent clang follow these steps:
+```bash
+wget https://apt.llvm.org/llvm.sh
+sudo ./llvm.sh 22 # pick a recent/latest version
+
+sudo update-alternatives --install /usr/bin/llvm-objcopy llvm-objcopy /usr/bin/llvm-objcopy-22 220
+sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-22 220
+sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-22 220
+```
+  If BPF objects mysteriously fail to load or the verifier rejects them,
   suspect a bad host clang first and rebuild with the container.
 - Output objects land in `bpf/objs/`. The agent needs `--bpf-lib bpf/objs`.
 - `JOBS` defaults to `nproc`. `DEBUG=1` enables BPF debug output *and* disables Go
