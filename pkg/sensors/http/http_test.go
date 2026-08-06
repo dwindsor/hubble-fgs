@@ -43,7 +43,9 @@ import (
 	layer3Testutil "github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 
 	"github.com/stretchr/testify/assert"
 
@@ -85,69 +87,7 @@ spec:
 }
 
 func TestHttp11Curl(t *testing.T) {
-	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
-	if runtime.GOARCH != "amd64" {
-		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-	if os.Getenv("FLAKY_HTTP") != "" {
-		t.Skipf("Skipping test on flaky kernel")
-	}
-
-	bpf.CheckOrMountCgroup2()
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	curlChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix("curl")).
-		WithArguments(sm.Full("-4 http://www.google.com"))
-
-	httpChecker := ec.NewHttpInfoChecker().
-		WithRequest(ec.NewHttpRequestChecker().
-			WithMethod(sm.Full("GET")).
-			WithUri(sm.Full("/")).
-			WithVersion(sm.Full("HTTP/1.1")).
-			WithAgent(sm.Contains("curl")).
-			WithHost(sm.Contains("www.google.com"))).
-		WithResponse(ec.NewHttpResponseChecker().
-			WithVersion(sm.Full("HTTP/1.1")).
-			WithReason(sm.Full("OK")))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("curlExec").
-			WithProcess(curlChecker).
-			WithParent(selfChecker),
-		ec.NewProcessConnectChecker("curlConnect").
-			WithProcess(curlChecker).
-			WithParent(selfChecker).
-			WithDestinationPort(80),
-		ec.NewProcessHttpChecker("curlHttp").
-			WithProcess(curlChecker).
-			WithHttp(httpChecker),
-	)
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observertesthelper.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
-
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	enterprisepolicytest.DoObserverTest(t, "http-11-curl", nil)
 }
 
 func TestHttp11Curl6(t *testing.T) {
