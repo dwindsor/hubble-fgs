@@ -72,6 +72,11 @@ sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-22 
 
 ## 3. Building
 
+If you are building using a Mac with Apple Silicon, follow the [local development with Apple Silicon Mac
+Guide](https://tetragon.io/docs/contribution-guide/development-setup/#local-development-with-apple-silicon-mac) to build with a lima VM.
+
+If you need an x86_64 build environment you can provision a cloud VM. See [`docs/gce_vm.md`](gce_vm.md) for instructions on setting up a Google Compute Engine VM for personal development use.
+
 ```bash
 make tetragon-bpf tetragon tetra   # the three things you usually want
 make                               # or: all = bpf + agent + tetra + bench + test-compile
