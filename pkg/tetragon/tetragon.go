@@ -594,6 +594,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	if option.Config.DisableProcessCache {
 		log.Info("Process cache is disabled")
+		process.SetK8sWatcher(podAccessor)
 	} else {
 		if err := process.InitCache(podAccessor, option.Config.ProcessCacheSize, pcGCInterval); err != nil {
 			return fmt.Errorf("failed to init process cache: %w", err)
