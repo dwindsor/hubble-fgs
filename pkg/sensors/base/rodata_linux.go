@@ -14,10 +14,26 @@ package base
 
 import (
 	"github.com/cilium/tetragon/pkg/sensors/base"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 )
 
 var (
 	// RodataConfigMap is hubble-fgs's own instance of OSS's shared rodata_config map.
 	RodataConfigMap = base.MapBuilderRodataConfigAtInit(
 		ExecveV511, ExecveV61, ExecveV612)
+
+	FgsRodataConfigMap = program.MapBuilderRodataConfigAtInit(
+		".rodata.fgs_config", "fgs_rodata_config",
+		func() (any, error) { return fgsRodataCurrent() },
+		ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 )
+
+// independent frozen rodata config map
+// Its BPF-side counterpart is bpf/lib/fgs_rodata_config.h.
+type fgsRodataConfig struct {
+	Pad [8]uint8
+}
+
+func fgsRodataCurrent() (fgsRodataConfig, error) {
+	return fgsRodataConfig{}, nil
+}

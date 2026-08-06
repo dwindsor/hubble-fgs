@@ -107,6 +107,14 @@ func GetDefaultMaps() []*program.Map {
 	if config.EnableV511Progs() {
 		maps = append(maps, RodataConfigMap)
 	}
+	// FgsRodataConfigMap's map/struct declaration is only skipped for the
+	// oldest, IS_KPROBE-built tier (see its own comment) - every other
+	// tier, including ExecveV53 (EnableLargeProgs but not EnableV511Progs),
+	// still references it, so this must be gated more broadly than
+	// RodataConfigMap above.
+	if config.EnableLargeProgs() {
+		maps = append(maps, FgsRodataConfigMap)
+	}
 
 	ConfigureMapSizes()
 	return maps
