@@ -466,9 +466,9 @@ objs/%_fmod_v63.o:
 $(DEPSDIR)%_fmod_v63.d:
 	$(call rule_d,-D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V63_BPF_PROG)
 
-objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event.c
-objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event.c
-objs/bpf_execve_event_v53.o: $(ISOPROCESS)/bpf_ee_execve_event.c
+objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
+objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
+objs/bpf_execve_event_v53.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_fork_v511.o: $(PROCESSDIR)/bpf_fork.c
 objs/bpf_generic_kprobe_v53.o: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
@@ -525,7 +525,7 @@ $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 $(DEPSDIR)%.d: $(CGROUPDIR)%.c
 	$(rule_d)
 
-deps/bpf_execve_event_v511.d: $(ISOPROCESS)/bpf_ee_execve_event.c
+deps/bpf_execve_event_v511.d: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 deps/bpf_generic_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_lsm_core_v511.d: $(PROCESSDIR)/bpf_generic_lsm_core.c
 deps/bpf_generic_lsm_output_v511.d: $(PROCESSDIR)/bpf_generic_lsm_output.c
@@ -542,7 +542,7 @@ deps/bpf_generic_retuprobe_v511.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
 deps/bpf_multi_retuprobe_v511.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
 deps/bpf_generic_tracepoint_v511.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_generic_rawtp_v511.d: $(PROCESSDIR)/bpf_generic_rawtp.c
-deps/bpf_execve_event_v53.d: $(ISOPROCESS)/bpf_ee_execve_event.c
+deps/bpf_execve_event_v53.d: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_multi_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -612,7 +612,7 @@ $(DEPSDIR)%_v419.d:
 $(DEPSDIR)%_v53.d:
 	$(call rule_d,-D__LARGE_BPF_PROG)
 
-objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event.c
+objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_generic_kprobe_v511.o: $(PROCESSDIR)/bpf_generic_kprobe.c
 
 objs/bpf_generic_lsm_core_v511.o: $(PROCESSDIR)/bpf_generic_lsm_core.c
@@ -640,7 +640,7 @@ objs/bpf_multi_kprobe_v511.o objs/bpf_multi_retkprobe_v511.o:
 objs/%_v511.o:
 	$(call rule_o,-D__V511_BPF_PROG -D__LARGE_BPF_PROG -D__V511_BPF_PROG)
 
-objs/bpf_execve_event_v61.o: $(ISOPROCESS)/bpf_ee_execve_event.c
+objs/bpf_execve_event_v61.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_generic_kprobe_v61.o: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_lsm_core_v61.o: $(PROCESSDIR)/bpf_generic_lsm_core.c
 objs/bpf_generic_lsm_output_v61.o: $(PROCESSDIR)/bpf_generic_lsm_output.c
@@ -666,7 +666,7 @@ objs/bpf_multi_kprobe_v61.o objs/bpf_multi_retkprobe_v61.o:
 objs/%_v61.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG)
 
-deps/bpf_execve_event_v61.d: $(ISOPROCESS)/bpf_ee_execve_event.c
+deps/bpf_execve_event_v61.d: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 deps/bpf_generic_kprobe_v61.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_lsm_core_v61.d: $(PROCESSDIR)/bpf_generic_lsm_core.c
 deps/bpf_generic_lsm_output_v61.d: $(PROCESSDIR)/bpf_generic_lsm_output.c
@@ -689,7 +689,7 @@ deps/bpf_generic_fexit_v61.d: $(PROCESSDIR)/bpf_generic_fexit.c
 $(DEPSDIR)%_v61.d:
 	$(call rule_d,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG)
 
-objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event.c
+objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 objs/bpf_generic_kprobe_v612.o: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_lsm_core_v612.o: $(PROCESSDIR)/bpf_generic_lsm_core.c
 objs/bpf_generic_lsm_output_v612.o: $(PROCESSDIR)/bpf_generic_lsm_output.c
@@ -715,7 +715,7 @@ objs/bpf_multi_kprobe_v612.o objs/bpf_multi_retkprobe_v612.o:
 objs/%_v612.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG -D__V612_BPF_PROG)
 
-deps/bpf_execve_event_v612.d: $(ISOPROCESS)/bpf_ee_execve_event.c
+deps/bpf_execve_event_v612.d: $(ISOPROCESS)/bpf_ee_execve_event_notc.c
 deps/bpf_generic_kprobe_v612.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_lsm_core_v612.d: $(PROCESSDIR)/bpf_generic_lsm_core.c
 deps/bpf_generic_lsm_output_v612.d: $(PROCESSDIR)/bpf_generic_lsm_output.c

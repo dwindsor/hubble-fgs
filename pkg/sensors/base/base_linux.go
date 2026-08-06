@@ -63,7 +63,6 @@ func GetDefaultMaps() []*program.Map {
 		CfgMap,
 		TcpSocketMap,
 		TcpSocketMapStats,
-		ExecveTailCallsMap,
 		ExecveMapUpdateData,
 		ExecveJoinMap,
 		TetragonConfMap,
@@ -85,6 +84,9 @@ func GetDefaultMaps() []*program.Map {
 		MatchBinariesSetMap,
 		MatchBinariesGenMap,
 		ErrMetricsMap,
+	}
+	if !config.EnableLargeProgs() {
+		maps = append(maps, ExecveTailCallsMap)
 	}
 	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
 		maps = append(maps, SyscallsMap)

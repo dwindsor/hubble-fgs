@@ -16,7 +16,7 @@ Helm chart for Tetragon Enterprise
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` |  |
-| certgen | object | `{"affinity":{},"annotations":{"cronJob":{},"job":{}},"cronJob":{"failedJobsHistoryLimit":1,"successfulJobsHistoryLimit":1},"generateCA":true,"hostUsers":true,"image":{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/cilium/certgen","tag":"v0.4.8"},"nodeSelector":{},"podLabels":{},"resources":{},"tolerations":[],"ttlSecondsAfterFinished":1800}` | cilium-certgen settings used by tetragon.grpc.tls.auto.method=cronJob. Mirrors the same block in cilium/cilium so operators familiar with the hubble TLS workflow find consistent knobs. |
+| certgen | object | `{"affinity":{},"annotations":{"cronJob":{},"job":{}},"cronJob":{"failedJobsHistoryLimit":1,"successfulJobsHistoryLimit":1},"generateCA":true,"hostUsers":true,"image":{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/cilium/certgen","tag":"v0.4.9"},"nodeSelector":{},"podLabels":{},"resources":{},"tolerations":[],"ttlSecondsAfterFinished":1800}` | cilium-certgen settings used by tetragon.grpc.tls.auto.method=cronJob. Mirrors the same block in cilium/cilium so operators familiar with the hubble TLS workflow find consistent knobs. |
 | certgen.affinity | object | `{}` | Affinity for certgen pods. |
 | certgen.annotations | object | `{"cronJob":{},"job":{}}` | Annotations applied to certgen Job/CronJob objects. |
 | certgen.cronJob.failedJobsHistoryLimit | int | `1` | Number of failed CronJob runs to retain. |
@@ -163,7 +163,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.exportFileMaxSizeMB | int | `10` | Size in megabytes at which to rotate JSON export files. |
 | tetragon.exportFilePerm | string | `"600"` | JSON export file permissions as a string. Typically it's either "600" (to restrict access to owner) or "640"/"644" (to allow read access by logs collector or another agent). |
 | tetragon.exportFilename | string | `"tetragon.log"` | JSON export filename. Set it to an empty string to disable JSON export altogether. |
-| tetragon.exportRateLimit | int | `-1` | Rate-limit event export (events per minute), Set to -1 to export all events. |
+| tetragon.exportRateLimit | int | `-1` | Rate-limit event export (events per minute). Must be a plain integer: -1 disables rate limiting and exports all events (default), 0 disables JSON export entirely, and a positive integer limits export to that many events per minute. Invalid (non-integer) values fall back to -1 and log a warning. |
 | tetragon.extraArgs | object | `{}` |  |
 | tetragon.extraEnv | list | `[]` |  |
 | tetragon.extraVolumeMounts | list | `[]` |  |

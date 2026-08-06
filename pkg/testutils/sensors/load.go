@@ -19,63 +19,90 @@ import (
 	sensorsoss "github.com/cilium/tetragon/pkg/sensors"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, sensorProgs []tus.SensorProg, t *testing.T) {
-	send := "execve_send"
-	if base.EnableV612Progs() {
-		send = "ee_execve_send"
-	}
+	var baseProgs []tus.SensorProg
+	var baseMaps []tus.SensorMap
 
-	var baseProgs = []tus.SensorProg{
-		0: tus.SensorProg{Name: "event_execve", Type: ebpf.RawTracepoint},
-		1: tus.SensorProg{Name: "event_exit", Type: ebpf.Kprobe, Match: tus.ProgMatchPartial},
-		2: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
-		3: tus.SensorProg{Name: send, Type: ebpf.RawTracepoint},
-		4: tus.SensorProg{Name: "tg_kp_bprm_committing_creds", Type: ebpf.Kprobe},
-		5: tus.SensorProg{Name: "execve_rate", Type: ebpf.RawTracepoint},
-		6: tus.SensorProg{Name: "execve_map_update", Type: ebpf.SocketFilter},
-		7: tus.SensorProg{Name: "event_exit_acct_process", Type: ebpf.Kprobe},
-	}
+	if config.EnableLargeProgs() {
+		baseProgs = []tus.SensorProg{
+			0: {Name: "event_execve", Type: ebpf.RawTracepoint},
+			1: {Name: "event_exit", Type: ebpf.Kprobe, Match: tus.ProgMatchPartial},
+			2: {Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+			3: {Name: "tg_kp_bprm_committing_creds", Type: ebpf.Kprobe},
+			4: {Name: "execve_map_update", Type: ebpf.SocketFilter},
+			5: {Name: "event_exit_acct_process", Type: ebpf.Kprobe},
+		}
+		baseMaps = []tus.SensorMap{
+			// all process event programs
+			{Name: "tcpmon_map", Progs: []uint{0, 1, 2}},
 
-	var baseMaps = []tus.SensorMap{
-		// all programs
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 5}},
+			// exit and fork
+			{Name: "execve_map_stats", Progs: []uint{1, 2}},
 
-		// all but event_execve
-		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{1, 2}},
+			// event_wake_up_new_task
+			{Name: "execve_val", Progs: []uint{2}},
 
-		// event_wake_up_new_task
-		tus.SensorMap{Name: "execve_val", Progs: []uint{2}},
+			// event_execve and tg_kp_bprm_committing_creds
+			{Name: "tg_execve_joined_info_map", Progs: []uint{0, 3}},
+			{Name: "tg_execve_joined_info_map_stats", Progs: []uint{0, 3}},
+		}
+	} else {
+		baseProgs = []tus.SensorProg{
+			0: {Name: "event_execve", Type: ebpf.RawTracepoint},
+			1: {Name: "event_exit", Type: ebpf.Kprobe, Match: tus.ProgMatchPartial},
+			2: {Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+			3: {Name: "execve_send", Type: ebpf.RawTracepoint},
+			4: {Name: "tg_kp_bprm_committing_creds", Type: ebpf.Kprobe},
+			5: {Name: "execve_rate", Type: ebpf.RawTracepoint},
+			6: {Name: "execve_map_update", Type: ebpf.SocketFilter},
+			7: {Name: "event_exit_acct_process", Type: ebpf.Kprobe},
+		}
+		baseMaps = []tus.SensorMap{
+			// all process event programs
+			{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 5}},
 
-		// event_execve and tg_kp_bprm_committing_creds
-		tus.SensorMap{Name: "tg_execve_joined_info_map", Progs: []uint{0, 4}},
-		tus.SensorMap{Name: "tg_execve_joined_info_map_stats", Progs: []uint{0, 4}},
+			// exit and fork
+			{Name: "execve_map_stats", Progs: []uint{1, 2}},
+
+			// event_wake_up_new_task
+			{Name: "execve_val", Progs: []uint{2}},
+
+			// event_execve and tg_kp_bprm_committing_creds
+			{Name: "tg_execve_joined_info_map", Progs: []uint{0, 4}},
+			{Name: "tg_execve_joined_info_map_stats", Progs: []uint{0, 4}},
+		}
 	}
 
 	if utils.SupportProcessTree() {
+		progs := []uint{0, 2, 3, 5, 7}
+		if config.EnableLargeProgs() {
+			progs = []uint{0, 2, 5}
+		}
 		pstreeMaps := []tus.SensorMap{
-			{Name: "tg_conf_map", Progs: []uint{0, 2, 3, 5, 7}},
+			{Name: "tg_conf_map", Progs: progs},
 		}
 		baseMaps = append(baseMaps, pstreeMaps...)
 	}
 
 	if option.CgroupRateEnabled() {
-		/* 6: tg_cgroup_rmdir */
 		sensorProgs = append(sensorProgs, tus.SensorProg{Name: "tg_cgroup_rmdir", Type: ebpf.RawTracepoint})
 
-		/* cgroup_rate_map */
-		baseMaps = append(baseMaps, tus.SensorMap{Name: "cgroup_rate_map", Progs: []uint{1, 2, 5, 6}})
+		progs := []uint{1, 2, 5, 6}
+		if config.EnableLargeProgs() {
+			progs = []uint{0, 1, 2, 4}
+		}
+		baseMaps = append(baseMaps, tus.SensorMap{Name: "cgroup_rate_map", Progs: progs})
 	}
 
 	if config.EnableLargeProgs() {
 		// all programs
-		baseMaps = append(baseMaps, tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 6}})
+		baseMaps = append(baseMaps, tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4}})
 
 		// execve_map_update
-		baseMaps = append(baseMaps, tus.SensorMap{Name: "execve_map_update_data", Progs: []uint{6}})
+		baseMaps = append(baseMaps, tus.SensorMap{Name: "execve_map_update_data", Progs: []uint{4}})
 	} else {
 		// all programs except for execve_map_update, execve_rate
 		baseMaps = append(baseMaps, tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4}})

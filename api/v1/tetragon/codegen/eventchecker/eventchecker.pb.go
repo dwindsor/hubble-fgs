@@ -531,9 +531,21 @@ func (checker *ProcessExecChecker) WithProcess(check *ProcessChecker) *ProcessEx
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessExecChecker
+func (checker *ProcessExecChecker) UnsetProcess() *ProcessExecChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessExecChecker
 func (checker *ProcessExecChecker) WithParent(check *ProcessChecker) *ProcessExecChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessExecChecker
+func (checker *ProcessExecChecker) UnsetParent() *ProcessExecChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -764,9 +776,21 @@ func (checker *ProcessExitChecker) WithProcess(check *ProcessChecker) *ProcessEx
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessExitChecker
+func (checker *ProcessExitChecker) UnsetProcess() *ProcessExitChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessExitChecker
 func (checker *ProcessExitChecker) WithParent(check *ProcessChecker) *ProcessExitChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessExitChecker
+func (checker *ProcessExitChecker) UnsetParent() *ProcessExitChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -970,9 +994,21 @@ func (checker *ProcessKprobeChecker) WithProcess(check *ProcessChecker) *Process
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessKprobeChecker
+func (checker *ProcessKprobeChecker) UnsetProcess() *ProcessKprobeChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessKprobeChecker
 func (checker *ProcessKprobeChecker) WithParent(check *ProcessChecker) *ProcessKprobeChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessKprobeChecker
+func (checker *ProcessKprobeChecker) UnsetParent() *ProcessKprobeChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -1566,9 +1602,21 @@ func (checker *ProcessTracepointChecker) WithProcess(check *ProcessChecker) *Pro
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessTracepointChecker
+func (checker *ProcessTracepointChecker) UnsetProcess() *ProcessTracepointChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessTracepointChecker
 func (checker *ProcessTracepointChecker) WithParent(check *ProcessChecker) *ProcessTracepointChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessTracepointChecker
+func (checker *ProcessTracepointChecker) UnsetParent() *ProcessTracepointChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -1813,9 +1861,21 @@ func (checker *ProcessUprobeChecker) WithProcess(check *ProcessChecker) *Process
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessUprobeChecker
+func (checker *ProcessUprobeChecker) UnsetProcess() *ProcessUprobeChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessUprobeChecker
 func (checker *ProcessUprobeChecker) WithParent(check *ProcessChecker) *ProcessUprobeChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessUprobeChecker
+func (checker *ProcessUprobeChecker) UnsetParent() *ProcessUprobeChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -2093,9 +2153,21 @@ func (checker *ProcessUsdtChecker) WithProcess(check *ProcessChecker) *ProcessUs
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessUsdtChecker
+func (checker *ProcessUsdtChecker) UnsetProcess() *ProcessUsdtChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessUsdtChecker
 func (checker *ProcessUsdtChecker) WithParent(check *ProcessChecker) *ProcessUsdtChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessUsdtChecker
+func (checker *ProcessUsdtChecker) UnsetParent() *ProcessUsdtChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -2336,9 +2408,21 @@ func (checker *ProcessLsmChecker) WithProcess(check *ProcessChecker) *ProcessLsm
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessLsmChecker
+func (checker *ProcessLsmChecker) UnsetProcess() *ProcessLsmChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessLsmChecker
 func (checker *ProcessLsmChecker) WithParent(check *ProcessChecker) *ProcessLsmChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessLsmChecker
+func (checker *ProcessLsmChecker) UnsetParent() *ProcessLsmChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -2659,6 +2743,12 @@ func (checker *ProcessLoaderChecker) WithProcess(check *ProcessChecker) *Process
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessLoaderChecker
+func (checker *ProcessLoaderChecker) UnsetProcess() *ProcessLoaderChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithPath adds a Path check to the ProcessLoaderChecker
 func (checker *ProcessLoaderChecker) WithPath(check *stringmatcher.StringMatcher) *ProcessLoaderChecker {
 	checker.Path = check
@@ -2674,6 +2764,12 @@ func (checker *ProcessLoaderChecker) WithBuildid(check *bytesmatcher.BytesMatche
 // WithParent adds a Parent check to the ProcessLoaderChecker
 func (checker *ProcessLoaderChecker) WithParent(check *ProcessChecker) *ProcessLoaderChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessLoaderChecker
+func (checker *ProcessLoaderChecker) UnsetParent() *ProcessLoaderChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -3133,9 +3229,21 @@ func (checker *ProcessConnectChecker) WithProcess(check *ProcessChecker) *Proces
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessConnectChecker
+func (checker *ProcessConnectChecker) UnsetProcess() *ProcessConnectChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessConnectChecker
 func (checker *ProcessConnectChecker) WithParent(check *ProcessChecker) *ProcessConnectChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessConnectChecker
+func (checker *ProcessConnectChecker) UnsetParent() *ProcessConnectChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -3438,9 +3546,21 @@ func (checker *ProcessCloseChecker) WithProcess(check *ProcessChecker) *ProcessC
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessCloseChecker
+func (checker *ProcessCloseChecker) UnsetProcess() *ProcessCloseChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessCloseChecker
 func (checker *ProcessCloseChecker) WithParent(check *ProcessChecker) *ProcessCloseChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessCloseChecker
+func (checker *ProcessCloseChecker) UnsetParent() *ProcessCloseChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -3701,9 +3821,21 @@ func (checker *ProcessListenChecker) WithProcess(check *ProcessChecker) *Process
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessListenChecker
+func (checker *ProcessListenChecker) UnsetProcess() *ProcessListenChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessListenChecker
 func (checker *ProcessListenChecker) WithParent(check *ProcessChecker) *ProcessListenChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessListenChecker
+func (checker *ProcessListenChecker) UnsetParent() *ProcessListenChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -3911,9 +4043,21 @@ func (checker *ProcessAcceptChecker) WithProcess(check *ProcessChecker) *Process
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessAcceptChecker
+func (checker *ProcessAcceptChecker) UnsetProcess() *ProcessAcceptChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessAcceptChecker
 func (checker *ProcessAcceptChecker) WithParent(check *ProcessChecker) *ProcessAcceptChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessAcceptChecker
+func (checker *ProcessAcceptChecker) UnsetParent() *ProcessAcceptChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -4119,9 +4263,21 @@ func (checker *ProcessRawsockCreateChecker) WithProcess(check *ProcessChecker) *
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessRawsockCreateChecker
+func (checker *ProcessRawsockCreateChecker) UnsetProcess() *ProcessRawsockCreateChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessRawsockCreateChecker
 func (checker *ProcessRawsockCreateChecker) WithParent(check *ProcessChecker) *ProcessRawsockCreateChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessRawsockCreateChecker
+func (checker *ProcessRawsockCreateChecker) UnsetParent() *ProcessRawsockCreateChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -4256,9 +4412,21 @@ func (checker *ProcessRawsockCloseChecker) WithProcess(check *ProcessChecker) *P
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessRawsockCloseChecker
+func (checker *ProcessRawsockCloseChecker) UnsetProcess() *ProcessRawsockCloseChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessRawsockCloseChecker
 func (checker *ProcessRawsockCloseChecker) WithParent(check *ProcessChecker) *ProcessRawsockCloseChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessRawsockCloseChecker
+func (checker *ProcessRawsockCloseChecker) UnsetParent() *ProcessRawsockCloseChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -4509,9 +4677,21 @@ func (checker *ProcessIcmpChecker) WithProcess(check *ProcessChecker) *ProcessIc
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) UnsetProcess() *ProcessIcmpChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessIcmpChecker
 func (checker *ProcessIcmpChecker) WithParent(check *ProcessChecker) *ProcessIcmpChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessIcmpChecker
+func (checker *ProcessIcmpChecker) UnsetParent() *ProcessIcmpChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -4837,9 +5017,21 @@ func (checker *ProcessIgmpJoinChecker) WithProcess(check *ProcessChecker) *Proce
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) UnsetProcess() *ProcessIgmpJoinChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessIgmpJoinChecker
 func (checker *ProcessIgmpJoinChecker) WithParent(check *ProcessChecker) *ProcessIgmpJoinChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) UnsetParent() *ProcessIgmpJoinChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -5023,9 +5215,21 @@ func (checker *ProcessIgmpLeaveChecker) WithProcess(check *ProcessChecker) *Proc
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) UnsetProcess() *ProcessIgmpLeaveChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessIgmpLeaveChecker
 func (checker *ProcessIgmpLeaveChecker) WithParent(check *ProcessChecker) *ProcessIgmpLeaveChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) UnsetParent() *ProcessIgmpLeaveChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -5487,9 +5691,21 @@ func (checker *ProcessMulticastSampleChecker) WithProcess(check *ProcessChecker)
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) UnsetProcess() *ProcessMulticastSampleChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessMulticastSampleChecker
 func (checker *ProcessMulticastSampleChecker) WithParent(check *ProcessChecker) *ProcessMulticastSampleChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessMulticastSampleChecker
+func (checker *ProcessMulticastSampleChecker) UnsetParent() *ProcessMulticastSampleChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -5734,9 +5950,21 @@ func (checker *ProcessIpErrorChecker) WithProcess(check *ProcessChecker) *Proces
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) UnsetProcess() *ProcessIpErrorChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessIpErrorChecker
 func (checker *ProcessIpErrorChecker) WithParent(check *ProcessChecker) *ProcessIpErrorChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) UnsetParent() *ProcessIpErrorChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -6010,9 +6238,21 @@ func (checker *ProcessFileChecker) WithProcess(check *ProcessChecker) *ProcessFi
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessFileChecker
+func (checker *ProcessFileChecker) UnsetProcess() *ProcessFileChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessFileChecker
 func (checker *ProcessFileChecker) WithParent(check *ProcessChecker) *ProcessFileChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessFileChecker
+func (checker *ProcessFileChecker) UnsetParent() *ProcessFileChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -6358,9 +6598,21 @@ func (checker *ProcessFileExecChecker) WithProcess(check *ProcessChecker) *Proce
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessFileExecChecker
+func (checker *ProcessFileExecChecker) UnsetProcess() *ProcessFileExecChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessFileExecChecker
 func (checker *ProcessFileExecChecker) WithParent(check *ProcessChecker) *ProcessFileExecChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessFileExecChecker
+func (checker *ProcessFileExecChecker) UnsetParent() *ProcessFileExecChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -6526,9 +6778,21 @@ func (checker *ProcessSockStatsChecker) WithProcess(check *ProcessChecker) *Proc
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessSockStatsChecker
+func (checker *ProcessSockStatsChecker) UnsetProcess() *ProcessSockStatsChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessSockStatsChecker
 func (checker *ProcessSockStatsChecker) WithParent(check *ProcessChecker) *ProcessSockStatsChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessSockStatsChecker
+func (checker *ProcessSockStatsChecker) UnsetParent() *ProcessSockStatsChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -6819,6 +7083,12 @@ func (checker *TlsChecker) WithProcess(check *ProcessChecker) *TlsChecker {
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the TlsChecker
+func (checker *TlsChecker) UnsetProcess() *TlsChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithSourceIp adds a SourceIp check to the TlsChecker
 func (checker *TlsChecker) WithSourceIp(check *stringmatcher.StringMatcher) *TlsChecker {
 	checker.SourceIp = check
@@ -6967,6 +7237,12 @@ func (checker *TlsChecker) WithParserInternalState(check *stringmatcher.StringMa
 // WithParent adds a Parent check to the TlsChecker
 func (checker *TlsChecker) WithParent(check *ProcessChecker) *TlsChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the TlsChecker
+func (checker *TlsChecker) UnsetParent() *TlsChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -7155,6 +7431,12 @@ func (checker *ProcessHttpChecker) WithProcess(check *ProcessChecker) *ProcessHt
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessHttpChecker
+func (checker *ProcessHttpChecker) UnsetProcess() *ProcessHttpChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithSocket adds a Socket check to the ProcessHttpChecker
 func (checker *ProcessHttpChecker) WithSocket(check *SockInfoChecker) *ProcessHttpChecker {
 	checker.Socket = check
@@ -7182,6 +7464,12 @@ func (checker *ProcessHttpChecker) WithDestinationPod(check *PodChecker) *Proces
 // WithParent adds a Parent check to the ProcessHttpChecker
 func (checker *ProcessHttpChecker) WithParent(check *ProcessChecker) *ProcessHttpChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessHttpChecker
+func (checker *ProcessHttpChecker) UnsetParent() *ProcessHttpChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -7356,9 +7644,21 @@ func (checker *ProcessNetworkBurstChecker) WithProcess(check *ProcessChecker) *P
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessNetworkBurstChecker
+func (checker *ProcessNetworkBurstChecker) UnsetProcess() *ProcessNetworkBurstChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessNetworkBurstChecker
 func (checker *ProcessNetworkBurstChecker) WithParent(check *ProcessChecker) *ProcessNetworkBurstChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessNetworkBurstChecker
+func (checker *ProcessNetworkBurstChecker) UnsetParent() *ProcessNetworkBurstChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -7586,9 +7886,21 @@ func (checker *ProcessNetworkWatermarkChecker) WithProcess(check *ProcessChecker
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) UnsetProcess() *ProcessNetworkWatermarkChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessNetworkWatermarkChecker
 func (checker *ProcessNetworkWatermarkChecker) WithParent(check *ProcessChecker) *ProcessNetworkWatermarkChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) UnsetParent() *ProcessNetworkWatermarkChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -7809,9 +8121,21 @@ func (checker *ProcessUdpSeqCheckErrorChecker) WithProcess(check *ProcessChecker
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) UnsetProcess() *ProcessUdpSeqCheckErrorChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessUdpSeqCheckErrorChecker
 func (checker *ProcessUdpSeqCheckErrorChecker) WithParent(check *ProcessChecker) *ProcessUdpSeqCheckErrorChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessUdpSeqCheckErrorChecker
+func (checker *ProcessUdpSeqCheckErrorChecker) UnsetParent() *ProcessUdpSeqCheckErrorChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -8015,9 +8339,21 @@ func (checker *PowershellScriptBlockChecker) WithProcess(check *ProcessChecker) 
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) UnsetProcess() *PowershellScriptBlockChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the PowershellScriptBlockChecker
 func (checker *PowershellScriptBlockChecker) WithParent(check *ProcessChecker) *PowershellScriptBlockChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) UnsetParent() *PowershellScriptBlockChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -8197,6 +8533,12 @@ func (checker *ProcessDnsChecker) WithProcess(check *ProcessChecker) *ProcessDns
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessDnsChecker
+func (checker *ProcessDnsChecker) UnsetProcess() *ProcessDnsChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithSocket adds a Socket check to the ProcessDnsChecker
 func (checker *ProcessDnsChecker) WithSocket(check *SockInfoChecker) *ProcessDnsChecker {
 	checker.Socket = check
@@ -8224,6 +8566,12 @@ func (checker *ProcessDnsChecker) WithDestinationPod(check *PodChecker) *Process
 // WithParent adds a Parent check to the ProcessDnsChecker
 func (checker *ProcessDnsChecker) WithParent(check *ProcessChecker) *ProcessDnsChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessDnsChecker
+func (checker *ProcessDnsChecker) UnsetParent() *ProcessDnsChecker {
+	checker.Parent = nil
 	return checker
 }
 
@@ -8368,9 +8716,21 @@ func (checker *ProcessSandboxSyscallChecker) WithProcess(check *ProcessChecker) 
 	return checker
 }
 
+// UnsetProcess unsets the Process check to the ProcessSandboxSyscallChecker
+func (checker *ProcessSandboxSyscallChecker) UnsetProcess() *ProcessSandboxSyscallChecker {
+	checker.Process = nil
+	return checker
+}
+
 // WithParent adds a Parent check to the ProcessSandboxSyscallChecker
 func (checker *ProcessSandboxSyscallChecker) WithParent(check *ProcessChecker) *ProcessSandboxSyscallChecker {
 	checker.Parent = check
+	return checker
+}
+
+// UnsetParent unsets the Parent check to the ProcessSandboxSyscallChecker
+func (checker *ProcessSandboxSyscallChecker) UnsetParent() *ProcessSandboxSyscallChecker {
+	checker.Parent = nil
 	return checker
 }
 

@@ -159,7 +159,7 @@ var (
 	TcpSocketMap                = program.MapBuilder("tg_l3_tcpsk", Exit, ExitV511)
 	TcpSocketMapStats           = program.MapBuilder("tg_l3_tcpsk_stats", Exit, ExitV511)
 
-	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	ExecveTailCallsMap  = program.MapBuilderProgram("execve_calls", Execve)
 	ExecveMapUpdateData = program.MapBuilder("execve_map_update_data", ExecveMapUpdate)
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
@@ -196,9 +196,6 @@ var (
 func setupSensor() {
 	// execve program tail calls details
 	Execve.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
-	ExecveV53.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
-	ExecveV511.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
-	ExecveV61.SetTailCall("raw_tracepoint", ExecveTailCallsMap)
 
 	ks, err := ksyms.KernelSymbols()
 	if err == nil {
