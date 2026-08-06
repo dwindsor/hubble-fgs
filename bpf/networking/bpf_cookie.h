@@ -52,6 +52,28 @@ struct {
 	__uint(max_entries, 1);
 } tg_l3_sk_ver SEC(".maps");
 
+/* Generate a new socket cookie version number.
+ * We track sockets by the address of their struct sock, as these are unique to the
+ * socket and are close to the skb. Due to the same memory locations being reused when
+ * socket structs are recycled, it is possible for user space to be confused between
+ * two different sockets with the same cookie (address). To help, each new socket is
+ * allocated a new socket cookie version number and this is stored in the socket map
+ * value.
+ *
+ * As there could be many cores creating sockets at the same time, the function uses
+ * an atomic instruction to increment the counter. Unfortunately, as the right atomic
+ * functions are not available on older kernels, there is a race condition where two
+ * cores could update the version value (one after the other), and both read the
+ * second value that was written.
+ *
+ * In this situation, we can guarantee that the two sockets being allocated
+ * simultaneously will have different socket cookies (different addresses), so they
+ * will never need to be disambiguated by user space. In other words, the combination
+ * of socket cookie and version will still be unique, even if two sockets allocated
+ * simulataneously receive the same version number.
+ *
+ * We opted for a sequential count over a random value to aid debugging.
+ */
 static inline __attribute__((always_inline)) u64
 cookie_inc_version()
 {
