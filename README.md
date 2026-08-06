@@ -139,7 +139,7 @@ Once the agent (`tetragon`) is running, events can be observed using the
 
 The output should be similar to:
 ```json
-{"process_exec":{"process":{"exec_id":"OjMwNTIxMjQ0NzUxMDg4MDoyNTEzMjE=","pid":251321," ...
+{"process_exec":{"process":{"exec_id":"OjMwNTIxMjQ0NzUxMDg4MDoyNTEzMjE=","pid":251321}}}
 ```
 
 Or by passing an `--export-filename` flag to the agent.
