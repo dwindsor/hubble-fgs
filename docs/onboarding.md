@@ -322,9 +322,10 @@ make kind-down
 
 - [`README.md`](../README.md): build/run, GKE/EKS/minikube, troubleshooting.
 - [`AGENTS.md`](../AGENTS.md): concise architecture + conventions summary.
+- [`docs/HIGH_LEVEL_ARCHITECTURE.ml`](HIGH_LEVEL_ARCHITECTURE.md): overview of how Tetragon works.
 - [`docs/FAQ.md`](FAQ.md): Tetragon FAQ
 - [`docs/oss-ee-split.md`](oss-ee-split.md): OSS/EE boundary and sensor map. Read this early.
-- [`docs/HACKING.md`](HACKING.md): debugging, log levels, BTF-passed constants, checker test failures.
+- [`docs/HACKING.md`](HACKING.md): debugging, log levels, BTF-passed constants, checker test failures, automated code generation, useful configuration.
 - [`docs/kvm-go-tests-reproduce.md`](kvm-go-tests-reproduce.md): reproducing a KVM CI failure locally.
 - [`contrib/kvm/README.md`](../contrib/kvm/README.md): LVH workflow and custom kernels.
 - [`docs/backporting.md`](backporting.md): version mapping and backport process.

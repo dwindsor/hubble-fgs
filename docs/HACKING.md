@@ -123,3 +123,90 @@ of order: https://github.com/isovalent/hubble-fgs/pull/1036.
 If you can find fix the issue, great! Otherwise, please create an issue that
 includes the JSON file and any analysis you performed.
 
+## Automated Code Generation
+
+For lots of reasons, we generate code and other files from templates and
+inputs. The GitHub workflows will fail if code should have been generated.
+
+To get a list of useful functions, use:
+```
+make help
+```
+
+### CLI Switches
+
+After modifying the CLI switches in `pkg/option`, run:
+
+```
+make generate-flags
+```
+to generate the documentation.
+
+### Helm Chart Values
+
+After modifying the helm chart values and rules in
+`install/kubernetes/enterprise`, run:
+
+```
+make -C install/kubernetes
+```
+
+### Tracing Policies
+
+After modifying the CRDs in `pkg/k8s/apis/cilium.io/v1alpha1`, run:
+
+```
+make crds
+```
+
+## Accessing Metrics
+
+Tetragon metrics can be enabled when starting Tetragon by setting the
+`--metrics-server=:2112` CLI switch. The metrics can then be obtained by
+running:
+
+```
+curl localhost:2112/metrics 2>/dev/null
+```
+or
+```
+wget -O- localhost:2112/metrics 2>/dev/null
+```
+
+The output will be long so `grep` will be helpful.
+
+## Events Output
+
+Tetragon events can be dumped to a rotating file in JSON by specifying the
+`--export-filename <file>` CLI switch. The size of the files and the maximum
+number to rotate can be specified with
+`--export-file-max-size-mb <size in MB>` and
+`export-file-max-backups <number of backups>`.
+
+The events can also be captured as they are produced by using the `tetra`
+tool:
+
+```
+tetra getevents
+```
+
+The tetra tool also offers a compact mode that can be useful in some
+situations:
+
+```
+tetra getevents -o compact
+```
+
+### Example of Compact Events
+
+```
+🚀 process e338dac4c545 /usr/bin/socat "- UDP4-RECVFROM:7777,ip-add-membership=239.1.1.1:10.0.2.15,fork" 
+🚀 process e338dac4c545 /sbin/modprobe "-q -- netdev-10.0.2.15"           
+💥 exit    e338dac4c545 /sbin/modprobe "-q -- netdev-10.0.2.15" 1 
+🚀 process e338dac4c545 /sbin/modprobe "-q -- 10.0.2.15"                  
+💥 exit    e338dac4c545 /sbin/modprobe "-q -- 10.0.2.15" 1       
+🤝 igmp-join e338dac4c545 /usr/bin/socat enp0s2 10.0.2.15=>239.1.1.1    
+💥 exit    e338dac4c545 /usr/bin/socat "- UDP4-RECVFROM:7777,ip-add-membership=239.1.1.1:10.0.2.15,fork" 130 
+📝 igmp-membership-report enp0s2 10.0.2.15=>239.1.1.1
+```
+
