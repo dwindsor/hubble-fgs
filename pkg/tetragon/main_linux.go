@@ -33,6 +33,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 )
 
 // resolveUnixSocketPath returns the in-pod unix socket path for listenAddr:
@@ -98,6 +100,14 @@ func startLayer3Progs(ctx context.Context) error {
 
 func startNetworkInterfaceStats(ctx context.Context) error {
 	return network.StartNetworkInterfaceStats(ctx)
+}
+
+func startSockopsSensor(ctx context.Context) error {
+	return sockops.StartSockopsSensor(ctx)
+}
+
+func startSockmapSensor(ctx context.Context) error {
+	return sockmap.StartSockmapSensor(ctx)
 }
 
 func loadInitialProcFsSensor(ctx context.Context) error {

@@ -11,22 +11,27 @@
 package sockops
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 )
 
 var (
+	sensorStartedOnInit = false
+
 	// Needed on both the HTTP and TLS programs.
 	SockopsEstablished = program.Builder(
 		"bpf_sockops.o",
@@ -55,7 +60,7 @@ func init() {
 	sensors.RegisterPolicyHandlerAtInit(sockops.name, sockops)
 }
 
-func builder(policy tracingpolicy.TracingPolicy, name string) (sensors.SensorIface, error) {
+func builder(policy tracingpolicy.TracingPolicy, name string) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -79,6 +84,14 @@ func (*sockopsSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
 ) (sensors.SensorIface, error) {
+	if !kernels.MinKernelVersion("5.8.0") {
+		return nil, nil
+	}
+
+	if sensorStartedOnInit {
+		return nil, nil
+	}
+
 	parser := policy.TpSpec().Parser
 	if (parser.Tls.Enable && parser.Tls.Mode == "socket") ||
 		parser.Http.Enable ||
@@ -113,5 +126,35 @@ func SetFilter(mapDir string, mapName string, filters []uint32) error {
 		}
 	}
 
+	return nil
+}
+
+func StartSockopsSensor(ctx context.Context) error {
+	if !kernels.MinKernelVersion("5.8.0") {
+		return nil
+	}
+
+	if enterpriseOption.Config.EnableTLSSensor && enterpriseOption.Config.TLSSensorMode == "socket" {
+		sens, err := builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
+		if err != nil {
+			return err
+		}
+		if sens != nil {
+			mgr := observer.GetSensorManager()
+			if mgr == nil {
+				return fmt.Errorf("StartSockopsSensor could not get sensor manager")
+			}
+			err = mgr.AddSensor(ctx, sens.Name, sens)
+			if err != nil {
+				return err
+			}
+			err = mgr.EnableSensor(ctx, sens.Name)
+			if err != nil {
+				return err
+			}
+		}
+
+		sensorStartedOnInit = true
+	}
 	return nil
 }

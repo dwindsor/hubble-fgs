@@ -32,8 +32,9 @@ import (
 
 var (
 	// Do not use directly, should be accessed via getCache()
-	__cache    *tlsCache
-	tlsFilters []uint32
+	__cache           *tlsCache
+	defaultTLSFilters []uint32
+	tlsFilters        []uint32
 )
 
 const (

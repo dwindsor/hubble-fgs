@@ -74,6 +74,14 @@ func startNetworkInterfaceStats(ctx context.Context) error {
 	return nil
 }
 
+func startSockopsSensor(ctx context.Context) error {
+	return nil
+}
+
+func startSockmapSensor(ctx context.Context) error {
+	return nil
+}
+
 func loadInitialProcFsSensor(_ context.Context) error {
 	return nil
 }

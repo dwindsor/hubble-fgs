@@ -11,11 +11,14 @@
 package sockmap
 
 import (
+	"context"
 	"fmt"
+	"slices"
 
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -251,7 +254,13 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, cg bool) *sensors.Senso
 		}
 	}
 
-	return sensors.SensorBuilder(policy, "__parser_sensors__", progs, maps)
+	sens := sensors.SensorBuilder(policy, "__tls_parser_sensors__", progs, maps)
+	sens.PreUnloadHook = func() error {
+		// When a tracing policy sensor is removed, reset the filter to the CLI options.
+		return sockops.SetFilter(option.Config.BpfDir, "tg_tls_filter_map", defaultTLSFilters)
+	}
+
+	return sens
 }
 
 func (tls *tlsSensor) PolicyHandler(
@@ -287,7 +296,7 @@ func (tls *tlsSensor) PolicyHandler(
 		return nil, nil
 	}
 
-	tlsFilters = ParseTLSSpec(&parser.Tls, parserHttps)
+	tlsFilters = append(defaultTLSFilters, ParseTLSSpec(&parser.Tls, parserHttps)...)
 	if len(tlsFilters) > enterpriseOption.TLS_MAX_PORTS {
 		return nil, fmt.Errorf("TLS parser only supports up to %d MatchPorts selectors, got %d", enterpriseOption.TLS_MAX_PORTS, len(tlsFilters))
 	}
@@ -300,10 +309,13 @@ func (tls *tlsSensor) PolicyHandler(
 		tlsconfig.MetricsEnabled = parser.Tls.Metrics.Enable
 		tlsconfig.MetricsLabelFilter = tlsconfig.DefaultLabelFilter().WithEnabledLabels(parser.Tls.Metrics.LabelFilter)
 	} else {
-		tlsconfig.MetricsEnabled = true
-		tlsconfig.MetricsLabelFilter = tlsconfig.DefaultLabelFilter()
+		setLabelFilterFromCLI()
 	}
 
+	if enterpriseOption.Config.EnableTLSSensor {
+		// Sensor is already loaded; we just need to configure it
+		return nil, sockops.SetFilter(option.Config.BpfDir, "tg_tls_filter_map", tlsFilters)
+	}
 	return enableTLSParser(policy, enableTLSCG), nil
 }
 
@@ -315,4 +327,36 @@ func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 	}
 	return sockops.SetFilter(args.BPFDir, "tg_tls_filter_map", tlsFilters)
+}
+
+func StartSockmapSensor(ctx context.Context) error {
+	if enterpriseOption.Config.EnableTLSSensor {
+		for _, p := range enterpriseOption.Config.TLSSensorPorts {
+			defaultTLSFilters = append(defaultTLSFilters, uint32(p))
+		}
+		tlsFilters = slices.Clone(defaultTLSFilters)
+
+		setLabelFilterFromCLI()
+
+		sens := enableTLSParser(&tracingpolicy.GenericTracingPolicy{}, enterpriseOption.Config.TLSSensorMode == "cgroup")
+		mgr := observer.GetSensorManager()
+		if mgr == nil {
+			return fmt.Errorf("StartSockopsSensor could not get sensor manager")
+		}
+		err := mgr.AddSensor(ctx, sens.Name, sens)
+		if err != nil {
+			return err
+		}
+		return mgr.EnableSensor(ctx, sens.Name)
+	}
+	return nil
+}
+
+func setLabelFilterFromCLI() {
+	tlsconfig.MetricsEnabled = enterpriseOption.Config.EnableTLSMetrics
+	if len(enterpriseOption.Config.TLSMetricsLabelFilter) > 0 {
+		tlsconfig.MetricsLabelFilter = tlsconfig.DefaultLabelFilter().WithEnabledLabels(enterpriseOption.Config.TLSMetricsLabelFilter)
+	} else {
+		tlsconfig.MetricsLabelFilter = tlsconfig.DefaultLabelFilter()
+	}
 }
