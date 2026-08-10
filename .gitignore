@@ -35,3 +35,6 @@ compile_commands.json
 .DS_Store
 /tetrabox
 /tetrabox-k8s
+**/_data/**
+!**/_data/images.json
+!**/_data/kernels.json
