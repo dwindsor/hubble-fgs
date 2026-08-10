@@ -96,7 +96,7 @@ spec:
 `
 )
 
-func TestTLS13(t *testing.T) {
+func testTLS13(t *testing.T, cgroup bool) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -148,7 +148,12 @@ func TestTLS13(t *testing.T) {
 
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
-	tp, err := tracingpolicy.FromYAML(tlsConfig)
+	config := tlsConfig
+	if cgroup {
+		config = tlsConfigCG
+	}
+
+	tp, err := tracingpolicy.FromYAML(config)
 	require.NoError(t, err)
 
 	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
@@ -161,7 +166,15 @@ func TestTLS13(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestTLS12(t *testing.T) {
+func TestTLS13(t *testing.T) {
+	testTLS13(t, false)
+}
+
+func TestCGTLS13(t *testing.T) {
+	testTLS13(t, true)
+}
+
+func testTLS12(t *testing.T, cgroup bool) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -221,7 +234,12 @@ func TestTLS12(t *testing.T) {
 
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
-	tp, err := tracingpolicy.FromYAML(tlsConfig)
+	config := tlsConfig
+	if cgroup {
+		config = tlsConfigCG
+	}
+
+	tp, err := tracingpolicy.FromYAML(config)
 	require.NoError(t, err)
 
 	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
@@ -232,6 +250,14 @@ func TestTLS12(t *testing.T) {
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+func TestTLS12(t *testing.T) {
+	testTLS12(t, false)
+}
+
+func TestCGTLS12(t *testing.T) {
+	testTLS12(t, true)
 }
 
 func TestLoadTlsSensor(t *testing.T) {
@@ -403,142 +429,4 @@ spec:
 		sensi = append(sensi, s)
 	}
 	sensors.UnloadSensors(sensi)
-}
-
-func TestCGTLS13(t *testing.T) {
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
-	if runtime.GOARCH != "amd64" {
-		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-	if os.Getenv("FLAKY_HTTP") != "" {
-		t.Skipf("Skipping test on flaky kernel")
-	}
-
-	bpf.CheckOrMountCgroup2()
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	curlChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix("curl")).
-		WithArguments(sm.Full("--tlsv1.3 -4 https://www.google.com"))
-
-	tlsChecker := ec.NewTlsChecker("curlTls").
-		WithProcess(curlChecker).
-		WithParent(selfChecker).
-		WithNegotiatedVersion(sm.Full("TLS1.3")).
-		WithClientVersion(sm.Full("TLS1.2")).
-		WithServerVersion(sm.Full("TLS1.2")).
-		WithSniType(sm.Full("host_name")).
-		WithSniName(sm.Contains("www.google.com")).
-		WithClientFlags(sm.Contains("ExtVersion")).
-		WithServerFlags(sm.Contains("ExtVersion"))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("curlExec").
-			WithProcess(curlChecker).
-			WithParent(selfChecker),
-		ec.NewProcessConnectChecker("curlConnect").
-			WithProcess(curlChecker).
-			WithParent(selfChecker).
-			WithDestinationPort(443),
-		tlsChecker,
-	)
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
-
-	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-
-	tp, err := tracingpolicy.FromYAML(tlsConfigCG)
-	require.NoError(t, err)
-
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
-
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
-
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-}
-
-func TestCGTLS12(t *testing.T) {
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
-	if runtime.GOARCH != "amd64" {
-		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
-	}
-	if os.Getenv("FLAKY_HTTP") != "" {
-		t.Skipf("Skipping test on flaky kernel")
-	}
-
-	bpf.CheckOrMountCgroup2()
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	curlChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix("curl")).
-		WithArguments(sm.Full("--tlsv1.2 --tls-max 1.2 -4 https://www.google.com/"))
-
-	tlsChecker := ec.NewTlsChecker("curlTls").
-		WithProcess(curlChecker).
-		WithParent(selfChecker).
-		WithClientVersion(sm.Full("TLS1.2")).
-		WithServerVersion(sm.Full("TLS1.2")).
-		WithSniType(sm.Full("host_name")).
-		WithSniName(sm.Contains("www.google.com")).
-		WithClientFlags(sm.Full("")).
-		WithServerFlags(sm.Full("")).
-		WithCertificates(ec.NewStringListMatcher().
-			WithOperator(lm.Unordered).
-			WithValues(
-				sm.Full("CN=www.google.com"),
-				// Something changed on Google's end and we now see one of two
-				// possible certificates here, so match either one
-				sm.Regex("(CN=WR2,O=Google Trust Services|CN=GTS CA 1C3,O=Google Trust Services LLC),C=US"),
-				sm.Full("CN=GTS Root R1,O=Google Trust Services LLC,C=US"),
-			))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("curlExec").
-			WithProcess(curlChecker).
-			WithParent(selfChecker),
-		ec.NewProcessConnectChecker("curlConnect").
-			WithProcess(curlChecker).
-			WithParent(selfChecker).
-			WithDestinationPort(443),
-		tlsChecker,
-	)
-
-	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
-
-	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-
-	tp, err := tracingpolicy.FromYAML(tlsConfigCG)
-	require.NoError(t, err)
-
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
-
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
-
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
 }
