@@ -2646,6 +2646,34 @@ func LoadFIMInitialSensor(ctx context.Context) error {
 		logger.GetLogger().Info("FIM dispatcher is not enabled")
 		return nil
 	}
+
+	supportTracing := utils.SupportFmodRet()
+	supportLSM := utils.SupportLSM()
+	supportBpfLoop := (probeBpfLoop() == nil)
+	supportBpfForEachMapElem := (probeForEachMapElem() == nil)
+
+	// enabling FIM dispatcher should be only supported in kernels that also support path-based programs
+	if !supportTracing || !supportLSM || !supportBpfLoop || !supportBpfForEachMapElem {
+		var errs []error
+		if !supportTracing {
+			errs = append(errs, errors.New("fmod_ret programs are not supported (need kernel >= 5.7)"))
+		}
+		if !supportLSM {
+			if features.HaveProgramType(ebpf.LSM) == nil {
+				errs = append(errs, errors.New("lsm programs are supported but not enabled (need to enable LSM by adding \"bpf\" to the lsm kernel boot argument)"))
+			} else {
+				errs = append(errs, errors.New("lsm programs are not supported (need kernel >= 5.7 and CONFIG_BPF_LSM=y in kernel config)"))
+			}
+		}
+		if !supportBpfLoop {
+			errs = append(errs, errors.New("bpf_loop helper is not supported (need kernel >= 5.17)"))
+		}
+		if !supportBpfForEachMapElem {
+			errs = append(errs, errors.New("bpf_for_each_map_elem helper is not supported (need kernel >= 5.13)"))
+		}
+		return fmt.Errorf("fim-enable-dispatcher is not supported due to the following error(s): %w", errors.Join(errs...))
+	}
+
 	mgr := observer.GetSensorManager()
 	initialFIMSensor := &sensors.Sensor{
 		Name:  baseFIMPolicy,
