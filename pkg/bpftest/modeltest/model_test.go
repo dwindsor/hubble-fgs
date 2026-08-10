@@ -34,9 +34,34 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/testcase"
+	"github.com/isovalent/hubble-fgs/pkg/netpol"
 
 	corev1 "k8s.io/api/core/v1"
 )
+
+// Denies curl's egress to loopback so the transmit drop counters increment.
+const curlDenyLoopback = `
+apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "modeltest-curl-deny"
+spec:
+  processSelector:
+    operator: "In"
+    values:
+      - "/usr/bin/curl"
+      - "/usr/sbin/curl"
+  defaultAction: "deny"
+  rules:
+  - description: "connectDenyRule"
+    hook: "connect"
+    action: "deny"
+    destination:
+    - ipBlock:
+        cidr: "127.0.0.1/32"
+      ports:
+        protocol: "TCP"
+`
 
 var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 	"BasicModel": {
@@ -435,6 +460,85 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 					},
 				},
 			},
+		},
+	},
+
+	// The no-drop cases above pin the drop counters to zero, which passes even
+	// if nothing ever increments them. This case forces a policy drop so the
+	// counters have to be wired to a live BPF map to come back nonzero.
+	//
+	// Loading a policy exposes two unrelated model bugs, worked around below.
+	// The matched process is reported with empty arguments
+	// (https://github.com/isovalent/hubble-fgs/issues/8915) and the connection
+	// turns up a second time, zeroed
+	// (https://github.com/isovalent/hubble-fgs/issues/8916). Revisit this case
+	// when either is fixed.
+	"PolicyDropPacketCounters": {
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, _ *modelserver.Server, _ *harness.Harness) {
+				// The policy has to be in place before any traffic flows, so
+				// the whole scenario runs as a step rather than via tc.Host.
+				np, err := netpol.FromYAML(curlDenyLoopback)
+				require.NoError(tb, err, "failed to parse deny policy")
+				require.NoError(tb, netpol.Add(np), "failed to add deny policy")
+				// Registered first so it runs last, after the removal below.
+				releaseLeakedBinaryUIDs(tb, np.Spec.ProcessSelector.Values...)
+				tb.Cleanup(func() { netpol.Delete(np) })
+
+				// A denied connect() makes curl exit nonzero, so let the
+				// binary fail without failing the test.
+				_ = tc.RunSingleBinary(ctx, model.Binary{
+					Cmd:             "curl",
+					Args:            []string{"-4", "--connect-timeout", "1", "http://127.0.0.1:9996"},
+					Timeout:         10 * time.Second,
+					TimeoutExpected: true,
+				})
+
+				// Workaround for the empty-arguments bug
+				// (https://github.com/isovalent/hubble-fgs/issues/8915): a
+				// process matched by a processSelector reports empty
+				// arguments, so this check declares no Args. Appending after
+				// setup means the entry is only matched, not run.
+				tc.Host = append(tc.Host, model.Binary{
+					Cmd: "curl",
+					ConnectionChecks: model.ConnectionChecks{
+						// Workaround for the duplicate-connection bug
+						// (https://github.com/isovalent/hubble-fgs/issues/8916):
+						// this destination shows up twice, as "localhost." and
+						// as a plain IP, and one copy comes back zeroed. Here
+						// the IP copy holds the counters; the segments_test.go
+						// case sees the DNS copy hold them instead. Check which
+						// copy carries the stats rather than assuming DNS or IP.
+						&model.IPConnectionCheck{
+							CIDR:     "127.0.0.1/32",
+							Port:     model.UInt64Exactly(9996),
+							Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
+							Stats: model.StatsCheck{
+								// Only send() charges the transmit counters, and
+								// the connection never gets past the SYN, so the
+								// receive side stays empty.
+								TxDropBytes: model.UInt64GreaterThan(0),
+								// The kernel may retransmit the SYN within curl's
+								// timeout, so the count is not exact. What matters
+								// is the unit: a few packets, against the tens of
+								// bytes each SYN adds.
+								TxDropPackets: model.UInt64Between(1, 5),
+							},
+						},
+					},
+				})
+			},
+		},
+	},
+
+	// The policy-drop case above bumps the packet counters one at a time; a dropped
+	// SYN is one packet however it is counted. This case pushes bulk data through
+	// real segmentation, where per-skb and per-packet counts diverge. It runs as a
+	// step because the setup must precede traffic and the check compares against a
+	// runtime segment count. See checkSegmentPacketCounters.
+	"SegmentPacketCounters": {
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			checkSegmentPacketCounters,
 		},
 	},
 

@@ -418,11 +418,15 @@ func (check *WorkloadConnectionCheck) CheckConnection(connection *v1alpha.Applic
 }
 
 type StatsCheck struct {
-	TxBytes       UInt64Checker
-	RxBytes       UInt64Checker
-	TxDropBytes   UInt64Checker
-	TxDropPackets UInt64Checker
-	Sessions      UInt64Checker
+	TxBytes             UInt64Checker
+	RxBytes             UInt64Checker
+	TxDropBytes         UInt64Checker
+	TxDropPackets       UInt64Checker
+	DefaultDropBytes    UInt64Checker
+	DefaultDropPackets  UInt64Checker
+	DefaultAllowBytes   UInt64Checker
+	DefaultAllowPackets UInt64Checker
+	Sessions            UInt64Checker
 }
 
 func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
@@ -444,6 +448,26 @@ func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
 	if check.TxDropPackets != nil {
 		if err := check.TxDropPackets(stats.TxDropPackets); err != nil {
 			return fmt.Errorf("TxDropPackets check failed: %w", err)
+		}
+	}
+	if check.DefaultDropBytes != nil {
+		if err := check.DefaultDropBytes(stats.DefaultDropBytes); err != nil {
+			return fmt.Errorf("DefaultDropBytes check failed: %w", err)
+		}
+	}
+	if check.DefaultDropPackets != nil {
+		if err := check.DefaultDropPackets(stats.DefaultDropPackets); err != nil {
+			return fmt.Errorf("DefaultDropPackets check failed: %w", err)
+		}
+	}
+	if check.DefaultAllowBytes != nil {
+		if err := check.DefaultAllowBytes(stats.DefaultAllowBytes); err != nil {
+			return fmt.Errorf("DefaultAllowBytes check failed: %w", err)
+		}
+	}
+	if check.DefaultAllowPackets != nil {
+		if err := check.DefaultAllowPackets(stats.DefaultAllowPackets); err != nil {
+			return fmt.Errorf("DefaultAllowPackets check failed: %w", err)
 		}
 	}
 	if check.Sessions != nil {
