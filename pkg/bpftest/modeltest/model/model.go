@@ -423,32 +423,32 @@ type StatsCheck struct {
 func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
 	if check.TxBytes != nil {
 		if err := check.TxBytes(stats.TxBytes); err != nil {
-			return fmt.Errorf("TxBytes check failed: %w", err)
+			return fmt.Errorf("txBytes check failed: %w", err)
 		}
 	}
 	if check.RxBytes != nil {
 		if err := check.RxBytes(stats.RxBytes); err != nil {
-			return fmt.Errorf("RxBytes check failed: %w", err)
+			return fmt.Errorf("rxBytes check failed: %w", err)
 		}
 	}
 	if check.TxDrops != nil {
 		if err := check.TxDrops(stats.TxDrops); err != nil {
-			return fmt.Errorf("TxDrops check failed: %w", err)
+			return fmt.Errorf("txDrops check failed: %w", err)
 		}
 	}
 	if check.TxQuota != nil {
 		if err := check.TxQuota(stats.TxQuota); err != nil {
-			return fmt.Errorf("TxQuota check failed: %w", err)
+			return fmt.Errorf("txQuota check failed: %w", err)
 		}
 	}
 	if check.TxQuotaUsage != nil {
 		if err := check.TxQuotaUsage(stats.TxQuotaUsage); err != nil {
-			return fmt.Errorf("TxQuotaUsage check failed: %w", err)
+			return fmt.Errorf("txQuotaUsage check failed: %w", err)
 		}
 	}
 	if check.Sessions != nil {
 		if err := check.Sessions(stats.Sessions); err != nil {
-			return fmt.Errorf("Sessions check failed: %w", err)
+			return fmt.Errorf("sessions check failed: %w", err)
 		}
 	}
 	return nil
