@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -26,9 +27,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
@@ -57,32 +63,80 @@ spec:
 `, port)
 }
 
-func TestNopSensorSmoke(t *testing.T) {
+func testNopSensorSmoke(t *testing.T, CLISwitches bool) {
 	base := base.GetInitialSensorTest(t)
 	tus.LoadSensor(t, base)
 	yaml := nopConfig(1337)
+
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.EnableNopSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.NopSensorPorts, Value: []int{1337}},
+		}))
+		yaml = enterpriseoth.EmptyTracingPolicy
+	}
 	policy, err := tracingpolicy.FromYAML(yaml)
 	require.NoError(t, err)
 	sens, err := sensors.SensorsFromPolicy(policy, policyfilter.NoFilterID)
 	require.NoError(t, err)
+	if CLISwitches {
+		sockopsSensor, err := sockops.Builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
+		require.NoError(t, err)
+		if sockopsSensor != nil {
+			sens = append(sens, sockopsSensor)
+		}
+		nopSensor := nop.EnableNopParser(&tracingpolicy.GenericTracingPolicy{})
+		if nopSensor != nil {
+			sens = append(sens, nopSensor)
+		}
+	}
 	for _, si := range sens {
 		s := si.(*sensors.Sensor)
 		if s != nil {
 			tus.LoadSensor(t, s)
 		}
 	}
+	logger.GetLogger().Warn("unload", "sens", sens)
+	sensors.UnloadSensors(sens)
 }
 
-func TestLoadNopSensor(t *testing.T) {
+func TestNopSensorSmoke(t *testing.T) {
+	testNopSensorSmoke(t, false)
+}
+
+func TestNopSensorSmokeCLI(t *testing.T) {
+	testNopSensorSmoke(t, true)
+}
+
+func testLoadNopSensor(t *testing.T, CLISwitches bool) {
 	base := base.GetInitialSensorTest(t)
 	option.Config.KeepCollection = true
 	defer func() { option.Config.KeepCollection = false }()
 	tus.LoadSensor(t, base)
 	yaml := nopConfig(1337)
+
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.EnableNopSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.NopSensorPorts, Value: []int{1337}},
+		}))
+		yaml = enterpriseoth.EmptyTracingPolicy
+	}
 	policy, err := tracingpolicy.FromYAML(yaml)
 	require.NoError(t, err)
 	sensorsi, err := sensors.SensorsFromPolicy(policy, policyfilter.NoFilterID)
 	require.NoError(t, err)
+	if CLISwitches {
+		sockopsSensor, err := sockops.Builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
+		require.NoError(t, err)
+		if sockopsSensor != nil {
+			sensorsi = append(sensorsi, sockopsSensor)
+		}
+		nopSensor := nop.EnableNopParser(&tracingpolicy.GenericTracingPolicy{})
+		if nopSensor != nil {
+			sensorsi = append(sensorsi, nopSensor)
+		}
+	}
 	sens := make([]*sensors.Sensor, 0, len(sensorsi))
 	sens = append(sens, base)
 	for _, si := range sensorsi {
@@ -126,4 +180,14 @@ func TestLoadNopSensor(t *testing.T) {
 	assert.NoError(t, err, "nop sensor should load")
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadSensors(sensorsi)
+}
+
+func TestLoadNopSensor(t *testing.T) {
+	testLoadNopSensor(t, false)
+}
+
+func TestLoadNopSensorCLI(t *testing.T) {
+	testLoadNopSensor(t, true)
 }
