@@ -69,6 +69,7 @@ bpf-udp-socket-cache-size: {{ .Values.tetragon.layer3.udp.bpfSocketCacheSize | q
 enable-udp-cgroup: {{ .Values.tetragon.layer3.udp.cgroup | quote }}
 udp-stats-interval: {{ .Values.tetragon.layer3.udp.statsInterval | quote }}
 bpf-icmp-socket-cache-size: {{ .Values.tetragon.layer3.icmp.bpfSocketCacheSize | quote }}
+bpf-http-context-cache-size: {{ .Values.tetragon.http.bpfContextCacheSize | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
 udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
 enable-udp-watermarks: {{ .Values.tetragon.layer3.udp.watermarks.enabled | quote }}

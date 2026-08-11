@@ -64,6 +64,7 @@ const (
 	keyUDPSocketMapSize                  = "bpf-udp-socket-cache-size"
 	keyNetworkWatermarksMapSize          = "bpf-network-watermarks-cache-size"
 	keyICMPSocketMapSize                 = "bpf-icmp-socket-cache-size"
+	keyHTTPContextMapSize                = "bpf-http-context-cache-size"
 	KeyDisableLayer3                     = "disable-layer3"
 	keyEnableIcmpTracking                = "enable-icmp-tracking"
 	keyEnablePolicyK8sWatcher            = "enable-policy-k8swatcher"
@@ -248,6 +249,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Int(keyUDPSocketMapSize, 32768, "Set the number of UDP sockets to track in BPF. Higher values enable Tetragon to keep track of more UDP sockets before evicting old ones")
 	flags.Int(keyNetworkWatermarksMapSize, 32768, "Set the number of processes for which to track network watermarks in BPF. Higher values enable Tetragon to keep track of more processes before evicting old ones")
 	flags.Int(keyICMPSocketMapSize, 32768, "Set the number of ICMP sockets to track in BPF. Higher values enable Tetragon to keep track of more ICMP sockets before evicting old ones")
+	flags.Int(keyHTTPContextMapSize, 1000, "Set the number of HTTP requests to track in BPF. Higher values enable Tetragon to keep track of more HTTP requests before evicting old ones")
 
 	// Provide option to enable extra socket tracking for ICMP matching.
 	flags.Bool(keyEnableIcmpTracking, false, "Enable additional socket tracking for ICMP")
@@ -376,6 +378,7 @@ func readAndSetEnterpriseFlags() {
 	Config.UDPSocketMapSize = viper.GetInt(keyUDPSocketMapSize)
 	Config.NetworkWatermarksMapSize = viper.GetInt(keyNetworkWatermarksMapSize)
 	Config.ICMPSocketMapSize = viper.GetInt(keyICMPSocketMapSize)
+	Config.HTTPContextMapSize = viper.GetInt(keyHTTPContextMapSize)
 	Config.EnableIcmpTracking = viper.GetBool(keyEnableIcmpTracking)
 	Config.EnablePolicyK8sWatcher = viper.GetBool(keyEnablePolicyK8sWatcher)
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)

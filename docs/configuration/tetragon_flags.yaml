@@ -58,6 +58,10 @@ options:
       default_value: "65536"
       usage: |
         Set the size of the internal BPF endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
+    - name: bpf-http-context-cache-size
+      default_value: "1000"
+      usage: |
+        Set the number of HTTP requests to track in BPF. Higher values enable Tetragon to keep track of more HTTP requests before evicting old ones
     - name: bpf-icmp-socket-cache-size
       default_value: "32768"
       usage: |

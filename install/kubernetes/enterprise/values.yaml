@@ -138,6 +138,9 @@ tetragon:
     metrics:
       enabled: true
       labelFilter: ""
+  # HTTP
+  http:
+    bpfContextCacheSize: 1000
   prometheus:
     metricsLabelFilter: "namespace,workload,binary"
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
