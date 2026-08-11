@@ -63,6 +63,13 @@ func setSwitchesInternal(switches []SwitchSettings, revert bool) ([]SwitchSettin
 			} else {
 				*v = s.OldValue.(float64)
 			}
+		case (*string):
+			if !revert {
+				s.OldValue = *v
+				*v = s.Value.(string)
+			} else {
+				*v = s.OldValue.(string)
+			}
 		case (*time.Duration):
 			if !revert {
 				s.OldValue = *v

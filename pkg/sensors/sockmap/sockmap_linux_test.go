@@ -27,24 +27,24 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/stretchr/testify/assert"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/stretchr/testify/require"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
-
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 )
@@ -96,7 +96,7 @@ spec:
 `
 )
 
-func testTLS13(t *testing.T, cgroup bool) {
+func testTLS13(t *testing.T, CLISwitches, cgroup bool) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -146,35 +146,60 @@ func testTLS13(t *testing.T, cgroup bool) {
 
 	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 
-	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-
-	config := tlsConfig
+	tracingPolicy := tlsConfig
+	mode := "socket"
 	if cgroup {
-		config = tlsConfigCG
+		tracingPolicy = tlsConfigCG
+		mode = "cgroup"
 	}
 
-	tp, err := tracingpolicy.FromYAML(config)
-	require.NoError(t, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorMode, Value: mode},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{443}},
+		}))
+	}
 
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	require.NoError(t, sockops.StartSockopsSensor(ctx))
+	require.NoError(t, StartSockmapSensor(ctx))
 
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(tracingPolicy)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, jsonchecker.JsonTestCheck(t, checker))
 }
 
 func TestTLS13(t *testing.T) {
-	testTLS13(t, false)
+	testTLS13(t, false, false)
 }
 
 func TestCGTLS13(t *testing.T) {
-	testTLS13(t, true)
+	testTLS13(t, false, true)
 }
 
-func testTLS12(t *testing.T, cgroup bool) {
+func TestTLS13CLI(t *testing.T) {
+	testTLS13(t, true, false)
+}
+
+func TestCGTLS13CLI(t *testing.T) {
+	testTLS13(t, true, true)
+}
+
+func testTLS12(t *testing.T, CLISwitches, cgroup bool) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -232,32 +257,57 @@ func testTLS12(t *testing.T, cgroup bool) {
 
 	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 
-	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-
-	config := tlsConfig
+	tracingPolicy := tlsConfig
+	mode := "socket"
 	if cgroup {
-		config = tlsConfigCG
+		tracingPolicy = tlsConfigCG
+		mode = "cgroup"
 	}
 
-	tp, err := tracingpolicy.FromYAML(config)
-	require.NoError(t, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorMode, Value: mode},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{443}},
+		}))
+	}
 
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	require.NoError(t, err)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	require.NoError(t, sockops.StartSockopsSensor(ctx))
+	require.NoError(t, StartSockmapSensor(ctx))
 
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(tracingPolicy)
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
+	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	require.NoError(t, jsonchecker.JsonTestCheck(t, checker))
 }
 
 func TestTLS12(t *testing.T) {
-	testTLS12(t, false)
+	testTLS12(t, false, false)
 }
 
 func TestCGTLS12(t *testing.T) {
-	testTLS12(t, true)
+	testTLS12(t, false, true)
+}
+
+func TestTLS12CLI(t *testing.T) {
+	testTLS12(t, true, false)
+}
+
+func TestCGTLS12CLI(t *testing.T) {
+	testTLS12(t, true, true)
 }
 
 func TestLoadTlsSensor(t *testing.T) {
