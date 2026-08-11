@@ -310,7 +310,7 @@ func TestCGTLS12CLI(t *testing.T) {
 	testTLS12(t, true, true)
 }
 
-func TestLoadTlsSensor(t *testing.T) {
+func testLoadTlsSensor(t *testing.T, CLISwitches bool) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -337,8 +337,19 @@ spec:
       enable: true
 `
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorMode, Value: "socket"},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{443}},
+		}))
+		config = enterpriseoth.EmptyTracingPolicy
 	}
 
 	layer3.BaseLoaded = false
@@ -346,15 +357,24 @@ spec:
 	b := base.GetInitialSensorTest(t)
 
 	require.NoError(t, layer3.EnableLayer3Progs())
-
 	layer3Sensor := layer3.Layer3InitialSensor()
-
 	b.Maps = append(b.Maps, layer3Sensor.Maps...)
 	b.Progs = append(b.Progs, layer3Sensor.Progs...)
+
+	sockopsSensor, err := sockops.Builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
+	require.NoError(t, err)
+	b.Progs = append(b.Progs, sockopsSensor.Progs...)
+	b.Maps = append(b.Maps, sockopsSensor.Maps...)
+
+	sockmapSensor := enableTLSParser(&tracingpolicy.GenericTracingPolicy{}, false)
+	b.Progs = append(b.Progs, sockmapSensor.Progs...)
+	b.Maps = append(b.Maps, sockmapSensor.Maps...)
+
+	err = observertesthelper.WriteConfigFile(testConfigFile, config)
+	require.NoError(t, err)
+
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
-	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
-	}
+	require.NoError(t, err)
 
 	sensorProgs, sensorMaps := testutil.ProgsAndMaps(false, false, false)
 
@@ -397,7 +417,15 @@ spec:
 	sensors.UnloadSensors(sensi)
 }
 
-func TestLoadTlsCGSensor(t *testing.T) {
+func TestLoadTlsSensor(t *testing.T) {
+	testLoadTlsSensor(t, false)
+}
+
+func TestLoadTlsSensorCLI(t *testing.T) {
+	testLoadTlsSensor(t, true)
+}
+
+func testLoadTlsCGSensor(t *testing.T, CLISwitches bool) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -424,8 +452,19 @@ spec:
       enable: true
 `
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorMode, Value: "cgroup"},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{443}},
+		}))
+		config = enterpriseoth.EmptyTracingPolicy
 	}
 
 	layer3.BaseLoaded = false
@@ -433,15 +472,19 @@ spec:
 	b := base.GetInitialSensorTest(t)
 
 	require.NoError(t, layer3.EnableLayer3Progs())
-
 	layer3Sensor := layer3.Layer3InitialSensor()
-
 	b.Maps = append(b.Maps, layer3Sensor.Maps...)
 	b.Progs = append(b.Progs, layer3Sensor.Progs...)
+
+	sockmapSensor := enableTLSParser(&tracingpolicy.GenericTracingPolicy{}, true)
+	b.Progs = append(b.Progs, sockmapSensor.Progs...)
+	b.Maps = append(b.Maps, sockmapSensor.Maps...)
+
+	err := observertesthelper.WriteConfigFile(testConfigFile, config)
+	require.NoError(t, err)
+
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
-	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
-	}
+	require.NoError(t, err)
 
 	sensorProgs, sensorMaps := testutil.ProgsAndMaps(false, false, false)
 
@@ -479,4 +522,12 @@ spec:
 		sensi = append(sensi, s)
 	}
 	sensors.UnloadSensors(sensi)
+}
+
+func TestLoadTlsCGSensor(t *testing.T) {
+	testLoadTlsCGSensor(t, false)
+}
+
+func TestLoadTlsCGSensorCLI(t *testing.T) {
+	testLoadTlsCGSensor(t, true)
 }

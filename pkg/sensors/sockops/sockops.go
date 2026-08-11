@@ -60,7 +60,7 @@ func init() {
 	sensors.RegisterPolicyHandlerAtInit(sockops.name, sockops)
 }
 
-func builder(policy tracingpolicy.TracingPolicy, name string) (*sensors.Sensor, error) {
+func Builder(policy tracingpolicy.TracingPolicy, name string) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -101,7 +101,7 @@ func (*sockopsSensor) PolicyHandler(
 			return nil, fmt.Errorf("sockops sensor does not implement policy filtering")
 		}
 
-		return builder(policy, "__sockops_sensors__")
+		return Builder(policy, "__sockops_sensors__")
 	}
 	return nil, nil
 }
@@ -135,7 +135,7 @@ func StartSockopsSensor(ctx context.Context) error {
 	}
 
 	if enterpriseOption.Config.EnableTLSSensor && enterpriseOption.Config.TLSSensorMode == "socket" {
-		sens, err := builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
+		sens, err := Builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
 		if err != nil {
 			return err
 		}
