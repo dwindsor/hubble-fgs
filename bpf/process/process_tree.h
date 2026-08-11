@@ -892,14 +892,6 @@ static inline __attribute__((always_inline)) bool is_policy_drop(__u64 sum)
 	return (sum & TNP_POLICY_DENY);
 }
 
-static inline __attribute__((always_inline)) int dest_policy(__u64 *p, __u64 len, struct destination_endpoint_value *v)
-{
-	*p |= v->deny;
-	if (is_policy_drop(*p))
-		return SK_DROP;
-	return SK_PASS;
-}
-
 /* Number of packets this skb accounts for.
  *
  * One skb is not one packet at either cgroup hook. On egress the hook runs in
