@@ -893,7 +893,7 @@ func TcpSocketStats() *program.Map {
 }
 
 func TLSContext() *program.Map {
-	return tcpconfig.TLSContext
+	return program.MapUserFrom(socktrack.TLSContext)
 }
 
 func TLSMapStats() *program.Map {

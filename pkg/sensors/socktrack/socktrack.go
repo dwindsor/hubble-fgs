@@ -56,6 +56,9 @@ var (
 	// HTTP parser itself. As socktrack is always loaded at startup, the
 	// map is defined here / owned by socktrack and used downstream
 	HTTPContext = program.MapBuilder("tg_http_map", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
+
+	// same premise as tg_http_map above
+	TLSContext = program.MapBuilder("tg_tls_map", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
 )
 
 /* Enabled from the layer3 sensor */
@@ -80,6 +83,7 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 		ConfigMap,
 		TCPFinRxMap,
 		HTTPContext,
+		TLSContext,
 	}
 
 	if utils.SupportFentry() {
