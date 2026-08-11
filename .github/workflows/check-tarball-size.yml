@@ -24,7 +24,7 @@ jobs:
         with:
           registry: ${{ vars.ARTIFACTORY_HOST }}
           username: ${{ vars.ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          password: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
 
       - name: Generate Tetragon Slim Tarball Release
         run: |

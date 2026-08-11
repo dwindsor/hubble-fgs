@@ -60,8 +60,8 @@ jobs:
       run: |
         helm registry login ${{ vars.ARTIFACTORY_HOST }} \
           --username ${{ vars.ARTIFACTORY_USERNAME }} \
-          --password ${{ secrets.ARTIFACTORY_PASSWORD }}
-        echo ${{ secrets.ARTIFACTORY_PASSWORD }} | docker login ${{ vars.ARTIFACTORY_HOST }} \
+          --password ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+        echo ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }} | docker login ${{ vars.ARTIFACTORY_HOST }} \
           --username ${{ vars.ARTIFACTORY_USERNAME }} \
           --password-stdin
 

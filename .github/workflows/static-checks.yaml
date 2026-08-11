@@ -106,7 +106,7 @@ jobs:
         with:
           registry: ${{ vars.ARTIFACTORY_HOST }}
           username: ${{ vars.ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          password: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
 
       - name: Build clang-format Docker image
         run: docker build -f Dockerfile.clang-format -t "isovalent/clang-format:latest" .
