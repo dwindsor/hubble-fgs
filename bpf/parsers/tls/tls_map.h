@@ -26,7 +26,7 @@ struct {
 } tg_tls_calls SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, __u64);
 	__type(value, struct msg_tls);
 	__uint(max_entries, 32000);
