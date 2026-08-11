@@ -156,7 +156,7 @@ struct __http_state_stats {
 
 #ifndef ALIGNCHECKER
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, u64);
 	__type(value, struct msg_http_event);
 	__uint(max_entries, 1000);
