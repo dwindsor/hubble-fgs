@@ -437,6 +437,9 @@ tetragon:
   # HTTP
   http:
     bpfContextCacheSize: 1000
+  # TLS
+  tls:
+    bpfContextCacheSize: 32000
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
   # @ignored
   awsSonar:

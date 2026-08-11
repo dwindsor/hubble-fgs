@@ -95,6 +95,7 @@ type config struct {
 	NetworkWatermarksMapSize       int
 	ICMPSocketMapSize              int
 	HTTPContextMapSize             int
+	TLSContextMapSize              int
 	DisableLayer3                  bool
 	EnableIcmpTracking             bool
 	EnableDnsDebug                 bool
@@ -219,6 +220,7 @@ var (
 		NetworkWatermarksMapSize:          32768,
 		ICMPSocketMapSize:                 32768,
 		HTTPContextMapSize:                1000,
+		TLSContextMapSize:                 32000,
 		EnableIcmpTracking:                false,
 		EnableCilium:                      false,
 		ProcessCacheStaleInterval:         time.Duration(60 * time.Minute),

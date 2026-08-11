@@ -81,6 +81,10 @@ options:
       default_value: "32768"
       usage: |
         Set the number of TCP sockets to track in BPF. Higher values enable Tetragon to keep track of more TCP sockets before evicting old ones
+    - name: bpf-tls-context-cache-size
+      default_value: "32000"
+      usage: |
+        Set the number of TLS sessions to track in BPF. Higher values enable Tetragon to keep track of more TLS sessions before evicting old ones
     - name: bpf-udp-socket-cache-size
       default_value: "32768"
       usage: |

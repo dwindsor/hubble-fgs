@@ -141,6 +141,9 @@ tetragon:
   # HTTP
   http:
     bpfContextCacheSize: 1000
+  # TLS
+  tls:
+    bpfContextCacheSize: 32000
   prometheus:
     metricsLabelFilter: "namespace,workload,binary"
   # EXPERIMENTAL: Publish metrics to AWS Sonar.

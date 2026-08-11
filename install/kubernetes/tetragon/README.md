@@ -275,6 +275,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.resources | object | `{}` |  |
 | tetragon.securityContext.privileged | bool | `true` |  |
 | tetragon.telemetryExportFilename | string | `""` | Export filename for telemetry data (e.g "telemetry.log"). Set to empty to disable. Note that tetragon.enableApplicationModel must be set to true for Telemetry export to take effect. Telemetry export uses the export interval specified by tetragon.applicationModelExportInterval value. |
+| tetragon.tls.bpfContextCacheSize | int | `32000` |  |
 | tetragon.usePerfRingBuffer | bool | `false` |  |
 | tetragonAggregator.affinity | object | `{}` |  |
 | tetragonAggregator.annotations | object | `{}` | Annotations for the Tetragon Aggregator Deployment. |
