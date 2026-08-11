@@ -29,7 +29,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, __u64);
 	__type(value, struct msg_tls);
-	__uint(max_entries, 32000);
+	__uint(max_entries, 1); // will be resized by userspace
 } tg_tls_map SEC(".maps");
 
 struct {

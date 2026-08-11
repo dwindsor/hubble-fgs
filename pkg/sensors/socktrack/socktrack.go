@@ -70,6 +70,7 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 	if !enterpriseOption.Config.DisableLayer3 {
 		TCPFinRxMap.SetMaxEntries(enterpriseOption.Config.TCPSocketMapSize)
 		HTTPContext.SetMaxEntries(enterpriseOption.Config.HTTPContextMapSize)
+		TLSContext.SetMaxEntries(enterpriseOption.Config.TLSContextMapSize)
 	}
 
 	maps := []*program.Map{
