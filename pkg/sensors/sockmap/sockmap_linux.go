@@ -99,7 +99,6 @@ var (
 	SocketMap      = layer3.SocketMap()
 
 	// HTTP maps
-	HTTPMap       = http.HTTPContext
 	HTTPTailCalls = http.TailCalls
 	HTTPFilterMap = http.HTTPFilterMap
 )
@@ -222,7 +221,6 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.
 				sockops.TlsSockMap,
 				sockops.HttpSockMap,
 				sockops.NopSockMap,
-				HTTPMap,
 				HTTPTailCalls,
 				HTTPFilterMap,
 			)
