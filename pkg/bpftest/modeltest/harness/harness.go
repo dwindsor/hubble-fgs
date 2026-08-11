@@ -13,6 +13,7 @@
 package harness
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strings"
@@ -229,6 +230,18 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string,
 
 func GetClusterName(harness *Harness) string {
 	return harness.clusterName
+}
+
+// PodExec executes a command in the specified container of the specified pod.
+func (harness *Harness) PodExec(ctx context.Context, namespace, podName, containerName string, command []string, timeout time.Duration) (string, string, error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	execCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	err := harness.client.Resources().ExecInPod(execCtx, namespace, podName, containerName, command, &stdout, &stderr)
+	return stdout.String(), stderr.String(), err
 }
 
 func (harness *Harness) DeletePod(ctx context.Context, tb testing.TB, namespace, podName string) {
