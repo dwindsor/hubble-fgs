@@ -50,6 +50,12 @@ var (
 
 	ConfigMap   = program.MapUserFrom(base.CfgMap)
 	TCPFinRxMap = program.MapBuilder("tg_l3_tcp_finrx", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
+
+	// tg_http_map is used by any ebpf program that calls __event_tcp_close()
+	// or event_tcp_close_sockops() (e.g. security_sk_free), aside from the
+	// HTTP parser itself. As socktrack is always loaded at startup, the
+	// map is defined here / owned by socktrack and used downstream
+	HTTPContext = program.MapBuilder("tg_http_map", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
 )
 
 /* Enabled from the layer3 sensor */
@@ -71,6 +77,7 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 		program.MapUserFrom(base.SocketTupleHintMap),
 		ConfigMap,
 		TCPFinRxMap,
+		HTTPContext,
 	}
 
 	if utils.SupportFentry() {

@@ -380,6 +380,17 @@ func TestLoadHttpSensor(t *testing.T) {
 		tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps}, //  ni + 10
 	}...)
 
+	httpMapProgs := []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9}
+
+	// the indices of tg_security_sk_free and tg_event_tcp_sockops are not
+	// known outside of ProgsAndMaps, so we resolve those by name
+	httpMapProgs = append(httpMapProgs, layer3Testutil.SensorMapByProgName(sensorProgs, "tg_http_map", []string{
+		"tg_security_sk_free",
+		"tg_event_tcp_sockops",
+	}).Progs...)
+
+	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "tg_http_map", Progs: httpMapProgs})
+
 	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "http1_calls", Progs: []uint{ni, ni + 1, ni + 2, ni + 3}})
 	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "http1_calls_skb", Progs: []uint{ni + 5, ni + 6, ni + 7, ni + 8, ni + 9}})
 	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "tg_http_err_stats", Progs: []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9}})

@@ -873,7 +873,7 @@ func ReportFunctionality() {
 }
 
 func HTTPContext() *program.Map {
-	return tcpconfig.HTTPContext
+	return program.MapUserFrom(socktrack.HTTPContext)
 }
 
 func SocketMap() *program.Map {
