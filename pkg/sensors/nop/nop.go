@@ -11,8 +11,10 @@
 package nop
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
@@ -97,8 +99,13 @@ func (nop *sensor) PolicyHandler(
 	}
 
 	filters = ParseNopSpec(nopParser)
+	if len(filters) == 0 {
+		for _, p := range enterpriseOption.Config.NopSensorPorts {
+			filters = append(filters, uint32(p))
+		}
+	}
 	if len(filters) > enterpriseOption.TLS_MAX_PORTS {
-		return nil, fmt.Errorf("NOP parser only supports up to %d MatchPorts selectors, got %d", enterpriseOption.TLS_MAX_PORTS, len(filters))
+		return nil, fmt.Errorf("nop parser only supports up to %d MatchPorts selectors, got %d", enterpriseOption.TLS_MAX_PORTS, len(filters))
 	}
 
 	return EnableNopParser(policy), nil
@@ -163,7 +170,7 @@ func EnableNopParser(policy tracingpolicy.TracingPolicy) *sensors.Sensor {
 		sockops.NopSockMap,
 	}
 
-	return sensors.SensorBuilder(policy, "__parser_sensors__", progs, maps)
+	return sensors.SensorBuilder(policy, "__nop_parser_sensor__", progs, maps)
 }
 
 // ParseNopSpec parses the input yaml/crd and outputs the kernel selectors
@@ -176,4 +183,27 @@ func ParseNopSpec(spec *v1alpha1.NopSpec) []uint32 {
 	}
 
 	return ports
+}
+
+func StartNopProgs(ctx context.Context) error {
+	if enterpriseOption.Config.EnableNopSensor {
+		var ports []uint32
+
+		for _, p := range enterpriseOption.Config.NopSensorPorts {
+			ports = append(ports, uint32(p))
+		}
+		logger.GetLogger().Info("nop sensor", "ports", ports)
+
+		sens := EnableNopParser(&tracingpolicy.GenericTracingPolicy{})
+		mgr := observer.GetSensorManager()
+		if mgr == nil {
+			return fmt.Errorf("startNopProgs could not get sensor manager")
+		}
+		err := mgr.AddSensor(ctx, sens.Name, sens)
+		if err != nil {
+			return err
+		}
+		return mgr.EnableSensor(ctx, sens.Name)
+	}
+	return nil
 }

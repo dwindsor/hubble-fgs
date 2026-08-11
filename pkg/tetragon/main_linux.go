@@ -32,6 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/network"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
@@ -108,6 +109,10 @@ func startSockopsSensor(ctx context.Context) error {
 
 func startSockmapSensor(ctx context.Context) error {
 	return sockmap.StartSockmapSensor(ctx)
+}
+
+func startNopSensor(ctx context.Context) error {
+	return nop.StartNopProgs(ctx)
 }
 
 func loadInitialProcFsSensor(ctx context.Context) error {

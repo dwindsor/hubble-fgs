@@ -82,6 +82,10 @@ func startSockmapSensor(ctx context.Context) error {
 	return nil
 }
 
+func startNopSensor(ctx context.Context) error {
+	return nil
+}
+
 func loadInitialProcFsSensor(_ context.Context) error {
 	return nil
 }

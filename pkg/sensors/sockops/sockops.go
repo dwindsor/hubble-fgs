@@ -134,7 +134,8 @@ func StartSockopsSensor(ctx context.Context) error {
 		return nil
 	}
 
-	if enterpriseOption.Config.EnableTLSSensor && enterpriseOption.Config.TLSSensorMode == "socket" {
+	if (enterpriseOption.Config.EnableTLSSensor && enterpriseOption.Config.TLSSensorMode == "socket") ||
+		enterpriseOption.Config.EnableNopSensor {
 		sens, err := Builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
 		if err != nil {
 			return err
