@@ -195,6 +195,12 @@ type config struct {
 	EnableNopSensor bool
 	NopSensorPorts  []int
 
+	EnableHTTPSensor       bool
+	HTTPSensorPorts        []int // see comment above for DNSPorts
+	EnableHTTP2Handling    bool
+	EnableHTTPMetrics      bool
+	HTTPMetricsLabelFilter []string
+
 	EnableAlertProfiling bool
 
 	// K8sServiceAccountAuth is the base64 string for authenticating with k8s control plane
@@ -260,5 +266,7 @@ var (
 		NetworkInterfaceStatsInterval:     NetworkStatInterval,
 		TLSSensorMode:                     "cgroup",
 		EnableTLSMetrics:                  true,
+		EnableHTTP2Handling:               true,
+		EnableHTTPMetrics:                 true,
 	}
 )

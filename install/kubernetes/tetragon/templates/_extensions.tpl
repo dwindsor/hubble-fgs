@@ -69,7 +69,6 @@ bpf-udp-socket-cache-size: {{ .Values.tetragon.layer3.udp.bpfSocketCacheSize | q
 enable-udp-cgroup: {{ .Values.tetragon.layer3.udp.cgroup | quote }}
 udp-stats-interval: {{ .Values.tetragon.layer3.udp.statsInterval | quote }}
 bpf-icmp-socket-cache-size: {{ .Values.tetragon.layer3.icmp.bpfSocketCacheSize | quote }}
-bpf-http-context-cache-size: {{ .Values.tetragon.http.bpfContextCacheSize | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
 udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
 enable-udp-watermarks: {{ .Values.tetragon.layer3.udp.watermarks.enabled | quote }}
@@ -109,6 +108,12 @@ enable-tls-sensor-metrics: {{ .Values.tetragon.tls.metrics.enabled | quote }}
 tls-sensor-metrics-label-filter: {{ .Values.tetragon.tls.metrics.labelFilter | quote }}
 enable-nop-sensor: {{ .Values.tetragon.nop.enabled | quote }}
 nop-sensor-ports: {{ .Values.tetragon.nop.ports | quote }}
+enable-http-sensor: {{ .Values.tetragon.http.enabled | quote }}
+bpf-http-context-cache-size: {{ .Values.tetragon.http.bpfContextCacheSize | quote }}
+http-sensor-ports: {{ .Values.tetragon.http.ports | quote }}
+enable-http2-handling: {{ .Values.tetragon.http.http2Handling | quote }}
+enable-http-sensor-metrics: {{ .Values.tetragon.http.metrics.enabled | quote }}
+http-sensor-metrics-label-filter: {{ .Values.tetragon.http.metrics.labelFilter | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}

@@ -140,7 +140,13 @@ tetragon:
       labelFilter: ""
   # HTTP
   http:
+    enabled: false
     bpfContextCacheSize: 1000
+    ports: ""
+    http2Handling: true
+    metrics:
+      enabled: true
+      labelFilter: ""
   # TLS
   tls:
     enabled: false

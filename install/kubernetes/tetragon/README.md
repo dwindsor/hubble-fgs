@@ -201,6 +201,11 @@ Helm chart for Tetragon Enterprise
 | tetragon.healthGrpc.port | int | `6789` | The port at which to expose health gRPC. |
 | tetragon.hostProcPath | string | `"/proc"` | Location of the host proc filesystem in the runtime environment. If the runtime runs in the host, the path is /proc. Exceptions to this are environments like kind, where the runtime itself does not run on the host. |
 | tetragon.http.bpfContextCacheSize | int | `1000` |  |
+| tetragon.http.enabled | bool | `false` |  |
+| tetragon.http.http2Handling | bool | `true` |  |
+| tetragon.http.metrics.enabled | bool | `true` |  |
+| tetragon.http.metrics.labelFilter | string | `""` |  |
+| tetragon.http.ports | string | `""` |  |
 | tetragon.image.override | string | `nil` |  |
 | tetragon.image.repository | string | `"artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon"` |  |
 | tetragon.image.tag | string | `"v1.20.0-pre.2"` |  |

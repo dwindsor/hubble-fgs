@@ -145,6 +145,11 @@ const (
 	keyTLSMetricsLabelFilter             = "tls-sensor-metrics-label-filter"
 	keyEnableNopSensor                   = "enable-nop-sensor"
 	keyNopSensorPorts                    = "nop-sensor-ports"
+	keyEnableHTTPSensor                  = "enable-http-sensor"
+	keyHTTPSensorPorts                   = "http-sensor-ports"
+	keyEnableHTTP2Handling               = "enable-http2-handling"
+	keyEnableHTTPMetrics                 = "enable-http-sensor-metrics"
+	keyHTTPMetricsLabelFilter            = "http-sensor-metrics-label-filter"
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
 	keyTetragonNodeNamespace             = "node-namespace"
@@ -343,6 +348,11 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.StringSlice(keyTLSMetricsLabelFilter, []string{}, fmt.Sprintf("TLS metrics label filter (requires --%s and --%s)", keyEnableTLSSensor, keyEnableTLSMetrics))
 	flags.Bool(keyEnableNopSensor, false, "Enable the NOP sensor")
 	flags.IntSlice(keyNopSensorPorts, []int{}, fmt.Sprintf("Ports to configure Nop sensor (requires --%s)", keyEnableNopSensor))
+	flags.Bool(keyEnableHTTPSensor, false, fmt.Sprintf("Enable HTTP observability (requires --%s)", KeyEnableTCP))
+	flags.IntSlice(keyHTTPSensorPorts, []int{}, fmt.Sprintf("Specify the ports to observe HTTP over (requires --%s)", keyEnableHTTPSensor))
+	flags.Bool(keyEnableHTTP2Handling, true, fmt.Sprintf("Enable HTTP2 handling (requires --%s)", keyEnableHTTPSensor))
+	flags.Bool(keyEnableHTTPMetrics, true, fmt.Sprintf("Enable HTTP metrics (requires --%s)", keyEnableHTTPSensor))
+	flags.StringSlice(keyHTTPMetricsLabelFilter, []string{}, fmt.Sprintf("HTTP metrics label filter (requires --%s and --%s)", keyEnableHTTPSensor, keyEnableHTTPMetrics))
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	flags.MarkHidden(keyK8sServiceAccountAuth)
@@ -513,6 +523,11 @@ func readAndSetEnterpriseFlags() error {
 	Config.TLSMetricsLabelFilter = viper.GetStringSlice(keyTLSMetricsLabelFilter)
 	Config.EnableNopSensor = viper.GetBool(keyEnableNopSensor)
 	Config.NopSensorPorts = viper.GetIntSlice(keyNopSensorPorts)
+	Config.EnableHTTPSensor = viper.GetBool(keyEnableHTTPSensor)
+	Config.HTTPSensorPorts = viper.GetIntSlice(keyHTTPSensorPorts)
+	Config.EnableHTTP2Handling = viper.GetBool(keyEnableHTTP2Handling)
+	Config.EnableHTTPMetrics = viper.GetBool(keyEnableHTTPMetrics)
+	Config.HTTPMetricsLabelFilter = viper.GetStringSlice(keyHTTPMetricsLabelFilter)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
 	// then we ignore enable/disable in policies.
@@ -736,6 +751,22 @@ func validateConfig(config config) error {
 	} else {
 		if len(config.NopSensorPorts) > 0 {
 			return fmt.Errorf("NOP sensor ports specified but NOP sensor not enabled. Enable it with --%s", keyEnableNopSensor)
+		}
+	}
+
+	if config.EnableHTTPSensor {
+		if !config.EnableTCP {
+			return fmt.Errorf("HTTP observability requires TCP enabled with --%s", KeyEnableTCP)
+		}
+		if len(config.HTTPSensorPorts) == 0 {
+			return fmt.Errorf("HTTP observability requires the ports to be specified with --%s", keyHTTPSensorPorts)
+		}
+		if len(config.HTTPSensorPorts) > TLS_MAX_PORTS {
+			return fmt.Errorf("HTTP observability only supports up to %d ports, got %d", TLS_MAX_PORTS, len(config.HTTPSensorPorts))
+		}
+	} else {
+		if len(config.HTTPSensorPorts) > 0 {
+			return fmt.Errorf("HTTP sensor ports specified but HTTP sensor not enabled. Enable it with --%s", keyEnableHTTPSensor)
 		}
 	}
 

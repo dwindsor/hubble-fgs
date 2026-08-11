@@ -214,6 +214,15 @@ options:
     - name: enable-export-aggregation
       default_value: "false"
       usage: Enable JSON export aggregation
+    - name: enable-http-sensor
+      default_value: "false"
+      usage: Enable HTTP observability (requires --enable-tcp)
+    - name: enable-http-sensor-metrics
+      default_value: "true"
+      usage: Enable HTTP metrics (requires --enable-http-sensor)
+    - name: enable-http2-handling
+      default_value: "true"
+      usage: Enable HTTP2 handling (requires --enable-http-sensor)
     - name: enable-icmp
       default_value: "false"
       usage: Enable ICMP observability
@@ -446,6 +455,14 @@ options:
       shorthand: h
       default_value: "false"
       usage: help for tetragon
+    - name: http-sensor-metrics-label-filter
+      default_value: '[]'
+      usage: |
+        HTTP metrics label filter (requires --enable-http-sensor and --enable-http-sensor-metrics)
+    - name: http-sensor-ports
+      default_value: '[]'
+      usage: |
+        Specify the ports to observe HTTP over (requires --enable-http-sensor)
     - name: icmpv6-info
       default_value: "false"
       usage: Enable ICMPV6 information (requires --enable-icmp)
