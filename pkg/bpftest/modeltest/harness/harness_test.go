@@ -15,6 +15,8 @@ package harness
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 )
@@ -25,7 +27,8 @@ func TestNewHarness(t *testing.T) {
 
 func TestAddPod(t *testing.T) {
 	harness := New(t)
-	harness.AddPod(t, "foo", "bar", model.Containers{
+	restartPolicy := corev1.RestartPolicyNever
+	harness.AddPod(t, "foo", "bar", restartPolicy, model.Containers{
 		"qux": {
 			ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", false),
 		},
