@@ -32,6 +32,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/testcase"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
@@ -664,6 +666,42 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						},
 					},
 				}
+			},
+		},
+	},
+
+	"TestContainerExitAndRestart": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"restarting-nc": {
+					RestartPolicy: corev1.RestartPolicyAlways,
+					Containers: model.Containers{
+						"nc-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:       "/bin/sh",
+								Args:      []string{"-c", "/bin/nc -l -p 9182 < /dev/null"},
+								LongLived: true,
+							},
+						},
+					},
+				},
+			},
+		},
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, _ *modelserver.Server, harness *harness.Harness) {
+				// We exec into the pod and connect to the nc instance. This
+				// will cause the nc container to exit and be restarted.
+				_, stderr, err := harness.PodExec(ctx, "default", "restarting-nc", "nc-container", []string{"/bin/nc", "localhost", "9182", "-w", "1"}, 30*time.Second)
+				require.NoError(tb, err, "failed to execute pod command: %s", stderr)
+
+				harness.WaitForContainerRestart(ctx, tb, "default", "restarting-nc", "nc-container", 30*time.Second)
+
+				// Remove the pod from the model so the harness doesn't try to
+				// validate it. This is intentional. A later PR #8882 will
+				// actually fix bugs in the app model server related to
+				// restarting containers.
+				delete(tc.Namespaces["default"], "restarting-nc")
 			},
 		},
 	},
