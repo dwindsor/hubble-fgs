@@ -60,6 +60,32 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
+	"TestPodExec": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"exec-pod": {
+					Containers: model.Containers{
+						"exec-container": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
+							},
+						},
+					},
+				},
+			},
+		},
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(ctx context.Context, tb testing.TB, _ *testcase.TestCase, _ *modelserver.Server, harness *harness.Harness) {
+				stdout, stderr, err := harness.PodExec(ctx, "default", "exec-pod", "exec-container", []string{"echo", "hello"}, 1*time.Minute)
+				require.NoError(tb, err, "Could not exec into pod: %v\nstderr: %s\nstdout: %s", err, stderr, stdout)
+				require.Equal(tb, "hello\n", stdout, "Unexpected stdout from pod exec")
+			},
+		},
+	},
+
 	"NotPresentHostBinary": {
 		Host: model.Binaries{
 			{
