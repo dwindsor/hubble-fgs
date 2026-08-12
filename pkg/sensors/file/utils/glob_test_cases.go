@@ -59,6 +59,62 @@ var GlobTestCases = []GlobTestCase{
 	{Pattern: "a*b", Path: "ab", Match: true},
 	{Pattern: "*a", Path: "a", Match: true},
 	{Pattern: "a*?boo", Path: "axboo", Match: true},
+
+	// Character classes.
+	{Pattern: "config[0-9].yaml", Path: "config0.yaml", Match: true},
+	{Pattern: "config[0-9].yaml", Path: "config9.yaml", Match: true},
+	{Pattern: "config[0-9].yaml", Path: "config10.yaml", Match: false},
+	{Pattern: "config[0-9].yaml", Path: "configa.yaml", Match: false},
+	{Pattern: "config[!0-9].yaml", Path: "configa.yaml", Match: true},
+	{Pattern: "config[!0-9].yaml", Path: "config5.yaml", Match: false},
+	{Pattern: "file[._-]bak", Path: "file.bak", Match: true},
+	{Pattern: "file[._-]bak", Path: "file_bak", Match: true},
+	{Pattern: "file[._-]bak", Path: "file-bak", Match: true},
+	{Pattern: "file[._-]bak", Path: "filexbak", Match: false},
+	{Pattern: "[a-c][0-2]", Path: "a0", Match: true},
+	{Pattern: "[a-c][0-2]", Path: "c2", Match: true},
+	{Pattern: "[a-c][0-2]", Path: "d2", Match: false},
+	{Pattern: "[a-c][0-2]", Path: "c3", Match: false},
+
+	// Brace alternatives for temporary and backup files.
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.TEMP", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.backup", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.bak", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.old", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.tar.gz", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.tgz", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.temp", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.tmp", Match: true},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.gz", Match: false},
+	{Pattern: "*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}", Path: "/tmp/rules.tmp.more", Match: false},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/bin/sh", Match: true},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/etc/passwd", Match: true},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/lib/modules/kernel", Match: true},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/lib64/libc.so", Match: true},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/opt/app/config", Match: true},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/sbin/init", Match: true},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/usr/bin/bash", Match: true},
+	{Pattern: "/{bin,etc,lib,lib64,opt,sbin,usr}/*", Path: "/root/.ssh/authorized_keys", Match: false},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/bin/sh", Match: true},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/etc/config", Match: true},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/lib/libfoo.so", Match: true},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/lib64/libfoo.so", Match: true},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/home/user/.ssh/authorized_keys", Match: true},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/sbin/init", Match: true},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/usr/bin/bash", Match: true},
+	{Pattern: "/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*", Path: "/srv/home/user/authorized_keys", Match: false},
+
+	// Combined brace alternatives and character classes used for rotated logs.
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.1", Match: true},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.9", Match: true},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.10", Match: true},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.19", Match: true},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.20", Match: true},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.gz", Match: true},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.0", Match: false},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.21", Match: false},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.100", Match: false},
+	{Pattern: "/var/log/*.{[1-9],1[0-9],20,gz}", Path: "/var/log/messages.GZ", Match: false},
 }
 
 type GlobTestCaseMulti struct {
@@ -142,6 +198,28 @@ var GlobTestCasesMulti = []GlobTestCaseMulti{
 			{Path: "val-7", Values: []int32{2, 3}},
 			{Path: "val-8", Values: []int32{2, 3}},
 			{Path: "val-9", Values: []int32{2, 3}},
+		},
+	},
+	{
+		Patterns: map[string][]int32{
+			"*.{TEMP,backup,bak,old,tar.gz,tgz,temp,tmp}":        {1},
+			"/var/log/*.{[1-9],1[0-9],20,gz}":                    {2},
+			"/{bin,etc,lib,lib64,opt,sbin,usr}/*":                {3},
+			"/srv/{bin,etc,lib,lib64,home/user/.ssh,sbin,usr}/*": {4},
+		},
+		Tests: []struct {
+			Path   string
+			Values []int32
+		}{
+			{Path: "/tmp/rules.tmp", Values: []int32{1}},
+			{Path: "/var/log/messages.gz", Values: []int32{2}},
+			{Path: "/var/log/messages.9", Values: []int32{2}},
+			{Path: "/var/log/messages.19", Values: []int32{2}},
+			{Path: "/var/log/messages.21", Values: []int32{}},
+			{Path: "/opt/app/config", Values: []int32{3}},
+			{Path: "/srv/usr/bin/bash", Values: []int32{4}},
+			{Path: "/srv/home/user/.ssh/authorized_keys", Values: []int32{4}},
+			{Path: "/srv/home/user/authorized_keys", Values: []int32{}},
 		},
 	},
 }
