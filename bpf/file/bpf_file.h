@@ -1046,7 +1046,7 @@ static inline __attribute__((always_inline)) __s32 get_or_init_state_id(void *st
 	// If state-id is -2, this means that we haven't run the
 	// fsm yet. So run this now and update the state-id value.
 	if (state_id == -2) {
-		state_id = check_pattern(&tg_glob_dfa, &tg_glob_literal, path, len);
+		state_id = check_pattern(&tg_glob_dfa, path, len);
 		map_update_elem(state_map, &zero, &state_id, 0);
 	}
 

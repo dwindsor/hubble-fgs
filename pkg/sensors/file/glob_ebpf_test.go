@@ -61,13 +61,6 @@ func initGlob(objFile string, patterns map[string][]int32) (*ebpf.Collection, er
 
 	gd := fm.GenerateAndPopulateData(patterns)
 
-	knownLiteralsMap, ok := spec.Maps["tg_glob_literal"]
-	if !ok {
-		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_literal' in spec")
-	}
-
-	knownLiteralsMap.MaxEntries = uint32(gd.GetKnownLiteralsMapSize())
-
 	isFinalsMap, ok := spec.Maps["tg_glob_final"]
 	if !ok {
 		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_final' in spec")
@@ -87,16 +80,6 @@ func initGlob(objFile string, patterns map[string][]int32) (*ebpf.Collection, er
 		return nil, fmt.Errorf("runEbpfGlob: ebpf.NewCollectionWithOptions: %s", err)
 	}
 
-	knownLiteralsDataMap, ok := col.Maps["tg_glob_literal"]
-	if !ok {
-		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_literal' in collection")
-	}
-
-	err = gd.GenerateKnownLiteralsMap(knownLiteralsDataMap)
-	if err != nil {
-		return nil, fmt.Errorf("runEbpfGlob: failed to call GenerateKnownLiteralsMap: %s", err)
-	}
-
 	isFinalsDataMap, ok := col.Maps["tg_glob_final"]
 	if !ok {
 		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_final' in collection")
@@ -112,7 +95,7 @@ func initGlob(objFile string, patterns map[string][]int32) (*ebpf.Collection, er
 		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_dfa' in collection")
 	}
 
-	err = gd.GenerateStateTransitionsMap(globDfaDataMap, "")
+	err = gd.GenerateStateTransitionsMap(globDfaDataMap)
 	if err != nil {
 		return nil, fmt.Errorf("runEbpfGlob: failed to call GenerateStateTransitionsMap: %s", err)
 	}

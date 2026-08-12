@@ -28,24 +28,18 @@ static inline __attribute__((always_inline)) int bitmap_read(struct glob_bitmap 
 	return (b->v[word] >> position) & 1;
 }
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, __s32); // char
-	__type(value, __u8); // unused
-	__uint(max_entries, 1); // set this in user-space
-} tg_glob_literal SEC(".maps");
+#define GLOB_TABLE_SIZE 256
+
+struct glob_state_transitions {
+	// Zero means that no transition exists. State IDs are stored as ID + 1.
+	__s32 next[GLOB_TABLE_SIZE];
+};
 
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY_OF_MAPS);
-	__uint(max_entries, 1); // set this is userspace (number of states)
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1); // set this in userspace (number of states)
 	__type(key, __s32); // state-id
-	__array(
-		values, struct {
-			__uint(type, BPF_MAP_TYPE_HASH);
-			__uint(max_entries, 1); // set this in user-space (number of transitions)
-			__type(key, __s32); // char
-			__type(value, __s32); // next state-id
-		});
+	__type(value, struct glob_state_transitions);
 } tg_glob_dfa SEC(".maps");
 
 struct {
@@ -56,55 +50,35 @@ struct {
 } tg_glob_final SEC(".maps");
 
 // This function evaluates a 'path' with size 'len' size against the glob
-// FSM stores in 'dfa' with the help of known literans 'literals'.
+// FSM stored in 'dfa'.
 //
 // Returns -1 if there is no match or the final state id otherwise.
 // The final state id should be checked against tg_glob_final map to check
 // if there is a match or not.
-static inline __attribute__((always_inline)) __s32 check_pattern(void *dfa, void *literals, char *path, __u32 len)
+static inline __attribute__((always_inline)) __s32 check_pattern(void *dfa, char *path, __u32 len)
 {
-	__s32 state_id = 0, other_state_id = -999;
-	void *state_map = 0;
+	__s32 state_id = 0;
 	__u32 i;
 
-	state_map = map_lookup_elem(dfa, &state_id);
-	if (!state_map)
-		return -1;
-
 	for (i = 0; i < MAX_GLOB_INPUT_SIZE; i++) {
-		__s32 c, *next_state_id_ptr;
+		struct glob_state_transitions *transitions;
+		__s32 next_state_id;
 		__u8 cc;
 
 		if (i >= len)
 			return state_id;
 
 		probe_read_kernel(&cc, sizeof(__u8), path + i);
-		c = (__s32)cc;
 
-		// 1. Try Specific Transition
-		next_state_id_ptr = map_lookup_elem(state_map, &c);
-		if (!next_state_id_ptr) {
-			__u8 *lit;
-
-			// 2. If NOT exists, we check if this char is "Known"
-			lit = map_lookup_elem(literals, &c);
-			if (lit) {
-				// It IS a known literal (like 'b' in [!b]), but had no transition.
-				// This means it failed the check. We must NOT use "Other".
-				return -1;
-			}
-
-			// 3. If it is Unknown (like 'z'), use Other fallback
-			next_state_id_ptr = map_lookup_elem(state_map, &other_state_id);
-		}
-
-		if (!next_state_id_ptr)
+		transitions = map_lookup_elem(dfa, &state_id);
+		if (!transitions)
 			return -1;
 
-		state_id = *next_state_id_ptr;
-		state_map = map_lookup_elem(dfa, &state_id);
-		if (!state_map)
+		next_state_id = transitions->next[cc];
+		if (!next_state_id)
 			return -1;
+
+		state_id = next_state_id - 1;
 	}
 
 	return state_id;

@@ -18,11 +18,11 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/sensors"
 )
 
 const (
-	GlobPossibleMaxValues = 512 // this should match POSSIBLE_MAX_VALUES in bpf/file/bpf_glob.h
+	GlobPossibleMaxValues = 512 // this should match POSSIBLE_MAX_VALUES in bpf/file/bpf_glob_multi.h
+	GlobTableSize         = 256
 
 	BitmapShift = 6
 	BitmapMask  = 63
@@ -39,23 +39,38 @@ func (b *Bitmap) Set(n int) {
 	b.V[word] |= uint64(1) << uint64(position)
 }
 
-func GetAll(start *DFAState) (map[int32]map[int32]int32, map[int32][]int32) {
+type StateTransitions struct {
+	Next [GlobTableSize]int32
+}
+
+func GetAll(start *DFAState, knownMap map[int]bool) ([]StateTransitions, map[int32][]int32) {
 	visited := make(map[int]bool)
 	queue := []*DFAState{start}
 	visited[start.ID] = true
 
 	isFinal := map[int32][]int32{}
-	stateTransitions := map[int32]map[int32]int32{}
+	stateTransitions := []StateTransitions{}
 
 	for len(queue) > 0 {
 		curr := queue[0]
 		queue = queue[1:]
 
-		t := map[int32]int32{}
-		for char, next := range curr.Transitions {
-			t[int32(char)] = int32(next.ID)
+		for len(stateTransitions) <= curr.ID {
+			stateTransitions = append(stateTransitions, StateTransitions{})
 		}
-		stateTransitions[int32(curr.ID)] = t
+
+		other, hasOther := curr.Transitions[Other]
+		for char := range GlobTableSize {
+			next, ok := curr.Transitions[char]
+			if !ok && !knownMap[char] {
+				next, ok = other, hasOther
+			}
+			if ok {
+				// Zero means that no transition exists, so encode state IDs
+				// starting at one.
+				stateTransitions[curr.ID].Next[char] = int32(next.ID + 1)
+			}
+		}
 
 		// we need to deduplicate curr.Matches here
 		// this array should be already sorted here
@@ -73,39 +88,20 @@ func GetAll(start *DFAState) (map[int32]map[int32]int32, map[int32][]int32) {
 }
 
 type GlobData struct {
-	knownMap         map[int]bool              // tg_glob_literal
-	finalStates      map[int32][]int32         // tg_glob_final
-	stateTransitions map[int32]map[int32]int32 // tg_glob_dfa
+	finalStates      map[int32][]int32  // tg_glob_final
+	stateTransitions []StateTransitions // tg_glob_dfa
 }
 
 func GenerateAndPopulateData(allPatterns map[string][]int32) GlobData {
 	literals, knownMap := GetLiterals(allPatterns)
 	nfa := BuildMultiNFA(allPatterns)
 	dfa := ToDFA(nfa, literals)
-	stateTransitions, finalStates := GetAll(dfa)
+	stateTransitions, finalStates := GetAll(dfa, knownMap)
 
 	return GlobData{
-		knownMap:         knownMap,
 		finalStates:      finalStates,
 		stateTransitions: stateTransitions,
 	}
-}
-
-func (g GlobData) GenerateKnownLiteralsMap(m *ebpf.Map) error {
-	for c := range g.knownMap {
-		one := uint8(1)
-		if err := m.Update(int32(c), one, 0); err != nil {
-			return fmt.Errorf("update failed: %w", err)
-		}
-	}
-	return nil
-}
-
-func (g GlobData) GetKnownLiteralsMapSize() int {
-	if len(g.knownMap) > 0 {
-		return len(g.knownMap)
-	}
-	return 1
 }
 
 func (g GlobData) GenerateFinalStatesMap(m *ebpf.Map) error {
@@ -139,52 +135,10 @@ func (g GlobData) GetFinalStatesMapSize() int {
 	return cnt
 }
 
-func (g GlobData) GenerateStateTransitionsMap(outerMap *ebpf.Map, pinPathPrefix string) error {
-	generateInnerMap := func(i int32, s map[int32]int32) error {
-		mapSize := uint32(len(s))
-		if mapSize == 0 {
-			mapSize = 1
-		}
-
-		innerName := fmt.Sprintf("tg_glob_dfa_%d", i)
-		innerSpec := &ebpf.MapSpec{
-			Name:       innerName,
-			Type:       ebpf.Hash,
-			KeySize:    4,
-			ValueSize:  4,
-			MaxEntries: mapSize,
-		}
-
-		var innerMap *ebpf.Map
-		var err error
-		if pinPathPrefix == "" {
-			innerMap, err = ebpf.NewMap(innerSpec)
-		} else {
-			innerMap, err = ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
-				PinPath: sensors.PathJoin(pinPathPrefix, innerName),
-			})
-		}
-		if err != nil {
-			return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
-		}
-		defer innerMap.Close()
-
-		for a, b := range s {
-			if err := innerMap.Update(a, b, 0); err != nil {
-				return fmt.Errorf("put failed: %w", err)
-			}
-		}
-
-		if err := outerMap.Update(i, uint32(innerMap.FD()), 0); err != nil {
-			return fmt.Errorf("failed to insert %s: %w", innerName, err)
-		}
-
-		return nil
-	}
-
-	for i, s := range g.stateTransitions {
-		if err := generateInnerMap(i, s); err != nil {
-			return fmt.Errorf("GenerateStateTransitionsMap: %w", err)
+func (g GlobData) GenerateStateTransitionsMap(m *ebpf.Map) error {
+	for i, transitions := range g.stateTransitions {
+		if err := m.Update(uint32(i), transitions, 0); err != nil {
+			return fmt.Errorf("update state %d: %w", i, err)
 		}
 	}
 	return nil

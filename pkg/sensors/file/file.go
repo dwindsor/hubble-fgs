@@ -188,7 +188,6 @@ var mapTypes = map[string]MapType{
 	"filename_ops_map":           PinnedMap, // for matchFilename operator
 	"filename_path_map":          PinnedMap, // for matchFilename InFileWithDigest operator
 	"fsnotify_created_files_map": PinnedMap,
-	"tg_glob_literal":            PinnedMap, // for matchFilename InPattern operator
 	"tg_glob_final":              PinnedMap, // for matchFilename InPattern operator
 	"tg_glob_dfa":                PinnedMap, // for matchFilename InPattern operator
 	"hash_map_inode_alloc":       PinnedMap, // for all inodes
@@ -1842,14 +1841,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 					}
 					return nil
 				}
-			case "tg_glob_literal":
-				m.SetMaxEntries(fm.GetKnownLiteralsMapSize(sel))
-				loadMapFunc = func(m *ebpf.Map, _ string) error {
-					if err := fm.GenerateKnownLiteralsMap(m, sel, e.PinPathPrefix); err != nil {
-						return fmt.Errorf("tg_glob_literal: %w", err)
-					}
-					return nil
-				}
 			case "tg_glob_final":
 				m.SetMaxEntries(fm.GetFinalStatesMapSize(sel))
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
@@ -1861,7 +1852,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			case "tg_glob_dfa":
 				m.SetMaxEntries(fm.GetStateTransitionsMapSize(sel))
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
-					if err := fm.GenerateStateTransitionsMap(m, sel, e.PinPathPrefix); err != nil {
+					if err := fm.GenerateStateTransitionsMap(m, sel); err != nil {
 						return fmt.Errorf("tg_glob_dfa: %w", err)
 					}
 					return nil

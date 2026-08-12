@@ -29,9 +29,9 @@ struct {
 	__uint(max_entries, 1);
 } tg_string_map SEC(".maps");
 
-static u8 __check_pattern(void *dfa, void *final, void *literals, char *path, __u32 len, __s32 val)
+static u8 __check_pattern(void *dfa, void *final, char *path, __u32 len, __s32 val)
 {
-	__s32 state_id = check_pattern(dfa, literals, path, len);
+	__s32 state_id = check_pattern(dfa, path, len);
 
 	if (val == -1)
 		return !match_any(final, state_id);
@@ -51,7 +51,7 @@ __attribute__((section("raw_tracepoint/test"), used)) int test_glob(unsigned lon
 		return 0;
 
 	beg = ktime_get_boot_ns();
-	s->res = __check_pattern(&tg_glob_dfa, &tg_glob_final, &tg_glob_literal, s->path, s->len, s->val);
+	s->res = __check_pattern(&tg_glob_dfa, &tg_glob_final, s->path, s->len, s->val);
 	s->dur = (ktime_get_boot_ns() - beg);
 
 	return 0;

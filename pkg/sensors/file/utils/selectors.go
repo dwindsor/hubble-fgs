@@ -957,14 +957,6 @@ func (k *KernelSelectorState) GetPathMetadata() map[string][]DigestPathMetadata 
 
 }
 
-func GenerateKnownLiteralsMap(m *ebpf.Map, sel *KernelSelectorState, _ string) error {
-	return sel.gd.GenerateKnownLiteralsMap(m)
-}
-
-func GetKnownLiteralsMapSize(sel *KernelSelectorState) int {
-	return sel.gd.GetKnownLiteralsMapSize()
-}
-
 func GenerateFinalStatesMap(m *ebpf.Map, sel *KernelSelectorState, _ string) error {
 	return sel.gd.GenerateFinalStatesMap(m)
 }
@@ -973,8 +965,8 @@ func GetFinalStatesMapSize(sel *KernelSelectorState) int {
 	return sel.gd.GetFinalStatesMapSize()
 }
 
-func GenerateStateTransitionsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
-	return sel.gd.GenerateStateTransitionsMap(outerMap, pinPathPrefix)
+func GenerateStateTransitionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	return sel.gd.GenerateStateTransitionsMap(m)
 }
 
 func GetStateTransitionsMapSize(sel *KernelSelectorState) int {
