@@ -120,8 +120,14 @@ func New(tb testing.TB) Harness {
 	}
 }
 
-func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string, containers model.Containers) {
+func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string,
+	policy corev1.RestartPolicy, containers model.Containers) {
 	ctx := tb.Context()
+
+	restartPolicy := corev1.RestartPolicyNever
+	if policy != "" {
+		restartPolicy = policy
+	}
 
 	// Check if namespace exists, and create it if it doesn't
 	ns := &corev1.Namespace{
@@ -184,7 +190,7 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string, 
 		},
 		Spec: corev1.PodSpec{
 			Containers:    k8sContainers,
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy: restartPolicy,
 		},
 	}
 

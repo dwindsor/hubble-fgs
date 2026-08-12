@@ -27,6 +27,8 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/ipa/application_model/v1alpha"
@@ -50,6 +52,10 @@ type Pod struct {
 	// One or more containers that run as part of the Pod.
 	// Must define at least one container.
 	Containers Containers
+
+	// The pod's restart policy. If not specified e.g. "", defaults to
+	// corev1.RestartPolicyNever
+	RestartPolicy corev1.RestartPolicy
 }
 
 type Containers map[string]Container

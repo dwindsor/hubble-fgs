@@ -374,7 +374,7 @@ func (tc *TestCase) collectBinaryStatus(statusChan <-chan model.CmdResult) error
 func (tc *TestCase) createPods(tb testing.TB, harness *harness.Harness) {
 	for namespace, pods := range tc.Namespaces {
 		for podName, pod := range pods {
-			harness.AddPod(tb, podName, namespace, pod.Containers)
+			harness.AddPod(tb, podName, namespace, pod.RestartPolicy, pod.Containers)
 		}
 	}
 }
