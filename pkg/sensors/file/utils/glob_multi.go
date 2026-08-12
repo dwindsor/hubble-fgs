@@ -40,7 +40,8 @@ type State struct {
 }
 
 type NFA struct {
-	Start *State
+	Start     *State
+	NumStates int
 }
 
 type DFAState struct {
@@ -210,8 +211,11 @@ func BuildMultiNFA(patterns map[string][]int32) *NFA {
 		}
 		idx++
 	}
-	assignIDs(globalStart)
-	return &NFA{Start: globalStart}
+	numStates := assignIDs(globalStart)
+	return &NFA{
+		Start:     globalStart,
+		NumStates: numStates,
+	}
 }
 
 func matches(s *State, char int) bool {
@@ -297,18 +301,17 @@ func GetLiterals(patterns map[string][]int32) ([]int, map[int]bool) {
 func ToDFA(nfa *NFA, literals []int) *DFAState {
 	alphabet := append(literals, Other)
 
-	startClosure := epsilonClosure([]*State{nfa.Start})
+	startClosure, startKey := epsilonClosure([]*State{nfa.Start}, nfa.NumStates)
 	startDFA := &DFAState{ID: 0, Transitions: make(map[int]*DFAState)}
 	startDFA.Matches = getMatches(startClosure)
 
-	knownStates := map[string]*DFAState{stateSetKey(startClosure): startDFA}
+	knownStates := map[string]*DFAState{startKey: startDFA}
 	queue := []*DFAState{startDFA}
-	stateSets := map[int][]*State{0: startClosure}
+	stateSets := [][]*State{startClosure}
 	idCounter := 1
 
-	for len(queue) > 0 {
-		currDFA := queue[0]
-		queue = queue[1:]
+	for queueIndex := 0; queueIndex < len(queue); queueIndex++ {
+		currDFA := queue[queueIndex]
 		currNFAStates := stateSets[currDFA.ID]
 
 		for _, inputChar := range alphabet {
@@ -341,8 +344,7 @@ func ToDFA(nfa *NFA, literals []int) *DFAState {
 				continue
 			}
 
-			closure := epsilonClosure(moveSet)
-			key := stateSetKey(closure)
+			closure, key := epsilonClosure(moveSet, nfa.NumStates)
 
 			if target, exists := knownStates[key]; exists {
 				currDFA.Transitions[inputChar] = target
@@ -352,7 +354,7 @@ func ToDFA(nfa *NFA, literals []int) *DFAState {
 				newDFA.Matches = getMatches(closure)
 
 				knownStates[key] = newDFA
-				stateSets[newDFA.ID] = closure
+				stateSets = append(stateSets, closure)
 				currDFA.Transitions[inputChar] = newDFA
 				queue = append(queue, newDFA)
 			}
@@ -361,7 +363,7 @@ func ToDFA(nfa *NFA, literals []int) *DFAState {
 	return startDFA
 }
 
-func assignIDs(start *State) {
+func assignIDs(start *State) int {
 	visited := make(map[*State]bool)
 	id := 0
 	var dfs func(*State)
@@ -376,37 +378,40 @@ func assignIDs(start *State) {
 		dfs(s.Out1)
 	}
 	dfs(start)
+	return id
 }
 
-func epsilonClosure(states []*State) []*State {
-	stack := append([]*State{}, states...)
-	closure := make(map[int]*State)
-	for _, s := range states {
-		closure[s.ID] = s
+func epsilonClosure(states []*State, numStates int) ([]*State, string) {
+	closure := make([]*State, 0, len(states))
+	stateSet := make([]byte, (numStates+7)/8)
+
+	add := func(s *State) {
+		word := s.ID / 8
+		mask := byte(1 << (s.ID % 8))
+		if stateSet[word]&mask == 0 {
+			stateSet[word] |= mask
+			closure = append(closure, s)
+		}
 	}
 
-	for len(stack) > 0 {
-		s := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
+	for _, s := range states {
+		add(s)
+	}
+
+	for i := 0; i < len(closure); i++ {
+		s := closure[i]
 
 		if s.Type == TypeEpsilon {
-			targets := []*State{s.Out, s.Out1}
-			for _, t := range targets {
-				if t != nil {
-					if _, exists := closure[t.ID]; !exists {
-						closure[t.ID] = t
-						stack = append(stack, t)
-					}
-				}
+			if s.Out != nil {
+				add(s.Out)
+			}
+			if s.Out1 != nil {
+				add(s.Out1)
 			}
 		}
 	}
-	res := []*State{}
-	for _, s := range closure {
-		res = append(res, s)
-	}
-	sort.Slice(res, func(i, j int) bool { return res[i].ID < res[j].ID })
-	return res
+
+	return closure, string(stateSet)
 }
 
 func getMatches(states []*State) []int32 {
@@ -422,14 +427,6 @@ func getMatches(states []*State) []int32 {
 	}
 	slices.Sort(matches)
 	return matches
-}
-
-func stateSetKey(states []*State) string {
-	ids := []string{}
-	for _, s := range states {
-		ids = append(ids, fmt.Sprintf("%d", s.ID))
-	}
-	return strings.Join(ids, ",")
 }
 
 func MatchString(dfa *DFAState, input string, knownLiterals map[int]bool) []int32 {
