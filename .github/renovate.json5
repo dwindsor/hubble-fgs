@@ -36,6 +36,16 @@
       ]
     },
     {
+      // update chainguard images in stable branches (v1.19)
+      "enabled": true,
+      "matchPackageNames": [
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/static",
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/chainguard-base"
+      ],
+      "matchBaseBranches": ["v1.19"],
+      "schedule": ["* * 1 * *"]
+    },
+    {
       "groupName": "artifactory images",
       "matchPackageNames": [
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/go",
