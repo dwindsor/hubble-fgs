@@ -15,6 +15,7 @@ package layer3_test
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -48,6 +49,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func htonll(v uint64) uint64 {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, v)
+	return binary.LittleEndian.Uint64(b)
+}
 
 const (
 	numLSEGSeqPackets    = 33

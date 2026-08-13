@@ -20,10 +20,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
@@ -67,7 +65,7 @@ func (trigger *igmpTrigger) Trigger(ctx context.Context) error {
 		serverDone <- server.Wait()
 	}()
 
-	if err := trigger.waitForListener(ctx); err != nil {
+	if err := waitForSocketToListen(ctx, net.ParseIP("0.0.0.0"), uint16(trigger.port), syscall.IPPROTO_UDP, syscall.AF_INET); err != nil {
 		return err
 	}
 	if trigger.query {
@@ -87,80 +85,6 @@ func (trigger *igmpTrigger) Trigger(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func (trigger *igmpTrigger) waitForListener(ctx context.Context) error {
-	for {
-		listening, err := isSocketListening(net.ParseIP("0.0.0.0"), uint16(trigger.port), syscall.IPPROTO_UDP, syscall.AF_INET)
-		if err != nil {
-			return err
-		}
-		if listening {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			// The intention of this millisleep is to allow CPU relaxing, task switching, etc
-			// so that hopefully some amount of time has passed between checks, mainly just to
-			// reduce churn.
-			time.Sleep(time.Millisecond)
-		}
-	}
-}
-
-func ipToHexstring(addr net.IP) string {
-	var builder strings.Builder
-	if addr.To4() == nil {
-		for index := range 4 {
-			for offset := 3; offset >= 0; offset-- {
-				fmt.Fprintf(&builder, "%02X", addr[index*4+offset])
-			}
-		}
-		return builder.String()
-	}
-	addr = addr.To4()
-	for _, value := range slices.Backward(addr) {
-		fmt.Fprintf(&builder, "%02X", value)
-	}
-	return builder.String()
-}
-
-func isSocketListening(addr net.IP, port uint16, protocol uint16, addressFamily uint16) (bool, error) {
-	netFile := "/proc/net/"
-	switch protocol {
-	case syscall.IPPROTO_TCP:
-		netFile += "tcp"
-	case syscall.IPPROTO_UDP:
-		netFile += "udp"
-	default:
-		return false, fmt.Errorf("protocol must be IPPROTO_TCP or IPPROTO_UDP")
-	}
-	switch addressFamily {
-	case syscall.AF_INET:
-	case syscall.AF_INET6:
-		netFile += "6"
-	default:
-		return false, fmt.Errorf("address family must be AF_INET or AF_INET6")
-	}
-
-	addressPort := ipToHexstring(addr)
-	addressPort += fmt.Sprintf(":%04X", port)
-
-	netData, err := os.ReadFile(netFile)
-	if err != nil {
-		return false, err
-	}
-	for line := range strings.SplitSeq(string(netData), "\n") {
-		fields := strings.Fields(line)
-		// fields[1] is local address:port
-		// fields[2] is remote address:port
-		if len(fields) >= 3 && fields[1] == addressPort {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 var _ = policytest.NewBuilder("layer3-igmp-v2-lifecycle").

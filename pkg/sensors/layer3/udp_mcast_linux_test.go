@@ -15,7 +15,6 @@ package layer3_test
 import (
 	"bufio"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -31,7 +30,6 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
@@ -44,7 +42,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
+	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 
 	"github.com/stretchr/testify/require"
 )
@@ -53,11 +53,6 @@ type l3TestDest struct {
 	ip   string
 	port int
 }
-
-const (
-	numRTPSeqPackets    = 12
-	numRTPSamplePackets = 5
-)
 
 var (
 	// The following values come from sample data. The second should hash to a value under our .01 threshold.
@@ -91,12 +86,6 @@ func getDefaultInterfaceAddress() (string, error) {
 	defaultRouteFields := strings.Fields(string(defaultRoute))
 	ifAddr := defaultRouteFields[8]
 	return ifAddr, nil
-}
-
-func htonll(v uint64) uint64 {
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, v)
-	return binary.LittleEndian.Uint64(b)
 }
 
 func testUdpMulticastRTPConnID(t *testing.T, CLISwitches bool) {
@@ -268,289 +257,20 @@ func TestUdpMulticastRTPConnIDCLI(t *testing.T) {
 	testUdpMulticastRTPConnID(t, true)
 }
 
-func testUdpMulticastRTPSeqCheck(t *testing.T, CLISwitches bool) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	if !kernels.MinKernelVersion("6.12") {
-		t.Skip("Test requires kernel >=6.12 as it requires multicast sequence checking")
-	}
-
-	rtpseqParam := "rtpseq"
-	dest, ok := udpMulticastRTPIP4[multicastTestRTPSeq]
-	if CLISwitches {
-		rtpseqParam = "rtpseqcli"
-		dest, ok = udpMulticastRTPIP4[multicastTestRTPSeqCLI]
-	}
-	require.True(t, ok)
-
-	switches := []cli.SwitchSettings{
-		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
-		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppRTP},
-		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
-		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
-	}
-	if CLISwitches {
-		switches = append(switches, []cli.SwitchSettings{
-			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
-			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
-			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
-			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
-			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
-		}...)
-	}
-	require.NoError(t, cli.SetSwitches(t, switches))
-
-	server := getSocatCommand(t, "socat")
-	ifAddr, err := getDefaultInterfaceAddress()
-	require.NoError(t, err)
-
-	socatArg1 := "-"
-	socatArg2 := fmt.Sprintf("UDP4-RECVFROM:%d,ip-add-membership=%s:%s,fork", dest.port, dest.ip, ifAddr)
-	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
-	socatSrvChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full(socatArgs))
-
-	clientProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", rtpseqParam)))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("clientExec").
-			WithProcess(clientProcess),
-		ec.NewProcessExecChecker("serverExec").
-			WithProcess(socatSrvChecker),
-		ec.NewProcessUdpSeqCheckErrorChecker("lineId5Seq3Got4").
-			WithProcess(socatSrvChecker).
-			WithApplicationId(2).
-			WithAppSpecificId(45).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(uint32(dest.port))).
-			WithSeqNumExpected(3).
-			WithSeqNumReceived(4),
-		ec.NewProcessUdpSeqCheckErrorChecker("lineId6Seq4Got5").
-			WithProcess(socatSrvChecker).
-			WithApplicationId(2).
-			WithAppSpecificId(46).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(uint32(dest.port))).
-			WithSeqNumExpected(4).
-			WithSeqNumReceived(5),
-		ec.NewProcessCloseChecker("serverClose").
-			WithProcess(socatSrvChecker).
-			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0 * time.Second)},
-				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
-		ec.NewProcessExitChecker("serverExit").
-			WithProcess(socatSrvChecker),
-	)
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
-	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	if !CLISwitches {
-		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
-		require.NoError(t, err)
-		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-		require.NoError(t, err)
-	}
-
-	option.Config.UsePerfRingBuffer = true
-	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
-
-	cmdServer := exec.Command(server, socatArg1, socatArg2)
-	serverStdout, err := cmdServer.StdoutPipe()
-	require.NoError(t, err)
-	require.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
-	require.NoError(t, err)
-
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", rtpseqParam)
-	clientCmd.Stdout = os.Stderr
-	clientCmd.Stderr = os.Stderr
-	err = clientCmd.Run()
-	require.NoError(t, err, "cannot start client")
-
-	// Wait for the data to arrive.
-	serverData := make([]byte, UDPBUFSIZE+UDPBUFVAR)
-	packetsReceived := 0
-	for packetsReceived < numRTPSeqPackets {
-		numBytesRead, err := serverStdout.Read(serverData)
-		require.NoError(t, err, "cannot read from server stdout")
-		if numBytesRead > 0 {
-			packetsReceived++
-		}
-	}
-
-	killAndWaitCommand(t, cmdServer)
-
-	err = jsonchecker.JsonTestCheck(t, checker)
-	require.NoError(t, err)
-}
-
 func TestUdpMulticastRTPSeqCheck(t *testing.T) {
-	testUdpMulticastRTPSeqCheck(t, false)
+	enterprisepolicytest.DoObserverTest(t, "layer3-udp-sequence-error", nil)
 }
 
 func TestUdpMulticastRTPSeqCheckCLI(t *testing.T) {
-	testUdpMulticastRTPSeqCheck(t, true)
-}
-
-func testUdpMulticastRTPSampling(t *testing.T, CLISwitches bool) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	if !kernels.MinKernelVersion("6.12") {
-		t.Skip("Test requires kernel >=6.12 as it requires packet sampling")
-	}
-
-	rtpsampleParam := "rtpsample"
-	dest, ok := udpMulticastRTPIP4[multicastTestRTPSample]
-	if CLISwitches {
-		rtpsampleParam = "rtpsamplecli"
-		dest, ok = udpMulticastRTPIP4[multicastTestRTPSampleCLI]
-	}
-	require.True(t, ok)
-
-	switches := []cli.SwitchSettings{
-		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
-		{KeyPtr: &enterpriseOption.Config.MulticastAppID, Value: enterpriseOption.MulticastAppRTP},
-		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
-		{KeyPtr: &enterpriseOption.Config.MulticastSamplePercent, Value: .01},
-	}
-	if CLISwitches {
-		switches = append(switches, []cli.SwitchSettings{
-			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
-			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
-			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
-			{KeyPtr: &enterpriseOption.Config.UDPStatsInterval, Value: 20 * time.Second},
-			{KeyPtr: &enterpriseOption.Config.UDPIdleSocketTimeout, Value: 60 * time.Second},
-		}...)
-	}
-	require.NoError(t, cli.SetSwitches(t, switches))
-
-	server := getSocatCommand(t, "socat")
-	ifAddr, err := getDefaultInterfaceAddress()
-	require.NoError(t, err)
-
-	socatArg1 := "-"
-	socatArg2 := fmt.Sprintf("UDP4-RECVFROM:%d,ip-add-membership=%s:%s,fork", dest.port, dest.ip, ifAddr)
-	socatArgs := fmt.Sprintf("%s %s", socatArg1, socatArg2)
-	socatSrvChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full(socatArgs))
-
-	clientProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full(fmt.Sprintf("-udpMulticastClient %s", rtpsampleParam)))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("clientExec").
-			WithProcess(clientProcess),
-		ec.NewProcessExecChecker("serverExec").
-			WithProcess(socatSrvChecker),
-		ec.NewProcessMulticastSampleChecker("clientSample").
-			WithProcess(clientProcess).
-			WithDestinationPort(uint32(dest.port)).
-			WithData(htonll(RTPSampleData[1])).
-			WithDirection(tetragon.Direction_EGRESS),
-		ec.NewProcessMulticastSampleChecker("serverSample").
-			WithProcess(socatSrvChecker).
-			WithSourcePort(uint32(dest.port)).
-			WithData(htonll(RTPSampleData[1])).
-			WithDirection(tetragon.Direction_INGRESS),
-		ec.NewProcessCloseChecker("serverClose").
-			WithProcess(socatSrvChecker).
-			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0 * time.Second)},
-				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
-		ec.NewProcessExitChecker("serverExit").
-			WithProcess(socatSrvChecker),
-	)
-
-	unexpectedSamplesCheckers := []*ec.UnorderedEventChecker{
-		ec.NewUnorderedEventChecker(
-			ec.NewProcessMulticastSampleChecker("sample0").
-				WithData(htonll(RTPSampleData[0]))),
-		ec.NewUnorderedEventChecker(
-			ec.NewProcessMulticastSampleChecker("sample2").
-				WithData(htonll(RTPSampleData[2]))),
-		ec.NewUnorderedEventChecker(
-			ec.NewProcessMulticastSampleChecker("sample3").
-				WithData(htonll(RTPSampleData[3]))),
-		ec.NewUnorderedEventChecker(
-			ec.NewProcessMulticastSampleChecker("sample4").
-				WithData(htonll(RTPSampleData[4]))),
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
-	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
-	if !CLISwitches {
-		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
-		require.NoError(t, err)
-		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-		require.NoError(t, err)
-	}
-
-	option.Config.UsePerfRingBuffer = true
-	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
-
-	cmdServer := exec.Command(server, socatArg1, socatArg2)
-	serverStdout, err := cmdServer.StdoutPipe()
-	require.NoError(t, err)
-	require.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), uint16(dest.port), syscall.IPPROTO_UDP, syscall.AF_INET)
-	require.NoError(t, err)
-
-	clientCmd := exec.Command(os.Args[0], "-udpMulticastClient", rtpsampleParam)
-	clientCmd.Stdout = os.Stderr
-	clientCmd.Stderr = os.Stderr
-	err = clientCmd.Run()
-	require.NoError(t, err, "cannot start client")
-
-	// Wait for the data to arrive.
-	serverData := make([]byte, UDPBUFSIZE+UDPBUFVAR)
-	packetsReceived := 0
-	for packetsReceived < numRTPSamplePackets {
-		numBytesRead, err := serverStdout.Read(serverData)
-		require.NoError(t, err, "cannot read from server stdout")
-		if numBytesRead > 0 {
-			packetsReceived++
-		}
-	}
-
-	killAndWaitCommand(t, cmdServer)
-
-	err = jsonchecker.JsonTestCheck(t, checker)
-	require.NoError(t, err)
-
-	// Check we didn't receive samples for the other packets.
-	for _, c := range unexpectedSamplesCheckers {
-		err = jsonchecker.JsonTestCheckExpect(t, c, true)
-		require.NoError(t, err)
-	}
+	enterprisepolicytest.DoObserverTest(t, "layer3-udp-sequence-error-no-policy", nil)
 }
 
 func TestUdpMulticastRTPSampling(t *testing.T) {
-	testUdpMulticastRTPSampling(t, false)
+	enterprisepolicytest.DoObserverTest(t, "layer3-multicast-sample", nil)
 }
 
 func TestUdpMulticastRTPSamplingCLI(t *testing.T) {
-	testUdpMulticastRTPSampling(t, true)
+	enterprisepolicytest.DoObserverTest(t, "layer3-multicast-sample-no-policy", nil)
 }
 
 func sendRTPSeqData(socket net.Conn, buf []byte, ssrc uint, seqNum uint) {
