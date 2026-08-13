@@ -274,6 +274,8 @@ func (tls *tlsSensor) PolicyHandler(
 		return nil, nil
 	}
 
+	logger.GetLogger().Warn("TLS tracing policies have been deprecated, and will be removed in v1.21. Please check the upgrade notes and use CLI switches instead.")
+
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("tls sensor does not implement policy filtering")
 	}

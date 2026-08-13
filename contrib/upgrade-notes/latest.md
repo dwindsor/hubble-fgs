@@ -8,8 +8,8 @@ Depending on your setup, changes listed here might require a manual intervention
 ### Agent Options
 
 * The --enable-latency CLI switch has been removed.
-* The following CLI switches were added to configure layer3 functionality without
-  using a tracing policy:
+* The following CLI switches were added to configure layer3 and layer7
+  functionality without using a tracing policy:
   * --icmpv6-info
   * --rawsock-report-close
   * --enable-rawsock-metrics
@@ -38,14 +38,26 @@ Depending on your setup, changes listed here might require a manual intervention
   * --dns-report-questions
   * --enable-dns-metrics
   * --dns-metrics-label-filter
+  * --enable-tls-sensor
+  * --tls-sensor-mode
+  * --tls-sensor-ports
+  * --enable-tls-sensor-metrics
+  * --tls-sensor-metrics-label-filter
+  * --enable-nop-sensor
+  * --nop-sensor-ports
+  * --enable-http-sensor
+  * --http-sensor-ports
+  * --enable-http2-handling
+  * --enable-http-sensor-metrics
+  * --http-sensor-metrics-label-filter
 
-  The recommended way to specify and configure the layer3 sensor is now through
-  CLI switches and not via tracing policy. Use of layer3 tracing policies is now
-  deprecated, with a warning when one is used. Configuring Layer 3 via tracing
-  policies will be removed in v1.21. See the full list of CLI switches, together
-  with their descriptions, by running ```tetragon --help```.
+  The recommended way to specify and configure the layer3 and layer7 sensors is now
+  through CLI switches and not via tracing policy. Use of layer3 and layer7 tracing
+  policies is now deprecated, with a warning when one is used. Configuring layer3
+  or layer7 via tracing policies will be removed in v1.21. See the full list of CLI
+  switches, together with their descriptions, by running ```tetragon --help```.
 
-  Layer3 CLI switches can be combined with tracing policies. Tracing policies
+  Layer3 and layer7 CLI switches can be combined with tracing policies. Tracing policies
   override CLI switch settings. If, for example, TCP is not enabled with the CLI
   switch, it can later be enabled and configured with a tracing policy. When that
   tracing policy is later removed, the sensor will cease reporting TCP information,
@@ -58,9 +70,9 @@ Depending on your setup, changes listed here might require a manual intervention
   further events, and these events will be produced again when the tracing policy
   is unloaded.
 
-  Layer3 tracing policies will be removed in the next release. We recommend
-  converting layer3 tracing policies to CLI switches or chart parameters now to
-  prevent issues when upgrading in the future.
+  Layer3 and layer7 tracing policies will be removed in the next release. We recommend
+  converting layer3 and layer7 tracing policies to CLI switches or chart parameters
+  now to prevent issues when upgrading in the future.
 * Application Model related exports (appmodel, telemetry and connections log) default values for MaxSizeMB and MaxBackups have been updated to 25M and 1; before, they were 10M and 5.
 * New flags to manage application model exports options: `--application-model-export-file-max-size-mb`, `--application-model-export-file-max-backups`, `--application-model-export-file-compress`.
 * The `--enable-network-interface-stats` and `--network-interface-stats-interval`
@@ -71,13 +83,13 @@ Depending on your setup, changes listed here might require a manual intervention
 ### Helm Values
 
 * The tetragon.layer3.latency.enabled parameter was removed.
-* The following parameters were added to configure layer3 functionality without
-  using a tracing policy:
+* The following parameters were added to configure layer3 and layer7 functionality
+  without using a tracing policy:
   * tetragon.layer3.icmp.v6info: false
   * tetragon.layer3.icmp.socketTracking: false
   * tetragon.layer3.rawsock.reportClose: false
   * tetragon.layer3.rawsock.metrics.enabled: true
-  * tetragon.layer3.rawsock.metrics.labelFilter: []
+  * tetragon.layer3.rawsock.metrics.labelFilter: ""
   * tetragon.layer3.udp.cgroup: true
   * tetragon.layer3.udp.statsInterval: 0s
   * tetragon.layer3.udp.watermarks.enabled: false
@@ -85,8 +97,8 @@ Depending on your setup, changes listed here might require a manual intervention
   * tetragon.layer3.udp.watermarks.burstTriggerPercent: 0
   * tetragon.layer3.udp.watermarks.dipTriggerPercent: 0
   * tetragon.layer3.udp.metrics.enabled: true
-  * tetragon.layer3.udp.metrics.labelFilter: []
-  * tetragon.layer3.udp.disableEvents: []
+  * tetragon.layer3.udp.metrics.labelFilter: ""
+  * tetragon.layer3.udp.disableEvents: ""
   * tetragon.layer3.watermarksExitGen.enabled: true
   * tetragon.layer3.watermarksExitGen.interval: 1s
   * tetragon.layer3.tcp.statsInterval: 0s
@@ -97,12 +109,25 @@ Depending on your setup, changes listed here might require a manual intervention
   * tetragon.layer3.tcp.rtt.min: 0
   * tetragon.layer3.tcp.rtt.max: 0
   * tetragon.layer3.tcp.metrics.enabled: true
-  * tetragon.layer3.tcp.metrics.labelFilter: []
-  * tetragon.layer3.tcp.disableEvents: []
-  * tetragon.layer3.dns.ports: []
-  * tetragon.layer3.dns.reportQuestions: false
-  * tetragon.layer3.dns.metrics.enabled: true
-  * tetragon.layer3.dns.metrics.labelFilter: []
+  * tetragon.layer3.tcp.metrics.labelFilter: ""
+  * tetragon.layer3.tcp.disableEvents: ""
+  * tetragon.dns.ports: ""
+  * tetragon.dns.reportQuestions: false
+  * tetragon.dns.metrics.enabled: true
+  * tetragon.dns.metrics.labelFilter: ""
+  * tetragon.tls.enabled: false
+  * tetragon.tls.mode: cgroup
+  * tetragon.tls.ports: ""
+  * tetragon.tls.metrics.enabled: true
+  * tetragon.tls.metrics.labelFilter: ""
+  * tetragon.nop.enabled: false
+  * tetragon.nop.ports: ""
+  * tetragon.http.enabled: false
+  * tetragon.http.ports: ""
+  * tetragon.http.http2Handling: true
+  * tetragon.http.metrics.enabled: true
+  * tetragon.http.metrics.labelFilter: ""
+
 * Application Model related exports (appmodel, telemetry and connections log) default values for MaxSizeMB and MaxBackups have been updated to 25M and 1; before, they were 10M and 5.
 * New values to manage application model exports options: `tetragon.applicationModelExportFileMaxSizeMB`, `tetragon.applicationModelExportFileMaxBackups`, `tetragon.applicationModelExportFileCompress`.
 * `exportDirectory` and `alerts.exportDirectory` have been updated to `/var/log/tetragon` from

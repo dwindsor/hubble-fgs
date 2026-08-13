@@ -160,6 +160,8 @@ func (http *httpSensor) PolicyHandler(
 		return nil, nil
 	}
 
+	logger.GetLogger().Warn("HTTP tracing policies have been deprecated, and will be removed in v1.21. Please check the upgrade notes and use CLI switches instead.")
+
 	if httpParser.Http2 {
 		enableHttp2 = true
 	} else {
