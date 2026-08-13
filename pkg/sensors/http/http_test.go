@@ -29,21 +29,25 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	httpSens "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	layer3Testutil "github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	_ "github.com/isovalent/hubble-fgs/tests/policytests"
@@ -92,7 +96,87 @@ func TestHttp11Curl(t *testing.T) {
 	enterprisepolicytest.DoObserverTest(t, "http-11-curl", nil)
 }
 
-func TestHttp11Curl6(t *testing.T) {
+func TestHttp11CurlCLI(t *testing.T) {
+	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("-4 http://www.google.com"))
+
+	httpChecker := ec.NewHttpInfoChecker().
+		WithRequest(ec.NewHttpRequestChecker().
+			WithMethod(sm.Full("GET")).
+			WithUri(sm.Full("/")).
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithAgent(sm.Contains("curl")).
+			WithHost(sm.Contains("www.google.com"))).
+		WithResponse(ec.NewHttpResponseChecker().
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithReason(sm.Full("OK")))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("curlExec").
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker("curlConnect").
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(80),
+		ec.NewProcessHttpChecker("curlHttp").
+			WithProcess(curlChecker).
+			WithHttp(httpChecker),
+	)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+		{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+		{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: false},
+		{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{1}},
+		{KeyPtr: &enterpriseOption.Config.EnableHTTPSensor, Value: true},
+		{KeyPtr: &enterpriseOption.Config.HTTPSensorPorts, Value: []int{80}},
+	}))
+
+	require.NoError(t, observertesthelper.WriteConfigFile(testConfigFile, enterpriseoth.EmptyTracingPolicy))
+
+	base := base.GetInitialSensorTest(t)
+	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	require.NoError(t, err)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	require.NoError(t, sockops.StartSockopsSensor(ctx))
+	require.NoError(t, sockmap.StartSockmapSensor(ctx))
+	require.NoError(t, httpSens.StartHttpProgs(ctx))
+
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func testHttp11Curl6(t *testing.T, CLISwitches bool) {
 	t.Skip("TODO: http currently does not support ipv6")
 	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
@@ -143,20 +227,50 @@ func TestHttp11Curl6(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: false},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{1}},
+			{KeyPtr: &enterpriseOption.Config.EnableHTTPSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.HTTPSensorPorts, Value: []int{80}},
+		}))
 	}
+
+	require.NoError(t, observertesthelper.WriteConfigFile(testConfigFile, enterpriseoth.EmptyTracingPolicy))
 
 	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+	require.NoError(t, err)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	require.NoError(t, sockops.StartSockopsSensor(ctx))
+	require.NoError(t, sockmap.StartSockmapSensor(ctx))
+	require.NoError(t, httpSens.StartHttpProgs(ctx))
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(httpConfig(80))
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-6", "http://www.google.com")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+func TestHttp11Curl6(t *testing.T) {
+	testHttp11Curl6(t, false)
+}
+
+func TestHttp11Curl6CLI(t *testing.T) {
+	testHttp11Curl6(t, true)
 }
 
 // nolint This is only used in a disabled test for now. Since we will re-enable that test
@@ -192,7 +306,7 @@ func spawnHttp2Server(ctx context.Context, t *testing.T, ipv6 bool) string {
 	return ln.Addr().String()
 }
 
-func TestHttp20CurlPriorKnowledge(t *testing.T) {
+func testHttp20CurlPriorKnowledge(t *testing.T, CLISwitches bool) {
 	t.Skipf("This test is currrently very flaky due to a kernel bug. TODO: Re-enable after this gets fixed upstream")
 
 	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
@@ -246,15 +360,37 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 			WithHttp(httpChecker),
 	)
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(int(http2Port))); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: false},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{1}},
+			{KeyPtr: &enterpriseOption.Config.EnableHTTPSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.HTTPSensorPorts, Value: []int{int(http2Port)}},
+		}))
 	}
+
+	require.NoError(t, observertesthelper.WriteConfigFile(testConfigFile, enterpriseoth.EmptyTracingPolicy))
 
 	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+	require.NoError(t, err)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	require.NoError(t, sockops.StartSockopsSensor(ctx))
+	require.NoError(t, sockmap.StartSockmapSensor(ctx))
+	require.NoError(t, httpSens.StartHttpProgs(ctx))
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(httpConfig(int(http2Port)))
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
@@ -262,7 +398,15 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestHttp20CurlPriorKnowledge6(t *testing.T) {
+func TestHttp20CurlPriorKnowledge(t *testing.T) {
+	testHttp20CurlPriorKnowledge(t, false)
+}
+
+func TestHttp20CurlPriorKnowledgeCLI(t *testing.T) {
+	testHttp20CurlPriorKnowledge(t, true)
+}
+
+func testHttp20CurlPriorKnowledge6(t *testing.T, CLISwitches bool) {
 	t.Skip("TODO: http currently does not support ipv6")
 	t.Skipf("This test is currrently very flaky due to a kernel bug. TODO: Re-enable after this gets fixed upstream")
 
@@ -317,15 +461,37 @@ func TestHttp20CurlPriorKnowledge6(t *testing.T) {
 			WithHttp(httpChecker),
 	)
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(int(http2Port))); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: false},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{1}},
+			{KeyPtr: &enterpriseOption.Config.EnableHTTPSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.HTTPSensorPorts, Value: []int{int(http2Port)}},
+		}))
 	}
+
+	require.NoError(t, observertesthelper.WriteConfigFile(testConfigFile, enterpriseoth.EmptyTracingPolicy))
 
 	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
+	require.NoError(t, err)
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	require.NoError(t, sockops.StartSockopsSensor(ctx))
+	require.NoError(t, sockmap.StartSockmapSensor(ctx))
+	require.NoError(t, httpSens.StartHttpProgs(ctx))
+	if !CLISwitches {
+		tp, err := tracingpolicy.FromYAML(httpConfig(int(http2Port)))
+		require.NoError(t, err)
+		err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+		require.NoError(t, err)
 	}
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "-v6", "--http2-prior-knowledge", "http://"+http2Addr)
 
@@ -333,7 +499,15 @@ func TestHttp20CurlPriorKnowledge6(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestLoadHttpSensor(t *testing.T) {
+func TestHttp20CurlPriorKnowledge6(t *testing.T) {
+	testHttp20CurlPriorKnowledge6(t, false)
+}
+
+func TestHttp20CurlPriorKnowledge6CLI(t *testing.T) {
+	testHttp20CurlPriorKnowledge6(t, true)
+}
+
+func testLoadHttpSensor(t *testing.T, CLISwitches bool) {
 	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -343,8 +517,22 @@ func TestLoadHttpSensor(t *testing.T) {
 
 	bpf.CheckOrMountCgroup2()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	config := httpConfig(80)
+
+	if CLISwitches {
+		require.NoError(t, cli.SetSwitches(t, []cli.SwitchSettings{
+			{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
+			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableTLSSensor, Value: false},
+			{KeyPtr: &enterpriseOption.Config.TLSSensorPorts, Value: []int{1}},
+			{KeyPtr: &enterpriseOption.Config.EnableHTTPSensor, Value: true},
+			{KeyPtr: &enterpriseOption.Config.HTTPSensorPorts, Value: []int{80}},
+		}))
+		config = enterpriseoth.EmptyTracingPolicy
 	}
 
 	layer3.BaseLoaded = false
@@ -352,16 +540,23 @@ func TestLoadHttpSensor(t *testing.T) {
 	b := base.GetInitialSensorTest(t)
 
 	require.NoError(t, layer3.EnableLayer3Progs())
-
 	layer3Sensor := layer3.Layer3InitialSensor()
-
 	b.Maps = append(b.Maps, layer3Sensor.Maps...)
 	b.Progs = append(b.Progs, layer3Sensor.Progs...)
 
+	sockopsSensor, err := sockops.Builder(&tracingpolicy.GenericTracingPolicy{}, "__sockops_init_sensors__")
+	require.NoError(t, err)
+	b.Progs = append(b.Progs, sockopsSensor.Progs...)
+	b.Maps = append(b.Maps, sockopsSensor.Maps...)
+
+	httpSensor := httpSens.EnableHTTPParser(&tracingpolicy.GenericTracingPolicy{})
+	b.Progs = append(b.Progs, httpSensor.Progs...)
+	b.Maps = append(b.Maps, httpSensor.Maps...)
+
+	require.NoError(t, observertesthelper.WriteConfigFile(testConfigFile, config))
+
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
-	if err != nil {
-		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
-	}
+	require.NoError(t, err)
 
 	sensorProgs, sensorMaps := layer3Testutil.ProgsAndMaps(false, false, false)
 	ni := uint(len(sensorProgs)) // next index
@@ -399,4 +594,12 @@ func TestLoadHttpSensor(t *testing.T) {
 		sensi = append(sensi, s)
 	}
 	sensors.UnloadSensors(sensi)
+}
+
+func TestLoadHttpSensor(t *testing.T) {
+	testLoadHttpSensor(t, false)
+}
+
+func TestLoadHttpSensorCLI(t *testing.T) {
+	testLoadHttpSensor(t, true)
 }
