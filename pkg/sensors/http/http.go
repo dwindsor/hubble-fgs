@@ -14,9 +14,11 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -51,7 +54,8 @@ import (
 )
 
 var (
-	filters []uint32
+	filters        []uint32
+	defaultFilters []uint32
 
 	// Runtime aggregation of request/response
 	aggregate          *lru.Cache[api.HttpKey, *httpproto.MsgHttpEventUnix]
@@ -165,7 +169,7 @@ func (http *httpSensor) PolicyHandler(
 	if fid != policyfilter.NoFilterID {
 		return nil, fmt.Errorf("http sensor does not implement policy filtering")
 	}
-	filters = ParseHTTPSpec(httpParser)
+	filters = append(defaultFilters, ParseHTTPSpec(httpParser)...)
 	if len(filters) > enterpriseOption.TLS_MAX_PORTS {
 		return nil, fmt.Errorf("HTTP parser only supports up to %d MatchPorts selectors, got %d", enterpriseOption.TLS_MAX_PORTS, len(filters))
 	}
@@ -178,8 +182,7 @@ func (http *httpSensor) PolicyHandler(
 		httpconfig.MetricsEnabled = httpParser.Metrics.Enable
 		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter().WithEnabledLabels(httpParser.Metrics.LabelFilter)
 	} else {
-		httpconfig.MetricsEnabled = true
-		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter()
+		setLabelFilterFromCLI()
 	}
 
 	return EnableHTTPParser(policy), nil
@@ -275,7 +278,13 @@ func EnableHTTPParser(policy tracingpolicy.TracingPolicy) *sensors.Sensor {
 		TcpSocketMap, TcpSocketStats,
 	}
 
-	return sensors.SensorBuilder(policy, "__parser_sensors__", progs, maps)
+	sens := sensors.SensorBuilder(policy, "__http_parser_sensors__", progs, maps)
+	sens.PreUnloadHook = func() error {
+		// When a tracing policy sensor is removed, reset the filter to the CLI options.
+		return sockops.SetFilter(option.Config.BpfDir, "tg_http_filter_map", defaultFilters)
+	}
+
+	return sens
 }
 
 // ParseHTTPSpec parses the input yaml/crd and outputs the kernel selectors
@@ -626,4 +635,49 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 		}
 	}
 	return true
+}
+
+func StartHttpProgs(ctx context.Context) error {
+	if enterpriseOption.Config.EnableHTTPSensor {
+		if !kernels.MinKernelVersion("6.1.56") {
+			return fmt.Errorf("HTTP parser requires kernel version >= 6.1.56")
+		}
+
+		for _, p := range enterpriseOption.Config.HTTPSensorPorts {
+			defaultFilters = append(defaultFilters, uint32(p))
+		}
+		filters = slices.Clone(defaultFilters)
+
+		if enterpriseOption.Config.EnableHTTP2Handling {
+			enableHttp2 = true
+		} else {
+			enableHttp2 = false
+		}
+
+		setLabelFilterFromCLI()
+
+		sens := EnableHTTPParser(&tracingpolicy.GenericTracingPolicy{})
+		mgr := observer.GetSensorManager()
+		if mgr == nil {
+			return fmt.Errorf("startHTTPProgs could not get sensor manager")
+		}
+		err := mgr.AddSensor(ctx, sens.Name, sens)
+		if err != nil {
+			return err
+		}
+		err = mgr.EnableSensor(ctx, sens.Name)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func setLabelFilterFromCLI() {
+	httpconfig.MetricsEnabled = enterpriseOption.Config.EnableHTTPMetrics
+	if len(enterpriseOption.Config.HTTPMetricsLabelFilter) > 0 {
+		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter().WithEnabledLabels(enterpriseOption.Config.HTTPMetricsLabelFilter)
+	} else {
+		httpconfig.MetricsLabelFilter = httpconfig.DefaultLabelFilter()
+	}
 }

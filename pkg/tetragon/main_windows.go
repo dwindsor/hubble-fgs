@@ -86,6 +86,10 @@ func startNopSensor(ctx context.Context) error {
 	return nil
 }
 
+func startHttpSensor(ctx context.Context) error {
+	return nil
+}
+
 func loadInitialProcFsSensor(_ context.Context) error {
 	return nil
 }

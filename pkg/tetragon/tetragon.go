@@ -762,6 +762,10 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return err
 	}
 
+	if err = startHttpSensor(ctx); err != nil {
+		return err
+	}
+
 	// Start the application model exporter after layer3 progs so that all BPF
 	// maps (including tg_cgid_wlid, pinned by the layer3 sensor) are available
 	// when the exporter first calls GetProcessModel.

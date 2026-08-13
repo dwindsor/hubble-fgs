@@ -30,6 +30,7 @@ import (
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/nop"
@@ -113,6 +114,10 @@ func startSockmapSensor(ctx context.Context) error {
 
 func startNopSensor(ctx context.Context) error {
 	return nop.StartNopProgs(ctx)
+}
+
+func startHttpSensor(ctx context.Context) error {
+	return http.StartHttpProgs(ctx)
 }
 
 func loadInitialProcFsSensor(ctx context.Context) error {
