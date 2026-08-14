@@ -159,7 +159,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, u64);
 	__type(value, struct msg_http_event);
-	__uint(max_entries, 1000);
+	__uint(max_entries, 1); // will be resized by userspace
 } tg_http_map SEC(".maps");
 
 struct {
