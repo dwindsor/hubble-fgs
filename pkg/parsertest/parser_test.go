@@ -41,9 +41,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+
+	"github.com/stretchr/testify/require"
 )
 
 // Testdata directory. We'll probe for it's location
@@ -138,7 +140,16 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Load the initial sensor.
-	initSensor := base.GetInitialSensor()
+	layer3.BaseLoaded = false
+
+	initSensor := base.GetInitialSensorTest(t)
+
+	require.NoError(t, layer3.EnableLayer3Progs())
+
+	layer3Sensor := layer3.Layer3InitialSensor()
+
+	initSensor.Maps = append(initSensor.Maps, layer3Sensor.Maps...)
+	initSensor.Progs = append(initSensor.Progs, layer3Sensor.Progs...)
 
 	err := initSensor.Load(bpf.MapPrefixPath())
 	if err != nil {
