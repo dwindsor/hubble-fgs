@@ -32,6 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -62,9 +63,14 @@ func doObserverTest(t *testing.T, testpolicyName string, params map[string]any, 
 		t.Fatalf(">1 testpolicies with name %q found", testpolicyName)
 	}
 	pt := pts[0]
+	switches, err := switchesForCLIFlags(pt.CLIFlags)
+	if err != nil {
+		t.Fatalf("invalid CLI flags for policytest %q: %s", testpolicyName, err)
+	}
+	require.NoError(t, cli.SetSwitches(t, switches))
 
 	if pt.ShouldSkip != nil {
-		skipInfo := oss.SkipInfo{AgentInfo: getAgentInfo(), ParamValues: oss.ParamVals(params)}
+		skipInfo := oss.SkipInfo{AgentInfo: agentInfoWithCLIFlags(getAgentInfo(), pt.CLIFlags), ParamValues: oss.ParamVals(params)}
 		if skipReason := pt.ShouldSkip(&skipInfo); skipReason != "" {
 			t.Skip(skipReason)
 		}
