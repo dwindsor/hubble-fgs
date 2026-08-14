@@ -46,6 +46,14 @@ var getAgentInfo = sync.OnceValue(func() *tetragoninfo.Info {
 // sensors (e.g. http, sockmap, layer3, socktrack) that depend on maps/programs which only
 // the enterprise base sensor provides.
 func DoObserverTest(t *testing.T, testpolicyName string, params map[string]any) {
+	doObserverTest(t, testpolicyName, params, true)
+}
+
+func DoObserverTestUnfiltered(t *testing.T, testpolicyName string, params map[string]any) {
+	doObserverTest(t, testpolicyName, params, false)
+}
+
+func doObserverTest(t *testing.T, testpolicyName string, params map[string]any, filterByPID bool) {
 	t.Helper()
 	pts := oss.AllPolicyTests.GetByName(testpolicyName)
 	if len(pts) == 0 {
@@ -83,7 +91,7 @@ func DoObserverTest(t *testing.T, testpolicyName string, params map[string]any) 
 	}
 	t.Cleanup(cleanupFn)
 
-	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, filterByPID)
 
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
