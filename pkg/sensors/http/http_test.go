@@ -40,6 +40,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	layer3Testutil "github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
@@ -48,6 +49,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
@@ -345,7 +347,17 @@ func TestLoadHttpSensor(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	b := base.GetInitialSensor()
+	layer3.BaseLoaded = false
+
+	b := base.GetInitialSensorTest(t)
+
+	require.NoError(t, layer3.EnableLayer3Progs())
+
+	layer3Sensor := layer3.Layer3InitialSensor()
+
+	b.Maps = append(b.Maps, layer3Sensor.Maps...)
+	b.Progs = append(b.Progs, layer3Sensor.Progs...)
+
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)

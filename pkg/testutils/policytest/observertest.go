@@ -14,7 +14,6 @@ package policytest
 
 import (
 	"context"
-	"os"
 	"sync"
 	"testing"
 
@@ -25,9 +24,13 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	oss "github.com/cilium/tetragon/pkg/testutils/policytest"
 	"github.com/cilium/tetragon/pkg/tetragoninfo"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+
+	"github.com/cilium/tetragon/pkg/observer"
+
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
@@ -80,19 +83,15 @@ func DoObserverTest(t *testing.T, testpolicyName string, params map[string]any) 
 	}
 	t.Cleanup(cleanupFn)
 
-	policyFile, err := os.CreateTemp("", "tetragon-policy-"+t.Name()+"-*.txt")
-	if err != nil {
-		t.Fatalf("failed to create policy file: %s", err)
-	}
-	policyFile.WriteString(string(policyStr))
-	policyFile.Close()
-	policyFname := policyFile.Name()
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 
-	b := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, b, policyFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserverWithBase error: %s", err)
-	}
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	tp, err := tracingpolicy.FromYAML(string(policyStr))
+	require.NoError(t, err)
+
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
 
 	for _, s := range pt.Scenarios {
 		observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
