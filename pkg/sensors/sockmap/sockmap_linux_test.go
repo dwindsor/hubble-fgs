@@ -24,22 +24,27 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 )
@@ -139,15 +144,16 @@ func TestTLS13(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	tp, err := tracingpolicy.FromYAML(tlsConfig)
+	require.NoError(t, err)
+
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
@@ -211,15 +217,16 @@ func TestTLS12(t *testing.T) {
 		tlsChecker,
 	)
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
-	}
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
-	}
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	tp, err := tracingpolicy.FromYAML(tlsConfig)
+	require.NoError(t, err)
+
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
@@ -250,48 +257,61 @@ spec:
       selectors:
       - matchports:
         - 443
+    tcp:
+      enable: true
 `
 
 	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
+	layer3.BaseLoaded = false
+
 	b := base.GetInitialSensorTest(t)
+
+	require.NoError(t, layer3.EnableLayer3Progs())
+
+	layer3Sensor := layer3.Layer3InitialSensor()
+
+	b.Maps = append(b.Maps, layer3Sensor.Maps...)
+	b.Progs = append(b.Progs, layer3Sensor.Progs...)
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
+	sensorProgs, sensorMaps := testutil.ProgsAndMaps(false, false, false)
+
 	// If we base all indices into the progs map from "ni" then we can add extra programs
 	// in front of these and just set ni to the number of programs. This supports the option
 	// to make socktrack enabled by default, but doesn't require it.
-	ni := uint(0) // next index
+	ni := uint(len(sensorProgs)) // next index
 
-	var sensorProgs = []tus.SensorProg{
+	sensorProgs = append(sensorProgs, []tus.SensorProg{
 		tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps}, // index ni
 		tus.SensorProg{Name: "tg_setsockopt", Type: ebpf.CGroupSockopt},
 		tus.SensorProg{Name: "bpf_tls_sk_msg_fgs", Type: ebpf.SkMsg},
 		tus.SensorProg{Name: "bpf_tls_skskb_verdict", Type: ebpf.SkSKB}, // index ni + 3
-	}
+	}...)
 
-	var sensorMaps = []tus.SensorMap{
-		// all but base and tg_sockmap
-		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{ni + 1, ni + 2, ni + 3}},
+	// all but base and tg_sockmap
+	testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni + 1, ni + 2, ni + 3})
 
-		// all but base and bpf_tls_skskb_verdict
-		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{ni, ni + 1}},
+	// all but base and bpf_tls_skskb_verdict
+	testutil.AddToMap(sensorMaps, "tg_tls_filter_map", []uint{ni, ni + 1})
 
-		// tg_sockmap
-		tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{ni}},
+	// tg_sockmap
+	testutil.AddToMap(sensorMaps, "tg_tls_sock_map", []uint{ni})
 
-		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
-		tus.SensorMap{Name: "tg_bottles", Progs: []uint{ni + 2, ni + 3}},
-		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{ni + 2, ni + 3}},
-		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{ni + 2, ni + 3}},
+	// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
+	testutil.AddToMap(sensorMaps, "tg_bottles", []uint{ni + 2, ni + 3})
+	testutil.AddToMap(sensorMaps, "tg_bottle_map_stats", []uint{ni + 2, ni + 3})
+	testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3})
+	testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3})
+	testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni + 2, ni + 3})
 
-		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{ni + 2, ni + 3}},
-	}
+	// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
+	testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni + 2, ni + 3})
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
@@ -325,43 +345,63 @@ spec:
       selectors:
       - matchports:
         - 443
+    tcp:
+      enable: true
 `
 
 	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
+	layer3.BaseLoaded = false
+
 	b := base.GetInitialSensorTest(t)
+
+	require.NoError(t, layer3.EnableLayer3Progs())
+
+	layer3Sensor := layer3.Layer3InitialSensor()
+
+	b.Maps = append(b.Maps, layer3Sensor.Maps...)
+	b.Progs = append(b.Progs, layer3Sensor.Progs...)
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
+	sensorProgs, sensorMaps := testutil.ProgsAndMaps(false, false, false)
+
 	// If we base all indices into the progs map from "ni" then we can add extra programs
 	// in front of these and just set ni to the number of programs. This supports the option
 	// to make socktrack enabled by default, but doesn't require it.
-	ni := uint(0) // next index
+	ni := uint(len(sensorProgs)) // next index
 
-	var sensorProgs = []tus.SensorProg{
+	sensorProgs = append(sensorProgs, []tus.SensorProg{
 		tus.SensorProg{Name: "tls_inet_send", Type: ebpf.CGroupSKB}, // index ni
 		tus.SensorProg{Name: "tls_inet_recv", Type: ebpf.CGroupSKB}, // index ni + 1
-	}
+	}...)
 
-	var sensorMaps = []tus.SensorMap{
-		// send and recv
-		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{ni, ni + 1}},
-
+	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		// send only
 		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{ni, ni + 1}},
 
 		// send and recv
-		tus.SensorMap{Name: "tg_bottles", Progs: []uint{ni, ni + 1}},
-		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{ni, ni + 1}},
 		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{ni, ni + 1}},
+	}...)
 
-		// send and recv
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{ni, ni + 1}},
-	}
+	// the index of tg_event_tcp_sockops is not known outside of ProgsAndMaps,
+	// so resolve the whole list by name
+	bottleProgs := []string{"tls_inet_send", "tls_inet_recv", "tg_event_tcp_sockops", "tg_event_tcp_close"}
+
+	sensorMaps = append(sensorMaps,
+		testutil.SensorMapByProgName(sensorProgs, "tg_bottles", bottleProgs),
+		testutil.SensorMapByProgName(sensorProgs, "tg_bottle_map_stats", bottleProgs),
+	)
+
+	// send and recv
+	testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni, ni + 1})
+	testutil.AddToMap(sensorMaps, "tg_l3_sk", []uint{ni, ni + 1})
+	testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni, ni + 1})
+	testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1})
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
@@ -420,15 +460,16 @@ func TestCGTLS13(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	tp, err := tracingpolicy.FromYAML(tlsConfigCG)
+	require.NoError(t, err)
+
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
@@ -492,15 +533,16 @@ func TestCGTLS12(t *testing.T) {
 		tlsChecker,
 	)
 
-	if err := observertesthelper.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
-	}
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
-	}
+	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+
+	tp, err := tracingpolicy.FromYAML(tlsConfigCG)
+	require.NoError(t, err)
+
+	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	require.NoError(t, err)
+
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
