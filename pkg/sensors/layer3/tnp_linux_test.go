@@ -36,6 +36,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -256,7 +257,7 @@ func testTNP(t *testing.T, CLISwitches bool) {
 		}))
 	}
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {

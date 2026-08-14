@@ -37,6 +37,7 @@ import (
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -114,7 +115,7 @@ func (suite *rawTests) SetupSuite() {
 		suite.Require().NoError(err)
 	}
 
-	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, false)
 	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 
 	if !suite.useCLI {
@@ -243,7 +244,7 @@ func TestRawsockCLISwitch(t *testing.T) {
 				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
 	)
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	tp, err := tracingpolicy.FromYAML(rawsockConfigWithCloseEventsWithoutEnable)
 	if err != nil {
@@ -303,7 +304,7 @@ func TestRawsockCLISwitch2(t *testing.T) {
 				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
 	)
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)

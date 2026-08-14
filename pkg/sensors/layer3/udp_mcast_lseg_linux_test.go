@@ -39,6 +39,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -185,7 +186,7 @@ func testUdpMulticastLSEGConnID(t *testing.T, CLISwitches bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	if !CLISwitches {
 		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
@@ -337,7 +338,7 @@ func testUdpMulticastLSEGSeqCheck(t *testing.T, CLISwitches bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	if !CLISwitches {
 		tp, err := tracingpolicy.FromYAML(udpBasicConfig)
@@ -482,7 +483,7 @@ func testUdpMulticastLSEGSampling(t *testing.T, CLISwitches bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	if !CLISwitches {
 		tp, err := tracingpolicy.FromYAML(udpBasicConfig)

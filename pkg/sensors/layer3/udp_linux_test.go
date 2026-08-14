@@ -51,6 +51,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
@@ -452,7 +453,7 @@ func testUdpWatermarks(t *testing.T, CLISwitches, legacy bool) {
 		}))
 	}
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {
@@ -603,7 +604,7 @@ func (suite *UDPBasic) SetupSuite() {
 		})
 		suite.Require().NoError(err)
 	}
-	obs := getNoConfigObserver(suite.T(), suite.ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, true)
 	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 
 	if !suite.useCLI {
@@ -902,7 +903,7 @@ func TestUDPCLISwitch(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	option.Config.UsePerfRingBuffer = true
 	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
@@ -974,7 +975,7 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 				WithSourcePort(8084)),
 	)
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	if !CLISwitches {
 		tp, err := tracingpolicy.FromYAML(configYaml)
@@ -1496,7 +1497,7 @@ func testDnsEvents(t *testing.T, CLISwitches, withQuestions bool) {
 		require.NoError(t, cli.SetSwitches(t, switches))
 	}
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {
@@ -1679,7 +1680,7 @@ func testDisableCloseConfig(t *testing.T, CLISwitches, disableClose bool) {
 		}))
 	}
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {
@@ -1767,7 +1768,7 @@ func testDisableListenConfig(t *testing.T, CLISwitches, disableListen bool) {
 		}))
 	}
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {
@@ -1841,7 +1842,7 @@ func testGC(t *testing.T, CLISwitches, defaultInterval bool, interval int, numEx
 		cli.SetSwitches(t, switches)
 	}
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {

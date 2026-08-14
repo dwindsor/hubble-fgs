@@ -51,6 +51,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	execapi "github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
@@ -121,7 +122,7 @@ func (suite *ICMPBasic) SetupSuite() {
 		suite.Require().NoError(err)
 	}
 
-	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, false)
 	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 
 	if !suite.useCLI {
@@ -186,7 +187,7 @@ func (suite *ICMPUDP) SetupSuite() {
 	suite.switches, err = cli.SetConfigFromSwitches(switches)
 	suite.Require().NoError(err)
 
-	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, false)
 	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 
 	if !suite.useCLI {
@@ -426,7 +427,7 @@ func TestICMPCLISwitchTetragon(t *testing.T) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	obs := getNoConfigObserver(t, ctx, false)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, false)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 

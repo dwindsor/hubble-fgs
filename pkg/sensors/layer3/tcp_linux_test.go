@@ -121,7 +121,7 @@ func testTCPDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 	if !CLISwitches {
 		tp, err := tracingpolicy.FromYAML(configYaml)
@@ -173,7 +173,7 @@ func testTCPDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitch
 
 	configYaml := getTcpObserverDisableEvents(t, CLISwitches, true, disableClose, disableAccept, disableListen)
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {
@@ -543,7 +543,7 @@ func testTCPWatermarks(t *testing.T, CLISwitches, legacy bool) {
 		}))
 	}
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(t, ctx, true)
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
 
 	if !CLISwitches {

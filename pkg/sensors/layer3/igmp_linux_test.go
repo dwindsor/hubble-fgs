@@ -36,6 +36,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
@@ -95,7 +96,7 @@ func (suite *IGMPV2) SetupSuite() {
 	})
 	suite.Require().NoError(err)
 
-	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, false)
 	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
@@ -132,7 +133,7 @@ func (suite *IGMPV3) SetupSuite() {
 	})
 	suite.Require().NoError(err)
 
-	obs := getNoConfigObserver(suite.T(), suite.ctx, false)
+	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, false)
 	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }

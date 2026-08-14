@@ -16,16 +16,33 @@ package observertesthelper
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/metricsconfig"
 	"github.com/cilium/tetragon/pkg/observer"
 	oss "github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+)
+
+const (
+	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
+
+	noConfig = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "noconfig"
+spec: {}
+`
 )
 
 var (
@@ -83,4 +100,29 @@ func GetDefaultObserverWithConfig(tb testing.TB, ctx context.Context, config, li
 	}
 	enterpriseInit()
 	return obs, nil
+}
+
+// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
+// thing to do here even if revive complains.
+func GetNoConfigObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer { //nolint:revive
+	if err := oss.WriteConfigFile(testConfigFile, noConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	base := base.GetInitialSensorTest(t)
+	var obs *observer.Observer
+	var err error
+	if filtered {
+		obs, err = GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, oss.WithMyPid())
+	} else {
+		obs, err = GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+	}
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	err = confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	return obs
 }

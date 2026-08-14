@@ -33,6 +33,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
@@ -228,7 +229,7 @@ func (suite *TCPFinRx) SetupSuite() {
 		})
 		suite.Require().NoError(err)
 	}
-	obs := getNoConfigObserver(suite.T(), suite.ctx, true)
+	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, true)
 	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
 
 	if !suite.useCLI {
