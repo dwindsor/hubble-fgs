@@ -101,10 +101,10 @@ func doObserverTest(t *testing.T, testpolicyName string, params map[string]any, 
 	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
 	require.NoError(t, err)
 
-	for _, s := range pt.Scenarios {
-		observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-		readyWG.Wait()
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
 
+	for _, s := range pt.Scenarios {
 		scenario := s(conf)
 		scenarioCtx, cancelScenario := context.WithCancel(ctx)
 		if err := scenario.Trigger.Trigger(scenarioCtx); err != nil {
