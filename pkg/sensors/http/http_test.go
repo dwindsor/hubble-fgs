@@ -380,6 +380,11 @@ func TestLoadHttpSensor(t *testing.T) {
 		tus.SensorProg{Name: "tg_sockmap", Type: ebpf.SockOps}, //  ni + 10
 	}...)
 
+	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "http1_calls", Progs: []uint{ni, ni + 1, ni + 2, ni + 3}})
+	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "http1_calls_skb", Progs: []uint{ni + 5, ni + 6, ni + 7, ni + 8, ni + 9}})
+	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "tg_http_err_stats", Progs: []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9}})
+	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "tg_http_filter_map", Progs: []uint{ni + 10}})
+
 	// all but base and tg_sockmap
 	layer3Testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9})
 	// all but tg_sockmap
