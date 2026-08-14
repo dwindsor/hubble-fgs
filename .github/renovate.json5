@@ -40,7 +40,9 @@
       "enabled": true,
       "matchPackageNames": [
         "artifactory.devhub-cloud.cisco.com/sto-cg-docker/static",
-        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/chainguard-base"
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/chainguard-base",
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/go",
+        "artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl",
       ],
       "matchBaseBranches": ["v1.19"],
       "schedule": ["* * 1 * *"]
