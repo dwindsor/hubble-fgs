@@ -297,7 +297,7 @@ jobs:
       chartVersion: ${{ needs.chart-metadata.outputs.chart_version }}
       helmRegistry: ${{ vars.ARTIFACTORY_HOST }}
       # renovate: datasource=github-releases depName=helm/helm
-      helmVersion: v4.2.3
+      helmVersion: v4.2.4
       checkout_ref: ${{ inputs.sha }}
       valuesFileChanges: |
         {
