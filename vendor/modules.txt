@@ -407,7 +407,7 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.8.0-pre.0.0.20260813120013-701cf98a31e7 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.8.0-pre.0.0.20260817105731-0d3048ed735f => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -1333,13 +1333,15 @@ github.com/spf13/viper/internal/features
 # github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 ## explicit; go 1.17
 github.com/sryoya/protorand
-# github.com/stretchr/objx v0.5.2
+# github.com/stretchr/objx v0.5.3
 ## explicit; go 1.20
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.11.1
+# github.com/stretchr/testify v1.12.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
+github.com/stretchr/testify/internal/difflib
+github.com/stretchr/testify/internal/spew
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
 github.com/stretchr/testify/suite
