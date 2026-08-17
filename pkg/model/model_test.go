@@ -258,7 +258,7 @@ func TestProcessModelToApplicationModel_ParentTracking(t *testing.T) {
 	}
 
 	emptyFilter := map[string]bool{}
-	result := ProcessModelToApplicationModel(models, emptyFilter)
+	result := ProcessModelToApplicationModel(models, emptyFilter, map[string]string{"some-label": "some-value"})
 
 	// Check that we get the expected application model structure
 	require.NotNil(t, result.ApplicationModel)
@@ -277,6 +277,9 @@ func TestProcessModelToApplicationModel_ParentTracking(t *testing.T) {
 
 	require.NotNil(t, exaProcess, "exa process should be present")
 	require.NotNil(t, grepProcess, "grep process should be present")
+
+	require.Equal(t, 1, len(result.NodeLabels), "Node labels should be present")
+	require.Equal(t, "some-value", result.NodeLabels["some-label"], "Node label value should match")
 
 	// Note: The ApplicationProcessGroup doesn't currently have a Parents field in the IPA schema,
 	// but we can verify that the parent information is properly tracked in the monitor data
@@ -334,7 +337,7 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 	}
 
 	emptyFilter := map[string]bool{}
-	result := ProcessModelToApplicationModel(models, emptyFilter)
+	result := ProcessModelToApplicationModel(models, emptyFilter, nil)
 
 	// Verify structure
 	require.NotNil(t, result.ApplicationModel)
@@ -398,7 +401,7 @@ func TestProcessModelToApplicationModel_PlainIPClassification(t *testing.T) {
 		},
 	}
 
-	result := ProcessModelToApplicationModel(models, map[string]bool{})
+	result := ProcessModelToApplicationModel(models, map[string]bool{}, nil)
 	require.NotNil(t, result.ApplicationModel.Host)
 	require.Len(t, result.ApplicationModel.Host.Processes, 1)
 	conns := result.ApplicationModel.Host.Processes[0].Connections

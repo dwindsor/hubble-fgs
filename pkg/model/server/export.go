@@ -177,9 +177,10 @@ func exportTick(
 	lastModel *appModelV1.ApplicationModelEvent,
 	lastTime time.Time,
 	emptyFilter map[string]bool,
+	nodeLabels map[string]string,
 ) (*appModelV1.ApplicationModelEvent, time.Time) {
 	convStart := time.Now()
-	newModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter)
+	newModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter, nodeLabels)
 	appmodelmetrics.RecordDuration(appmodelmetrics.PhaseConversion, float64(time.Since(convStart).Microseconds()))
 
 	telemetryMap := model.BuildTelemetryMap(processData)
@@ -239,7 +240,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 		res = nil
 	}
 	emptyFilter := make(map[string]bool)
-	lastModel, _ := model.ProcessModelToApplicationModelWithProcessData(res, emptyFilter)
+	lastModel, _ := model.ProcessModelToApplicationModelWithProcessData(res, emptyFilter, server.GetNodeLabels(ctx))
 
 	if writer != nil {
 		encoder = json.NewEncoder(writer)
@@ -277,7 +278,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				appModelEncoder = encoder
 			}
 
-			lastModel, lastTime = exportTick(ctx, res, appModelEncoder, telemetry, connection, lastModel, lastTime, emptyFilter)
+			lastModel, lastTime = exportTick(ctx, res, appModelEncoder, telemetry, connection, lastModel, lastTime, emptyFilter, server.GetNodeLabels(ctx))
 			appmodelmetrics.RecordDuration(appmodelmetrics.PhaseExportTick, float64(time.Since(tickStart).Microseconds()))
 		case <-ctx.Done():
 			return

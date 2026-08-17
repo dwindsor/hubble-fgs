@@ -72,6 +72,6 @@ func BenchmarkNamespaceMapToApplicationModel(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = ProcessModelToApplicationModel(processModels, nsFilter)
+		_ = ProcessModelToApplicationModel(processModels, nsFilter, nil)
 	}
 }

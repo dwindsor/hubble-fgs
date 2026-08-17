@@ -87,7 +87,7 @@ func TestCountEntities(t *testing.T) {
 // using the same logic as the model package.
 func buildParentMapFromProcessModels(processModels []*types.ProcessModel) map[string][]string {
 	emptyFilter := make(map[string]bool)
-	_, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter)
+	_, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter, nil)
 	telemetryMap := model.BuildTelemetryMap(processData)
 	// Extract just the parent map for backward compatibility
 	parentMap := make(map[string][]string)
@@ -290,7 +290,7 @@ func TestExportParentMapWithApplicationModel(t *testing.T) {
 
 	// Convert to ApplicationModel and build telemetry map
 	emptyFilter := map[string]bool{}
-	applicationModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter)
+	applicationModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter, nil)
 	telemetryMap := model.BuildTelemetryMap(processData)
 
 	// Extract parent map for verification
@@ -457,7 +457,7 @@ func TestAppModelEncodeFailureDoesNotBlockTelemetry(t *testing.T) {
 	}
 
 	emptyFilter := make(map[string]bool)
-	lastAppModel, _ := model.ProcessModelToApplicationModelWithProcessData(lastProcessModels, emptyFilter)
+	lastAppModel, _ := model.ProcessModelToApplicationModelWithProcessData(lastProcessModels, emptyFilter, nil)
 
 	// Set up a failing app model encoder and working telemetry/connection encoders.
 	failingAppModelEncoder := json.NewEncoder(&errWriter{err: errors.New("write length exceeds maximum file size")})
@@ -466,13 +466,12 @@ func TestAppModelEncodeFailureDoesNotBlockTelemetry(t *testing.T) {
 	telemetryEncoder := json.NewEncoder(&telemetryBuf)
 	connectionEncoder := json.NewEncoder(&connectionBuf)
 
-	ctx := context.Background()
 	lastTime := time.Now().Add(-10 * time.Second)
 
 	// Call exportTick with the failing app model encoder. The function should
 	// log the encode error but still proceed to export telemetry and connections.
-	_, _ = exportTick(ctx, newProcessModels, failingAppModelEncoder, telemetryEncoder, connectionEncoder,
-		lastAppModel, lastTime, emptyFilter)
+	_, _ = exportTick(t.Context(), newProcessModels, failingAppModelEncoder, telemetryEncoder, connectionEncoder,
+		lastAppModel, lastTime, emptyFilter, nil)
 
 	assert.NotEmpty(t, telemetryBuf.Bytes(), "telemetry encoder should have received data")
 	assert.NotEmpty(t, connectionBuf.Bytes(), "connection encoder should have received data")
@@ -555,7 +554,7 @@ func TestExportTickSetsEntityGauges(t *testing.T) {
 	ctx := context.Background()
 	emptyFilter := make(map[string]bool)
 
-	exportTick(ctx, processModels, nil, nil, nil, nil, time.Now(), emptyFilter)
+	exportTick(ctx, processModels, nil, nil, nil, nil, time.Now(), emptyFilter, nil)
 
 	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("namespace")))
 	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("workload")))

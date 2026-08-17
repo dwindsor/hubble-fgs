@@ -49,6 +49,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/protoutils"
 	"github.com/isovalent/hubble-fgs/pkg/util/set"
@@ -132,6 +133,8 @@ type Server struct {
 	// and never change, so the decoded strings are stable for the lifetime of
 	// the UID in the BPF map.
 	binaryArgsCache *lru.Cache[uint64, cachedBinaryInfo]
+
+	metadataService local.MetadataService
 }
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
@@ -1160,9 +1163,20 @@ func (s *Server) GetApplicationModel(ctx context.Context, nsFilter map[string]bo
 		return nil, err
 	}
 
-	model := model.ProcessModelToApplicationModel(res, nsFilter)
+	model := model.ProcessModelToApplicationModel(res, nsFilter, s.GetNodeLabels(ctx))
 
 	return model, nil
+}
+
+func (s *Server) GetNodeLabels(ctx context.Context) map[string]string {
+	labels := make(map[string]string)
+
+	nodeLabels, err := s.metadataService.GetLabels(ctx)
+	if err != nil {
+		logger.GetLogger().Warn("Failed to get node labels. node_labels field will be empty", logfields.Error, err)
+		return labels
+	}
+	return nodeLabels
 }
 
 func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
@@ -1228,7 +1242,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 		logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 		return err
 	}
-	lastModel := model.ProcessModelToApplicationModel(res, nsFilter)
+	lastModel := model.ProcessModelToApplicationModel(res, nsFilter, s.GetNodeLabels(ctx))
 
 	for {
 		var networkDiffModel *appModelV1.ApplicationModel
@@ -1240,7 +1254,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 				logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 				return err
 			}
-			newModel := model.ProcessModelToApplicationModel(res, nsFilter)
+			newModel := model.ProcessModelToApplicationModel(res, nsFilter, s.GetNodeLabels(ctx))
 			networkDiffModel, _, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 			if err != nil {
 				logger.GetLogger().Error("Failed to produce application model difference", logfields.Error, err)
@@ -1310,10 +1324,17 @@ func NewServer(enableBpfId bool) (*Server, error) {
 		return nil, err
 	}
 
+	mService, err := local.GetMetadataService()
+	if err != nil {
+		logger.GetLogger().Warn("Failed to get metadata service. Node labels will be incomplete", logfields.Error, err)
+		mService = &local.NoopMetadataService{}
+	}
+
 	return &Server{
 		cgTrackerIdCache: cgTrackerIdCacheInstance,
 		containerIdCache: containerIdCacheInstance,
 		binaryArgsCache:  binaryArgsCacheInstance,
 		TimeNow:          time.Now,
-	}, err
+		metadataService:  mService,
+	}, nil
 }

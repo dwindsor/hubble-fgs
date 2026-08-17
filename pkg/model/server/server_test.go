@@ -283,7 +283,7 @@ func TestProcessTree(t *testing.T) {
 				t.Fatalf("getProcessModel error: %s", err)
 			}
 			emptyFilter := make(map[string]bool, 0)
-			appModelEvent := model.ProcessModelToApplicationModel(res, emptyFilter)
+			appModelEvent := model.ProcessModelToApplicationModel(res, emptyFilter, nil)
 			modelChk, err := checker.NewApplicationModelChecker()
 			if err != nil {
 				t.Fatalf("NewApplicationModelChecker error: %s", err)

@@ -280,14 +280,14 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 	return result
 }
 
-func ProcessModelToApplicationModel(processModel []*types.ProcessModel, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
-	appModel, _ := ProcessModelToApplicationModelWithProcessData(processModel, nsFilter)
+func ProcessModelToApplicationModel(processModel []*types.ProcessModel, nsFilter map[string]bool, nodeLabels map[string]string) *appModelV1.ApplicationModelEvent {
+	appModel, _ := ProcessModelToApplicationModelWithProcessData(processModel, nsFilter, nodeLabels)
 	return appModel
 }
 
 // ProcessModelToApplicationModelWithProcessData converts process models to an application model
 // and also returns the process monitor data for building telemetry maps.
-func ProcessModelToApplicationModelWithProcessData(processModel []*types.ProcessModel, nsFilter map[string]bool) (*appModelV1.ApplicationModelEvent, ProcessMonitorData) {
+func ProcessModelToApplicationModelWithProcessData(processModel []*types.ProcessModel, nsFilter map[string]bool, nodeLabels map[string]string) (*appModelV1.ApplicationModelEvent, ProcessMonitorData) {
 	// Ignore quota info for now.
 	monitor, _, processes := ConvertToMonitorData(processModel, true)
 	nsMap := make(namespaceMap)
@@ -297,7 +297,9 @@ func ProcessModelToApplicationModelWithProcessData(processModel []*types.Process
 	for key, val := range processes {
 		handleProcessEvent(nsMap, key, val)
 	}
-	return namespaceMapToApplicationModel(nsMap, nsFilter), processes
+	appModel := namespaceMapToApplicationModel(nsMap, nsFilter)
+	appModel.NodeLabels = nodeLabels
+	return appModel, processes
 }
 
 // Given an ApplicationModelEvent, split it into multiple smaller
@@ -325,6 +327,7 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 				NodeName:    appModel.NodeName,
 				ClusterName: appModel.ClusterName,
 				Time:        appModel.Time,
+				NodeLabels:  appModel.NodeLabels,
 			}
 			result = append(result, hostFragment)
 		}
@@ -351,6 +354,7 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 				NodeName:    appModel.NodeName,
 				ClusterName: appModel.ClusterName,
 				Time:        appModel.Time,
+				NodeLabels:  appModel.NodeLabels,
 			}
 			result = append(result, wlFragment)
 		}
@@ -365,6 +369,7 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 				ClusterName: appModel.ClusterName,
 				NodeName:    appModel.NodeName,
 				Time:        appModel.Time,
+				NodeLabels:  appModel.NodeLabels,
 				ApplicationModelFragment: &appModelV1.ApplicationModel{
 					Id:         appModel.ApplicationModel.Id,
 					Namespaces: []*appModelV1.ApplicationNamespace{},
@@ -420,6 +425,7 @@ func MergeApplicationModelFragments(fragments []*appModelV1.ApplicationModelFrag
 		NodeName:    fragments[0].NodeName,
 		ClusterName: fragments[0].ClusterName,
 		Time:        fragments[0].Time,
+		NodeLabels:  fragments[0].NodeLabels,
 	}
 	nsMap := make(map[string]*appModelV1.ApplicationNamespace)
 	for _, m := range fragments {
