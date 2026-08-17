@@ -40,6 +40,9 @@ var emptyUnifiedModelEvent *appModelV1.ApplicationModelEvent = &appModelV1.Appli
 		Nanos:   2315,
 	},
 	ApplicationModel: emptyUnifiedModel,
+	NodeLabels: map[string]string{
+		"topology.kubernetes.io/region": "us-west-2",
+	},
 }
 
 var emptyUnifiedModelFragment *appModelV1.ApplicationModelFragment = &appModelV1.ApplicationModelFragment{
@@ -52,6 +55,9 @@ var emptyUnifiedModelFragment *appModelV1.ApplicationModelFragment = &appModelV1
 	ApplicationModelFragment: emptyUnifiedModel,
 	FragmentTotal:            1,
 	FragmentIndex:            1,
+	NodeLabels: map[string]string{
+		"topology.kubernetes.io/region": "us-west-2",
+	},
 }
 
 var expectedUnifiedApplicationModel *appModelV1.ApplicationModel = &appModelV1.ApplicationModel{
@@ -184,6 +190,9 @@ var expectedUnifiedModelEvent *appModelV1.ApplicationModelEvent = &appModelV1.Ap
 		Nanos:   2315,
 	},
 	ApplicationModel: expectedUnifiedApplicationModel,
+	NodeLabels: map[string]string{
+		"topology.kubernetes.io/region": "us-west-2",
+	},
 }
 
 var expectedUnifiedModelFragment *appModelV1.ApplicationModelFragment = &appModelV1.ApplicationModelFragment{
@@ -196,6 +205,9 @@ var expectedUnifiedModelFragment *appModelV1.ApplicationModelFragment = &appMode
 	ApplicationModelFragment: expectedUnifiedApplicationModel,
 	FragmentTotal:            1,
 	FragmentIndex:            1,
+	NodeLabels: map[string]string{
+		"topology.kubernetes.io/region": "us-west-2",
+	},
 }
 
 var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
@@ -223,6 +235,9 @@ var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
 		},
 		FragmentTotal: 6,
 		FragmentIndex: 1,
+		NodeLabels: map[string]string{
+			"topology.kubernetes.io/region": "us-west-2",
+		},
 	},
 	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
@@ -248,6 +263,9 @@ var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
 		},
 		FragmentTotal: 6,
 		FragmentIndex: 2,
+		NodeLabels: map[string]string{
+			"topology.kubernetes.io/region": "us-west-2",
+		},
 	},
 	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
@@ -269,6 +287,9 @@ var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
 		},
 		FragmentTotal: 6,
 		FragmentIndex: 3,
+		NodeLabels: map[string]string{
+			"topology.kubernetes.io/region": "us-west-2",
+		},
 	},
 	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
@@ -322,6 +343,9 @@ var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
 		},
 		FragmentTotal: 6,
 		FragmentIndex: 4,
+		NodeLabels: map[string]string{
+			"topology.kubernetes.io/region": "us-west-2",
+		},
 	},
 	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
@@ -370,6 +394,9 @@ var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
 		},
 		FragmentTotal: 6,
 		FragmentIndex: 5,
+		NodeLabels: map[string]string{
+			"topology.kubernetes.io/region": "us-west-2",
+		},
 	},
 	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
@@ -411,6 +438,9 @@ var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
 		},
 		FragmentTotal: 6,
 		FragmentIndex: 6,
+		NodeLabels: map[string]string{
+			"topology.kubernetes.io/region": "us-west-2",
+		},
 	},
 }
 
@@ -418,6 +448,9 @@ func TestSplitApplicationModelEvent(t *testing.T) {
 
 	option.Config.ApplicationModelSplitMaxHostProcs = 2
 	fragments := SplitApplicationModelEvent(expectedUnifiedModelEvent)
+	for _, fragment := range fragments {
+		assert.Equal(t, expectedUnifiedModelEvent.NodeLabels, fragment.NodeLabels)
+	}
 
 	if diff := cmp.Diff(expectedSplitModelFragments, fragments, protocmp.Transform()); diff != "" {
 		t.Errorf("SplitApplicationModelEvent() mismatch (-want +got):\n%s", diff)
@@ -428,10 +461,21 @@ func TestMergeApplicationModelFragments(t *testing.T) {
 
 	merged, err := MergeApplicationModelFragments(expectedSplitModelFragments)
 	assert.Nil(t, err)
+	assert.Equal(t, expectedSplitModelFragments[0].NodeLabels, merged.NodeLabels)
 
 	if diff := cmp.Diff(expectedUnifiedModelEvent, merged, protocmp.Transform()); diff != "" {
 		t.Errorf("MergeApplicationModelFragments() mismatch (-want +got):\n%s", diff)
 	}
+}
+
+func TestMergeApplicationModelFragmentsUsesFirstNodeLabels(t *testing.T) {
+	option.Config.ApplicationModelSplitMaxHostProcs = 2
+	fragments := SplitApplicationModelEvent(expectedUnifiedModelEvent)
+	fragments[1].NodeLabels = map[string]string{"topology.kubernetes.io/zone": "us-west-2a"}
+
+	merged, err := MergeApplicationModelFragments(fragments)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUnifiedModelEvent.NodeLabels, merged.NodeLabels)
 }
 
 func TestMergeApplicationModelFragmentsSingle(t *testing.T) {
