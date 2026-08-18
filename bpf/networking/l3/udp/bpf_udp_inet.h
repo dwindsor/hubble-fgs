@@ -110,7 +110,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 		} else {
 			update_rx_value(value, payload_sz);
 #ifdef PROCESS_TREE
-			recv(value->deny, &value->dst_key, payload_sz);
+			recv(skb, value->deny, &value->dst_key, payload_sz);
 #endif
 		}
 #ifdef USE_BPF_TIMER
@@ -167,7 +167,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	if (egress)
 		send(skb, value->deny, &value->dst_key, payload_sz, false);
 	else
-		recv(value->deny, &value->dst_key, payload_sz);
+		recv(skb, value->deny, &value->dst_key, payload_sz);
 #endif
 	return value;
 }

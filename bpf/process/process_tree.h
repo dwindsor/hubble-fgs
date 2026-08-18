@@ -380,9 +380,12 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		if (!destvalue)
 			return 0;
 
-		destvalue->tx_drops = 0;
-		destvalue->allow_default = 0;
-		destvalue->deny_default = 0;
+		destvalue->tx_drop_bytes = 0;
+		destvalue->allow_default_bytes = 0;
+		destvalue->deny_default_bytes = 0;
+		destvalue->tx_drop_packets = 0;
+		destvalue->deny_default_packets = 0;
+		destvalue->allow_default_packets = 0;
 		destvalue->deny = 0;
 		destvalue->tx_bytes = 0;
 		destvalue->rx_bytes = 0;
@@ -613,9 +616,12 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
 			destvalue->tx_bytes = destvalue->rx_bytes = 0;
 			destvalue->sessions = 0;
-			destvalue->tx_drops = 0;
-			destvalue->allow_default = 0;
-			destvalue->deny_default = 0;
+			destvalue->tx_drop_bytes = 0;
+			destvalue->allow_default_bytes = 0;
+			destvalue->deny_default_bytes = 0;
+			destvalue->tx_drop_packets = 0;
+			destvalue->deny_default_packets = 0;
+			destvalue->allow_default_packets = 0;
 			destvalue->policy = dst_value->policy;
 			destvalue->rule = dst_value->rule;
 
@@ -894,6 +900,27 @@ static inline __attribute__((always_inline)) int dest_policy(__u64 *p, __u64 len
 	return SK_PASS;
 }
 
+/* Number of packets this skb accounts for.
+ *
+ * One skb is not one packet at either cgroup hook. On egress the hook runs in
+ * ip_finish_output(), before __ip_finish_output() hands a GSO skb to
+ * segmentation, so a single skb can be 64KB that leaves as tens of segments.
+ * On ingress the hook runs in sk_filter_trim_cap(), after GRO has coalesced
+ * received segments into one skb.
+ *
+ * skb_shinfo(skb)->gso_segs is the count the kernel itself charges for this
+ * skb. __tcp_transmit_skb() sets it from tcp_skb_pcount(skb), and adds that
+ * same value to tcp_sock->segs_out and to Tcp: OutSegs, a few lines before it
+ * hands the skb to ip_queue_xmit(). It is zero on an skb that was never
+ * segmented, which is why tcp_segs_in() reads it as max(1, gso_segs) too.
+ */
+static inline __attribute__((always_inline)) __u64 skb_wire_segments(struct __sk_buff *skb)
+{
+	__u32 segs = skb->gso_segs;
+
+	return segs ? segs : 1;
+}
+
 /* Clear the policy template flag when we have real traffic.
  * Policy entries are created with this flag set to indicate they are
  * templates. When actual traffic flows through, we clear the flag so
@@ -908,6 +935,7 @@ static inline __attribute__((always_inline)) void clear_policy_template_flag(str
 static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len, bool enforce)
 {
 	struct destination_endpoint_value *dest;
+	__u64 segs = skb_wire_segments(skb);
 
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (!dest)
@@ -916,9 +944,12 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 	clear_policy_template_flag(dest);
 
 	if (is_policy_drop(deny) && enforce) {
-		__sync_fetch_and_add(&dest->tx_drops, len);
-		if (deny & TNP_POLICY_FALLTHRU)
-			__sync_fetch_and_add(&dest->deny_default, len);
+		__sync_fetch_and_add(&dest->tx_drop_bytes, len);
+		__sync_fetch_and_add(&dest->tx_drop_packets, segs);
+		if (deny & TNP_POLICY_FALLTHRU) {
+			__sync_fetch_and_add(&dest->deny_default_bytes, len);
+			__sync_fetch_and_add(&dest->deny_default_packets, segs);
+		}
 
 		// enforce flag can be removed when UDP supports enforcement
 		if ((deny & TNP_POLICY_REJECT) && bpf_ksym_exists(bpf_icmp_send)) {
@@ -930,16 +961,18 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 
 		return SK_DROP;
 	} else if (deny & TNP_POLICY_FALLTHRU) {
-		__sync_fetch_and_add(&dest->allow_default, len);
+		__sync_fetch_and_add(&dest->allow_default_bytes, len);
+		__sync_fetch_and_add(&dest->allow_default_packets, segs);
 	}
 
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 	return SK_PASS;
 }
 
-static int recv(int deny, struct destination_endpoint_key *key, __u64 len)
+static int recv(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len)
 {
 	struct destination_endpoint_value *dest;
+	__u64 segs = skb_wire_segments(skb);
 
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (!dest)
@@ -949,12 +982,16 @@ static int recv(int deny, struct destination_endpoint_key *key, __u64 len)
 
 	__sync_fetch_and_add(&dest->rx_bytes, len);
 	if (is_policy_drop(deny)) {
-		if (deny & TNP_POLICY_FALLTHRU)
-			__sync_fetch_and_add(&dest->deny_default, len);
+		if (deny & TNP_POLICY_FALLTHRU) {
+			__sync_fetch_and_add(&dest->deny_default_bytes, len);
+			__sync_fetch_and_add(&dest->deny_default_packets, segs);
+		}
 		return SK_DROP;
 	}
-	if (deny & TNP_POLICY_FALLTHRU)
-		__sync_fetch_and_add(&dest->allow_default, len);
+	if (deny & TNP_POLICY_FALLTHRU) {
+		__sync_fetch_and_add(&dest->allow_default_bytes, len);
+		__sync_fetch_and_add(&dest->allow_default_packets, segs);
+	}
 
 	return SK_PASS;
 }
@@ -1022,7 +1059,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	rewrite = repair_socket_nsid(&v->dst_key, skb->sk);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
 	if (!rewrite) {
-		verdict = recv(v->deny, &v->dst_key, len);
+		verdict = recv(skb, v->deny, &v->dst_key, len);
 		if (verdict < 0)
 			goto err_out;
 		return verdict;
@@ -1030,7 +1067,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 err_out:
 	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
-	verdict = recv(v->deny, &v->dst_key, len);
+	verdict = recv(skb, v->deny, &v->dst_key, len);
 	if (verdict < 0)
 		return SK_PASS;
 	return verdict;

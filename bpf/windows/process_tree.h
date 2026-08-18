@@ -81,9 +81,12 @@ FUNC_INLINE uint64_t find_key(struct destination_endpoint_key *key, struct msg_i
 		if (!destvalue)
 			return 0;
 
-		destvalue->tx_drops = 0;
-		destvalue->allow_default = 0;
-		destvalue->deny_default = 0;
+		destvalue->tx_drop_bytes = 0;
+		destvalue->allow_default_bytes = 0;
+		destvalue->deny_default_bytes = 0;
+		destvalue->tx_drop_packets = 0;
+		destvalue->deny_default_packets = 0;
+		destvalue->allow_default_packets = 0;
 		destvalue->deny = 0;
 		destvalue->tx_bytes = 0;
 		destvalue->rx_bytes = 0;
@@ -281,6 +284,9 @@ FUNC_INLINE int resolve_key(struct destination_endpoint_key *dnskey,
 			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
 			destvalue->tx_bytes = 0;
 			destvalue->rx_bytes = 0;
+			destvalue->tx_drop_packets = 0;
+			destvalue->deny_default_packets = 0;
+			destvalue->allow_default_packets = 0;
 			destvalue->policy = dst_value->policy;
 			destvalue->rule = dst_value->rule;
 

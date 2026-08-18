@@ -79,9 +79,9 @@ struct destination_endpoint_key {
 #define DEST_FLAG_POLICY_TEMPLATE_ONLY 0x1 // Entry created by policy, no traffic observed yet
 
 struct destination_endpoint_value {
-	__u64 tx_drops;
-	__u64 allow_default;
-	__u64 deny_default;
+	__u64 tx_drop_bytes;
+	__u64 allow_default_bytes;
+	__u64 deny_default_bytes;
 	__u64 deny;
 	__u64 tx_bytes;
 	__u64 rx_bytes;
@@ -94,6 +94,9 @@ struct destination_endpoint_value {
 	__u32 protocol;
 	__u64 flags;
 	__u64 sessions;
+	__u64 tx_drop_packets;
+	__u64 deny_default_packets;
+	__u64 allow_default_packets;
 };
 
 /* The destination_endpoint_maps an {src, dstID} pair to its
