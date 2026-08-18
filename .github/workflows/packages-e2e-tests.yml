@@ -1,81 +1,10 @@
 name: Packages e2e Tests
 
 on:
-  pull_request:
-    paths-ignore:
-      - "**.md"
-      - "contrib/grafana/**"
+  workflow_call:
 
 jobs:
-  standalone-tarball-builds:
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-    strategy:
-      matrix:
-        include:
-          # We use the native arch build
-          - os: ubuntu-22.04
-            arch: amd64
-            cross_compile: no
-            upload_path: upload/
-          - os: ubuntu-22.04
-            arch: arm64
-            cross_compile: yes
-            upload_path: upload-cross-compile/
-
-    steps:
-      # https://github.com/docker/setup-buildx-action
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-
-      - name: Login to Artifactory
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ${{ vars.ARTIFACTORY_HOST }}
-          username: ${{ vars.ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
-
-      - name: Checkout Source Code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-          submodules: true
-
-      - name: Getting version tag
-        id: tag
-        run: echo "tag=$(make version)" >> $GITHUB_OUTPUT
-
-      - name: Generate Tetragon EE Tarball
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y jq
-          make tarball
-          mkdir ${{ matrix.upload_path }}
-          mv ./build/${{ matrix.arch }}/linux-tarball/tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz ./${{ matrix.upload_path }}
-        if: ${{ matrix.cross_compile == 'no' }}
-
-      - name: Generate Cross Compiled Tetragon EE Tarball
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y qemu qemu-user-static binfmt-support
-          sudo update-binfmts --display
-          make TARGET_ARCH=${{ matrix.arch }} tarball
-          mkdir ${{ matrix.upload_path }}
-          mv ./build/${{ matrix.arch }}/linux-tarball/tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz ./${{ matrix.upload_path }}
-        if: ${{ matrix.cross_compile == 'yes' }}
-
-      # Cache tarball releases for later
-      - name: Save tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz Tarball
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}
-          path: ${{ matrix.upload_path }}
-          retention-days: 1
-
   standalone-tarball-tests:
-    needs: [standalone-tarball-builds]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -85,36 +14,29 @@ jobs:
           - os: ubuntu-22.04
             arch: amd64
             match_arch: x86-64
-            cross_compile: no
-            upload_path: upload/
           - os: ubuntu-22.04-arm64
             arch: arm64
             match_arch: arm64
-            cross_compile: yes
-            upload_path: upload-cross-compile/
 
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
-          submodules: true
 
-      - name: Getting version tag
-        id: tag
-        run: echo "tag=$(make version)" >> $GITHUB_OUTPUT
-
-      - name: Retrieve tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz
+      - name: Retrieve Tetragon EE Tarball (${{ matrix.arch }})
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}
-          path: ${{ matrix.upload_path }}
+          name: tetragon-tarball-${{ matrix.arch }}
+          path: ./build/${{ matrix.arch }}/linux-tarball
 
-      - name: Move tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz to build
+      - name: Resolve and verify the Tetragon EE Tarball
+        id: tarball
         run: |
-          mkdir -p ./build/${{ matrix.arch }}/
-          mv ${{ matrix.upload_path }} ./build/${{ matrix.arch }}/linux-tarball
+          tarballs=(tetragon-ee-*-${{ matrix.arch }}.tar.gz)
+          sha256sum -c "${tarballs[0]}.sha256sum"
+          echo "name=$(basename "${tarballs[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+        working-directory: ./build/${{ matrix.arch }}/linux-tarball
 
       - name: Copy dns.yaml tracing policy to /etc/tetragon/tetragon.tp.d/
         run: |
@@ -123,8 +45,8 @@ jobs:
 
       - name: Install Tetragon EE Tarball
         run: |
-          tar zxvf tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz
-          sudo ./tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/install.sh
+          tar zxvf ${{ steps.tarball.outputs.name }}.tar.gz
+          sudo ./${{ steps.tarball.outputs.name }}/install.sh
         working-directory: ./build/${{ matrix.arch }}/linux-tarball/
 
       - name: Wait for Tetragon EE service
@@ -199,5 +121,5 @@ jobs:
 
       - name: Uninstall Tetragon EE Tarball
         run: |
-          sudo ./tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/uninstall.sh
+          sudo ./${{ steps.tarball.outputs.name }}/uninstall.sh
         working-directory: ./build/${{ matrix.arch }}/linux-tarball/
