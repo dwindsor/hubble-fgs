@@ -25,6 +25,13 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	};
 	struct io_uring_op_val *val;
 
+#ifdef __LARGE_BPF_PROG
+	if (action == action_write && NEEDS_READ_WRITE == IS_RDONLY_POLICY)
+		return 0;
+	if (action == action_read && NEEDS_READ_WRITE == IS_WRONLY_POLICY)
+		return 0;
+#endif /* __LARGE_BPF_PROG */
+
 	if (!policy_filter_match())
 		return 0;
 

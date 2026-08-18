@@ -183,6 +183,12 @@ volatile const __u32 HAS_MATCH_UID_GID = 1;
 volatile const __u32 HAS_MATCH_PROCESS_DURATION = 1;
 volatile const __u32 HAS_MATCH_BINARY_PROPERTIES = 1;
 
+#define IS_RW_POLICY	 0
+#define IS_RDONLY_POLICY 1
+#define IS_WRONLY_POLICY 2
+
+volatile const __u32 NEEDS_READ_WRITE = IS_RW_POLICY;
+
 #define INVALID_MATCHER	   0
 #define MATCH_ALL	   1
 #define FS_TYPE_MATCHER	   2
@@ -2064,6 +2070,13 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
 	int err;
+
+#ifdef __LARGE_BPF_PROG
+	if (action == action_write && NEEDS_READ_WRITE == IS_RDONLY_POLICY)
+		return 0;
+	if (action == action_read && NEEDS_READ_WRITE == IS_WRONLY_POLICY)
+		return 0;
+#endif /* __LARGE_BPF_PROG */
 
 	if (!policy_filter_match())
 		return 0;

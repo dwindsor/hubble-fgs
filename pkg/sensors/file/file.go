@@ -1609,6 +1609,16 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			load.RewriteConstants["HAS_MATCH_UID_GID"] = uint32(fm.If(meta.HasMatchUidGid, 1, 0))
 			load.RewriteConstants["HAS_MATCH_PROCESS_DURATION"] = uint32(fm.If(meta.HasMatchProcessDuration, 1, 0))
 			load.RewriteConstants["HAS_MATCH_BINARY_PROPERTIES"] = uint32(fm.If(meta.HasMatchBinaryProperties, 1, 0))
+
+			monitorReads := meta.OperationsSet.Contains(tetragon.FileAction_FILE_READ)
+			monitorWrites := meta.OperationsSet.Contains(tetragon.FileAction_FILE_WRITE)
+			if monitorReads && !monitorWrites {
+				load.RewriteConstants["NEEDS_READ_WRITE"] = fm.IsRdOnlyPolicy
+			} else if !monitorReads && monitorWrites {
+				load.RewriteConstants["NEEDS_READ_WRITE"] = fm.IsWrOnlyPolicy
+			} else {
+				load.RewriteConstants["NEEDS_READ_WRITE"] = fm.IsRWPolicy
+			}
 		}
 
 		progs = append(progs, load)

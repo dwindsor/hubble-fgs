@@ -59,6 +59,12 @@ const (
 	DST_INVALID     = (1 << 19)
 )
 
+const (
+	IsRWPolicy     = uint32(0)
+	IsRdOnlyPolicy = uint32(1)
+	IsWrOnlyPolicy = uint32(2)
+)
+
 type FsScannerInit struct {
 	PolicyName string
 	Spec       v1alpha1.FileSpec
