@@ -603,8 +603,11 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"short-lived-container": {
 							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:                "/bin/sleep",
-								Args:               []string{"5"},
+								Cmd: "/bin/sleep",
+								// Must outlive AddPod's cgroup scan, which can start up to
+								// one PodReady poll interval (5s) after the container is
+								// already gone. The step below waits for the exit.
+								Args:               []string{"60"},
 								SkipExecExitCounts: true, // There is a race between checking the model and the process exiting, so skip checking counts.
 							},
 						},
