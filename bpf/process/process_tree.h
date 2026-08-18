@@ -613,6 +613,9 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
 			destvalue->tx_bytes = destvalue->rx_bytes = 0;
 			destvalue->sessions = 0;
+			destvalue->tx_drops = 0;
+			destvalue->allow_default = 0;
+			destvalue->deny_default = 0;
 			destvalue->policy = dst_value->policy;
 			destvalue->rule = dst_value->rule;
 
