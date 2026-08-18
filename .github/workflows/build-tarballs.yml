@@ -45,6 +45,13 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: Remove slow Azure apt mirrors
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i '/azure.archive.ubuntu.com/d' /etc/apt/apt-mirrors.txt
+            cat /etc/apt/apt-mirrors.txt
+          fi
+
       - name: Install dependencies
         run: |
           sudo apt-get update
