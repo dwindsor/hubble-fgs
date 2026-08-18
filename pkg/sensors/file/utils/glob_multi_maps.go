@@ -13,6 +13,7 @@
 package file
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"unsafe"
@@ -23,6 +24,8 @@ import (
 const (
 	GlobPossibleMaxValues = 512 // this should match POSSIBLE_MAX_VALUES in bpf/file/bpf_glob_multi.h
 	GlobTableSize         = 256
+
+	globTransitionBatchSize = 1024
 
 	BitmapShift = 6
 	BitmapMask  = 63
@@ -135,10 +138,34 @@ func (g GlobData) GetFinalStatesMapSize() int {
 	return cnt
 }
 
-func (g GlobData) GenerateStateTransitionsMap(m *ebpf.Map) error {
+func (g GlobData) generateStateTransitionsMapSingle(m *ebpf.Map) error {
 	for i, transitions := range g.stateTransitions {
 		if err := m.Update(uint32(i), transitions, 0); err != nil {
 			return fmt.Errorf("update state %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func (g GlobData) GenerateStateTransitionsMap(m *ebpf.Map) error {
+	keys := make([]uint32, len(g.stateTransitions))
+	for i := range keys {
+		keys[i] = uint32(i)
+	}
+
+	for i := 0; i < len(g.stateTransitions); i += globTransitionBatchSize {
+		beg := i
+		end := min(beg+globTransitionBatchSize, len(keys))
+		updated, err := m.BatchUpdate(keys[beg:end], g.stateTransitions[beg:end], nil)
+		if errors.Is(err, ebpf.ErrNotSupported) {
+			// batched update is not supported so try the single update
+			return g.generateStateTransitionsMapSingle(m)
+		}
+		if err != nil {
+			return fmt.Errorf("batch update states %d-%d: %w", beg, end-1, err)
+		}
+		if updated != end-beg {
+			return fmt.Errorf("batch update states %d-%d: updated %d states", beg, end-1, updated)
 		}
 	}
 	return nil
