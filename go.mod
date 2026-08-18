@@ -30,7 +30,7 @@ require (
 	github.com/google/gops v0.3.29
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.19.2
+	github.com/isovalent/ipa v1.20.0-pre.7.0.20260818204622-6fe87f6b2475
 	github.com/isovalent/ipa/k8s v1.19.2
 	github.com/mennanov/fieldmask-utils v1.1.6
 	github.com/miekg/dns v1.1.72
@@ -75,7 +75,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1 // indirect
 	cel.dev/expr v0.25.2 // indirect
 	cloud.google.com/go/auth v0.23.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect

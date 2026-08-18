@@ -16,6 +16,7 @@
 - [graph/v1alpha/vertex.proto](#graph_v1alpha_vertex-proto)
     - [Vertex](#graph-v1alpha-Vertex)
     - [VertexFamilyKubernetes](#graph-v1alpha-VertexFamilyKubernetes)
+    - [VertexFamilyMulticastStream](#graph-v1alpha-VertexFamilyMulticastStream)
     - [VertexFamilyNetworkDevice](#graph-v1alpha-VertexFamilyNetworkDevice)
     - [VertexFamilyWorldEntity](#graph-v1alpha-VertexFamilyWorldEntity)
     - [VertexPropertyMulticast](#graph-v1alpha-VertexPropertyMulticast)
@@ -23,6 +24,8 @@
 - [graph/v1alpha/connection.proto](#graph_v1alpha_connection-proto)
     - [Connection](#graph-v1alpha-Connection)
     - [ConnectionLog](#graph-v1alpha-ConnectionLog)
+  
+    - [ObservationPoint](#graph-v1alpha-ObservationPoint)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -220,6 +223,7 @@ destination.
 | kubernetes | [VertexFamilyKubernetes](#graph-v1alpha-VertexFamilyKubernetes) |  |  |
 | network_device | [VertexFamilyNetworkDevice](#graph-v1alpha-VertexFamilyNetworkDevice) |  |  |
 | world_entity | [VertexFamilyWorldEntity](#graph-v1alpha-VertexFamilyWorldEntity) |  |  |
+| multicast_stream | [VertexFamilyMulticastStream](#graph-v1alpha-VertexFamilyMulticastStream) |  |  |
 
 
 
@@ -252,6 +256,28 @@ Kubernetes context.
 | application_model_uuid | [string](#string) |  | application_model_uuid is a unique identifier that identifies the application model associated with the Kubernetes resource. |
 | interface_name | [string](#string) |  | interface_name is the name of the network interface associated with the connection. |
 | multicast | [VertexPropertyMulticast](#graph-v1alpha-VertexPropertyMulticast) |  | multicast contains multicast specific information. |
+
+
+
+
+
+
+<a name="graph-v1alpha-VertexFamilyMulticastStream"></a>
+
+### VertexFamilyMulticastStream
+VertexFamilyMulticastStream represents a source-scoped multicast stream as a
+first-class vertex so that the fan-out from a feeder to multiple receivers
+can be rendered as an explicit split. The vertex identity is the (source_ip,
+group_ip, source_id) tuple, with source_id omitted when the stream has no
+payload-level identifier. Distinct sources sending to the same group address
+are represented as distinct vertices, each rooting its own distribution tree.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| source_ip | [string](#string) |  | source_ip is the IP address of the source of the multicast traffic. It is always set so that the stream can be correlated with source-specific multicast membership reports. |
+| group_ip | [string](#string) |  | group_ip is the multicast group address that identifies the group. It is always a valid multicast address. |
+| source_id | [string](#string) |  | source_id is an optional identifier extracted from the multicast stream, such as an MTP Line ID or RTP SSRC. |
 
 
 
@@ -311,7 +337,7 @@ VertexPropertyMulticast contains multicast specific information for a vertex.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source_id | [string](#string) |  | source_id is an optional identifier that represents the source of the multicast traffic. |
+| source_id | [string](#string) |  | source_id is an optional identifier extracted from the multicast stream, such as an MTP Line ID or RTP SSRC. |
 | group_ip | [string](#string) |  | group_ip is the multicast group address associated with the connection. |
 
 
@@ -355,6 +381,9 @@ Return traffic from the destination back to the source is NOT a separate connect
 There MUST be at least one link between the source and destination vertices.
 
 If more than one link is provided, their type MUST be different. In other words, links MUST be a set of at least one element where every element in the set is of a different edge type. |
+| observation_point | [ObservationPoint](#graph-v1alpha-ObservationPoint) |  | Observation point is the vantage point, relative to this connection&#39;s direction, from which the observer saw it. The observer is the entity that actually saw the traffic, which is not necessarily the emitter that produced this message (see common.v1alpha.Emitter.observer): for a converter such as Hubble CLC, the observer is the switch that exported the flows, not the converter. The observation point does NOT change the source/destination labeling (which always follows the initiation direction); it records where along the path the observation was made so that consumers can interpret the edge counters and reconcile multiple observations of the same connection.
+
+A single observer (for example, a node-local agent) commonly observes some connections at the source (those initiated by local workloads) and others at the destination (those initiated towards local workloads) within the same ConnectionLog. |
 
 
 
@@ -374,7 +403,7 @@ ConnectionLog events SHOULD NOT have overlapping time windows.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | uuid | [string](#string) |  | Uuid is a universally unique identifier for this event. |
-| emitter | [common.v1alpha.Emitter](#common-v1alpha-Emitter) |  | An emitter is the entity that observes connection information. An emitter commonly runs at the source of the connection (for example, on the node that hosts the connection initiator), but this is not required: an emitter MAY observe a connection from any vantage point. Regardless of where it observes, the emitter MUST label each connection&#39;s source and destination by the direction in which the connection was initiated (see Connection). |
+| emitter | [common.v1alpha.Emitter](#common-v1alpha-Emitter) |  | An emitter is the entity that produces this message. It commonly also observes the connection information itself (for example, a Cilium agent running on the node that hosts the connection initiator), but this is not required: an emitter MAY be a converter that produces connection logs from records exported by a separate observer (for example, Hubble CLC turning a smart switch&#39;s IPFIX flows into connection logs). The entity that actually observed the traffic is recorded in emitter.observer, and its vantage point in each connection&#39;s observation_point. Regardless of where the observation was made, the source and destination of each connection MUST be labeled by the direction in which the connection was initiated (see Connection). |
 | window_start | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window start is the time at which the emitter started collecting information regarding the observed connections. |
 | window_end | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window end is the time at which the emitter stopped collecting information regarding the observed connections. |
 | connections | [Connection](#graph-v1alpha-Connection) | repeated | Connections is a list of all connections that were tracked during the given time window. |
@@ -384,6 +413,24 @@ ConnectionLog events SHOULD NOT have overlapping time windows.
 
 
  
+
+
+<a name="graph-v1alpha-ObservationPoint"></a>
+
+### ObservationPoint
+ObservationPoint identifies, relative to a connection&#39;s direction, the
+vantage point from which the observer saw the connection. The edge counters
+of a Connection describe what the observer saw at this vantage point, so the
+observation point tells consumers whether the transmit-side or the
+receive-side counters are authoritative for a given side of the connection.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OBSERVATION_POINT_UNSPECIFIED | 0 | OBSERVATION_POINT_UNSPECIFIED indicates the observer did not declare its vantage point. Consumers SHOULD interpret an unspecified observation point as OBSERVATION_POINT_SOURCE: an observer commonly runs at the source (the connection initiator), so this is the assumed default. |
+| OBSERVATION_POINT_SOURCE | 1 | OBSERVATION_POINT_SOURCE indicates the observer saw the connection at the source (initiator) side. |
+| OBSERVATION_POINT_DESTINATION | 2 | OBSERVATION_POINT_DESTINATION indicates the observer saw the connection at the destination side, i.e. the side the connection was initiated towards. |
+| OBSERVATION_POINT_INTERMEDIATE | 3 | OBSERVATION_POINT_INTERMEDIATE indicates the observer saw the connection at an intermediate point on the path, neither the source nor the destination (for example, a switch exporting IPFIX flow records for traffic transiting it). |
+
 
  
 

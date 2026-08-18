@@ -13,7 +13,9 @@
     - [ApplicationHost](#application_model-v1alpha-ApplicationHost)
     - [ApplicationModel](#application_model-v1alpha-ApplicationModel)
     - [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent)
+    - [ApplicationModelEvent.NodeLabelsEntry](#application_model-v1alpha-ApplicationModelEvent-NodeLabelsEntry)
     - [ApplicationModelFragment](#application_model-v1alpha-ApplicationModelFragment)
+    - [ApplicationModelFragment.NodeLabelsEntry](#application_model-v1alpha-ApplicationModelFragment-NodeLabelsEntry)
     - [ApplicationNamespace](#application_model-v1alpha-ApplicationNamespace)
     - [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup)
     - [ApplicationSyscalls](#application_model-v1alpha-ApplicationSyscalls)
@@ -648,6 +650,23 @@ WARNING for consumers: numbers are arbitrary.
 | node_name | [string](#string) |  |  |
 | time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | application_model | [ApplicationModel](#application_model-v1alpha-ApplicationModel) |  |  |
+| node_labels | [ApplicationModelEvent.NodeLabelsEntry](#application_model-v1alpha-ApplicationModelEvent-NodeLabelsEntry) | repeated | Labels of the node that transmitted this application model message. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
+
+
+
+
+
+
+<a name="application_model-v1alpha-ApplicationModelEvent-NodeLabelsEntry"></a>
+
+### ApplicationModelEvent.NodeLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -668,6 +687,23 @@ WARNING for consumers: numbers are arbitrary.
 | application_model_fragment | [ApplicationModel](#application_model-v1alpha-ApplicationModel) |  |  |
 | fragment_total | [uint64](#uint64) |  | The number of fragments that that comprise the application model. All fragments will have the same application_model.id value. |
 | fragment_index | [uint64](#uint64) |  | The index into the the total number of fragments. The first value has fragment_index = 1. |
+| node_labels | [ApplicationModelFragment.NodeLabelsEntry](#application_model-v1alpha-ApplicationModelFragment-NodeLabelsEntry) | repeated | Labels of the node that transmitted this application model message. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
+
+
+
+
+
+
+<a name="application_model-v1alpha-ApplicationModelFragment-NodeLabelsEntry"></a>
+
+### ApplicationModelFragment.NodeLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 

@@ -176,6 +176,11 @@ message ApplicationModelEvent {
   string node_name = 2;
   google.protobuf.Timestamp time = 3;
   ApplicationModel application_model = 4;
+  // Labels of the node that transmitted this application model message. For
+  // nodes that belong to a Kubernetes cluster, this field contains Kubernetes
+  // node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not
+  // belong to any Kubernetes cluster, this field may contain VM tags / labels.
+  map<string, string> node_labels = 5;
 }
 
 message ApplicationModelFragment {
@@ -189,6 +194,11 @@ message ApplicationModelFragment {
   // The index into the the total number of fragments. The
   // first value has fragment_index = 1.
   uint64 fragment_index = 6;
+  // Labels of the node that transmitted this application model message. For
+  // nodes that belong to a Kubernetes cluster, this field contains Kubernetes
+  // node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not
+  // belong to any Kubernetes cluster, this field may contain VM tags / labels.
+  map<string, string> node_labels = 7;
 }
 
 message ApplicationModel {

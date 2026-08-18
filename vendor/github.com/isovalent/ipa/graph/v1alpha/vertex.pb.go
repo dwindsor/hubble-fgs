@@ -44,6 +44,7 @@ type Vertex struct {
 	//	*Vertex_Kubernetes
 	//	*Vertex_NetworkDevice
 	//	*Vertex_WorldEntity
+	//	*Vertex_MulticastStream
 	Family        isVertex_Family `protobuf_oneof:"family"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -113,6 +114,15 @@ func (x *Vertex) GetWorldEntity() *VertexFamilyWorldEntity {
 	return nil
 }
 
+func (x *Vertex) GetMulticastStream() *VertexFamilyMulticastStream {
+	if x != nil {
+		if x, ok := x.Family.(*Vertex_MulticastStream); ok {
+			return x.MulticastStream
+		}
+	}
+	return nil
+}
+
 type isVertex_Family interface {
 	isVertex_Family()
 }
@@ -129,11 +139,17 @@ type Vertex_WorldEntity struct {
 	WorldEntity *VertexFamilyWorldEntity `protobuf:"bytes,3,opt,name=world_entity,json=worldEntity,proto3,oneof"`
 }
 
+type Vertex_MulticastStream struct {
+	MulticastStream *VertexFamilyMulticastStream `protobuf:"bytes,4,opt,name=multicast_stream,json=multicastStream,proto3,oneof"`
+}
+
 func (*Vertex_Kubernetes) isVertex_Family() {}
 
 func (*Vertex_NetworkDevice) isVertex_Family() {}
 
 func (*Vertex_WorldEntity) isVertex_Family() {}
+
+func (*Vertex_MulticastStream) isVertex_Family() {}
 
 // VertexFamilyKubernetes represent vertex properties that are related to a
 // Kubernetes context.
@@ -554,11 +570,84 @@ func (x *VertexFamilyWorldEntity) GetMulticast() *VertexPropertyMulticast {
 	return nil
 }
 
+// VertexFamilyMulticastStream represents a source-scoped multicast stream as a
+// first-class vertex so that the fan-out from a feeder to multiple receivers
+// can be rendered as an explicit split. The vertex identity is the (source_ip,
+// group_ip, source_id) tuple, with source_id omitted when the stream has no
+// payload-level identifier. Distinct sources sending to the same group address
+// are represented as distinct vertices, each rooting its own distribution tree.
+type VertexFamilyMulticastStream struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// source_ip is the IP address of the source of the multicast traffic. It is
+	// always set so that the stream can be correlated with source-specific
+	// multicast membership reports.
+	SourceIp string `protobuf:"bytes,1,opt,name=source_ip,json=sourceIp,proto3" json:"source_ip,omitempty"`
+	// group_ip is the multicast group address that identifies the group. It is
+	// always a valid multicast address.
+	GroupIp string `protobuf:"bytes,2,opt,name=group_ip,json=groupIp,proto3" json:"group_ip,omitempty"`
+	// source_id is an optional identifier extracted from the multicast stream,
+	// such as an MTP Line ID or RTP SSRC.
+	SourceId      string `protobuf:"bytes,3,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VertexFamilyMulticastStream) Reset() {
+	*x = VertexFamilyMulticastStream{}
+	mi := &file_graph_v1alpha_vertex_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VertexFamilyMulticastStream) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VertexFamilyMulticastStream) ProtoMessage() {}
+
+func (x *VertexFamilyMulticastStream) ProtoReflect() protoreflect.Message {
+	mi := &file_graph_v1alpha_vertex_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VertexFamilyMulticastStream.ProtoReflect.Descriptor instead.
+func (*VertexFamilyMulticastStream) Descriptor() ([]byte, []int) {
+	return file_graph_v1alpha_vertex_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *VertexFamilyMulticastStream) GetSourceIp() string {
+	if x != nil {
+		return x.SourceIp
+	}
+	return ""
+}
+
+func (x *VertexFamilyMulticastStream) GetGroupIp() string {
+	if x != nil {
+		return x.GroupIp
+	}
+	return ""
+}
+
+func (x *VertexFamilyMulticastStream) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
 // VertexPropertyMulticast contains multicast specific information for a vertex.
 type VertexPropertyMulticast struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// source_id is an optional identifier that represents the source of the
-	// multicast traffic.
+	// source_id is an optional identifier extracted from the multicast stream,
+	// such as an MTP Line ID or RTP SSRC.
 	SourceId string `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
 	// group_ip is the multicast group address associated with the connection.
 	GroupIp       string `protobuf:"bytes,2,opt,name=group_ip,json=groupIp,proto3" json:"group_ip,omitempty"`
@@ -568,7 +657,7 @@ type VertexPropertyMulticast struct {
 
 func (x *VertexPropertyMulticast) Reset() {
 	*x = VertexPropertyMulticast{}
-	mi := &file_graph_v1alpha_vertex_proto_msgTypes[4]
+	mi := &file_graph_v1alpha_vertex_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -580,7 +669,7 @@ func (x *VertexPropertyMulticast) String() string {
 func (*VertexPropertyMulticast) ProtoMessage() {}
 
 func (x *VertexPropertyMulticast) ProtoReflect() protoreflect.Message {
-	mi := &file_graph_v1alpha_vertex_proto_msgTypes[4]
+	mi := &file_graph_v1alpha_vertex_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -593,7 +682,7 @@ func (x *VertexPropertyMulticast) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VertexPropertyMulticast.ProtoReflect.Descriptor instead.
 func (*VertexPropertyMulticast) Descriptor() ([]byte, []int) {
-	return file_graph_v1alpha_vertex_proto_rawDescGZIP(), []int{4}
+	return file_graph_v1alpha_vertex_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *VertexPropertyMulticast) GetSourceId() string {
@@ -614,13 +703,14 @@ var File_graph_v1alpha_vertex_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\n" +
-	"\x1agraph/v1alpha/vertex.proto\x12\rgraph.v1alpha\x1a\x1bbuf/validate/validate.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\"\xfb\x01\n" +
+	"\x1agraph/v1alpha/vertex.proto\x12\rgraph.v1alpha\x1a\x1bbuf/validate/validate.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\"\xd4\x02\n" +
 	"\x06Vertex\x12G\n" +
 	"\n" +
 	"kubernetes\x18\x01 \x01(\v2%.graph.v1alpha.VertexFamilyKubernetesH\x00R\n" +
 	"kubernetes\x12Q\n" +
 	"\x0enetwork_device\x18\x02 \x01(\v2(.graph.v1alpha.VertexFamilyNetworkDeviceH\x00R\rnetworkDevice\x12K\n" +
-	"\fworld_entity\x18\x03 \x01(\v2&.graph.v1alpha.VertexFamilyWorldEntityH\x00R\vworldEntityB\b\n" +
+	"\fworld_entity\x18\x03 \x01(\v2&.graph.v1alpha.VertexFamilyWorldEntityH\x00R\vworldEntity\x12W\n" +
+	"\x10multicast_stream\x18\x04 \x01(\v2*.graph.v1alpha.VertexFamilyMulticastStreamH\x00R\x0fmulticastStreamB\b\n" +
 	"\x06family\"\xeb\b\n" +
 	"\x16VertexFamilyKubernetes\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\tR\x03uid\x12J\n" +
@@ -667,12 +757,19 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\x04port\x18\x03 \x01(\rB\f\xbaH\t\xd8\x01\x01*\x04\x18\xff\xff\x03R\x04port\x12?\n" +
 	"\vip_protocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\n" +
 	"ipProtocol\x12D\n" +
-	"\tmulticast\x18\x05 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast\"\xeb\x06\n" +
+	"\tmulticast\x18\x05 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast\"\xec\x06\n" +
+	"\x1bVertexFamilyMulticastStream\x12'\n" +
+	"\tsource_ip\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02p\x01R\bsourceIp\x12%\n" +
+	"\bgroup_ip\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02p\x01R\agroupIp\x12\x1b\n" +
+	"\tsource_id\x18\x03 \x01(\tR\bsourceId:\xdf\x05\xbaH\xdb\x05\x1a\xd8\x05\n" +
+	"\x18multicast_group_ip_range\x12Ngroup_ip must be a valid multicast address (IPv4: 224.0.0.0/4, IPv6: ff00::/8)\x1a\xeb\x04this.group_ip.startsWith('224.') || this.group_ip.startsWith('225.') || this.group_ip.startsWith('226.') || this.group_ip.startsWith('227.') || this.group_ip.startsWith('228.') || this.group_ip.startsWith('229.') || this.group_ip.startsWith('230.') || this.group_ip.startsWith('231.') || this.group_ip.startsWith('232.') || this.group_ip.startsWith('233.') || this.group_ip.startsWith('234.') || this.group_ip.startsWith('235.') || this.group_ip.startsWith('236.') || this.group_ip.startsWith('237.') || this.group_ip.startsWith('238.') || this.group_ip.startsWith('239.') || this.group_ip.lowerAscii().startsWith('ff')\"\xd6\x06\n" +
 	"\x17VertexPropertyMulticast\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12%\n" +
 	"\bgroup_ip\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xd8\x01\x01r\x02p\x01R\agroupIp:\x8b\x06\xbaH\x87\x06\x1a\x84\x06\n" +
-	"\x18multicast_group_ip_range\x12Ngroup_ip must be a valid multicast address (IPv4: 224.0.0.0/4, IPv6: ff00::/8)\x1a\x97\x05this.group_ip == '' || this.group_ip.startsWith('224.') || this.group_ip.startsWith('225.') || this.group_ip.startsWith('226.') || this.group_ip.startsWith('227.') || this.group_ip.startsWith('228.') || this.group_ip.startsWith('229.') || this.group_ip.startsWith('230.') || this.group_ip.startsWith('231.') || this.group_ip.startsWith('232.') || this.group_ip.startsWith('233.') || this.group_ip.startsWith('234.') || this.group_ip.startsWith('235.') || this.group_ip.startsWith('236.') || this.group_ip.startsWith('237.') || this.group_ip.startsWith('238.') || this.group_ip.startsWith('239.') || this.group_ip.startsWith('ff') || this.group_ip.startsWith('FF')B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\xbaH\a\xd8\x01\x01r\x02p\x01R\agroupIp:\xf6\x05\xbaH\xf2\x05\x1a\xef\x05\n" +
+	"\x18multicast_group_ip_range\x12Ngroup_ip must be a valid multicast address (IPv4: 224.0.0.0/4, IPv6: ff00::/8)\x1a\x82\x05this.group_ip == '' || this.group_ip.startsWith('224.') || this.group_ip.startsWith('225.') || this.group_ip.startsWith('226.') || this.group_ip.startsWith('227.') || this.group_ip.startsWith('228.') || this.group_ip.startsWith('229.') || this.group_ip.startsWith('230.') || this.group_ip.startsWith('231.') || this.group_ip.startsWith('232.') || this.group_ip.startsWith('233.') || this.group_ip.startsWith('234.') || this.group_ip.startsWith('235.') || this.group_ip.startsWith('236.') || this.group_ip.startsWith('237.') || this.group_ip.startsWith('238.') || this.group_ip.startsWith('239.') || this.group_ip.lowerAscii().startsWith('ff')B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_vertex_proto_rawDescOnce sync.Once
@@ -686,36 +783,38 @@ func file_graph_v1alpha_vertex_proto_rawDescGZIP() []byte {
 	return file_graph_v1alpha_vertex_proto_rawDescData
 }
 
-var file_graph_v1alpha_vertex_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_graph_v1alpha_vertex_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_graph_v1alpha_vertex_proto_goTypes = []any{
-	(*Vertex)(nil),                    // 0: graph.v1alpha.Vertex
-	(*VertexFamilyKubernetes)(nil),    // 1: graph.v1alpha.VertexFamilyKubernetes
-	(*VertexFamilyNetworkDevice)(nil), // 2: graph.v1alpha.VertexFamilyNetworkDevice
-	(*VertexFamilyWorldEntity)(nil),   // 3: graph.v1alpha.VertexFamilyWorldEntity
-	(*VertexPropertyMulticast)(nil),   // 4: graph.v1alpha.VertexPropertyMulticast
-	(v1alpha.ResourceKind)(0),         // 5: common.k8s.type.v1alpha.ResourceKind
-	(v1alpha.ServiceKind)(0),          // 6: common.k8s.type.v1alpha.ServiceKind
-	(v1alpha.WorkloadKind)(0),         // 7: common.k8s.type.v1alpha.WorkloadKind
-	(v1alpha1.IPProtocol)(0),          // 8: common.net.v1alpha.IPProtocol
+	(*Vertex)(nil),                      // 0: graph.v1alpha.Vertex
+	(*VertexFamilyKubernetes)(nil),      // 1: graph.v1alpha.VertexFamilyKubernetes
+	(*VertexFamilyNetworkDevice)(nil),   // 2: graph.v1alpha.VertexFamilyNetworkDevice
+	(*VertexFamilyWorldEntity)(nil),     // 3: graph.v1alpha.VertexFamilyWorldEntity
+	(*VertexFamilyMulticastStream)(nil), // 4: graph.v1alpha.VertexFamilyMulticastStream
+	(*VertexPropertyMulticast)(nil),     // 5: graph.v1alpha.VertexPropertyMulticast
+	(v1alpha.ResourceKind)(0),           // 6: common.k8s.type.v1alpha.ResourceKind
+	(v1alpha.ServiceKind)(0),            // 7: common.k8s.type.v1alpha.ServiceKind
+	(v1alpha.WorkloadKind)(0),           // 8: common.k8s.type.v1alpha.WorkloadKind
+	(v1alpha1.IPProtocol)(0),            // 9: common.net.v1alpha.IPProtocol
 }
 var file_graph_v1alpha_vertex_proto_depIdxs = []int32{
 	1,  // 0: graph.v1alpha.Vertex.kubernetes:type_name -> graph.v1alpha.VertexFamilyKubernetes
 	2,  // 1: graph.v1alpha.Vertex.network_device:type_name -> graph.v1alpha.VertexFamilyNetworkDevice
 	3,  // 2: graph.v1alpha.Vertex.world_entity:type_name -> graph.v1alpha.VertexFamilyWorldEntity
-	5,  // 3: graph.v1alpha.VertexFamilyKubernetes.resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
-	6,  // 4: graph.v1alpha.VertexFamilyKubernetes.service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
-	7,  // 5: graph.v1alpha.VertexFamilyKubernetes.workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	8,  // 6: graph.v1alpha.VertexFamilyKubernetes.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
-	4,  // 7: graph.v1alpha.VertexFamilyKubernetes.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
-	8,  // 8: graph.v1alpha.VertexFamilyNetworkDevice.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
-	4,  // 9: graph.v1alpha.VertexFamilyNetworkDevice.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
-	8,  // 10: graph.v1alpha.VertexFamilyWorldEntity.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
-	4,  // 11: graph.v1alpha.VertexFamilyWorldEntity.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	4,  // 3: graph.v1alpha.Vertex.multicast_stream:type_name -> graph.v1alpha.VertexFamilyMulticastStream
+	6,  // 4: graph.v1alpha.VertexFamilyKubernetes.resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
+	7,  // 5: graph.v1alpha.VertexFamilyKubernetes.service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
+	8,  // 6: graph.v1alpha.VertexFamilyKubernetes.workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	9,  // 7: graph.v1alpha.VertexFamilyKubernetes.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	5,  // 8: graph.v1alpha.VertexFamilyKubernetes.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
+	9,  // 9: graph.v1alpha.VertexFamilyNetworkDevice.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	5,  // 10: graph.v1alpha.VertexFamilyNetworkDevice.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
+	9,  // 11: graph.v1alpha.VertexFamilyWorldEntity.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	5,  // 12: graph.v1alpha.VertexFamilyWorldEntity.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_vertex_proto_init() }
@@ -727,6 +826,7 @@ func file_graph_v1alpha_vertex_proto_init() {
 		(*Vertex_Kubernetes)(nil),
 		(*Vertex_NetworkDevice)(nil),
 		(*Vertex_WorldEntity)(nil),
+		(*Vertex_MulticastStream)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -734,7 +834,7 @@ func file_graph_v1alpha_vertex_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_graph_v1alpha_vertex_proto_rawDesc), len(file_graph_v1alpha_vertex_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

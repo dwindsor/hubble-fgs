@@ -31,12 +31,17 @@ message ConnectionLog {
   };
   // Uuid is a universally unique identifier for this event.
   string uuid = 1 [(buf.validate.field).string.uuid = true];
-  // An emitter is the entity that observes connection information. An emitter
-  // commonly runs at the source of the connection (for example, on the node
-  // that hosts the connection initiator), but this is not required: an emitter
-  // MAY observe a connection from any vantage point. Regardless of where it
-  // observes, the emitter MUST label each connection's source and destination
-  // by the direction in which the connection was initiated (see Connection).
+  // An emitter is the entity that produces this message. It commonly also
+  // observes the connection information itself (for example, a Cilium agent
+  // running on the node that hosts the connection initiator), but this is not
+  // required: an emitter MAY be a converter that produces connection logs from
+  // records exported by a separate observer (for example, Hubble CLC turning a
+  // smart switch's IPFIX flows into connection logs). The entity that actually
+  // observed the traffic is recorded in emitter.observer, and its vantage
+  // point in each connection's observation_point. Regardless of where the
+  // observation was made, the source and destination of each connection MUST
+  // be labeled by the direction in which the connection was initiated (see
+  // Connection).
   common.v1alpha.Emitter emitter = 2 [(buf.validate.field).required = true];
 
   // Window start is the time at which the emitter started collecting
@@ -86,4 +91,45 @@ message Connection {
   // In other words, links MUST be a set of at least one element where every
   // element in the set is of a different edge type.
   repeated Edge links = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // Observation point is the vantage point, relative to this connection's
+  // direction, from which the observer saw it. The observer is the entity that
+  // actually saw the traffic, which is not necessarily the emitter that
+  // produced this message (see common.v1alpha.Emitter.observer): for a
+  // converter such as Hubble CLC, the observer is the switch that exported the
+  // flows, not the converter. The observation point does NOT change the
+  // source/destination labeling (which always follows the initiation
+  // direction); it records where along the path the observation was made so
+  // that consumers can interpret the edge counters and reconcile multiple
+  // observations of the same connection.
+  //
+  // A single observer (for example, a node-local agent) commonly observes some
+  // connections at the source (those initiated by local workloads) and others
+  // at the destination (those initiated towards local workloads) within the
+  // same ConnectionLog.
+  ObservationPoint observation_point = 4;
+}
+
+// ObservationPoint identifies, relative to a connection's direction, the
+// vantage point from which the observer saw the connection. The edge counters
+// of a Connection describe what the observer saw at this vantage point, so the
+// observation point tells consumers whether the transmit-side or the
+// receive-side counters are authoritative for a given side of the connection.
+enum ObservationPoint {
+  // OBSERVATION_POINT_UNSPECIFIED indicates the observer did not declare its
+  // vantage point. Consumers SHOULD interpret an unspecified observation point
+  // as OBSERVATION_POINT_SOURCE: an observer commonly runs at the source (the
+  // connection initiator), so this is the assumed default.
+  OBSERVATION_POINT_UNSPECIFIED = 0;
+  // OBSERVATION_POINT_SOURCE indicates the observer saw the connection at the
+  // source (initiator) side.
+  OBSERVATION_POINT_SOURCE = 1;
+  // OBSERVATION_POINT_DESTINATION indicates the observer saw the connection at
+  // the destination side, i.e. the side the connection was initiated towards.
+  OBSERVATION_POINT_DESTINATION = 2;
+  // OBSERVATION_POINT_INTERMEDIATE indicates the observer saw the connection at
+  // an intermediate point on the path, neither the source nor the destination
+  // (for example, a switch exporting IPFIX flow records for traffic transiting
+  // it).
+  OBSERVATION_POINT_INTERMEDIATE = 3;
 }

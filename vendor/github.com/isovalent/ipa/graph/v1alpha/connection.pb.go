@@ -32,6 +32,75 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ObservationPoint identifies, relative to a connection's direction, the
+// vantage point from which the observer saw the connection. The edge counters
+// of a Connection describe what the observer saw at this vantage point, so the
+// observation point tells consumers whether the transmit-side or the
+// receive-side counters are authoritative for a given side of the connection.
+type ObservationPoint int32
+
+const (
+	// OBSERVATION_POINT_UNSPECIFIED indicates the observer did not declare its
+	// vantage point. Consumers SHOULD interpret an unspecified observation point
+	// as OBSERVATION_POINT_SOURCE: an observer commonly runs at the source (the
+	// connection initiator), so this is the assumed default.
+	ObservationPoint_OBSERVATION_POINT_UNSPECIFIED ObservationPoint = 0
+	// OBSERVATION_POINT_SOURCE indicates the observer saw the connection at the
+	// source (initiator) side.
+	ObservationPoint_OBSERVATION_POINT_SOURCE ObservationPoint = 1
+	// OBSERVATION_POINT_DESTINATION indicates the observer saw the connection at
+	// the destination side, i.e. the side the connection was initiated towards.
+	ObservationPoint_OBSERVATION_POINT_DESTINATION ObservationPoint = 2
+	// OBSERVATION_POINT_INTERMEDIATE indicates the observer saw the connection at
+	// an intermediate point on the path, neither the source nor the destination
+	// (for example, a switch exporting IPFIX flow records for traffic transiting
+	// it).
+	ObservationPoint_OBSERVATION_POINT_INTERMEDIATE ObservationPoint = 3
+)
+
+// Enum value maps for ObservationPoint.
+var (
+	ObservationPoint_name = map[int32]string{
+		0: "OBSERVATION_POINT_UNSPECIFIED",
+		1: "OBSERVATION_POINT_SOURCE",
+		2: "OBSERVATION_POINT_DESTINATION",
+		3: "OBSERVATION_POINT_INTERMEDIATE",
+	}
+	ObservationPoint_value = map[string]int32{
+		"OBSERVATION_POINT_UNSPECIFIED":  0,
+		"OBSERVATION_POINT_SOURCE":       1,
+		"OBSERVATION_POINT_DESTINATION":  2,
+		"OBSERVATION_POINT_INTERMEDIATE": 3,
+	}
+)
+
+func (x ObservationPoint) Enum() *ObservationPoint {
+	p := new(ObservationPoint)
+	*p = x
+	return p
+}
+
+func (x ObservationPoint) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ObservationPoint) Descriptor() protoreflect.EnumDescriptor {
+	return file_graph_v1alpha_connection_proto_enumTypes[0].Descriptor()
+}
+
+func (ObservationPoint) Type() protoreflect.EnumType {
+	return &file_graph_v1alpha_connection_proto_enumTypes[0]
+}
+
+func (x ObservationPoint) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ObservationPoint.Descriptor instead.
+func (ObservationPoint) EnumDescriptor() ([]byte, []int) {
+	return file_graph_v1alpha_connection_proto_rawDescGZIP(), []int{0}
+}
+
 // A connection log is a message that a source emits periodically and which
 // provides information about connections.
 //
@@ -41,12 +110,17 @@ type ConnectionLog struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Uuid is a universally unique identifier for this event.
 	Uuid string `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
-	// An emitter is the entity that observes connection information. An emitter
-	// commonly runs at the source of the connection (for example, on the node
-	// that hosts the connection initiator), but this is not required: an emitter
-	// MAY observe a connection from any vantage point. Regardless of where it
-	// observes, the emitter MUST label each connection's source and destination
-	// by the direction in which the connection was initiated (see Connection).
+	// An emitter is the entity that produces this message. It commonly also
+	// observes the connection information itself (for example, a Cilium agent
+	// running on the node that hosts the connection initiator), but this is not
+	// required: an emitter MAY be a converter that produces connection logs from
+	// records exported by a separate observer (for example, Hubble CLC turning a
+	// smart switch's IPFIX flows into connection logs). The entity that actually
+	// observed the traffic is recorded in emitter.observer, and its vantage
+	// point in each connection's observation_point. Regardless of where the
+	// observation was made, the source and destination of each connection MUST
+	// be labeled by the direction in which the connection was initiated (see
+	// Connection).
 	Emitter *v1alpha.Emitter `protobuf:"bytes,2,opt,name=emitter,proto3" json:"emitter,omitempty"`
 	// Window start is the time at which the emitter started collecting
 	// information regarding the observed connections.
@@ -156,9 +230,25 @@ type Connection struct {
 	// If more than one link is provided, their type MUST be different.
 	// In other words, links MUST be a set of at least one element where every
 	// element in the set is of a different edge type.
-	Links         []*Edge `protobuf:"bytes,3,rep,name=links,proto3" json:"links,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Links []*Edge `protobuf:"bytes,3,rep,name=links,proto3" json:"links,omitempty"`
+	// Observation point is the vantage point, relative to this connection's
+	// direction, from which the observer saw it. The observer is the entity that
+	// actually saw the traffic, which is not necessarily the emitter that
+	// produced this message (see common.v1alpha.Emitter.observer): for a
+	// converter such as Hubble CLC, the observer is the switch that exported the
+	// flows, not the converter. The observation point does NOT change the
+	// source/destination labeling (which always follows the initiation
+	// direction); it records where along the path the observation was made so
+	// that consumers can interpret the edge counters and reconcile multiple
+	// observations of the same connection.
+	//
+	// A single observer (for example, a node-local agent) commonly observes some
+	// connections at the source (those initiated by local workloads) and others
+	// at the destination (those initiated towards local workloads) within the
+	// same ConnectionLog.
+	ObservationPoint ObservationPoint `protobuf:"varint,4,opt,name=observation_point,json=observationPoint,proto3,enum=graph.v1alpha.ObservationPoint" json:"observation_point,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -212,6 +302,13 @@ func (x *Connection) GetLinks() []*Edge {
 	return nil
 }
 
+func (x *Connection) GetObservationPoint() ObservationPoint {
+	if x != nil {
+		return x.ObservationPoint
+	}
+	return ObservationPoint_OBSERVATION_POINT_UNSPECIFIED
+}
+
 var File_graph_v1alpha_connection_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_connection_proto_rawDesc = "" +
@@ -224,13 +321,19 @@ const file_graph_v1alpha_connection_proto_rawDesc = "" +
 	"\n" +
 	"window_end\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\twindowEnd\x12;\n" +
 	"\vconnections\x18\x05 \x03(\v2\x19.graph.v1alpha.ConnectionR\vconnections:v\xbaHs\x1aq\n" +
-	"\x16window_end_after_start\x121window_end must be after or equal to window_start\x1a$this.window_end >= this.window_start\"\xd2\x04\n" +
+	"\x16window_end_after_start\x121window_end must be after or equal to window_start\x1a$this.window_end >= this.window_start\"\xa0\x05\n" +
 	"\n" +
 	"Connection\x125\n" +
 	"\x06source\x18\x01 \x01(\v2\x15.graph.v1alpha.VertexB\x06\xbaH\x03\xc8\x01\x01R\x06source\x12?\n" +
 	"\vdestination\x18\x02 \x01(\v2\x15.graph.v1alpha.VertexB\x06\xbaH\x03\xc8\x01\x01R\vdestination\x123\n" +
-	"\x05links\x18\x03 \x03(\v2\x13.graph.v1alpha.EdgeB\b\xbaH\x05\x92\x01\x02\b\x01R\x05links:\x96\x03\xbaH\x92\x03\x1a\x8f\x03\n" +
-	"\x11unique_edge_types\x12!links must have unique edge types\x1a\xd6\x02size(this.links.filter(e, has(e.basic))) <= 1 && size(this.links.filter(e, has(e.network_telemetry))) <= 1 && size(this.links.filter(e, has(e.routing_telemetry))) <= 1 && size(this.links.filter(e, has(e.l4_telemetry))) <= 1 && size(this.links.filter(e, has(e.l7_telemetry))) <= 1 && size(this.links.filter(e, has(e.multicast_telemetry))) <= 1B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\x05links\x18\x03 \x03(\v2\x13.graph.v1alpha.EdgeB\b\xbaH\x05\x92\x01\x02\b\x01R\x05links\x12L\n" +
+	"\x11observation_point\x18\x04 \x01(\x0e2\x1f.graph.v1alpha.ObservationPointR\x10observationPoint:\x96\x03\xbaH\x92\x03\x1a\x8f\x03\n" +
+	"\x11unique_edge_types\x12!links must have unique edge types\x1a\xd6\x02size(this.links.filter(e, has(e.basic))) <= 1 && size(this.links.filter(e, has(e.network_telemetry))) <= 1 && size(this.links.filter(e, has(e.routing_telemetry))) <= 1 && size(this.links.filter(e, has(e.l4_telemetry))) <= 1 && size(this.links.filter(e, has(e.l7_telemetry))) <= 1 && size(this.links.filter(e, has(e.multicast_telemetry))) <= 1*\x9a\x01\n" +
+	"\x10ObservationPoint\x12!\n" +
+	"\x1dOBSERVATION_POINT_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18OBSERVATION_POINT_SOURCE\x10\x01\x12!\n" +
+	"\x1dOBSERVATION_POINT_DESTINATION\x10\x02\x12\"\n" +
+	"\x1eOBSERVATION_POINT_INTERMEDIATE\x10\x03B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_connection_proto_rawDescOnce sync.Once
@@ -244,28 +347,31 @@ func file_graph_v1alpha_connection_proto_rawDescGZIP() []byte {
 	return file_graph_v1alpha_connection_proto_rawDescData
 }
 
+var file_graph_v1alpha_connection_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_graph_v1alpha_connection_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_graph_v1alpha_connection_proto_goTypes = []any{
-	(*ConnectionLog)(nil),         // 0: graph.v1alpha.ConnectionLog
-	(*Connection)(nil),            // 1: graph.v1alpha.Connection
-	(*v1alpha.Emitter)(nil),       // 2: common.v1alpha.Emitter
-	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
-	(*Vertex)(nil),                // 4: graph.v1alpha.Vertex
-	(*Edge)(nil),                  // 5: graph.v1alpha.Edge
+	(ObservationPoint)(0),         // 0: graph.v1alpha.ObservationPoint
+	(*ConnectionLog)(nil),         // 1: graph.v1alpha.ConnectionLog
+	(*Connection)(nil),            // 2: graph.v1alpha.Connection
+	(*v1alpha.Emitter)(nil),       // 3: common.v1alpha.Emitter
+	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
+	(*Vertex)(nil),                // 5: graph.v1alpha.Vertex
+	(*Edge)(nil),                  // 6: graph.v1alpha.Edge
 }
 var file_graph_v1alpha_connection_proto_depIdxs = []int32{
-	2, // 0: graph.v1alpha.ConnectionLog.emitter:type_name -> common.v1alpha.Emitter
-	3, // 1: graph.v1alpha.ConnectionLog.window_start:type_name -> google.protobuf.Timestamp
-	3, // 2: graph.v1alpha.ConnectionLog.window_end:type_name -> google.protobuf.Timestamp
-	1, // 3: graph.v1alpha.ConnectionLog.connections:type_name -> graph.v1alpha.Connection
-	4, // 4: graph.v1alpha.Connection.source:type_name -> graph.v1alpha.Vertex
-	4, // 5: graph.v1alpha.Connection.destination:type_name -> graph.v1alpha.Vertex
-	5, // 6: graph.v1alpha.Connection.links:type_name -> graph.v1alpha.Edge
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	3, // 0: graph.v1alpha.ConnectionLog.emitter:type_name -> common.v1alpha.Emitter
+	4, // 1: graph.v1alpha.ConnectionLog.window_start:type_name -> google.protobuf.Timestamp
+	4, // 2: graph.v1alpha.ConnectionLog.window_end:type_name -> google.protobuf.Timestamp
+	2, // 3: graph.v1alpha.ConnectionLog.connections:type_name -> graph.v1alpha.Connection
+	5, // 4: graph.v1alpha.Connection.source:type_name -> graph.v1alpha.Vertex
+	5, // 5: graph.v1alpha.Connection.destination:type_name -> graph.v1alpha.Vertex
+	6, // 6: graph.v1alpha.Connection.links:type_name -> graph.v1alpha.Edge
+	0, // 7: graph.v1alpha.Connection.observation_point:type_name -> graph.v1alpha.ObservationPoint
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_connection_proto_init() }
@@ -280,13 +386,14 @@ func file_graph_v1alpha_connection_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_graph_v1alpha_connection_proto_rawDesc), len(file_graph_v1alpha_connection_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_graph_v1alpha_connection_proto_goTypes,
 		DependencyIndexes: file_graph_v1alpha_connection_proto_depIdxs,
+		EnumInfos:         file_graph_v1alpha_connection_proto_enumTypes,
 		MessageInfos:      file_graph_v1alpha_connection_proto_msgTypes,
 	}.Build()
 	File_graph_v1alpha_connection_proto = out.File

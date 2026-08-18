@@ -29,12 +29,18 @@ message Emitter {
     expression: "size(this.name) == 0 || this.name != this.name.upperAscii()"
   };
   option (buf.validate.message).cel = {
+    id: "name_words_capitalized"
+    message: "each word in name must start with an uppercase letter (e.g., 'Hubble CLC', not 'Hubble clc')"
+    expression: "size(this.name) == 0 || this.name.matches('^[A-Z][A-Za-z0-9-]*( [A-Z][A-Za-z0-9-]*)*$')"
+  };
+  option (buf.validate.message).cel = {
     id: "version_no_v_prefix"
     message: "version must not contain a 'v' prefix"
     expression: "size(this.version) == 0 || !this.version.startsWith('v')"
   };
   // name identifies the emitter.
-  // The name should be capitalized ("Hubble", not "hubble" nor "HUBBLE").
+  // The name should be title-cased: each space-separated word starts with an
+  // uppercase letter ("Hubble", "Hubble CLC"), not "hubble" nor "HUBBLE".
   string name = 1 [(buf.validate.field).required = true];
   // version identifies the emitter version.
   // The version should not contain a 'v' prefix as sometimes seen ("1.19.0",
@@ -58,7 +64,94 @@ message Emitter {
   // The upper bound of 253 matches the maximum length of a DNS name (RFC
   // 1035), which also bounds Kubernetes object names and pod hostnames, and
   // comfortably fits a typical hardware serial number.
-  string source_identifier = 3 [(buf.validate.field) = {
+  //
+  // Deprecated: use observer.identifier instead. This field is retained for
+  // backward compatibility during the transition. Consumers SHOULD read
+  // observer.identifier and fall back to source_identifier when observer is
+  // unset.
+  string source_identifier = 3 [
+    deprecated = true,
+    (buf.validate.field) = {
+      ignore: IGNORE_IF_ZERO_VALUE
+      string: {max_len: 253}
+    }
+  ];
+
+  // observer identifies the entity that actually observed the data, which is
+  // not necessarily the emitter. The emitter (name, version) is the software
+  // that produced this message; the observer is the software that saw the
+  // traffic and exported the underlying records.
+  //
+  // For a self-observing emitter (for example, a Cilium or Tetragon agent that
+  // both observes traffic and emits connection logs), the emitter and observer
+  // are the same entity. For a converter (for example, Hubble CLC turning
+  // IPFIX flows from a smart switch into connection logs), the emitter is the
+  // converter software and the observer is the switch that exported the flows
+  // -- two distinct entities.
+  //
+  // Emitters SHOULD set observer. Fallback is per-message, not per-field: when
+  // observer is entirely unset, consumers use the emitter's name and version
+  // as the observer's name and version (the emitter is its own observer). When
+  // observer is set, its fields describe the observer and do NOT fall back to
+  // the emitter.
+  Observer observer = 4;
+}
+
+// Observer identifies the entity that observed the data, as distinct from the
+// emitter that produced the message. In a self-observing deployment the two
+// are the same; in a converter deployment (e.g. Hubble CLC ingesting IPFIX
+// flows from a smart switch) they differ.
+message Observer {
+  option (buf.validate.message).cel = {
+    id: "name_capitalized"
+    message: "name must start with an uppercase letter"
+    expression: "size(this.name) == 0 || this.name.matches('^[A-Z]')"
+  };
+  option (buf.validate.message).cel = {
+    id: "name_not_all_uppercase"
+    message: "name must not be all uppercase (e.g., 'Cilium', not 'CILIUM')"
+    expression: "size(this.name) == 0 || this.name != this.name.upperAscii()"
+  };
+  option (buf.validate.message).cel = {
+    id: "name_words_capitalized"
+    message: "each word in name must start with an uppercase letter (e.g., 'Hubble CLC', not 'Hubble clc')"
+    expression: "size(this.name) == 0 || this.name.matches('^[A-Z][A-Za-z0-9-]*( [A-Z][A-Za-z0-9-]*)*$')"
+  };
+  option (buf.validate.message).cel = {
+    id: "version_no_v_prefix"
+    message: "version must not contain a 'v' prefix"
+    expression: "size(this.version) == 0 || !this.version.startsWith('v')"
+  };
+  // name identifies the observing software or operating system that saw the
+  // traffic and exported the underlying records -- NOT the hardware model.
+  // Examples: "Cilium" or "Tetragon" for an agent, "Nexus" for a Cisco smart
+  // switch. The name should be title-cased: each space-separated word starts
+  // with an uppercase letter ("Cilium", not "cilium" nor "CILIUM").
+  string name = 1;
+  // version identifies the observer's own version -- the version of the
+  // observing software / OS / firmware named above, NOT the emitter's version.
+  // For example, for a smart switch this is its NOS or firmware version, not
+  // the version of the converter that produced this message. The version
+  // should not contain a 'v' prefix ("1.19.0", not "v1.19.0").
+  string version = 2 [(buf.validate.field) = {
+    ignore: IGNORE_IF_ZERO_VALUE
+    string: {pattern: "^[0-9]"}
+  }];
+  // identifier uniquely identifies the specific observer instance. It replaces
+  // the deprecated Emitter.source_identifier and carries the same meaning:
+  // it distinguishes between multiple observers of the same kind so consumers
+  // can deduplicate or attribute events to a specific instance.
+  //
+  // Typical values are "cluster_name/node_name" for a Cilium or Tetragon agent
+  // (the established Hubble convention), or the serial number of a smart
+  // switch. Observers SHOULD set identifier; it may be left unset only by
+  // observers that cannot meaningfully identify themselves (e.g.
+  // single-instance deployments).
+  //
+  // The upper bound of 253 matches the maximum length of a DNS name (RFC
+  // 1035), which also bounds Kubernetes object names and pod hostnames, and
+  // comfortably fits a typical hardware serial number.
+  string identifier = 3 [(buf.validate.field) = {
     ignore: IGNORE_IF_ZERO_VALUE
     string: {max_len: 253}
   }];

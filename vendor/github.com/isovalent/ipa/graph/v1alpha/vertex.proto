@@ -27,6 +27,7 @@ message Vertex {
     VertexFamilyKubernetes kubernetes = 1;
     VertexFamilyNetworkDevice network_device = 2;
     VertexFamilyWorldEntity world_entity = 3;
+    VertexFamilyMulticastStream multicast_stream = 4;
   }
 }
 
@@ -161,15 +162,45 @@ message VertexFamilyWorldEntity {
   VertexPropertyMulticast multicast = 5;
 }
 
+// VertexFamilyMulticastStream represents a source-scoped multicast stream as a
+// first-class vertex so that the fan-out from a feeder to multiple receivers
+// can be rendered as an explicit split. The vertex identity is the (source_ip,
+// group_ip, source_id) tuple, with source_id omitted when the stream has no
+// payload-level identifier. Distinct sources sending to the same group address
+// are represented as distinct vertices, each rooting its own distribution tree.
+message VertexFamilyMulticastStream {
+  option (buf.validate.message).cel = {
+    id: "multicast_group_ip_range"
+    message: "group_ip must be a valid multicast address (IPv4: 224.0.0.0/4, IPv6: ff00::/8)"
+    expression: "this.group_ip.startsWith('224.') || this.group_ip.startsWith('225.') || this.group_ip.startsWith('226.') || this.group_ip.startsWith('227.') || this.group_ip.startsWith('228.') || this.group_ip.startsWith('229.') || this.group_ip.startsWith('230.') || this.group_ip.startsWith('231.') || this.group_ip.startsWith('232.') || this.group_ip.startsWith('233.') || this.group_ip.startsWith('234.') || this.group_ip.startsWith('235.') || this.group_ip.startsWith('236.') || this.group_ip.startsWith('237.') || this.group_ip.startsWith('238.') || this.group_ip.startsWith('239.') || this.group_ip.lowerAscii().startsWith('ff')"
+  };
+  // source_ip is the IP address of the source of the multicast traffic. It is
+  // always set so that the stream can be correlated with source-specific
+  // multicast membership reports.
+  string source_ip = 1 [(buf.validate.field) = {
+    required: true
+    string: {ip: true}
+  }];
+  // group_ip is the multicast group address that identifies the group. It is
+  // always a valid multicast address.
+  string group_ip = 2 [(buf.validate.field) = {
+    required: true
+    string: {ip: true}
+  }];
+  // source_id is an optional identifier extracted from the multicast stream,
+  // such as an MTP Line ID or RTP SSRC.
+  string source_id = 3;
+}
+
 // VertexPropertyMulticast contains multicast specific information for a vertex.
 message VertexPropertyMulticast {
   option (buf.validate.message).cel = {
     id: "multicast_group_ip_range"
     message: "group_ip must be a valid multicast address (IPv4: 224.0.0.0/4, IPv6: ff00::/8)"
-    expression: "this.group_ip == '' || this.group_ip.startsWith('224.') || this.group_ip.startsWith('225.') || this.group_ip.startsWith('226.') || this.group_ip.startsWith('227.') || this.group_ip.startsWith('228.') || this.group_ip.startsWith('229.') || this.group_ip.startsWith('230.') || this.group_ip.startsWith('231.') || this.group_ip.startsWith('232.') || this.group_ip.startsWith('233.') || this.group_ip.startsWith('234.') || this.group_ip.startsWith('235.') || this.group_ip.startsWith('236.') || this.group_ip.startsWith('237.') || this.group_ip.startsWith('238.') || this.group_ip.startsWith('239.') || this.group_ip.startsWith('ff') || this.group_ip.startsWith('FF')"
+    expression: "this.group_ip == '' || this.group_ip.startsWith('224.') || this.group_ip.startsWith('225.') || this.group_ip.startsWith('226.') || this.group_ip.startsWith('227.') || this.group_ip.startsWith('228.') || this.group_ip.startsWith('229.') || this.group_ip.startsWith('230.') || this.group_ip.startsWith('231.') || this.group_ip.startsWith('232.') || this.group_ip.startsWith('233.') || this.group_ip.startsWith('234.') || this.group_ip.startsWith('235.') || this.group_ip.startsWith('236.') || this.group_ip.startsWith('237.') || this.group_ip.startsWith('238.') || this.group_ip.startsWith('239.') || this.group_ip.lowerAscii().startsWith('ff')"
   };
-  // source_id is an optional identifier that represents the source of the
-  // multicast traffic.
+  // source_id is an optional identifier extracted from the multicast stream,
+  // such as an MTP Line ID or RTP SSRC.
   string source_id = 1;
   // group_ip is the multicast group address associated with the connection.
   string group_ip = 2 [(buf.validate.field) = {

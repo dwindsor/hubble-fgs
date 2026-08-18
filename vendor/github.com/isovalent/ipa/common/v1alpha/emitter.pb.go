@@ -36,7 +36,8 @@ const (
 type Emitter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// name identifies the emitter.
-	// The name should be capitalized ("Hubble", not "hubble" nor "HUBBLE").
+	// The name should be title-cased: each space-separated word starts with an
+	// uppercase letter ("Hubble", "Hubble CLC"), not "hubble" nor "HUBBLE".
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// version identifies the emitter version.
 	// The version should not contain a 'v' prefix as sometimes seen ("1.19.0",
@@ -57,9 +58,34 @@ type Emitter struct {
 	// The upper bound of 253 matches the maximum length of a DNS name (RFC
 	// 1035), which also bounds Kubernetes object names and pod hostnames, and
 	// comfortably fits a typical hardware serial number.
+	//
+	// Deprecated: use observer.identifier instead. This field is retained for
+	// backward compatibility during the transition. Consumers SHOULD read
+	// observer.identifier and fall back to source_identifier when observer is
+	// unset.
+	//
+	// Deprecated: Marked as deprecated in common/v1alpha/emitter.proto.
 	SourceIdentifier string `protobuf:"bytes,3,opt,name=source_identifier,json=sourceIdentifier,proto3" json:"source_identifier,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// observer identifies the entity that actually observed the data, which is
+	// not necessarily the emitter. The emitter (name, version) is the software
+	// that produced this message; the observer is the software that saw the
+	// traffic and exported the underlying records.
+	//
+	// For a self-observing emitter (for example, a Cilium or Tetragon agent that
+	// both observes traffic and emits connection logs), the emitter and observer
+	// are the same entity. For a converter (for example, Hubble CLC turning
+	// IPFIX flows from a smart switch into connection logs), the emitter is the
+	// converter software and the observer is the switch that exported the flows
+	// -- two distinct entities.
+	//
+	// Emitters SHOULD set observer. Fallback is per-message, not per-field: when
+	// observer is entirely unset, consumers use the emitter's name and version
+	// as the observer's name and version (the emitter is its own observer). When
+	// observer is set, its fields describe the observer and do NOT fall back to
+	// the emitter.
+	Observer      *Observer `protobuf:"bytes,4,opt,name=observer,proto3" json:"observer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Emitter) Reset() {
@@ -106,9 +132,105 @@ func (x *Emitter) GetVersion() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in common/v1alpha/emitter.proto.
 func (x *Emitter) GetSourceIdentifier() string {
 	if x != nil {
 		return x.SourceIdentifier
+	}
+	return ""
+}
+
+func (x *Emitter) GetObserver() *Observer {
+	if x != nil {
+		return x.Observer
+	}
+	return nil
+}
+
+// Observer identifies the entity that observed the data, as distinct from the
+// emitter that produced the message. In a self-observing deployment the two
+// are the same; in a converter deployment (e.g. Hubble CLC ingesting IPFIX
+// flows from a smart switch) they differ.
+type Observer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// name identifies the observing software or operating system that saw the
+	// traffic and exported the underlying records -- NOT the hardware model.
+	// Examples: "Cilium" or "Tetragon" for an agent, "Nexus" for a Cisco smart
+	// switch. The name should be title-cased: each space-separated word starts
+	// with an uppercase letter ("Cilium", not "cilium" nor "CILIUM").
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// version identifies the observer's own version -- the version of the
+	// observing software / OS / firmware named above, NOT the emitter's version.
+	// For example, for a smart switch this is its NOS or firmware version, not
+	// the version of the converter that produced this message. The version
+	// should not contain a 'v' prefix ("1.19.0", not "v1.19.0").
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// identifier uniquely identifies the specific observer instance. It replaces
+	// the deprecated Emitter.source_identifier and carries the same meaning:
+	// it distinguishes between multiple observers of the same kind so consumers
+	// can deduplicate or attribute events to a specific instance.
+	//
+	// Typical values are "cluster_name/node_name" for a Cilium or Tetragon agent
+	// (the established Hubble convention), or the serial number of a smart
+	// switch. Observers SHOULD set identifier; it may be left unset only by
+	// observers that cannot meaningfully identify themselves (e.g.
+	// single-instance deployments).
+	//
+	// The upper bound of 253 matches the maximum length of a DNS name (RFC
+	// 1035), which also bounds Kubernetes object names and pod hostnames, and
+	// comfortably fits a typical hardware serial number.
+	Identifier    string `protobuf:"bytes,3,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Observer) Reset() {
+	*x = Observer{}
+	mi := &file_common_v1alpha_emitter_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Observer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Observer) ProtoMessage() {}
+
+func (x *Observer) ProtoReflect() protoreflect.Message {
+	mi := &file_common_v1alpha_emitter_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Observer.ProtoReflect.Descriptor instead.
+func (*Observer) Descriptor() ([]byte, []int) {
+	return file_common_v1alpha_emitter_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Observer) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Observer) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *Observer) GetIdentifier() string {
+	if x != nil {
+		return x.Identifier
 	}
 	return ""
 }
@@ -117,13 +239,25 @@ var File_common_v1alpha_emitter_proto protoreflect.FileDescriptor
 
 const file_common_v1alpha_emitter_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccommon/v1alpha/emitter.proto\x12\x0ecommon.v1alpha\x1a\x1bbuf/validate/validate.proto\"\x94\x04\n" +
+	"\x1ccommon/v1alpha/emitter.proto\x12\x0ecommon.v1alpha\x1a\x1bbuf/validate/validate.proto\"\x9e\x06\n" +
 	"\aEmitter\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12*\n" +
-	"\aversion\x18\x02 \x01(\tB\x10\xbaH\r\xd8\x01\x01r\b2\x06^[0-9]R\aversion\x128\n" +
-	"\x11source_identifier\x18\x03 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\xfd\x01R\x10sourceIdentifier:\x86\x03\xbaH\x82\x03\x1aq\n" +
+	"\aversion\x18\x02 \x01(\tB\x10\xbaH\r\xd8\x01\x01r\b2\x06^[0-9]R\aversion\x12:\n" +
+	"\x11source_identifier\x18\x03 \x01(\tB\r\xbaH\b\xd8\x01\x01r\x03\x18\xfd\x01\x18\x01R\x10sourceIdentifier\x124\n" +
+	"\bobserver\x18\x04 \x01(\v2\x18.common.v1alpha.ObserverR\bobserver:\xd8\x04\xbaH\xd4\x04\x1aq\n" +
 	"\x10name_capitalized\x12(name must start with an uppercase letter\x1a3size(this.name) == 0 || this.name.matches('^[A-Z]')\x1a\x94\x01\n" +
-	"\x16name_not_all_uppercase\x12=name must not be all uppercase (e.g., 'Hubble', not 'HUBBLE')\x1a;size(this.name) == 0 || this.name != this.name.upperAscii()\x1av\n" +
+	"\x16name_not_all_uppercase\x12=name must not be all uppercase (e.g., 'Hubble', not 'HUBBLE')\x1a;size(this.name) == 0 || this.name != this.name.upperAscii()\x1a\xcf\x01\n" +
+	"\x16name_words_capitalized\x12\\each word in name must start with an uppercase letter (e.g., 'Hubble CLC', not 'Hubble clc')\x1aWsize(this.name) == 0 || this.name.matches('^[A-Z][A-Za-z0-9-]*( [A-Z][A-Za-z0-9-]*)*$')\x1av\n" +
+	"\x13version_no_v_prefix\x12%version must not contain a 'v' prefix\x1a8size(this.version) == 0 || !this.version.startsWith('v')\"\xd2\x05\n" +
+	"\bObserver\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
+	"\aversion\x18\x02 \x01(\tB\x10\xbaH\r\xd8\x01\x01r\b2\x06^[0-9]R\aversion\x12+\n" +
+	"\n" +
+	"identifier\x18\x03 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\xfd\x01R\n" +
+	"identifier:\xd8\x04\xbaH\xd4\x04\x1aq\n" +
+	"\x10name_capitalized\x12(name must start with an uppercase letter\x1a3size(this.name) == 0 || this.name.matches('^[A-Z]')\x1a\x94\x01\n" +
+	"\x16name_not_all_uppercase\x12=name must not be all uppercase (e.g., 'Cilium', not 'CILIUM')\x1a;size(this.name) == 0 || this.name != this.name.upperAscii()\x1a\xcf\x01\n" +
+	"\x16name_words_capitalized\x12\\each word in name must start with an uppercase letter (e.g., 'Hubble CLC', not 'Hubble clc')\x1aWsize(this.name) == 0 || this.name.matches('^[A-Z][A-Za-z0-9-]*( [A-Z][A-Za-z0-9-]*)*$')\x1av\n" +
 	"\x13version_no_v_prefix\x12%version must not contain a 'v' prefix\x1a8size(this.version) == 0 || !this.version.startsWith('v')B)Z'github.com/isovalent/ipa/common/v1alphab\x06proto3"
 
 var (
@@ -138,16 +272,18 @@ func file_common_v1alpha_emitter_proto_rawDescGZIP() []byte {
 	return file_common_v1alpha_emitter_proto_rawDescData
 }
 
-var file_common_v1alpha_emitter_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_common_v1alpha_emitter_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_common_v1alpha_emitter_proto_goTypes = []any{
-	(*Emitter)(nil), // 0: common.v1alpha.Emitter
+	(*Emitter)(nil),  // 0: common.v1alpha.Emitter
+	(*Observer)(nil), // 1: common.v1alpha.Observer
 }
 var file_common_v1alpha_emitter_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: common.v1alpha.Emitter.observer:type_name -> common.v1alpha.Observer
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_common_v1alpha_emitter_proto_init() }
@@ -161,7 +297,7 @@ func file_common_v1alpha_emitter_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_v1alpha_emitter_proto_rawDesc), len(file_common_v1alpha_emitter_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
