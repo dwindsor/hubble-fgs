@@ -11,7 +11,7 @@ permissions: {}
 jobs:
   analyze:
     name: Analyze
-    uses: isovalent/reusable-workflows/.github/workflows/codeql.yaml@ab4888b9078f03883bf2e399959b9df377fcac1d # v0.13.0
+    uses: isovalent/reusable-workflows/.github/workflows/codeql.yaml@ab64038003d9a501689655ed8d6eba7ba13d05c3 # v0.15.1
     permissions:
       actions: read
       contents: read
