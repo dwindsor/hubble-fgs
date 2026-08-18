@@ -35,13 +35,15 @@ func (k *ConfigKey) String() string {
 }
 
 type CfgProcessModel struct {
-	Enable      bool
-	EnableBpfId bool
+	Enable       bool
+	EnableBpfId  bool
+	TrackExecIds bool
 }
 
 type ConfigValue struct {
 	EnableProcessTree uint64
 	EnableBpfId       uint64
+	TrackExecIds      uint64
 }
 
 func (v *ConfigValue) String() string {
@@ -83,6 +85,11 @@ func configureSettings(cfg *CfgProcessModel) error {
 		value.EnableProcessTree = 1
 	} else {
 		value.EnableProcessTree = 0
+	}
+	if cfg.TrackExecIds {
+		value.TrackExecIds = 1
+	} else {
+		value.TrackExecIds = 0
 	}
 
 	err = m.Put(key, value)

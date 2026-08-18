@@ -1294,8 +1294,9 @@ func DefaultNewServer() (*Server, error) {
 
 func NewServer(enableBpfId bool) (*Server, error) {
 	cfg := &CfgProcessModel{
-		Enable:      option.Config.EnableApplicationModel,
-		EnableBpfId: enableBpfId,
+		Enable:       option.Config.EnableApplicationModel,
+		EnableBpfId:  enableBpfId,
+		TrackExecIds: option.Config.AppModelTrackExecIds,
 	}
 	err := configureSettings(cfg)
 

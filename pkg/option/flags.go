@@ -54,6 +54,7 @@ const (
 	KeyNetNsCacheSize                    = "net-ns-cache-size"
 	KeyDetatchOldBPF                     = "detach-old-bpf"
 	KeyEnableApplicationModel            = "enable-application-model"
+	KeyAppModelTrackExecIds              = "app-model-track-exec-ids"
 	KeyEnableSyscallTracking             = "enable-syscall-tracking"
 	KeyApplicationModelCacheSize         = "application-model-cache-size"
 	KeyApplicationModelExportInterval    = "application-model-export-interval"
@@ -207,6 +208,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
 	flags.Bool(KeyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
 	flags.Bool(KeyEnableApplicationModel, false, "Enable application model in memory")
+	flags.Bool(KeyAppModelTrackExecIds, true, "Track execution IDs in the application model")
 	flags.Bool(KeyEnableSyscallTracking, false, "Track system calls in the application model. Application model must be enabled for this to work")
 	// Experimental flags to periodically export process model to export JSON file.
 	flags.Duration(KeyApplicationModelExportInterval, 0, "Interval at which to export application model as JSON.")
@@ -351,6 +353,7 @@ func readAndSetEnterpriseFlags() error {
 	Config.OCSFExportFilename = viper.GetString(KeyOCSFExportFilename)
 	Config.OCSFExportServer = viper.GetString(KeyOCSFExportServer)
 	Config.EnableApplicationModel = viper.GetBool(KeyEnableApplicationModel)
+	Config.AppModelTrackExecIds = viper.GetBool(KeyAppModelTrackExecIds)
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ApplicationModelExportFilename = viper.GetString(KeyApplicationModelExportFilename)

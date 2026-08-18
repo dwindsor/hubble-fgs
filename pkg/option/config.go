@@ -26,6 +26,7 @@ type config struct {
 	//   specific information.
 	Environment                       string
 	EnableApplicationModel            bool
+	AppModelTrackExecIds              bool
 	EnableSyscallTracking             bool
 	ApplicationModelExportInterval    time.Duration
 	ApplicationModelExportFilename    string

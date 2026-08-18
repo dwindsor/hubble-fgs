@@ -39,6 +39,7 @@
 struct process_tree_config {
 	uint64_t enableProcessTree;
 	uint64_t bpfGenIds;
+	uint64_t track_exec_ids;
 };
 
 /* Read only configuration single entry array. */

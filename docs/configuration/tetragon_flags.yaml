@@ -13,6 +13,9 @@ options:
     - name: alerts-export-filename
       usage: |
         Specify a global filename (unless overridden with alert specific export.filename), relative to alerts-export-dir, for alert JSON export. Disabled by default.
+    - name: app-model-track-exec-ids
+      default_value: "true"
+      usage: Track execution IDs in the application model
     - name: application-model-cache-size
       default_value: "65536"
       usage: |
