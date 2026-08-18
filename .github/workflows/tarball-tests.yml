@@ -13,8 +13,35 @@ jobs:
       contents: read
     secrets: inherit
 
+  build-policytest-assets:
+    uses: ./.github/workflows/build-policytest-assets.yml
+    permissions:
+      contents: read
+
   packages-e2e-tests:
     needs: [build-tarballs]
     uses: ./.github/workflows/packages-e2e-tests.yml
     permissions:
       contents: read
+
+  vmpolicytests-ee:
+    name: policy tests ee tarball
+    needs: [build-tarballs, build-policytest-assets]
+    uses: ./.github/workflows/policytests.yml
+    permissions:
+      contents: read
+    with:
+      artifact: tetragon-tarball
+      amd64_runner_label: ${{ vars.KVM_GH_RUNNER_AMD64 }}
+      arm64_runner_label: ${{ vars.KVM_GH_RUNNER_ARM64 }}
+
+  vmpolicytests-slim:
+    name: policy tests slim tarball
+    needs: [build-tarballs, build-policytest-assets]
+    uses: ./.github/workflows/policytests.yml
+    permissions:
+      contents: read
+    with:
+      artifact: tetragon-slim-tarball
+      amd64_runner_label: ${{ vars.KVM_GH_RUNNER_AMD64 }}
+      arm64_runner_label: ${{ vars.KVM_GH_RUNNER_ARM64 }}
