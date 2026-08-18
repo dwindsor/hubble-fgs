@@ -32,6 +32,7 @@
 #define MAX_SELECTORS 5
 #include "policy_filter.h"
 #include "process_endpoint.h"
+#include "process_tree_exec_ids.h"
 #include "lpm.h"
 
 #include "parsers/dns/dns_pstree.h"
@@ -206,6 +207,8 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		return 0;
 	k->self.uid = uid & 0xffffffff;
 	k->self.cpu = uid >> 32; /* retains ignore_args bit in high bit */
+	if (cfg->track_exec_ids)
+		record_exec_id(&k->self, &curr->key);
 	k->wlid = find_my_wlid(cgid);
 	// If the workload id is non-zero, fill in the cgid so the app model server
 	// can separate containers for the same workload.
