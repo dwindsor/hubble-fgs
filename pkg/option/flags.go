@@ -655,6 +655,10 @@ func validateConfig(config config) error {
 		return fmt.Errorf("system call tracking requires --%s", KeyEnableApplicationModel)
 	}
 
+	if config.EnableApplicationModel && option.Config.DisableProcessCache {
+		return fmt.Errorf("--%s cannot be used together with --%s", KeyEnableApplicationModel, option.KeyDisableProcessCache)
+	}
+
 	if config.Environment != "" {
 		if !slices.Contains(environments, config.Environment) {
 			return fmt.Errorf("invalid environment '%s', valid values are %s", config.Environment, environments)
