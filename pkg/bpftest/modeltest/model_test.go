@@ -671,6 +671,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 	},
 
 	"TestContainerExitAndRestart": {
+		Skip: "Evidently flaky in github actions, nc is being SIGKILLed",
 		Namespaces: model.Namespaces{
 			"default": {
 				"restarting-nc": {
