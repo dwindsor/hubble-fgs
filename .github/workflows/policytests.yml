@@ -26,7 +26,28 @@ jobs:
         arch: [amd64, arm64]
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - 'rhel8.10-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - 'bpf-next-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '6.18-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
           - '6.12-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '6.6-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '6.1-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '5.15-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '5.10-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '5.4-20260817.013106'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '4.19-20260817.013106'
+        exclude:
+          - arch: arm64
+            kernel: 'rhel8.10-20260817.013106'
 
     steps:
       - name: Remove slow Azure apt mirrors
@@ -87,8 +108,15 @@ jobs:
         run: |
           kimage=$(find tests/vmtests/test-data/kernels -path "*vmlinuz*" -type f)
           echo "kernel: $kimage"
+          btf_args=()
+          if [[ "${{ matrix.kernel }}" == 4.19* ]]; then
+            btf=$(find tests/vmtests/test-data/kernels -path "*btf*" -type f)
+            echo "btf: $btf"
+            btf_args=(--btf-file "$btf")
+          fi
           sudo ./tests/vmtests/tetragon-vmtests-run policytest \
             --kernel "$kimage" \
+            "${btf_args[@]}" \
             --base tests/vmtests/test-data/images/base.qcow2 \
             --tetragon-tarball "${{ steps.tarball.outputs.path }}" \
             --tester-progs-tarball tester-progs.tar.gz \
