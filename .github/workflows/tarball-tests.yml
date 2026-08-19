@@ -45,3 +45,22 @@ jobs:
       artifact: tetragon-slim-tarball
       amd64_runner_label: ${{ vars.KVM_GH_RUNNER_AMD64 }}
       arm64_runner_label: ${{ vars.KVM_GH_RUNNER_ARM64 }}
+
+  post-test:
+    name: Cleanup
+    runs-on: ubuntu-24.04
+    needs: [packages-e2e-tests, vmpolicytests-ee, vmpolicytests-slim]
+    if: ${{ needs.packages-e2e-tests.result == 'success' && needs.vmpolicytests.result == 'success' }}
+    permissions:
+      actions: write
+    steps:
+      - uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118 # v6.0.0
+        with:
+          failOnError: false
+          name: |
+            tetragon-tarball-amd64
+            tetragon-tarball-arm64
+            tetragon-slim-tarball-amd64
+            tetragon-slim-tarball-arm64
+            policytest-assets-amd64
+            policytest-assets-arm64
