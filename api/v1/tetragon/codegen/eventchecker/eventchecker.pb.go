@@ -8944,6 +8944,155 @@ func (checker *ProcessThrottleChecker) FromProcessThrottle(event *tetragon.Proce
 	return checker
 }
 
+// UnsetProcessChecks strips any Process check set via WithProcess() from the
+// individual checks of a MultiEventChecker, e.g. for cases where the process cache
+// is disabled and the Process field can't be checked. The ProcessExec check is left
+// as is, because its Process field is valid regardless of the process cache.
+func UnsetProcessChecks(checker MultiEventChecker) {
+	getter, ok := checker.(interface{ GetChecks() []EventChecker })
+	if !ok {
+		return
+	}
+	for _, c := range getter.GetChecks() {
+		switch v := c.(type) {
+		case *ProcessExitChecker:
+			v.UnsetProcess()
+		case *ProcessKprobeChecker:
+			v.UnsetProcess()
+		case *ProcessTracepointChecker:
+			v.UnsetProcess()
+		case *ProcessUprobeChecker:
+			v.UnsetProcess()
+		case *ProcessUsdtChecker:
+			v.UnsetProcess()
+		case *ProcessLsmChecker:
+			v.UnsetProcess()
+		case *ProcessLoaderChecker:
+			v.UnsetProcess()
+		case *ProcessConnectChecker:
+			v.UnsetProcess()
+		case *ProcessCloseChecker:
+			v.UnsetProcess()
+		case *ProcessListenChecker:
+			v.UnsetProcess()
+		case *ProcessAcceptChecker:
+			v.UnsetProcess()
+		case *ProcessRawsockCreateChecker:
+			v.UnsetProcess()
+		case *ProcessRawsockCloseChecker:
+			v.UnsetProcess()
+		case *ProcessIcmpChecker:
+			v.UnsetProcess()
+		case *ProcessIgmpJoinChecker:
+			v.UnsetProcess()
+		case *ProcessIgmpLeaveChecker:
+			v.UnsetProcess()
+		case *ProcessMulticastSampleChecker:
+			v.UnsetProcess()
+		case *ProcessIpErrorChecker:
+			v.UnsetProcess()
+		case *ProcessFileChecker:
+			v.UnsetProcess()
+		case *ProcessFileExecChecker:
+			v.UnsetProcess()
+		case *ProcessSockStatsChecker:
+			v.UnsetProcess()
+		case *TlsChecker:
+			v.UnsetProcess()
+		case *ProcessHttpChecker:
+			v.UnsetProcess()
+		case *ProcessNetworkBurstChecker:
+			v.UnsetProcess()
+		case *ProcessNetworkWatermarkChecker:
+			v.UnsetProcess()
+		case *ProcessUdpSeqCheckErrorChecker:
+			v.UnsetProcess()
+		case *PowershellScriptBlockChecker:
+			v.UnsetProcess()
+		case *ProcessDnsChecker:
+			v.UnsetProcess()
+		case *ProcessSandboxSyscallChecker:
+			v.UnsetProcess()
+
+		}
+	}
+}
+
+// UnsetParentChecks strips any Parent check set via WithParent() from the
+// individual checks of a MultiEventChecker, e.g. for cases where the process cache
+// is disabled and the Parent field can't be checked.
+func UnsetParentChecks(checker MultiEventChecker) {
+	getter, ok := checker.(interface{ GetChecks() []EventChecker })
+	if !ok {
+		return
+	}
+	for _, c := range getter.GetChecks() {
+		switch v := c.(type) {
+		case *ProcessExecChecker:
+			v.UnsetParent()
+		case *ProcessExitChecker:
+			v.UnsetParent()
+		case *ProcessKprobeChecker:
+			v.UnsetParent()
+		case *ProcessTracepointChecker:
+			v.UnsetParent()
+		case *ProcessUprobeChecker:
+			v.UnsetParent()
+		case *ProcessUsdtChecker:
+			v.UnsetParent()
+		case *ProcessLsmChecker:
+			v.UnsetParent()
+		case *ProcessLoaderChecker:
+			v.UnsetParent()
+		case *ProcessConnectChecker:
+			v.UnsetParent()
+		case *ProcessCloseChecker:
+			v.UnsetParent()
+		case *ProcessListenChecker:
+			v.UnsetParent()
+		case *ProcessAcceptChecker:
+			v.UnsetParent()
+		case *ProcessRawsockCreateChecker:
+			v.UnsetParent()
+		case *ProcessRawsockCloseChecker:
+			v.UnsetParent()
+		case *ProcessIcmpChecker:
+			v.UnsetParent()
+		case *ProcessIgmpJoinChecker:
+			v.UnsetParent()
+		case *ProcessIgmpLeaveChecker:
+			v.UnsetParent()
+		case *ProcessMulticastSampleChecker:
+			v.UnsetParent()
+		case *ProcessIpErrorChecker:
+			v.UnsetParent()
+		case *ProcessFileChecker:
+			v.UnsetParent()
+		case *ProcessFileExecChecker:
+			v.UnsetParent()
+		case *ProcessSockStatsChecker:
+			v.UnsetParent()
+		case *TlsChecker:
+			v.UnsetParent()
+		case *ProcessHttpChecker:
+			v.UnsetParent()
+		case *ProcessNetworkBurstChecker:
+			v.UnsetParent()
+		case *ProcessNetworkWatermarkChecker:
+			v.UnsetParent()
+		case *ProcessUdpSeqCheckErrorChecker:
+			v.UnsetParent()
+		case *PowershellScriptBlockChecker:
+			v.UnsetParent()
+		case *ProcessDnsChecker:
+			v.UnsetParent()
+		case *ProcessSandboxSyscallChecker:
+			v.UnsetParent()
+
+		}
+	}
+}
+
 // ImageChecker implements a checker struct to check a Image field
 type ImageChecker struct {
 	Id   *stringmatcher.StringMatcher `json:"id,omitempty"`

@@ -121,6 +121,9 @@ options:
       default_value: "false"
       usage: |
         Disable layer3 entirely; equivalent to setting all the layer3 BPF caches to 1
+    - name: disable-process-cache
+      default_value: "false"
+      usage: Disable process cache
     - name: dns-cache-size
       default_value: "1024"
       usage: |

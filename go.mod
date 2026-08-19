@@ -12,7 +12,7 @@ require (
 	github.com/cilium/cilium v1.20.0
 	github.com/cilium/ebpf v0.22.0
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.8.0-pre.0.0.20260817105731-0d3048ed735f
+	github.com/cilium/tetragon v1.8.0-pre.0.0.20260819112831-350c2fce18d3
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.3.4
