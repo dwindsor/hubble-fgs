@@ -154,7 +154,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
+	if ec != nil && (ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent))) {
 		ec.Add(nil, fgsEvent, msg.Msg.Common.Ktime, msg.Msg.ProcessKey.Ktime, msg)
 		return nil
 	}

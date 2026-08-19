@@ -142,7 +142,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
+	if ec != nil && (ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent))) {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}
