@@ -457,6 +457,52 @@ func TestSplitApplicationModelEvent(t *testing.T) {
 	}
 }
 
+func TestSplitAndMergeApplicationModelExecIDs(t *testing.T) {
+	oldMaxHostProcs := option.Config.ApplicationModelSplitMaxHostProcs
+	option.Config.ApplicationModelSplitMaxHostProcs = 1
+	defer func() {
+		option.Config.ApplicationModelSplitMaxHostProcs = oldMaxHostProcs
+	}()
+
+	event := &appModelV1.ApplicationModelEvent{
+		ApplicationModel: &appModelV1.ApplicationModel{
+			Id: "model-id",
+			Host: &appModelV1.ApplicationHost{
+				Processes: []*appModelV1.ApplicationProcessGroup{
+					{Name: "host-process", ExecIds: []string{"host-exec-id"}},
+				},
+			},
+			Namespaces: []*appModelV1.ApplicationNamespace{
+				{
+					Name: "default",
+					Workloads: []*appModelV1.ApplicationWorkload{
+						{
+							Name: "workload",
+							Containers: []*appModelV1.ApplicationContainer{
+								{
+									Processes: []*appModelV1.ApplicationProcessGroup{
+										{Name: "workload-process", ExecIds: []string{"workload-exec-id"}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	fragments := SplitApplicationModelEvent(event)
+	assert.Len(t, fragments, 2)
+	assert.Equal(t, []string{"host-exec-id"}, fragments[0].ApplicationModelFragment.Host.Processes[0].GetExecIds())
+	assert.Equal(t, []string{"workload-exec-id"}, fragments[1].ApplicationModelFragment.Namespaces[0].Workloads[0].Containers[0].Processes[0].GetExecIds())
+
+	merged, err := MergeApplicationModelFragments(fragments)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"host-exec-id"}, merged.ApplicationModel.Host.Processes[0].GetExecIds())
+	assert.Equal(t, []string{"workload-exec-id"}, merged.ApplicationModel.Namespaces[0].Workloads[0].Containers[0].Processes[0].GetExecIds())
+}
+
 func TestMergeApplicationModelFragments(t *testing.T) {
 
 	merged, err := MergeApplicationModelFragments(expectedSplitModelFragments)
