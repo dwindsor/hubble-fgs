@@ -104,6 +104,7 @@ type ProcessModel struct {
 	Parent     string
 	ParentArgs string
 	Parents    []string // All unique immediate parent names for this binary/args tuple
+	ExecIDs    []string
 	Namespace  string
 	Workload   *Workload
 	Container  *ContainerInfo

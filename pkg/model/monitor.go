@@ -211,6 +211,7 @@ type ProcessValue struct {
 	InInitTree      bool
 	Syscalls        *appModelV1.ApplicationSyscalls
 	Parents         []string // All unique immediate parent names for this binary/args tuple
+	ExecIDs         []string
 	FirstStartTime  *time.Time
 	LatestStartTime *time.Time
 	LatestExitTime  *time.Time
@@ -396,6 +397,7 @@ var warnOnce = false
 type processAccumulator struct {
 	model           *types.ProcessModel
 	parents         map[string]bool
+	execIDs         map[string]struct{}
 	execCount       uint64
 	exitCount       uint64
 	firstStartTime  *time.Time
@@ -420,6 +422,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 			acc = &processAccumulator{
 				model:   process,
 				parents: make(map[string]bool),
+				execIDs: make(map[string]struct{}),
 			}
 			accum[processKey] = acc
 		} else {
@@ -427,6 +430,11 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 		}
 		if process.Parent != "" {
 			acc.parents[process.Parent] = true
+		}
+		for _, execID := range process.ExecIDs {
+			if execID != "" {
+				acc.execIDs[execID] = struct{}{}
+			}
 		}
 		acc.execCount += process.ExecCount
 		acc.exitCount += process.ExitCount
@@ -484,10 +492,17 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 		}
 		slices.Sort(parentsList)
 
+		execIDsList := make([]string, 0, len(acc.execIDs))
+		for execID := range acc.execIDs {
+			execIDsList = append(execIDsList, execID)
+		}
+		slices.Sort(execIDsList)
+
 		proc[processKey] = ProcessValue{
 			InInitTree:      acc.model.InInitTree,
 			Syscalls:        syscalls,
 			Parents:         parentsList,
+			ExecIDs:         execIDsList,
 			FirstStartTime:  acc.firstStartTime,
 			LatestStartTime: acc.latestStartTime,
 			LatestExitTime:  acc.latestExitTime,

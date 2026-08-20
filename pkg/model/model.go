@@ -67,6 +67,7 @@ type processValue struct {
 	inInitTree      bool
 	syscalls        *appModelV1.ApplicationSyscalls
 	parents         []string // All unique immediate parent names for this binary/args tuple
+	execIDs         []string
 	firstStartTime  *time.Time
 	latestStartTime *time.Time
 	latestExitTime  *time.Time
@@ -168,6 +169,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 			inInitTree:      psval.InInitTree,
 			syscalls:        psval.Syscalls,
 			parents:         psval.Parents,
+			execIDs:         psval.ExecIDs,
 			firstStartTime:  psval.FirstStartTime,
 			latestStartTime: psval.LatestStartTime,
 			latestExitTime:  psval.LatestExitTime,
@@ -179,6 +181,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 		existing.inInitTree = psval.InInitTree
 		existing.syscalls = psval.Syscalls
 		existing.parents = psval.Parents
+		existing.execIDs = psval.ExecIDs
 		existing.firstStartTime = psval.FirstStartTime
 		existing.latestStartTime = psval.LatestStartTime
 		existing.latestExitTime = psval.LatestExitTime
@@ -227,6 +230,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 							Connections:     slices.Collect(maps.Values(psval.connections)),
 							InInitTree:      wrapperspb.Bool(psval.inInitTree),
 							SyscallInfo:     psval.syscalls,
+							ExecIds:         psval.execIDs,
 							ExecutionCount:  psval.execCount,
 							ExitCount:       psval.exitCount,
 							FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
@@ -260,6 +264,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 							Connections:     slices.Collect(maps.Values(psval.connections)),
 							InInitTree:      wrapperspb.Bool(psval.inInitTree),
 							SyscallInfo:     psval.syscalls,
+							ExecIds:         psval.execIDs,
 							ExecutionCount:  psval.execCount,
 							ExitCount:       psval.exitCount,
 							FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
@@ -519,7 +524,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 						Name: ps.GetName(),
 						Args: ps.GetArguments(),
 					}
-					pmd[pmk] = ProcessValue{}
+					pmd[pmk] = ProcessValue{ExecIDs: ps.GetExecIds()}
 					for _, conn := range ps.GetConnections() {
 						resourceType := v1alpha.ResourceKind_RESOURCE_KIND_UNSPECIFIED
 						if wl.GetKind() != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
@@ -556,7 +561,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 			Name:         ps.GetName(),
 			Args:         ps.GetArguments(),
 		}
-		pmd[pmk] = ProcessValue{}
+		pmd[pmk] = ProcessValue{ExecIDs: ps.GetExecIds()}
 		for _, conn := range ps.GetConnections() {
 			nmk := NetworkKey{
 				SourceNamespace:    HostNamespace,
