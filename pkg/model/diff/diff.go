@@ -13,6 +13,7 @@ package diff
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
@@ -138,8 +139,8 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			continue
 		}
 
-		// Check if process_count (execution or exit count) changed
-		if (p.ExecutionCount > b.ExecutionCount) || (p.ExitCount > b.ExitCount) {
+		// Check if process counts or exec IDs changed.
+		if (p.ExecutionCount > b.ExecutionCount) || (p.ExitCount > b.ExitCount) || !slices.Equal(p.ExecIds, b.ExecIds) {
 			psDiff = append(psDiff, p)
 			if len(p.Connections) > 0 {
 				connDiff = append(connDiff, p)
@@ -151,6 +152,7 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			Hash:            p.Hash,
 			Name:            p.Name,
 			Arguments:       p.Arguments,
+			ExecIds:         p.ExecIds,
 			Children:        p.Children,    // children are additive so use latest count
 			InInitTree:      p.InInitTree,  // this field is likely buggy or at least not well understood
 			SyscallInfo:     p.SyscallInfo, // propagate latest syscall and process totals
