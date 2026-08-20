@@ -381,6 +381,39 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 	assert.Equal(t, []string{"init", "systemd"}, appValue.Parents, "app should have both init and systemd as parents")
 }
 
+func TestProcessModelToApplicationModel_ExecIDsPropagation(t *testing.T) {
+	models := []*types.ProcessModel{
+		{
+			Binary:     "bash",
+			BinaryArgs: "-c true",
+			Namespace:  HostNamespace,
+			ExecIDs:    []string{"id2", "id1"},
+		},
+		{
+			Binary:     "bash",
+			BinaryArgs: "-c true",
+			Namespace:  HostNamespace,
+			ExecIDs:    []string{"id3", "id1"},
+		},
+	}
+
+	result := ProcessModelToApplicationModel(models, map[string]bool{}, map[string]string{})
+	require.NotNil(t, result.ApplicationModel)
+	require.NotNil(t, result.ApplicationModel.Host)
+	require.Len(t, result.ApplicationModel.Host.Processes, 1)
+
+	proc := result.ApplicationModel.Host.Processes[0]
+	assert.Equal(t, "bash", proc.Name)
+	assert.Equal(t, "-c true", proc.Arguments)
+	assert.Equal(t, []string{"id1", "id2", "id3"}, proc.GetExecIds())
+
+	_, processData := ConvertToMonitorData(models, false)
+	key := ProcessKey{Namespace: HostNamespace, Name: "bash", Args: "-c true"}
+	value, found := processData[key]
+	require.True(t, found, "bash process should be in monitor data")
+	assert.Equal(t, []string{"id1", "id2", "id3"}, value.ExecIDs)
+}
+
 // TestProcessModelToApplicationModel_PlainIPClassification is a regression test
 // for the bug where a plain-IP destination was placed in DestinationNames and
 // thus misclassified as a DNS destination. A types.Destination carrying only a
