@@ -249,6 +249,7 @@ Note:
     - Relevant current state
     - Why it needs changing
     - What change the commit brings
+    - Refer to [example commit messages](https://tetragon.io/docs/contribution-guide/submitting-a-pull-request/#example-commit-messages)
 - PR descriptions are complementary with commits -> PR descriptions give the general
   context and overview, commit messages describe the changes
 - PRs need a `release-note/*` label, plus a release-note code fence block in the body for
