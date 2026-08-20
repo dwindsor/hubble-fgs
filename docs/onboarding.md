@@ -240,6 +240,10 @@ We use the same princinples in both OSS and EE repos.
 
 Note:
 
+- Commits must be atomic (a single commit contains exactly one self-contained,
+  logical change that can be applied or rolled back independently without
+  breaking the codebase)
+    - PRs are merged with 'merge rebase'
 - Commit messages: conventional commits, 50/72 limits, `git commit -s` is mandatory (DCO).
 - Commit messages in general should be descriptive:
     - Relevant current state
