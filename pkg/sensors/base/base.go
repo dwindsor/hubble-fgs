@@ -191,6 +191,7 @@ var (
 	MatchBinariesGenMap      = program.MapBuilder(mbset.GenName, Execve)
 	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	SyscallsMap              = program.MapBuilder("tg_syscall_map", SysEnterProg)
+	ProcessTreeExecIdsMap    = program.MapBuilder("tg_pstree_eids", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, Exit, ExitV511)
 )
 
 func setupSensor() {
@@ -355,6 +356,10 @@ func ConfigureMapSizes() {
 
 	if enterpriseOption.Config.EnableSyscallTracking {
 		SyscallsMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	}
+
+	if enterpriseOption.Config.AppModelTrackExecIds {
+		ProcessTreeExecIdsMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	}
 }
 

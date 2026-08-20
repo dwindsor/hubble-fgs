@@ -246,6 +246,10 @@ func getFdLookupMaps() []*program.Map {
 			Addr6LpmMap,
 		}...)
 
+		if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.AppModelTrackExecIds {
+			maps = append(maps, program.MapUserFrom(base.ProcessTreeExecIdsMap))
+		}
+
 	}
 
 	if enterpriseOption.Config.EnableBPFDNSParser {

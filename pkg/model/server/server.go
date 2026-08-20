@@ -57,6 +57,7 @@ import (
 
 const (
 	processTreeMapName         = "process_tree_map"
+	processTreeExecIDsMapName  = "tg_pstree_eids"
 	destinationEndpointMapName = "destination_endpoint_map"
 	listenEndpointMapName      = "listen_endpoint_map"
 	endpointIdMapName          = "tg_endpoint_id_map"
@@ -484,10 +485,22 @@ func getProcessModel(namespaces []string,
 
 	processModel := make([]*types.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMapName)
+	treeExecIDsMap := filepath.Join(bpf.MapPrefixPath(), processTreeExecIDsMapName)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMapName)
 	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMapName)
 	workloadIDMapPath := filepath.Join(bpf.MapPrefixPath(), workloadid.CgroupIDWorkloadIDMapName)
 	cgTrackerIdMapPath := filepath.Join(bpf.MapPrefixPath(), cgTrackerIdMapName)
+
+	var treeExecIDs *ebpf.Map
+	var err error
+	if option.Config.AppModelTrackExecIds {
+		treeExecIDs, err = ebpf.LoadPinnedMap(treeExecIDsMap, nil)
+		if err != nil {
+			logger.GetLogger().Warn("Could not open process tree exec ids map", logfields.Error, err, "file", treeExecIDsMap)
+			return nil, err
+		}
+		defer treeExecIDs.Close()
+	}
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {

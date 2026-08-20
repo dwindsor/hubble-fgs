@@ -92,6 +92,10 @@ func GetDefaultMaps() []*program.Map {
 		maps = append(maps, SyscallsMap)
 	}
 
+	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.AppModelTrackExecIds {
+		maps = append(maps, ProcessTreeExecIdsMap)
+	}
+
 	maps = appendApplicationModelMaps(maps)
 
 	// The BPF ring buffer is available from v5.8, but rather than add another set of
