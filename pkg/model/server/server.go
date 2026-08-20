@@ -146,6 +146,27 @@ type Server struct {
 	nodeLabelsUpdateInterval time.Duration
 }
 
+func addExecIDs(key types.ProcessTreeKey, treeExecIDsMap *ebpf.Map) []string {
+	if treeExecIDsMap == nil {
+		return nil
+	}
+
+	value := types.ProcessTreeExecIds{}
+	if err := treeExecIDsMap.Lookup(&key.Self, &value); err != nil {
+		return nil
+	}
+
+	curLen := min(int(value.CurLen), types.ProcessTreeMaxExecIds)
+
+	hashes := make([]string, 0, curLen)
+	for i := range curLen {
+		idx := (int(value.CurHead) - curLen + i + types.ProcessTreeMaxExecIds) % types.ProcessTreeMaxExecIds
+		hashes = append(hashes, process.GetProcessID(value.ExecIds[idx].Pid, value.ExecIds[idx].Ktime))
+	}
+
+	return hashes
+}
+
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
 	dests := make([]*tetragon.DestinationEndpointDebug, 0)
 	destMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMapName)
@@ -386,7 +407,8 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 // - the process tree map
 // - the destination endpoint map
 // - the syscall map (if syscall tracking is enabled)
-func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, endpt *ebpf.Map, sm *ebpf.Map) {
+// - the process tree exec IDs map (if exec ID tracking is enabled)
+func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, endpt *ebpf.Map, sm *ebpf.Map, treeExecIDs *ebpf.Map) {
 
 	// Shouldn't really ever happen, but give up if any of the maps/key are nil
 	if key == nil || tree == nil || endpt == nil || (sm == nil && option.Config.EnableSyscallTracking) {
@@ -426,6 +448,12 @@ func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, en
 		// Remove syscall tracking entry for this process tree key.
 		if err := sm.Delete(key.Self); err != nil {
 			logger.GetLogger().Warn("Failed to delete stale syscall key for process tree key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID)
+		}
+	}
+
+	if treeExecIDs != nil {
+		if err := treeExecIDs.Delete(&key.Self); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+			logger.GetLogger().Warn("Failed to delete stale exec IDs key for process tree key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID)
 		}
 	}
 }
@@ -882,6 +910,7 @@ func getProcessModel(namespaces []string,
 		kind            string
 		selfBin         string
 		selfArgs        string
+		execIDs         []string
 		dest            []*types.Destination
 		inInitTree      bool
 		syscalls        set.Set[uint32]
@@ -1046,7 +1075,8 @@ func getProcessModel(namespaces []string,
 			key: key,
 			ns:  ns, wl: wl, kind: kind,
 			selfBin: selfBin, selfArgs: selfArgs,
-			dest: dest, inInitTree: inInitTree,
+			execIDs: addExecIDs(key, treeExecIDs),
+			dest:    dest, inInitTree: inInitTree,
 			syscalls:        syscalls,
 			container:       containerInfo,
 			cgroupid:        cgroupid,
@@ -1083,6 +1113,7 @@ func getProcessModel(namespaces []string,
 			Parent:     parentPath,
 			ParentArgs: parentArgs,
 			Parents:    parents,
+			ExecIDs:    e.execIDs,
 			Namespace:  e.ns,
 			Syscalls:   e.syscalls.AsSlice(),
 			Abi:        abi,
@@ -1111,7 +1142,7 @@ func getProcessModel(namespaces []string,
 	// Garbage collect stale process tree keys.
 
 	for staleKey := range staleProcessTreeKeys {
-		removeProcessTreeKeyFromModel(&staleKey, m, endpt, sm)
+		removeProcessTreeKeyFromModel(&staleKey, m, endpt, sm, treeExecIDs)
 	}
 
 	// Garbage collect cgroups where all process tree entries are stale.
