@@ -98,6 +98,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"process_syscall_value":       {types.ProcessSyscallValue{}},
 		"procfs_cfg":                  {modelapi.ProcFSConfigValue{}},
 		"u32":                         {modelapi.ProcFSConfigKey{}},
+		"process_tree_exec_ids":       {types.ProcessTreeExecIds{}},
 	}
 
 	return alignchecker.CheckStructAlignments(pathToObj, alignments, true)

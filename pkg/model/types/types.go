@@ -127,6 +127,14 @@ type ProcessSyscallValue struct {
 	Syscalls [SyscallBitmaskSize]uint64
 }
 
+const ProcessTreeMaxExecIds = 8
+
+type ProcessTreeExecIds struct {
+	ExecIds [ProcessTreeMaxExecIds]ProcessExecveKey
+	CurHead uint64
+	CurLen  uint64
+}
+
 type ContainerInfo struct {
 	Id    string
 	Name  string
