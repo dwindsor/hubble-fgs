@@ -313,6 +313,20 @@ func TestProcessConnectDiff(t *testing.T) {
 	assert.Equal(t, 0, len(process))
 }
 
+func TestProcessDiffExecIDs(t *testing.T) {
+	aSet := psGroup()
+	bSet := psGroup()
+
+	aSet[1].ExecIds = []string{"exec-id-1", "exec-id-2"}
+
+	network, process, err := ProcessDiff(aSet, bSet)
+
+	assert.NoError(t, err)
+	assert.Empty(t, network)
+	require.Len(t, process, 1)
+	assert.Equal(t, []string{"exec-id-1", "exec-id-2"}, process[0].GetExecIds())
+}
+
 func TestProcessNetworkConnectDiff(t *testing.T) {
 	aSet := psGroup()
 	bSet := psGroup()
