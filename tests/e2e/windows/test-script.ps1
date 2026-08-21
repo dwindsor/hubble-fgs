@@ -8,7 +8,7 @@
 $jsonFilePath = "C:\Program Files\Tetragon\events.json"
 
 # Wait for 10 seconds before starting tests 
-Start-Sleep -Seconds 10
+Start-Sleep -Seconds 15
 
 $notepad = Start-Process -FilePath "C:\Windows\System32\notepad.exe" -PassThru
 $notepadPID = $notepad.Id
@@ -64,9 +64,19 @@ Start-Sleep -Seconds 5
 . "$scriptDir\EventParser.ps1"
 
 # Load and parse the JSON events
-Write-Host "Loading events from $jsonFilePath..."
-$events = Get-TetragonEvents -FilePath $jsonFilePath
-Write-Host "Loaded $($events.Count) total events" 
+function Get-EventsFromFile {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$JsonFilePath
+    )
+
+    Write-Host "Loading events from $JsonFilePath..."
+    $loadedEvents = Get-TetragonEvents -FilePath $JsonFilePath
+    Write-Host "Loaded $($loadedEvents.Count) total events"
+    return $loadedEvents
+}
+
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
 
 # Import the function from GetTokenStatistics.ps1 and call it to get the current user UID
 . "$scriptDir\Get-TokenStatistics.ps1"  # Dot-source the script to load its functions
@@ -140,6 +150,7 @@ if ($execEvent) {
 
 # 2. Check for process_exit event (notepad)
 # NOTE: Tetragon on Windows may not generate process_exit events
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
 Write-Host "Checking for process_exit event..."
 $exitEventCount = ($events | Where-Object { $_.PSObject.Properties.Name -contains "process_exit" }).Count
 if ($exitEventCount -eq 0) {
@@ -169,6 +180,7 @@ if ($exitEventCount -eq 0) {
 }
 
 # 3. Check for powershell_script_block event
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
 Write-Host " Checking for powershell_script_block event..."
 if ($scriptBlockCount -eq 0) {
     Write-Host "  Note: No powershell_script_block events in file" -ForegroundColor Yellow
@@ -215,6 +227,7 @@ if ($scriptBlockCount -eq 0) {
 }
 
 # 4. Check for process_connect event (web request to port 443)
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
 Write-Host " Checking for process_connect event (web request)..."
 Write-Host "  Looking for: PID=$PID, Binary=*powershell*, DestPort=443, Protocol=TCP"
 $connectEvent = Find-ProcessConnectEvent -Events $events -ProcessId $PID -Binary "powershell" -DestinationPort 443 -Protocol "TCP"
@@ -236,7 +249,8 @@ if ($connectEvent) {
 }
 
 # 5. Check for process_connect event (IPv4 client connecting to server on port 7991)
-Write-Host " Checking for IPv4 client connect event..."
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
+Write-Host " Checking for IPv4 client connect event... ($attempt/$maxAttempts)"
 Write-Host "  Looking for: PID=$ipv4clientPID, DestIP=127.0.0.1, DestPort=7991, Protocol=TCP"
 $connectV4Event = Find-ProcessConnectEvent -Events $events -ProcessId $ipv4clientPID -Binary "powershell" -DestinationIp "127.0.0.1" -DestinationPort 7991 -Protocol "TCP"
 if (-not $connectV4Event) {
@@ -261,8 +275,8 @@ if ($connectV4Event) {
     $clientConnects = Find-ProcessConnectEvent -Events $events -ProcessId $ipv4clientPID
     if ($clientConnects) {
         Write-Host "  Found $($clientConnects.Count) connections from client PID $ipv4clientPID : "
-         $clientConnects | ForEach-Object {
-             Write-Host " -> $($_.process_connect.destination_ip):$($_.process_connect.destination_port)"
+        $clientConnects | ForEach-Object {
+            Write-Host " -> $($_.process_connect.destination_ip):$($_.process_connect.destination_port)"
         }
     } else {
         #Write-Host "  No connections found from client PID $ipv4clientPID"
@@ -272,6 +286,7 @@ if ($connectV4Event) {
 }
 
 # 6. Check for process_accept event (server accepting connection on port 7991)
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
 Write-Host " Checking for IPv4 server accept event..."
 $acceptEventCount = ($events | Where-Object { $_.PSObject.Properties.Name -contains "process_accept" }).Count
 if ($acceptEventCount -eq 0) {
@@ -302,6 +317,7 @@ if ($acceptEventCount -eq 0) {
 }
 
 # 7. Check for process_close event (server socket close with type "accept")
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
 Write-Host " Checking for server socket close event..."
 Write-Host "  Looking for: PID = $ipv4serverPID, SocketType=accept, Protocol=TCP"
 $closeServerEvent = Find-ProcessCloseEvent -Events $events -ProcessId $ipv4serverPID -Binary "powershell" -SocketType "accept" -Protocol "TCP"
@@ -330,6 +346,7 @@ if ($closeServerEvent) {
 }
 
 # 8. Check for process_close event (client socket close with type "connect")
+$events = Get-EventsFromFile -JsonFilePath $jsonFilePath
 Write-Host "Checking for client socket close event..."
 Write-Host "  Looking for: PID=$ipv4clientPID, SocketType=connect, DestPort=7991, Protocol=TCP"
 $closeClientEvent = Find-ProcessCloseEvent -Events $events -ProcessId $ipv4clientPID -Binary "powershell" -SocketType "connect" -DestinationPort 7991 -Protocol "TCP"
