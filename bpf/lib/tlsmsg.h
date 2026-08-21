@@ -54,6 +54,77 @@
 		memcpy((_tlv).value, (_from), sizeof((_tlv).value)); \
 	} while (0)
 
+/* Clear value[keep, 64). Stores at an offset the verifier cannot pin cost it
+ * far more than a constant-size memset, so the whole 8-byte blocks above the
+ * one holding keep go out under memsets and only that block is masked byte by
+ * byte.
+ */
+static inline __attribute__((always_inline)) void
+flv_zero_tail64(__u8 *value, __u32 keep)
+{
+	__u32 base, blk, i;
+
+	if (keep >= 64)
+		return;
+
+	blk = keep / 8;
+	switch (blk) {
+	case 0:
+		memset(value + 8, 0, 56);
+		break;
+	case 1:
+		memset(value + 16, 0, 48);
+		break;
+	case 2:
+		memset(value + 24, 0, 40);
+		break;
+	case 3:
+		memset(value + 32, 0, 32);
+		break;
+	case 4:
+		memset(value + 40, 0, 24);
+		break;
+	case 5:
+		memset(value + 48, 0, 16);
+		break;
+	case 6:
+		memset(value + 56, 0, 8);
+		break;
+	default:
+		break;
+	}
+
+	base = blk * 8;
+
+	/* The stores below need the verifier to hold base 8-aligned and no higher
+	 * than 56. In C this AND is a no-op clang deletes, taking the bound with
+	 * it, so state it in asm the optimiser cannot see through.
+	 */
+	asm volatile("%0 &= 0x38;\n" : "+r"(base)::);
+
+#pragma unroll
+	for (i = 0; i < 8; i++) {
+		__s64 d = (__s64)(base + i) - (__s64)keep;
+
+		/* Masked rather than branched, because a fork here would put
+		 * back the state count the block memsets saved.
+		 */
+		value[base + i] &= (__u8)(d >> 63);
+	}
+}
+
+/* The copy size has to stay constant to keep the verifier's instruction count
+ * down, so it runs past a shorter value and picks up the extensions that
+ * follow it in the bottle. The tail zeroing then takes those bytes back out.
+ */
+static inline __attribute__((always_inline)) void
+flv_copy_exact64(__u8 *length, __u8 (*value)[64], const void *from, __u32 len)
+{
+	*length = len;
+	memcpy(*value, from, sizeof(*value));
+	flv_zero_tail64(*value, len > sizeof(*value) ? sizeof(*value) : len);
+}
+
 struct msg_tls {
 	__u16 version;
 	__u16 length;

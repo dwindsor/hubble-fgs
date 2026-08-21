@@ -1,0 +1,212 @@
+INGRESSPORT 8888
+
+# A TLS handshake whose server_name extension is followed by ec_point_formats
+# and renegotiation_info, the shape reported in customer-support#1794. The SNI
+# copy reads a constant 64 bytes, so this asserts that every byte past the
+# extension is zero rather than the three extensions that follow it here.
+
+EGRESS client hello
+  # handshake, TLS 1.0, length 124.
+  $ 16 03 01
+  2 124
+
+  # client hello, 120 bytes, version TLS 1.2
+  $ 01
+  $ 00 00 78
+  $ 03 03
+
+  # 32-byte random
+  $ aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c
+  $ dc 78 66 29 22 d8 7c 0c 76 e9 79 0f e8 c0 a1 20
+
+  # length (32 bytes) + session id
+  $ 20
+  $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
+  $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
+
+  # cipher suites length (8 bytes) + suites
+  $ 00 08
+  $ 13 02 13 03 13 01 00 ff
+
+  # compression method length (1 byte) + methods
+  $ 01 00
+
+  # extensions length (39)
+  2 39
+
+  # ext: server_name
+  $ 00 00    # type
+  2 15       # length
+  2 13       # list length
+  $ 00       # type host_name
+  2 10       # name length
+  "foobar.baz"
+
+  # ext: ec_point_formats
+  $ 00 0b 00 02 01 00
+
+  # ext: renegotiation_info
+  $ ff 01 00 01 00
+
+  # ext: supported_versions: TLS1.3, TLS1.2
+  $ 00 2b 00 05 04 03 04 03 03
+END
+
+INGRESS server hello
+  # handshake, TLS 1.2, length 122.
+  $ 16 03 03
+  2 122
+
+  # server hello, 118 bytes, version TLS 1.2
+  $ 02
+  $ 00 00 76
+  $ 03 03
+
+  # random
+  $ 44 12 92 c0 5f 8a 71 62 fd 02 9d b4 ba ec b5 fb
+  $ 3c 31 46 94 7e 54 fd 27 13 ee d2 18 e2 8b 6b 0b
+
+  # length (32 bytes) + session id
+  $ 20
+  $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
+  $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
+
+  # cipher suite: TLS_AES_256_GCM_SHA384
+  $ 13 02
+
+  # compression: null
+  $ 00
+
+  # extensions length 46
+  $ 00 2e
+
+  # ext: key_share (36 bytes)
+  $ 00 33
+  $ 00 24
+  $ 00 1d 00 20 45 f8 9a b4 4d cd 22 ac 05 a6 4d a1
+  $ 65 c4 c0 24 9d 8e 04 5b 94 8f d4 7d cc 61 b7 a8
+  $ 54 76 4b 58
+
+  # ext: supported versions (2 bytes)
+  $ 00 2b
+  $ 00 02
+  $ 03 04
+
+  # change cipher spec
+  $ 14 03 03
+  2 1
+  $ 01
+
+END
+
+EVENT tls
+  $ 06 00 00 00             # op + pad
+  h4 560                    # size
+  $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
+
+  ## socket cookie
+  ? 8                       # socket cookie
+  ? 8                       # version and pad
+
+  TUPLE CLI SRV
+
+  ### Client hello
+
+  $ 03 03                   # version
+  2 124                     # length
+  $ 16                      # type 22, handshake
+  $ 01                      # subtype client_hello
+  $ 00 00                   # legacy version
+
+  # flags (TLS_VERSION)
+  $ 00 04 00 00
+
+  # bytes
+  $ 00 00 00 00
+
+  # alert level & description
+  $ 00 00
+
+  # session id. The tail is the cipher suites vector: session_id is still
+  # copied at a constant size.
+  $ 20 # 32 bytes
+  $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
+  $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
+  ? 32
+
+  # cipher, likewise still copied at a constant size
+  $ 08 # 8 bytes
+  $ 13 02 13 03 13 01 00 ff
+  ? 56
+
+  # sni. ec_point_formats and renegotiation_info follow server_name on the
+  # wire, and the supported_versions extension follows them, so a copy that
+  # ignored the extension length would leave
+  # 00 0b 00 02 01 00 ff 01 00 01 00 00 2b 00 05 04 03 04 03 03 here.
+  $ 0f # 15 bytes
+  2 13                      # server_name list length
+  $ 00                      # type: host_name
+  2 10                      # name length
+  "foobar.baz"              # host name
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00
+
+  # supported versions
+  $ 05
+  $ 04 03 04 03 03
+  ? 11
+  $ 00 00                   # pad
+
+  ### Server hello
+
+  $ 03 03                   # version
+  2 122                     # length
+  $ 16                      # type 22, handshake
+  $ 02                      # subtype server_hello
+  $ 00 00                   # legacy version
+
+  # flags (TLS_VERSION)
+  $ 00 04 00 00
+
+  # bytes
+  $ 00 00 00 00
+
+  # alert level & description
+  $ 00 00
+
+  # session id
+  $ 20 # 32 bytes
+  $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
+  $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
+  ? 32
+
+  # cipher
+  $ 02
+  $ 13 02
+  ? 62
+
+  # sni: the server hello carries no server_name, so nothing is copied and the
+  # value stays as the event was zeroed
+  $ 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+  # supported versions
+  $ 02
+  $ 03 04
+  ? 14
+  $ 00 00                   # pad
+
+  ### Process key.
+  NZ 4          # pid
+  $ 00 00 00 00 # pad
+  NZ 8          # ktime
+
+  $ 00 00 00 00 # padding inserted by the perf ring
+END
+
+CLOSE

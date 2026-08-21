@@ -190,7 +190,8 @@ bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls,
 		tls->flags |= TLS_MAX_TLVS;
 
 	if (ext_sni)
-		FLV_COPY(tls->flv_sni, ext_sni, ext_sni_len);
+		flv_copy_exact64(&tls->flv_sni.length, &tls->flv_sni.value,
+				 ext_sni, ext_sni_len);
 
 	if (ext_ver) {
 		tls->flags |= TLS_VERSION;
