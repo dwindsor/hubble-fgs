@@ -121,7 +121,7 @@ func TestGetTLSSNI(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			gotType, gotName := GetTLSSNI(tc.flv.Value)
+			gotType, gotName := GetTLSSNI(&tc.flv)
 			if gotType != tc.wantType {
 				t.Errorf("GetTLSSNI() type = %q, expected %q", gotType, tc.wantType)
 			}
@@ -146,7 +146,7 @@ func FuzzGetTLSSNI(f *testing.F) {
 		copy(flv.Value[:], data)
 		flv.Length = length
 
-		_, name := GetTLSSNI(flv.Value)
+		_, name := GetTLSSNI(&flv)
 		if !utf8.ValidString(name) {
 			t.Fatalf("GetTLSSNI() name = %q is not valid UTF-8", name)
 		}

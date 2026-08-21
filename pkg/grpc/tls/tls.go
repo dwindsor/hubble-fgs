@@ -60,7 +60,7 @@ type MsgTLSEventUnix struct {
 
 func ObserverTLSPrinter(msg *MsgTLSEventUnix, log logrus.FieldLogger) {
 	op := msg.Msg.Common.Op
-	typeSNI, nameSNI := readertls.GetTLSSNI(msg.Msg.ClientHello.SNI.Value)
+	typeSNI, nameSNI := readertls.GetTLSSNI(&msg.Msg.ClientHello.SNI)
 
 	log.WithFields(logrus.Fields{
 		"op":                           ops.OpCode(op).String(),
@@ -107,7 +107,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 		parent = parentInt.UnsafeGetProcess()
 	}
 
-	typeSNI, nameSNI := readertls.GetTLSSNI(event.Msg.ClientHello.SNI.Value)
+	typeSNI, nameSNI := readertls.GetTLSSNI(&event.Msg.ClientHello.SNI)
 
 	clientVersion := readertls.GetTLSVersion(event.Msg.ClientHello.Version)
 	serverVersion := readertls.GetTLSVersion(event.Msg.ServerHello.Version)

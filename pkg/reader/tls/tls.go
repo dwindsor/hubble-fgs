@@ -24,6 +24,7 @@ import (
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/protoutils"
 )
 
 func GetTLSSession(flv *api.FLV64) (s string) {
@@ -129,14 +130,41 @@ func GetTLSVersion(version uint16) string {
 	}
 }
 
-func GetTLSSNI(sni [api.SNI_BUFFER_SIZE]byte) (string, string) {
+// Offsets into the server_name extension body (RFC 6066 section 3): a 2-byte
+// ServerNameList length, then entries of a 1-byte NameType, a 2-byte name
+// length, and the name.
+const (
+	sniListOff     = 2 // past the list length prefix, which its value excludes
+	sniNameTypeOff = sniListOff
+	sniNameLenOff  = sniNameTypeOff + 1
+	sniNameOff     = sniNameLenOff + 2
+	sniEntryHdrLen = sniNameOff - sniListOff
+
+	sniHostName = 0 // the only NameType RFC 6066 defines
+)
+
+func GetTLSSNI(flv *api.FLV64) (string, string) {
+	sni, err := flv.Bytes()
+	if err != nil {
+		logger.GetLogger().Debug("TLS SNI truncated", logfields.Error, err)
+	}
+
+	if len(sni) < sniNameOff {
+		return "unknown", ""
+	}
+
 	typeSNI := "unknown"
-	switch sni[2] {
-	case 0:
+	switch sni[sniNameTypeOff] {
+	case sniHostName:
 		typeSNI = "host_name"
 	}
-	nameLength := min(binary.BigEndian.Uint16(sni[3:5]), api.SNI_BUFFER_SIZE-5)
-	return typeSNI, string(sni[5 : 5+nameLength])
+
+	// The peer sets both lengths, so clamp each to the room behind it. Chained,
+	// the two hold the name's end at len(sni) or below.
+	listLength := min(int(binary.BigEndian.Uint16(sni[:sniListOff])), len(sni)-sniListOff)
+	nameLength := min(int(binary.BigEndian.Uint16(sni[sniNameLenOff:sniNameOff])),
+		max(listLength-sniEntryHdrLen, 0))
+	return typeSNI, protoutils.SanitizeString(string(sni[sniNameOff : sniNameOff+nameLength]))
 }
 
 func GetTLSSupportedVersions(flv *api.FLV16, hasLength bool) string {
