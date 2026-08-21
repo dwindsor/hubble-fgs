@@ -328,15 +328,6 @@ func runTests(t *testing.T, sensor int, dir string) {
 					fixupTestCaseForNopSensor(tc)
 				}
 
-				// FLAKY_HTTP tolerates the known-flaky TLS cases (TestTLS13 /
-				// TestCGTLS13) on the kernels where they misbehave. Scope it to
-				// the TLS sensor only: marking the http/http2 cases broken too
-				// would silently mask real parser regressions (e.g. stale event
-				// layout in the fixtures).
-				if sensor == SENS_TLS && os.Getenv("FLAKY_HTTP") != "" {
-					tc.Tags["broken"] = struct{}{}
-				}
-
 				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
 					err = tc.Run(t, TEST_TIMEOUT)
 					if err != nil {

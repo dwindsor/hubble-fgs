@@ -421,7 +421,7 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 552                    # size
+  h4 560                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
 
   ## socket cookie
@@ -513,13 +513,22 @@ END
 EVENT tlscont
   ## op (TLSCONT)
   $ 0c
+  # pad. HandleTLSCont does not read this layout, see #8917.
+  ? 7
 
   ## socket cookie
   ? 8                       # socket cookie
-  ? 8                       # version and pad
+  ? 8                       # version
 
   ## length
   h4 3837
+
+  # msg_tls_cont_event is 8-byte aligned, so sizeof reaches 32 while its
+  # last field ends at 28. The payload starts at 32 and this four-byte gap
+  # still holds whatever was there. HandleTLSCont reads the header at the
+  # offsets it had before the struct lost its packed attribute, so
+  # userspace and this fixture disagree, see #8917.
+  ? 4
 
   ## certificates
   $ 16 03 03
@@ -763,5 +772,6 @@ EVENT tlscont
   $ e9 6f 82 c8 11 42 0d fb e9 ec e3 86 00 de 9d 10
   $ e3 38 fa a4 7d b1 d8 e8 49 82 84 06 9b 2b e8 6b
   $ 4f 01 0c 38 77 2e f9 dd e7 39 00 00
+  $ 00 00 00 00 00 # padding inserted by the perf ring
 END
 
