@@ -11,6 +11,9 @@
 package tls
 
 import (
+	"encoding/hex"
+	"runtime/debug"
+
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -25,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
 )
@@ -163,8 +167,24 @@ func (msg *MsgTLSEventUnix) Notify() bool {
 	return true
 }
 
-func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
-	var res *tetragon.GetEventsResponse
+func (msg *MsgTLSEventUnix) HandleMessage() (res *tetragon.GetEventsResponse) {
+	// getTLS decodes buffers the kernel filled from a remote peer's handshake
+	// and hands the SNI to a Prometheus accessor that panics on invalid UTF-8.
+	// Recovering costs one event instead of the process. The socket cookie and
+	// the SNI bytes identify the handshake that caused it.
+	defer func() {
+		if r := recover(); r != nil {
+			logger.GetLogger().Error("dropping TLS event after panic",
+				"panic", r,
+				"socket_cookie", msg.Msg.SocketCookie,
+				"client_hello_sni", hex.EncodeToString(msg.Msg.ClientHello.SNI.Value[:]),
+				"stack", string(debug.Stack()),
+			)
+			tlsmetrics.TlsErrorsTotal(tlsapi.TlsErrorHandlerPanic, false).Inc()
+			res = nil
+		}
+	}()
+
 	switch msg.Msg.Common.Op {
 	case ops.MSG_OP_TLS:
 		t := getTLS(msg)

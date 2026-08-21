@@ -758,7 +758,7 @@ Errors encountered while processing TLS events. For internal use only.
 | label | values |
 | ----- | ------ |
 | `continuation` | `false, true` |
-| `error` | `bad header, bad length read, failed to parse X509 certificate, failed to read certificate, missing certificate, partial certificate, unmatched continuation event` |
+| `error` | `bad header, bad length read, failed to parse X509 certificate, failed to read certificate, missing certificate, panic converting event, partial certificate, unmatched continuation event` |
 
 ### `tetragon_tls_expected_continutation_events_total`
 

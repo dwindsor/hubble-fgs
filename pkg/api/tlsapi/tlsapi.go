@@ -107,6 +107,11 @@ const (
 	TlsCertificateErrorSpuriousCerts = 0x2000
 )
 
+// TlsErrorHandlerPanic counts TLS events dropped because converting them to
+// protobuf panicked. It has no gRPC counterpart, because the drop leaves no
+// event to report it on.
+const TlsErrorHandlerPanic = 0x4000
+
 type MsgTLS struct {
 	Version           uint16   `align:"version"`
 	Length            uint16   `align:"length"`

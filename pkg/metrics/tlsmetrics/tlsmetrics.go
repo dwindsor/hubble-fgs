@@ -91,6 +91,8 @@ var tlsErrorString = map[int]string{
 	0x1000: "failed to parse X509 certificate",
 	// TlsCertificateErrorSpuriousCerts
 	0x2000: "unmatched continuation event",
+	// TlsErrorHandlerPanic
+	0x4000: "panic converting event",
 }
 
 func TlsErrorsTotal(err int, continuation bool) prometheus.Counter {
