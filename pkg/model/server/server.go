@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -63,6 +64,7 @@ const (
 	endpointIdMapName          = "tg_endpoint_id_map"
 	syscallMapName             = "tg_syscall_map"
 	cgTrackerIdMapName         = "tg_cgtracker_map"
+	defaultNodeLabelsInterval  = time.Minute
 )
 
 // decodeBinaryArgs extracts the null-terminated binary path and
@@ -135,6 +137,11 @@ type Server struct {
 	binaryArgsCache *lru.Cache[uint64, cachedBinaryInfo]
 
 	metadataService local.MetadataService
+
+	nodeLabelsMutex          sync.Mutex
+	nodeLabels               map[string]string
+	nodeLabelsLastUpdated    time.Time
+	nodeLabelsUpdateInterval time.Duration
 }
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
@@ -1169,14 +1176,22 @@ func (s *Server) GetApplicationModel(ctx context.Context, nsFilter map[string]bo
 }
 
 func (s *Server) GetNodeLabels(ctx context.Context) map[string]string {
-	labels := make(map[string]string)
+	now := s.TimeNow()
+	s.nodeLabelsMutex.Lock()
+	defer s.nodeLabelsMutex.Unlock()
+
+	if s.nodeLabels != nil && now.Before(s.nodeLabelsLastUpdated.Add(s.nodeLabelsUpdateInterval)) {
+		return s.nodeLabels
+	}
 
 	nodeLabels, err := s.metadataService.GetLabels(ctx)
 	if err != nil {
 		logger.GetLogger().Warn("Failed to get node labels. node_labels field will be empty", logfields.Error, err)
-		return labels
+		nodeLabels = make(map[string]string)
 	}
-	return nodeLabels
+	s.nodeLabels = nodeLabels
+	s.nodeLabelsLastUpdated = now
+	return s.nodeLabels
 }
 
 func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
@@ -1331,10 +1346,11 @@ func NewServer(enableBpfId bool) (*Server, error) {
 	}
 
 	return &Server{
-		cgTrackerIdCache: cgTrackerIdCacheInstance,
-		containerIdCache: containerIdCacheInstance,
-		binaryArgsCache:  binaryArgsCacheInstance,
-		TimeNow:          time.Now,
-		metadataService:  mService,
+		cgTrackerIdCache:         cgTrackerIdCacheInstance,
+		containerIdCache:         containerIdCacheInstance,
+		binaryArgsCache:          binaryArgsCacheInstance,
+		TimeNow:                  time.Now,
+		metadataService:          mService,
+		nodeLabelsUpdateInterval: defaultNodeLabelsInterval,
 	}, nil
 }
