@@ -302,19 +302,19 @@ jobs:
       valuesFileChanges: |
         {
           "tetragon.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon${{
-            inputs.is_release && '' || '-ci'
+            !inputs.is_release && '-ci' || ''
           }}",
           "tetragon.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
           "tetragonAggregator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon-aggregator${{
-            inputs.is_release && '' || '-ci'
+            !inputs.is_release && '-ci' || ''
           }}",
           "tetragonAggregator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
           "tetragonOperator.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon-operator${{
-            inputs.is_release && '' || '-ci'
+            !inputs.is_release && '-ci' || ''
           }}",
           "tetragonOperator.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
           "rthooks.image.repository": "${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.image_path }}/tetragon-rthooks${{
-            inputs.is_release && '' || '-ci'
+            !inputs.is_release && '-ci' || ''
           }}",
           "rthooks.image.tag": "${{ inputs.is_release && inputs.tag || inputs.sha }}",
         }
