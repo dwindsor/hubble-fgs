@@ -121,7 +121,8 @@ ifdef EXTRA_GO_BUILD_FLAGS
 endif
 
 GO_BUILD      = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) build $(GO_BUILD_FLAGS)
-GO_BUILD_SLIM := $(subst version.Name=tetragon-enterprise,version.Name=tetragon-slim,$(GO_BUILD))
+GO_BUILD_NOK8S := $(GO_BUILD) -overlay pkg/tracingpolicy/nok8s-embed-overlay.json
+GO_BUILD_SLIM := $(subst version.Name=tetragon-enterprise,version.Name=tetragon-slim,$(GO_BUILD_NOK8S))
 
 .PHONY: all
 all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
@@ -145,7 +146,7 @@ tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
 
 .PHONY: tetragon-nok8s
 tetragon-nok8s: tetragon-fs-scanner ## Compile the Tetragon agent (nok8s build).
-	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetragon
+	$(GO_BUILD_NOK8S) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetragon
 
 .PHONY: tetragon-aggregator
 tetragon-aggregator: ## Compile the Tetragon aggregator
@@ -161,7 +162,7 @@ tetra: ## Compile the Tetragon gRPC client.
 
 .PHONY: tetra-nok8s
 tetra-nok8s: ## Compile the Tetragon gRPC client (nok8s build)
-	$(GO_BUILD) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetra
+	$(GO_BUILD_NOK8S) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetra
 
 .PHONY: tetrabox
 tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
