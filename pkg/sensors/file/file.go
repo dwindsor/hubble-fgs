@@ -462,7 +462,7 @@ var (
 		{"lsm", "security_inode_setattr", []FimFunc{
 			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR, tetragon.FileAction_FILE_WRITE}...)},
 			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR, tetragon.FileAction_FILE_WRITE}...)},
-			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR, tetragon.FileAction_FILE_WRITE}...)},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm_v63.o", "inode_setattr", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR, tetragon.FileAction_FILE_WRITE}...)},
 		}},
 		{"lsm", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_lsm.o", "inode_link", fm.NewSet(FileAction_REQUIRED)}}},
 		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_lsm.o", "file_open", fm.NewSet(tetragon.FileAction_FILE_OPEN)}}},
@@ -2259,7 +2259,19 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 		for _, f := range h.prog {
 			if f.proto == p {
 				progFound = true
-				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName), f.progSection, f.actions})
+				progName := fixProgName(f.progName)
+
+				// Fix object file for lsm/security_inode_setattr
+				// In kernels <= 6.5 security_inode_setattr prototype does not match
+				// the LSM args so we also need to check bpf_lsm_inode_setattr prototype.
+				if h.tp == "lsm" && h.name == "security_inode_setattr" {
+					p, err := fgsBTF.GetFuncProto(spec, "bpf_lsm_inode_setattr", false)
+					if err == nil && p == "bpf_lsm_inode_setattr(struct dentry*, struct iattr*)" {
+						progName = "bpf_security_inode_setattr_enforce_lsm.o"
+					}
+				}
+
+				fimProgs = append(fimProgs, FimProg{h.tp, h.name, progName, f.progSection, f.actions})
 				break
 			}
 		}

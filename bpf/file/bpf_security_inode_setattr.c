@@ -157,7 +157,11 @@ int BPF_KPROBE(security_inode_setattr_v63, struct mnt_idmap *idmap, struct dentr
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_setattr")
+#if defined(__V63_BPF_PROG)
+int BPF_PROG(security_inode_setattr_lsm, struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr, int ret)
+#else
 int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *attr, int ret)
+#endif
 {
 	int err;
 

@@ -149,6 +149,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  bpf_vfs_unlink_enforce_lsm.o bpf_vfs_unlink_enforce_fmod.o \
 	  bpf_vfs_rename_enforce_lsm.o bpf_vfs_rename_enforce_fmod.o \
 	  bpf_security_inode_setattr_enforce_lsm.o bpf_security_inode_setattr_enforce_fmod.o \
+	  bpf_security_inode_setattr_enforce_lsm_v60.o bpf_security_inode_setattr_enforce_lsm_v63.o \
 	  bpf_security_inode_setattr_enforce_fmod_v60.o bpf_security_inode_setattr_enforce_fmod_v63.o \
 	  bpf_security_bprm_check.o bpf_security_bprm_check_v419.o bpf_security_bprm_check_enforce_lsm.o bpf_security_bprm_check_enforce_fmod.o \
 	  bpf_security_bprm_check_enforce_lsm_digest.o bpf_io_uring.o bpf_fsnotify.o bpf_fsnotify_v419.o bpf_lsm_check.o \
@@ -589,6 +590,8 @@ deps/bpf_vfs_mknod_enforce_fmod.d: $(FILEDIR)/bpf_vfs_mknod.c
 deps/bpf_vfs_rename_enforce_lsm.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_vfs_rename_enforce_fmod.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_security_inode_setattr_enforce_lsm.d: $(FILEDIR)/bpf_security_inode_setattr.c
+deps/bpf_security_inode_setattr_enforce_lsm_v60.d: $(FILEDIR)/bpf_security_inode_setattr.c
+deps/bpf_security_inode_setattr_enforce_lsm_v63.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_inode_setattr_enforce_fmod.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_inode_setattr_enforce_fmod_v60.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_security_inode_setattr_enforce_fmod_v63.d: $(FILEDIR)/bpf_security_inode_setattr.c
