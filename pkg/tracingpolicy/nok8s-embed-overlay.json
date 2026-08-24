@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "vendor/github.com/cilium/tetragon/pkg/tracingpolicy/schemas/tracingpolicy-cilium.io.json": "pkg/tracingpolicy/schemas/tracingpolicy-cilium.io.json"
+  }
+}
