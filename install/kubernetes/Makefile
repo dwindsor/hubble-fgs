@@ -47,7 +47,7 @@ ISOVALENT_IPA_CRDS := $(ROOT_DIR)/$(ISOVALENT_IPA_CRDS_RELATIVE_DIR)
 # (smartswitches, smartswitchnetworkpolicies, networkobjectgroups) moved to the
 # hs-fw repo and are intentionally omitted.
 ISOVALENT_IPA_CRDS_FILES := isovalent.com_tetragonnodes.yaml
-JSON_SCHEMAS := $(ROOT_DIR)/install/kubernetes/schemas
+JSON_SCHEMAS := $(ROOT_DIR)/pkg/tracingpolicy/schemas
 TARGET_MAX_CHAR_NUM = 25
 DASHBOARDS_DIR := $(EE_PATCHES)/dashboards
 CHART_DASHBOARDS_DIR := $(EE_CHART)/dashboards
@@ -97,7 +97,7 @@ endef
 all: tetragon ## Run all build-related Makefile targets
 
 .PHONY: tetragon
-tetragon: $(OSS_CHART) $(EE_PATCHES) ## Generate and validate Tetragon Enterprise Helm chart
+tetragon: $(OSS_CHART) $(EE_PATCHES) $(EE_CHART)/schemas ## Generate and validate Tetragon Enterprise Helm chart
 	# Add enterprise bits into the OSS chart
 	$(MAKE) oss-override
 	$(MAKE) tetragon/Chart.yaml
@@ -181,14 +181,17 @@ openapi2jsonschema.py: ## openapi2jsonschema.py script generating JSON schema fr
 lint: ## Lint the Helm chart
 	$(HELM) lint . --with-subcharts
 
+.PHONY: $(EE_CHART)/schemas
+$(EE_CHART)/schemas: $(EE_CHART)/crds-yaml openapi2jsonschema.py ## generate json schema from crds
+	mkdir -p $(JSON_SCHEMAS)/
+	$(PYTHON) /bin/bash -c "pip install pyyaml && python /code/install/kubernetes/openapi2jsonschema.py /code/$(CRDS_RELATIVE_DIR)/*"
+	mv -f $(ROOT_DIR)/install/kubernetes/*-cilium.io.json $(JSON_SCHEMAS)/
+
 .PHONY: kubeconform
 ## To validate (using openapi2jsonschema.py) default rule set policies included in the Helm chart, we need to have the JSON schema of the TracingPolicy CRD.
 ## Run kubeconform Helm chart validation checks to validate the templated Kubernetes (custom) resources against their spec.
 ## Skip validating the Tetragon CRDs themselves (circular dependency)
-kubeconform: ## Validate Helm chart using kubeconform
-	mkdir -p $(JSON_SCHEMAS)/
-	$(PYTHON) /bin/bash -c "pip install pyyaml && python /code/install/kubernetes/openapi2jsonschema.py /code/$(CRDS_RELATIVE_DIR)/*"
-	mv $(ROOT_DIR)/install/kubernetes/*-cilium.io.json $(JSON_SCHEMAS)/
+kubeconform: $(EE_CHART)/schemas ## Validate Helm chart using kubeconform
 	$(MAKE) $(EE_CHART)/charts
 	@echo "## Testing Helm chart: \"$(EE_CHART)\""
 	$(HELM) template $(EE_CHART) . $(HELM_KUBE_VERSION_ARG) \
@@ -202,7 +205,6 @@ kubeconform: ## Validate Helm chart using kubeconform
 		-skip CustomResourceDefinition \
 		-strict \
 		-kubernetes-version $(K8S_VERSION)
-	rm -rf $(JSON_SCHEMAS)/
 
 ##@ Documentation
 
