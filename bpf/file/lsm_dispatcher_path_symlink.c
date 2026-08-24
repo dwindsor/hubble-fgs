@@ -6,7 +6,10 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("lsm/path_symlink")
-int BPF_PROG(lsm_security_path_symlink, const struct path *dir, struct dentry *dentry, const char *old_name)
+int BPF_PROG(lsm_security_path_symlink, const struct path *dir, struct dentry *dentry, const char *old_name, int ret)
 {
+	if (ret)
+		return ret;
+
 	return handle_dispatcher(ctx);
 }

@@ -41,9 +41,12 @@ static inline __attribute__((always_inline)) __u32 unix_stream_connect(void *ctx
 }
 
 SEC("lsm/unix_stream_connect")
-int BPF_PROG(lsm_security_unix_stream_connect, struct sock *sock, struct sock *other, struct sock *newsk)
+int BPF_PROG(lsm_security_unix_stream_connect, struct sock *sock, struct sock *other, struct sock *newsk, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = unix_stream_connect(ctx, sock, other, newsk);
 	if (err < 0) {

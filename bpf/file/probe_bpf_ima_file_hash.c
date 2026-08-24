@@ -13,7 +13,7 @@ struct {
 } probe_digests_map SEC(".maps");
 
 SEC("lsm.s/bprm_check_security")
-int BPF_PROG(bprm_check, struct linux_binprm *bprm)
+int BPF_PROG(bprm_check, struct linux_binprm *bprm, int ret)
 {
 	__u32 dev = BPF_CORE_READ(bprm, file, f_inode, i_sb, s_dev);
 	struct inode_key key = {
@@ -22,6 +22,9 @@ int BPF_PROG(bprm_check, struct linux_binprm *bprm)
 		.dev_minor = MINOR(dev),
 	};
 	struct digest_key *val = 0;
+
+	if (ret)
+		return ret;
 
 	val = map_lookup_elem(&probe_digests_map, &key);
 	if (!val)

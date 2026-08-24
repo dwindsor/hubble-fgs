@@ -15,9 +15,12 @@ static void f_chmod(struct msg_file_ops *msg, struct dentry *dentry, umode_t mod
 }
 
 SEC("lsm/path_chmod")
-int BPF_PROG(lsm_security_path_chmod, const struct path *path, umode_t mode)
+int BPF_PROG(lsm_security_path_chmod, const struct path *path, umode_t mode, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_setattr(ctx, path, action_chattr, hook_security_path_chmod, mode, 0, 0, f_chmod);
 	if (err < 0) {

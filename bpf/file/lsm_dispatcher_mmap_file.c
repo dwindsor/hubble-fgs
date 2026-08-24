@@ -6,7 +6,10 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("lsm/mmap_file")
-int BPF_PROG(lsm_security_mmap_file, struct file *file, unsigned long prot, unsigned long flags)
+int BPF_PROG(lsm_security_mmap_file, struct file *file, unsigned long reqprot, unsigned long prot, unsigned long flags, int ret)
 {
+	if (ret)
+		return ret;
+
 	return handle_dispatcher(ctx);
 }

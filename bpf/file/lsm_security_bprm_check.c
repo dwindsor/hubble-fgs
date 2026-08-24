@@ -65,9 +65,12 @@ FUNC_LOCAL __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 }
 
 SEC("lsm/bprm_check_security")
-int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
+int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_file_exec(ctx, bprm);
 	if (err < 0) {

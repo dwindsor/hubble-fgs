@@ -6,7 +6,10 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("lsm/path_mkdir")
-int BPF_PROG(lsm_security_path_mkdir, const struct path *dir, struct dentry *dentry, umode_t mode)
+int BPF_PROG(lsm_security_path_mkdir, const struct path *dir, struct dentry *dentry, umode_t mode, int ret)
 {
+	if (ret)
+		return ret;
+
 	return handle_dispatcher(ctx);
 }

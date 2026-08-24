@@ -6,7 +6,10 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("lsm/file_open")
-int BPF_PROG(lsm_security_file_open, struct file *file)
+int BPF_PROG(lsm_security_file_open, struct file *file, int ret)
 {
+	if (ret)
+		return ret;
+
 	return handle_dispatcher(ctx);
 }

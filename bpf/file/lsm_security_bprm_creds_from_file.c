@@ -7,7 +7,7 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("lsm/bprm_creds_from_file")
-int BPF_PROG(security_bprm_committing_creds_lsm, struct linux_binprm *bprm, struct file *file)
+int BPF_PROG(security_bprm_committing_creds_lsm, struct linux_binprm *bprm, struct file *file, int ret)
 {
 	struct msg_file_ops *msg;
 	struct exec_key key = {
@@ -17,6 +17,9 @@ int BPF_PROG(security_bprm_committing_creds_lsm, struct linux_binprm *bprm, stru
 	__u32 operation, rule_id, msg_id = 0;
 	union exec_flags flags;
 	struct digest_key *digest = 0;
+
+	if (ret)
+		return ret;
 
 	msg = map_lookup_elem(&exec_cred_map, &key);
 	if (!msg)

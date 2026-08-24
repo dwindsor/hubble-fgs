@@ -19,8 +19,11 @@ static int empty_callback(void *map, const void *key, void *value, void *ctx)
 }
 
 SEC("lsm/file_open")
-int BPF_PROG(lsm_security_file_open, struct file *file)
+int BPF_PROG(lsm_security_file_open, struct file *file, int ret)
 {
+	if (ret)
+		return ret;
+
 	for_each_map_elem(&test_probe_map, &empty_callback, 0, 0);
 	return 0;
 }

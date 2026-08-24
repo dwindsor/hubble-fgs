@@ -54,9 +54,12 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 }
 
 SEC("lsm/file_open")
-int BPF_PROG(lsm_security_file_open, struct file *file)
+int BPF_PROG(lsm_security_file_open, struct file *file, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_file_open(ctx, file);
 	if (err < 0) {

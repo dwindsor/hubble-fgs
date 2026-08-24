@@ -6,7 +6,10 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("lsm/bprm_check_security")
-int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
+int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 {
+	if (ret)
+		return ret;
+
 	return handle_dispatcher(ctx);
 }

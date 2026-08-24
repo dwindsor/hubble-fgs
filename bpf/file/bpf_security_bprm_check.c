@@ -165,9 +165,12 @@ SEC("lsm.s/bprm_check_security")
 #else
 SEC("lsm/bprm_check_security")
 #endif
-int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
+int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = handle_file_exec(ctx, bprm);
 	if (err < 0) {

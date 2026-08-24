@@ -16,9 +16,12 @@ static void f_chown(struct msg_file_ops *msg, struct dentry *dentry, umode_t mod
 }
 
 SEC("lsm/path_chown")
-int BPF_PROG(lsm_security_path_chown, const struct path *path, uid_t uid, gid_t gid)
+int BPF_PROG(lsm_security_path_chown, const struct path *path, uid_t uid, gid_t gid, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_setattr(ctx, path, action_chattr, hook_security_path_chown, 0, uid, gid, f_chown);
 	if (err < 0) {

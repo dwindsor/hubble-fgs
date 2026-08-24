@@ -48,9 +48,12 @@ static inline __attribute__((always_inline)) __u32 path_mkdir(void *ctx, const s
 }
 
 SEC("lsm/path_mkdir")
-int BPF_PROG(lsm_security_path_mkdir, const struct path *dir, struct dentry *dentry, umode_t mode)
+int BPF_PROG(lsm_security_path_mkdir, const struct path *dir, struct dentry *dentry, umode_t mode, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_mkdir(ctx, dir, dentry);
 	if (err < 0) {

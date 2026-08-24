@@ -104,9 +104,12 @@ static inline __attribute__((always_inline)) __u32 path_symlink(void *ctx, const
 }
 
 SEC("lsm/path_symlink")
-int BPF_PROG(lsm_security_path_symlink, const struct path *dir, struct dentry *dentry, const char *old_name)
+int BPF_PROG(lsm_security_path_symlink, const struct path *dir, struct dentry *dentry, const char *old_name, int ret)
 {
 	int err = 0;
+
+	if (ret)
+		return ret;
 
 	err = path_symlink(ctx, dir, dentry, old_name);
 	if (err < 0) {

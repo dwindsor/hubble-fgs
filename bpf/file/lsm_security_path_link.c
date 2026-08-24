@@ -135,9 +135,12 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 }
 
 SEC("lsm/path_link")
-int BPF_PROG(lsm_security_path_link, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry)
+int BPF_PROG(lsm_security_path_link, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_link(ctx, old_dentry, new_dir, new_dentry);
 	if (err < 0) {

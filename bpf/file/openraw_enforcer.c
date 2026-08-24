@@ -53,12 +53,15 @@ int BPF_PROG(do_open, struct nameidata *nd, struct file *file, const struct open
 }
 
 SEC("lsm/file_open")
-int BPF_PROG(file_enforcer_open, struct file *file)
+int BPF_PROG(file_enforcer_open, struct file *file, int ret)
 {
 	struct kpath_key map_key = {
 		.ptr = (__u64)file,
 		.pid_tgid = get_current_pid_tgid(),
 	};
+
+	if (ret)
+		return ret;
 
 	// if we find that key in this map, we need to block that open call
 	if (!map_lookup_elem(&file_openraw_enforce_map, &map_key))

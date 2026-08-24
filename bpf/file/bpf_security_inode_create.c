@@ -84,9 +84,12 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_create")
-int BPF_PROG(security_inode_create_lsm, struct inode *dir, struct dentry *dentry, umode_t mode)
+int BPF_PROG(security_inode_create_lsm, struct inode *dir, struct dentry *dentry, umode_t mode, int ret)
 {
 	__u32 err;
+
+	if (ret)
+		return ret;
 
 	err = block_file_create(ctx, dir, dentry);
 	if (err < 0) {

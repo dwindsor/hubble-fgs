@@ -149,9 +149,12 @@ int BPF_KPROBE(security_file_open, struct file *file)
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/file_open")
-int BPF_PROG(security_file_open_lsm, struct file *file)
+int BPF_PROG(security_file_open_lsm, struct file *file, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = file_open(ctx, file);
 	if (err < 0) {

@@ -105,9 +105,12 @@ int BPF_KPROBE(security_inode_rmdir, struct inode *dir, struct dentry *dentry)
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_rmdir")
-int BPF_PROG(security_inode_rmdir_lsm, struct inode *dir, struct dentry *dentry)
+int BPF_PROG(security_inode_rmdir_lsm, struct inode *dir, struct dentry *dentry, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = kprobe_security_inode_rmdir(ctx, dir, dentry);
 	if (err < 0) {

@@ -68,9 +68,12 @@ int BPF_KRETPROBE(vfs_mkdir_exit_v614, struct dentry *dentry)
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_mkdir")
-int BPF_PROG(security_inode_mkdir_lsm, struct inode *dir, struct dentry *dentry, umode_t mode)
+int BPF_PROG(security_inode_mkdir_lsm, struct inode *dir, struct dentry *dentry, umode_t mode, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = security_inode_mk(ctx, dir, dentry, hook_security_inode_mkdir);
 	if (err < 0) {

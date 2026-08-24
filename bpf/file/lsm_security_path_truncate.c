@@ -9,9 +9,12 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 static void f_truncate(struct msg_file_ops *msg, struct dentry *dentry, umode_t mode, uid_t uid, gid_t gid) {}
 
 SEC("lsm/path_truncate")
-int BPF_PROG(lsm_security_path_truncate, const struct path *path)
+int BPF_PROG(lsm_security_path_truncate, const struct path *path, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_setattr(ctx, path, action_write, hook_security_path_truncate, 0, 0, 0, f_truncate);
 	if (err < 0) {

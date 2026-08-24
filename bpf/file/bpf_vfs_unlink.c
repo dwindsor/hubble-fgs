@@ -161,9 +161,12 @@ int BPF_KPROBE(vfs_unlink_v419, struct inode *dir, struct dentry *dentry, struct
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_unlink")
-int BPF_PROG(security_inode_unlink_lsm, struct inode *dir, struct dentry *dentry)
+int BPF_PROG(security_inode_unlink_lsm, struct inode *dir, struct dentry *dentry, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = kprobe_vfs_unlink(ctx, dir, dentry, hook_security_inode_unlink);
 	if (err < 0) {

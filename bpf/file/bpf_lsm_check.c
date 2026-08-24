@@ -13,10 +13,13 @@ struct {
 } tg_fnctl_map SEC(".maps");
 
 SEC("lsm/file_fcntl")
-int BPF_PROG(security_file_fcntl, struct file *file, unsigned int cmd, unsigned long arg)
+int BPF_PROG(security_file_fcntl, struct file *file, unsigned int cmd, unsigned long arg, int ret)
 {
 	__u32 zero = 0;
 	__u64 *calls = 0;
+
+	if (ret)
+		return ret;
 
 	calls = map_lookup_elem(&tg_fnctl_map, &zero);
 	if (calls)

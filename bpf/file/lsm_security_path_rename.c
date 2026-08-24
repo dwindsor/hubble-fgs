@@ -132,9 +132,12 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 }
 
 SEC("lsm/path_rename")
-int BPF_PROG(lsm_security_path_rename, const struct path *old_dir, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+int BPF_PROG(lsm_security_path_rename, const struct path *old_dir, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry, unsigned int flags, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_rename(ctx, old_dir, old_dentry, new_dir, new_dentry);
 	if (err < 0) {

@@ -51,9 +51,12 @@ static inline __attribute__((always_inline)) __u32 path_mknod(void *ctx, const s
 }
 
 SEC("lsm/path_mknod")
-int BPF_PROG(security_path_mknod, const struct path *dir, struct dentry *dentry, umode_t mode, unsigned int dev)
+int BPF_PROG(security_path_mknod, const struct path *dir, struct dentry *dentry, umode_t mode, unsigned int dev, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = path_mknod(ctx, dir, dentry, mode);
 	if (err < 0) {

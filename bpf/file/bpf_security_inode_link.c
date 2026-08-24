@@ -143,9 +143,12 @@ int BPF_KPROBE(security_inode_link, struct dentry *old_dentry, struct inode *dir
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/inode_link")
-int BPF_PROG(security_inode_link_lsm, struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
+int BPF_PROG(security_inode_link_lsm, struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, int ret)
 {
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = link_create(ctx, old_dentry, dir, new_dentry);
 	if (err < 0) {

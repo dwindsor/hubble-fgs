@@ -18,10 +18,13 @@ int BPF_KPROBE(security_file_permission, struct file *file, int mask)
 
 #ifdef __FILE_ENFORCE_LSM
 SEC("lsm/file_permission")
-int BPF_PROG(security_file_permission_lsm, struct file *file, int mask)
+int BPF_PROG(security_file_permission_lsm, struct file *file, int mask, int ret)
 {
 	int action = (mask == MAY_READ) ? (action_read) : (action_write);
 	int err;
+
+	if (ret)
+		return ret;
 
 	err = handle_generic_file_access(ctx, file, action, hook_security_file_permission);
 	if (err < 0) {

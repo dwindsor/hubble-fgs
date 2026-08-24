@@ -6,9 +6,12 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("fmod_ret/security_file_permission")
-int BPF_PROG(fmod_security_file_permission, struct file *file, int mask)
+int BPF_PROG(fmod_security_file_permission, struct file *file, int mask, int ret)
 {
 	int err, action = (mask == MAY_READ) ? (action_read) : (action_write);
+
+	if (ret)
+		return ret;
 
 	// this is a directory read operation (i.e. action_readdir)
 	if (S_ISDIR(BPF_CORE_READ(file, f_inode, i_mode)))

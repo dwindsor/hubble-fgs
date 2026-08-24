@@ -11,8 +11,11 @@ static int empty_callback(__u32 index, void *data)
 }
 
 SEC("lsm/file_open")
-int BPF_PROG(lsm_security_file_open, struct file *file)
+int BPF_PROG(lsm_security_file_open, struct file *file, int ret)
 {
+	if (ret)
+		return ret;
+
 	loop(4, empty_callback, 0, 0);
 	return 0;
 }

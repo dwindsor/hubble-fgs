@@ -7,7 +7,7 @@
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
 SEC("lsm.s/bprm_check_security")
-int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
+int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 {
 	struct exec_key key = {
 		.pid_tgid = get_current_pid_tgid(),
@@ -21,6 +21,9 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	struct file *file;
 	int err;
 	char header[2] = { 0, 0 };
+
+	if (ret)
+		return ret;
 
 	if (!policy_filter_match())
 		return 0;
