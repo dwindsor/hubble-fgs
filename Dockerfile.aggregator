@@ -1,6 +1,6 @@
 # Chainguard go-dev image (includes shell, make, git via wolfi packages)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
-ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:v1.26.6-dev@sha256:58701e3e48951d8a55271329d5316302c2f9b637302bdf6bf38fb35f5c812a0a
+ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:v1.26.7-dev@sha256:01e417234e002cfd8777fe3cbda5b8bce572ea9811f5195fc2b6915466460da3
 
 # Chainguard static image (replaces gcr.io/distroless/static-debian12)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static
