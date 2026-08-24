@@ -1,7 +1,7 @@
 include ../Makefile.defs
 
-TESTS = dns_parser_test.o jhash_test.o
-HEADERS = ../parsers/dns/dns.h ../parsers/dns/dns_parser.h ../parsers/dns/dns_pstree.h ../lib/jhash.h
+TESTS = dns_parser_test.o jhash_test.o flv_test.o
+HEADERS = ../parsers/dns/dns.h ../parsers/dns/dns_parser.h ../parsers/dns/dns_pstree.h ../lib/jhash.h ../lib/tlsmsg.h
 
 OBJSDIR  := objs/
 OBJS := $(addprefix $(OBJSDIR),$(TESTS))
