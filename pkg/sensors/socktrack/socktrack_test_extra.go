@@ -44,6 +44,11 @@ func ProgsAndMaps() ([]tus.SensorProg, []tus.SensorMap) {
 		tus.SensorMap{Name: "tg_l3_cfg", Progs: []uint{0, 1}},
 		tus.SensorMap{Name: "execve_map", Progs: []uint{0}},
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_http_map", Progs: []uint{1}},
+		tus.SensorMap{Name: "tg_tls_map", Progs: []uint{1}},
+		tus.SensorMap{Name: "tg_tls_map_stats", Progs: []uint{1}},
+		tus.SensorMap{Name: "tg_bottles", Progs: []uint{1}},
+		tus.SensorMap{Name: "tg_bottle_map_stats", Progs: []uint{1}},
 	}
 
 	if utils.SupportProcessTree() {

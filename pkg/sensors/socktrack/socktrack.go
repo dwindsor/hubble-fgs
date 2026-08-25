@@ -59,6 +59,11 @@ var (
 
 	// same premise as tg_http_map above
 	TLSContext = program.MapBuilder("tg_tls_map", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
+
+	// and again for to_tls_map_stats, tg_bottles and tg_bottle_map_stats
+	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
+	TLSBottles     = program.MapBuilder("tg_bottles", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
+	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", SkAllocKprobe, SkFreeKprobe, SkAllocFentry, SkFreeFentry)
 )
 
 /* Enabled from the layer3 sensor */
@@ -85,6 +90,9 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 		TCPFinRxMap,
 		HTTPContext,
 		TLSContext,
+		TLSMapStats,
+		TLSBottles,
+		TLSBottleStats,
 	}
 
 	if utils.SupportFentry() {

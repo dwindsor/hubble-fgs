@@ -175,14 +175,12 @@ var (
 	TcpSocketMap   = program.MapUserFrom(base.TcpSocketMap)
 	TcpSocketStats = program.MapUserFrom(base.TcpSocketMapStats)
 
-	// Parser maps
-	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", ConnectKprobe, ConnectFentry, TcpSockops)
-	TLSBottles     = program.MapBuilder("tg_bottles", TcpSockops)
-	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
-
-	// Created and owned by socktrack, see comment there
-	HTTPContext = program.MapUserFrom(socktrack.HTTPContext)
-	TLSContext  = program.MapUserFrom(socktrack.TLSContext)
+	// Parser maps, created and owned by socktrack, see comment there
+	HTTPContext    = program.MapUserFrom(socktrack.HTTPContext)
+	TLSContext     = program.MapUserFrom(socktrack.TLSContext)
+	TLSMapStats    = program.MapUserFrom(socktrack.TLSMapStats)
+	TLSBottles     = program.MapUserFrom(socktrack.TLSBottles)
+	TLSBottleStats = program.MapUserFrom(socktrack.TLSBottleStats)
 
 	// LPM maps, created in internal/ip
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)

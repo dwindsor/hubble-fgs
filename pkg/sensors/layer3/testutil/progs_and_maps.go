@@ -118,6 +118,11 @@ func sockopsSensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorProgs []
 	verMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_ver", []string{tcpSecurityGraft, fdLookupProg})
 	acceptMap := SensorMapByProgName(sensorProgs, "tg_l3_tcp_accsk", []string{tcpSecurityAccept, tcpSecurityGraft})
 	fdLookupConfigMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_lookup", []string{fdLookupProg})
+	httpContextMap := SensorMapByProgName(sensorProgs, "tg_http_map", []string{tcpSockopsProg, securitySkFreeProg})
+	tlsContextMap := SensorMapByProgName(sensorProgs, "tg_tls_map", []string{tcpSockopsProg, securitySkFreeProg})
+	tlsMapStats := SensorMapByProgName(sensorProgs, "tg_tls_map_stats", []string{tcpSockopsProg, securitySkFreeProg})
+	bottlesMap := SensorMapByProgName(sensorProgs, "tg_bottles", []string{tcpSockopsProg, securitySkFreeProg})
+	bottlesMapStats := SensorMapByProgName(sensorProgs, "tg_bottle_map_stats", []string{tcpSockopsProg, securitySkFreeProg})
 
 	if withRTT {
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
@@ -239,6 +244,11 @@ func sockopsSensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorProgs []
 	tcpMonMap.Progs = MergeIntoMap(tcpMonMap.Progs, GetMapProgs(sockMaps, tcpMonMap.Name), ni)
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
+	httpContextMap.Progs = MergeIntoMap(httpContextMap.Progs, GetMapProgs(sockMaps, httpContextMap.Name), ni)
+	tlsContextMap.Progs = MergeIntoMap(tlsContextMap.Progs, GetMapProgs(sockMaps, tlsContextMap.Name), ni)
+	tlsMapStats.Progs = MergeIntoMap(tlsMapStats.Progs, GetMapProgs(sockMaps, tlsMapStats.Name), ni)
+	bottlesMap.Progs = MergeIntoMap(bottlesMap.Progs, GetMapProgs(sockMaps, bottlesMap.Name), ni)
+	bottlesMapStats.Progs = MergeIntoMap(bottlesMapStats.Progs, GetMapProgs(sockMaps, bottlesMapStats.Name), ni)
 
 	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 	confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
@@ -260,6 +270,11 @@ func sockopsSensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorProgs []
 		confMap,
 		acceptMap,
 		fdLookupConfigMap,
+		httpContextMap,
+		tlsContextMap,
+		tlsMapStats,
+		bottlesMap,
+		bottlesMapStats,
 	}...)
 
 	return sensorMaps
@@ -323,6 +338,12 @@ func kprobeOrFentrySensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorP
 	})
 
 	fdLookupConfigMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_lookup", []string{fdLookupProg})
+
+	httpContextMap := SensorMapByProgName(sensorProgs, "tg_http_map", []string{tcpCloseProg, securitySkFreeProg})
+	tlsContextMap := SensorMapByProgName(sensorProgs, "tg_tls_map", []string{tcpCloseProg, securitySkFreeProg})
+	tlsMapStats := SensorMapByProgName(sensorProgs, "tg_tls_map_stats", []string{tcpCloseProg, securitySkFreeProg})
+	bottlesMap := SensorMapByProgName(sensorProgs, "tg_bottles", []string{tcpCloseProg, securitySkFreeProg})
+	bottlesMapStats := SensorMapByProgName(sensorProgs, "tg_bottle_map_stats", []string{tcpCloseProg, securitySkFreeProg})
 
 	if !utils.SupportCGroupSKBProbeRead() { // <=5.4 special snowflake
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
@@ -478,6 +499,11 @@ func kprobeOrFentrySensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorP
 	tcpMonMap.Progs = MergeIntoMap(tcpMonMap.Progs, GetMapProgs(sockMaps, tcpMonMap.Name), ni)
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
+	httpContextMap.Progs = MergeIntoMap(httpContextMap.Progs, GetMapProgs(sockMaps, httpContextMap.Name), ni)
+	tlsContextMap.Progs = MergeIntoMap(tlsContextMap.Progs, GetMapProgs(sockMaps, tlsContextMap.Name), ni)
+	tlsMapStats.Progs = MergeIntoMap(tlsMapStats.Progs, GetMapProgs(sockMaps, tlsMapStats.Name), ni)
+	bottlesMap.Progs = MergeIntoMap(bottlesMap.Progs, GetMapProgs(sockMaps, bottlesMap.Name), ni)
+	bottlesMapStats.Progs = MergeIntoMap(bottlesMapStats.Progs, GetMapProgs(sockMaps, bottlesMapStats.Name), ni)
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,
@@ -494,6 +520,11 @@ func kprobeOrFentrySensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorP
 		cfgMap,
 		verMap,
 		fdLookupConfigMap,
+		httpContextMap,
+		tlsContextMap,
+		tlsMapStats,
+		bottlesMap,
+		bottlesMapStats,
 	}...)
 
 	return sensorMaps

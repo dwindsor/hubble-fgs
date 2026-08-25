@@ -294,24 +294,23 @@ spec:
 		tus.SensorProg{Name: "bpf_tls_skskb_verdict", Type: ebpf.SkSKB}, // index ni + 3
 	}...)
 
+	sensorMaps = append(sensorMaps, []tus.SensorMap{
+		tus.SensorMap{Name: "tg_tls_filter_map", Progs: []uint{ni, ni + 1}},
+		tus.SensorMap{Name: "tg_tls_sock_map", Progs: []uint{ni}},
+		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{ni + 2, ni + 3}},
+	}...)
+
 	// all but base and tg_sockmap
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni + 1, ni + 2, ni + 3}))
-
-	// all but base and bpf_tls_skskb_verdict
-	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_filter_map", []uint{ni, ni + 1}))
-
-	// tg_sockmap
-	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_sock_map", []uint{ni}))
-
-	// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_map_stats", []uint{ni + 2}))
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_bottles", []uint{ni + 2, ni + 3}))
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_bottle_map_stats", []uint{ni + 2, ni + 3}))
-	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3}))
-	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3}))
-	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni + 2, ni + 3}))
 
 	// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni + 2, ni + 3}))
+
+	// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni + 2, ni + 3}))
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
@@ -388,20 +387,14 @@ spec:
 		tus.SensorMap{Name: "tg_tls_parser_stats", Progs: []uint{ni, ni + 1}},
 	}...)
 
-	// the index of tg_event_tcp_sockops is not known outside of ProgsAndMaps,
-	// so resolve the whole list by name
-	bottleProgs := []string{"tls_inet_send", "tls_inet_recv", "tg_event_tcp_sockops", "tg_event_tcp_close"}
-
-	sensorMaps = append(sensorMaps,
-		testutil.SensorMapByProgName(sensorProgs, "tg_bottles", bottleProgs),
-		testutil.SensorMapByProgName(sensorProgs, "tg_bottle_map_stats", bottleProgs),
-	)
-
 	// send and recv
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni, ni + 1}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_map_stats", []uint{ni}))
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_l3_sk", []uint{ni, ni + 1}))
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni, ni + 1}))
 	require.NoError(t, testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_bottles", []uint{ni, ni + 1}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_bottle_map_stats", []uint{ni, ni + 1}))
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
