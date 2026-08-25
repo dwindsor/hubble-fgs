@@ -29,7 +29,6 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/xlab/treeprint"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -73,7 +72,7 @@ func containerStringer(cont *appModelV1.ApplicationContainer) string {
 	return fmt.Sprintf("%s %s(%s)", cont.Image, cont.Name, truncated)
 }
 
-func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) error {
+func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) {
 	tree := treeprint.New()
 	// For each namespace collection find workload collections
 	for _, ns := range appModel.ApplicationModel.Namespaces {
@@ -100,7 +99,6 @@ func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) error {
 	hasNamespaces := len(appModel.ApplicationModel.Namespaces) > 0
 	if !host && hasNamespaces {
 		fmt.Println(tree.String())
-		return nil
 	}
 	hostTree := tree.AddBranch("host")
 	for _, p := range appModel.ApplicationModel.Host.Processes {
@@ -116,13 +114,12 @@ func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) error {
 		}
 	}
 	fmt.Println(tree.String())
-	return nil
 }
 
 func printModel(appModel *appModelV1.ApplicationModelEvent) error {
 	out, err := json.Marshal(appModel)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal application model: %w", err)
 	}
 	fmt.Println(string(out))
 	return nil
@@ -267,17 +264,17 @@ func (model *wrappedEvent) GetTree() (*appModelV1.ApplicationModelEvent, error) 
 func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 	tmpl, err := template.ParseFS(uiDir, "ui/index.html")
 	if err != nil {
-		io.WriteString(w, "couldn't read ui index.html")
+		http.Error(w, fmt.Sprintf("couldn't read ui index.html: %v", err), http.StatusInternalServerError)
 		return
 	}
 	appModel, err := getter.GetTree()
 	if err != nil {
-		io.WriteString(w, "failed getting model")
+		http.Error(w, fmt.Sprintf("failed getting model: %v", err), http.StatusInternalServerError)
 		return
 	}
 	appModelJson, err := json.Marshal(appModel)
 	if err != nil {
-		io.WriteString(w, "couldn't serialize app model json")
+		http.Error(w, fmt.Sprintf("couldn't serialize app model json: %v", err), http.StatusInternalServerError)
 		return
 	}
 	values := map[string]any{
@@ -285,7 +282,9 @@ func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 			"<script>window.IPT_APP_MODEL_JSON = %s</script>", string(appModelJson),
 		),
 	}
-	tmpl.Execute(w, values)
+	if err := tmpl.Execute(w, values); err != nil {
+		http.Error(w, fmt.Sprintf("couldn't execute template: %v", err), http.StatusInternalServerError)
+	}
 }
 
 func runBrowserTree(enableS3 bool, bucket string) error {
@@ -318,12 +317,14 @@ func runBrowserTree(enableS3 bool, bucket string) error {
 func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEvent, error) {
 	var err error
 	appModel := &appModelV1.ApplicationModelEvent{}
-	fi, _ := os.Stdin.Stat()
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat stdin: %w", err)
+	}
 	if fi.Mode()&os.ModeNamedPipe != 0 {
 		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
-		err := decoder.Decode(&appModel)
-		if err != nil && !errors.Is(err, io.EOF) {
-			return nil, err
+		if err := decoder.Decode(&appModel); err != nil && !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("failed to decode app model from stdin: %w", err)
 		}
 	} else if enableS3 {
 		return s3FetchAppModel(bucket, namespaces)
@@ -335,7 +336,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 	} else {
 		c, err := NewApplicationModelClient(context.Background())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create application model client: %w", err)
 		}
 		defer c.Close()
 
@@ -343,7 +344,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 
 		stream, err := c.Client.StreamModelFragments(c.Ctx, req)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to stream model fragments: %w", err)
 		}
 
 		fragments := make([]*appModelV1.ApplicationModelFragment, 0)
@@ -354,7 +355,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 				break
 			}
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to receive model fragment: %w", err)
 			}
 			logger.GetLogger().Debug("Received application model fragment", "fragment_index", resp.ModelFragment.FragmentIndex, "fragment_total", resp.ModelFragment.FragmentTotal, "resp", resp)
 			fragments = append(fragments, resp.ModelFragment)
@@ -362,7 +363,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 
 		appModel, err = model.MergeApplicationModelFragments(fragments)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to merge application model fragments: %w", err)
 		}
 	}
 
@@ -377,7 +378,8 @@ func printGrpcTree(enableS3, host bool, bucket string) error {
 
 	switch output {
 	case "tree":
-		return printTree(appModel, host)
+		printTree(appModel, host)
+		return nil
 	case "json":
 		return printModel(appModel)
 	default:
@@ -702,14 +704,13 @@ func NewShow() *cobra.Command {
 func getProcessDebug() (*tetragon.GetProcessMapResponse, error) {
 	c, err := NewConnectedModelClient(context.Background())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create model client: %w", err)
 	}
 	defer c.Close()
 
 	res, err := c.Client.GetProcessMap(c.Ctx, &tetragon.GetProcessMapRequest{})
 	if err != nil || res == nil {
-		logger.GetLogger().Warn("failed to get process map", logfields.Error, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get process map: %w", err)
 	}
 
 	return res, nil
@@ -779,14 +780,13 @@ func NewDebugProcess() *cobra.Command {
 func getDestinationDebug() (*tetragon.GetDestinationMapResponse, error) {
 	c, err := NewConnectedModelClient(context.Background())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create model client: %w", err)
 	}
 	defer c.Close()
 
 	res, err := c.Client.GetDestinationMap(c.Ctx, &tetragon.GetDestinationMapRequest{})
 	if err != nil || res == nil {
-		logger.GetLogger().Warn("failed to get destination map", logfields.Error, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get destination map: %w", err)
 	}
 
 	return res, nil
@@ -855,14 +855,13 @@ func NewDebugDestination() *cobra.Command {
 func getDebug() (*tetragon.GetEndpointMapResponse, error) {
 	c, err := NewConnectedModelClient(context.Background())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create model client: %w", err)
 	}
 	defer c.Close()
 
 	res, err := c.Client.GetEndpointMap(c.Ctx, &tetragon.GetEndpointMapRequest{})
 	if err != nil || res == nil {
-		logger.GetLogger().Warn("failed to get application model", logfields.Error, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get endpoint map: %w", err)
 	}
 
 	return res, nil
@@ -1001,7 +1000,10 @@ func NewSquash() *cobra.Command {
 
 func squash() error {
 	appModel := &appModelV1.ApplicationModel{}
-	fi, _ := os.Stdin.Stat()
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat stdin: %w", err)
+	}
 	if fi.Mode()&os.ModeNamedPipe != 0 {
 		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
 		for {
@@ -1011,7 +1013,7 @@ func squash() error {
 				break
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to decode application model event: %w", err)
 			}
 			appModel = model.Merge(appModel, ev.GetApplicationModel())
 		}
@@ -1020,7 +1022,7 @@ func squash() error {
 		}
 		appBytes, err := res.MarshalJSON()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal application model: %w", err)
 		}
 		fmt.Println(string(appBytes))
 	}
