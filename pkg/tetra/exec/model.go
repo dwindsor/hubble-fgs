@@ -97,7 +97,8 @@ func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) error {
 			}
 		}
 	}
-	if !host {
+	hasNamespaces := len(appModel.ApplicationModel.Namespaces) > 0
+	if !host && hasNamespaces {
 		fmt.Println(tree.String())
 		return nil
 	}
