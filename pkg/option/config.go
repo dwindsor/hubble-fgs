@@ -192,6 +192,8 @@ type config struct {
 	// NodeNamespace is the namespace for registering TetragonNode resource
 	// This is used when Tetragon agent is running outside but connecting to k8s cluster.
 	NodeNamespace string
+
+	AdditionalNodeLabels map[string]string
 }
 
 var (

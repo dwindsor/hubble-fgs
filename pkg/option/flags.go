@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/defaults"
@@ -137,6 +138,7 @@ const (
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
 	keyTetragonNodeNamespace             = "node-namespace"
+	KeyAdditionalNodeLabel               = "additional-node-label"
 	KeyPolicyDir                         = "policy-dir"
 	KeyApplicationModelSplitMaxHostProcs = "application-model-split-max-host-processes"
 	KeyApplicationModelExportFragments   = "application-model-export-fragments"
@@ -325,6 +327,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(keyK8sServiceAccountAuth)
 
 	flags.String(keyTetragonNodeNamespace, "", "The namespace to register tetragon node if required")
+	flags.StringArray(KeyAdditionalNodeLabel, []string{}, "Additional node label to add to the local node metadata, specified as key=value. Can be specified multiple times")
 	flags.String(KeyPolicyDir, eedefaults.DefaultPoliciesDir, "Directory for all kind of policies to load at startup. Only single depth level files are supported")
 	// Mark other policiesDir options as deprecated
 	_ = flags.MarkDeprecated(option.KeyTracingPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
@@ -332,7 +335,9 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 }
 
 func ReadAndValidateEnterpriseFlags() error {
-	readAndSetEnterpriseFlags()
+	if err := readAndSetEnterpriseFlags(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
 
 	err := validateConfig(Config)
 	if err != nil {
@@ -341,7 +346,7 @@ func ReadAndValidateEnterpriseFlags() error {
 	return nil
 }
 
-func readAndSetEnterpriseFlags() {
+func readAndSetEnterpriseFlags() error {
 	Config.Environment = viper.GetString(KeyEnvironment)
 	Config.OCSFExportFilename = viper.GetString(KeyOCSFExportFilename)
 	Config.OCSFExportServer = viper.GetString(KeyOCSFExportServer)
@@ -486,6 +491,27 @@ func readAndSetEnterpriseFlags() {
 
 	Config.K8sServiceAccountAuth = viper.GetString(keyK8sServiceAccountAuth)
 	Config.NodeNamespace = viper.GetString(keyTetragonNodeNamespace)
+	additionalNodeLabels, err := parseAdditionalNodeLabels(viper.GetStringSlice(KeyAdditionalNodeLabel))
+	if err != nil {
+		return err
+	}
+	Config.AdditionalNodeLabels = additionalNodeLabels
+	return nil
+}
+
+func parseAdditionalNodeLabels(values []string) (map[string]string, error) {
+	labels := make(map[string]string, len(values))
+	for _, value := range values {
+		key, labelValue, ok := strings.Cut(value, "=")
+		if !ok || key == "" {
+			return nil, fmt.Errorf("--%s must be specified as key=value", KeyAdditionalNodeLabel)
+		}
+		if _, exists := labels[key]; exists {
+			return nil, fmt.Errorf("duplicate --%s key %q", KeyAdditionalNodeLabel, key)
+		}
+		labels[key] = labelValue
+	}
+	return labels, nil
 }
 
 func validateConfig(config config) error {

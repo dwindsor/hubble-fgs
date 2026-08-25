@@ -3,6 +3,10 @@ synopsis: |
     Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement
 usage: tetragon [flags]
 options:
+    - name: additional-node-label
+      default_value: '[]'
+      usage: |
+        Additional node label to add to the local node metadata, specified as key=value. Can be specified multiple times
     - name: alerts-export-dir
       usage: |
         Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.

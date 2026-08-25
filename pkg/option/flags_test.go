@@ -23,3 +23,19 @@ func Test_validateConfig(t *testing.T) {
 	Config.Environment = EnvironmentKubernetes
 	assert.NoError(t, validateConfig(Config))
 }
+
+func TestParseAdditionalNodeLabels(t *testing.T) {
+	labels, err := parseAdditionalNodeLabels([]string{"zone=us-east-1a", "role=worker"})
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]string{"zone": "us-east-1a", "role": "worker"}, labels)
+}
+
+func TestParseAdditionalNodeLabelsDuplicateKey(t *testing.T) {
+	_, err := parseAdditionalNodeLabels([]string{"zone=us-east-1a", "zone=us-east-1b"})
+	assert.EqualError(t, err, "duplicate --additional-node-label key \"zone\"")
+}
+
+func TestParseAdditionalNodeLabelsInvalidValue(t *testing.T) {
+	_, err := parseAdditionalNodeLabels([]string{"zone"})
+	assert.EqualError(t, err, "--additional-node-label must be specified as key=value")
+}
