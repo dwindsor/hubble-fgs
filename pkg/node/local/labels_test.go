@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ossOption "github.com/cilium/tetragon/pkg/option"
+
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 func TestBaseHostLabels(t *testing.T) {
@@ -83,4 +85,48 @@ func TestGenericMetadataService_GetLabels_HostLabels(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, runtime.GOARCH, labels[labelArch])
 	require.Equal(t, "generic", labels["tetragon.io/environment"])
+}
+
+func TestAdditionalNodeLabelsMetadataService_GetLabels_NoOverlap(t *testing.T) {
+	orig := enterpriseOption.Config.AdditionalNodeLabels
+	enterpriseOption.Config.AdditionalNodeLabels = map[string]string{
+		"custom.io/role": "worker",
+	}
+	t.Cleanup(func() { enterpriseOption.Config.AdditionalNodeLabels = orig })
+
+	svc, err := NewGenericMetadataService()
+	require.NoError(t, err)
+	labels, err := withAdditionalNodeLabels(svc).GetLabels(context.Background())
+	require.NoError(t, err)
+
+	// Comes from locally provided additional node labels
+	require.Equal(t, "worker", labels["custom.io/role"])
+
+	// Comes from GenericMetadataService
+	require.Equal(t, "generic", labels["tetragon.io/environment"])
+}
+
+func TestAdditionalNodeLabelsMetadataService_GetLabels_Overlap(t *testing.T) {
+	orig := enterpriseOption.Config.AdditionalNodeLabels
+	enterpriseOption.Config.AdditionalNodeLabels = map[string]string{
+		"tetragon.io/environment": "configured",
+		"custom.io/role":          "worker",
+	}
+	t.Cleanup(func() { enterpriseOption.Config.AdditionalNodeLabels = orig })
+
+	svc, err := NewGenericMetadataService()
+	require.NoError(t, err)
+	metadata := withAdditionalNodeLabels(svc).(*additionalLabelsMetadataService)
+	labels, err := metadata.GetLabels(context.Background())
+	require.NoError(t, err)
+
+	// Comes from locally provided additional node labels
+	require.Equal(t, "worker", labels["custom.io/role"])
+
+	// Comes from GenericMetadataService, overriding locally configured label
+	require.Equal(t, "generic", labels["tetragon.io/environment"])
+
+	require.Equal(t, map[string]struct{}{
+		"tetragon.io/environment": {},
+	}, metadata.warnedKeys)
 }
