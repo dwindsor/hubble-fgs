@@ -30,6 +30,7 @@ import (
 	"text/template"
 
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	"github.com/xlab/treeprint"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/gdamore/tcell/v2"
@@ -37,7 +38,6 @@ import (
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/xlab/treeprint"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -64,8 +64,6 @@ var (
 	ignoreByteCounts = true
 )
 
-var tree = treeprint.New()
-
 func containerStringer(cont *appModelV1.ApplicationContainer) string {
 	truncated := cont.Id
 	if len(truncated) > 12 {
@@ -76,6 +74,7 @@ func containerStringer(cont *appModelV1.ApplicationContainer) string {
 }
 
 func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) error {
+	tree := treeprint.New()
 	// For each namespace collection find workload collections
 	for _, ns := range appModel.ApplicationModel.Namespaces {
 		nsTree := tree.AddBranch(ns.Name)
