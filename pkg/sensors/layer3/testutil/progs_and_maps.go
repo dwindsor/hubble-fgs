@@ -11,6 +11,7 @@
 package testutil
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/cilium/ebpf"
@@ -21,13 +22,14 @@ import (
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
-func AddToMap(maps []tus.SensorMap, name string, progs []uint) {
+func AddToMap(maps []tus.SensorMap, name string, progs []uint) error {
 	for i, m := range maps {
 		if m.Name == name {
 			maps[i].Progs = append(maps[i].Progs, progs...)
-			return
+			return nil
 		}
 	}
+	return fmt.Errorf("cannot add to map as map %s not found", name)
 }
 
 func MergeIntoMap(existing []uint, addon []uint, start uint) []uint {

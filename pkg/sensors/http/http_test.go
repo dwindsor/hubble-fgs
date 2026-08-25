@@ -397,9 +397,9 @@ func TestLoadHttpSensor(t *testing.T) {
 	sensorMaps = append(sensorMaps, tus.SensorMap{Name: "tg_http_filter_map", Progs: []uint{ni + 10}})
 
 	// all but base and tg_sockmap
-	layer3Testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9})
+	require.NoError(t, layer3Testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9}))
 	// all but tg_sockmap
-	layer3Testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9})
+	require.NoError(t, layer3Testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1, ni + 2, ni + 3, ni + 4, ni + 5, ni + 6, ni + 7, ni + 8, ni + 9}))
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 

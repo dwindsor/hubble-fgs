@@ -295,23 +295,23 @@ spec:
 	}...)
 
 	// all but base and tg_sockmap
-	testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni + 1, ni + 2, ni + 3})
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni + 1, ni + 2, ni + 3}))
 
 	// all but base and bpf_tls_skskb_verdict
-	testutil.AddToMap(sensorMaps, "tg_tls_filter_map", []uint{ni, ni + 1})
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_filter_map", []uint{ni, ni + 1}))
 
 	// tg_sockmap
-	testutil.AddToMap(sensorMaps, "tg_tls_sock_map", []uint{ni})
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_sock_map", []uint{ni}))
 
 	// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
-	testutil.AddToMap(sensorMaps, "tg_bottles", []uint{ni + 2, ni + 3})
-	testutil.AddToMap(sensorMaps, "tg_bottle_map_stats", []uint{ni + 2, ni + 3})
-	testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3})
-	testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3})
-	testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni + 2, ni + 3})
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_bottles", []uint{ni + 2, ni + 3}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_bottle_map_stats", []uint{ni + 2, ni + 3}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_parser_stats", []uint{ni + 2, ni + 3}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni + 2, ni + 3}))
 
 	// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
-	testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni + 2, ni + 3})
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni + 2, ni + 3}))
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
@@ -398,10 +398,10 @@ spec:
 	)
 
 	// send and recv
-	testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni, ni + 1})
-	testutil.AddToMap(sensorMaps, "tg_l3_sk", []uint{ni, ni + 1})
-	testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni, ni + 1})
-	testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1})
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_tls_map", []uint{ni, ni + 1}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_l3_sk", []uint{ni, ni + 1}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tg_l3_tcpsk", []uint{ni, ni + 1}))
+	require.NoError(t, testutil.AddToMap(sensorMaps, "tcpmon_map", []uint{ni, ni + 1}))
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
