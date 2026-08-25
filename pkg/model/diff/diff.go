@@ -621,6 +621,10 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							TxDrops:                           c.Stats.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
 							TxDropBytes:                       c.Stats.TxDropBytes,
 							TxDropPackets:                     c.Stats.TxDropPackets,
+							DefaultDropBytes:                  c.Stats.DefaultDropBytes,
+							DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
+							DefaultDropPackets:                c.Stats.DefaultDropPackets,
+							DefaultAllowPackets:               c.Stats.DefaultAllowPackets,
 							Sessions:                          c.Stats.Sessions,
 							NodeLabels:                        labels,
 							PolicyName:                        c.Policy.PolicyName,
@@ -667,6 +671,10 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					TxDrops:                           c.Stats.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
 					TxDropBytes:                       c.Stats.TxDropBytes,
 					TxDropPackets:                     c.Stats.TxDropPackets,
+					DefaultDropBytes:                  c.Stats.DefaultDropBytes,
+					DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
+					DefaultDropPackets:                c.Stats.DefaultDropPackets,
+					DefaultAllowPackets:               c.Stats.DefaultAllowPackets,
 					Sessions:                          c.Stats.Sessions,
 					NodeLabels:                        labels,
 					PolicyName:                        c.Policy.PolicyName,
@@ -752,10 +760,15 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		Type: &graphV1.Edge_NetworkTelemetry{
 			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
 				NetworkTransmitBytesTotal: telemetry.TxBytes,
-				// network_transmit_drop_total is documented as a packet count.
-				NetworkTransmitDropTotal: telemetry.TxDropPackets,
-				NetworkReceiveBytesTotal: telemetry.RxBytes,
-				NetworkReceiveDropTotal:  0,
+				// Both totals carry the same packet count. The datapath only
+				// observes policy drops, so every transmit drop it sees is a
+				// policy drop. Interface drops, which would lift
+				// network_transmit_drop_total above the policy subset, are not
+				// accounted for yet; that is future work.
+				NetworkTransmitDropTotal:       telemetry.TxDropPackets,
+				NetworkTransmitDropPolicyTotal: telemetry.TxDropPackets,
+				NetworkReceiveBytesTotal:       telemetry.RxBytes,
+				NetworkReceiveDropTotal:        0,
 			},
 		},
 	}
