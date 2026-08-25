@@ -34,9 +34,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/tetra/network"
 
 	"github.com/isovalent/hubble-fgs/pkg/tetra/dns"
-	"github.com/isovalent/hubble-fgs/pkg/tetra/exec"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/file"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/mandate"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/model"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/probe"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/syscallentries"
@@ -60,8 +60,8 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(probe.New())
 	rootCmd.AddCommand(sandboxpolicy.New())
 	rootCmd.AddCommand(syscallentries.New())
-	rootCmd.AddCommand(exec.New())
-	rootCmd.AddCommand(exec.NewMonitor())
+	rootCmd.AddCommand(model.New())
+	rootCmd.AddCommand(model.NewMonitor())
 	rootCmd.AddCommand(debug.NewDumpAlias())
 	rootCmd.AddCommand(loglevel.New())
 	rootCmd.AddCommand(cgtracker.New())
@@ -95,7 +95,7 @@ func listAlertRules(grpcer bugtoolpkg.GRPCer) error {
 }
 
 func getAppModel(grpcer bugtoolpkg.GRPCer) error {
-	c, err := exec.NewApplicationModelClient(context.Background())
+	c, err := model.NewApplicationModelClient(context.Background())
 	if err != nil {
 		return err
 	}

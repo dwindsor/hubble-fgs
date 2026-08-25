@@ -15,13 +15,13 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/pkg/tetra/exec"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/model"
 )
 
 func addCommands(rootCmd *cobra.Command) {
 	addBaseCommands(rootCmd)
 	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(loglevel.New())
-	rootCmd.AddCommand(exec.New())
-	rootCmd.AddCommand(exec.NewMonitor())
+	rootCmd.AddCommand(model.New())
+	rootCmd.AddCommand(model.NewMonitor())
 }

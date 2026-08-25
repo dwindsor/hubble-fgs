@@ -13,7 +13,7 @@
 // return a clear error when an S3 source is requested.
 //go:build nocloud
 
-package exec
+package model
 
 import (
 	"errors"

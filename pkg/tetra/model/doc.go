@@ -8,6 +8,6 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-// This is a duplicated version of the getevents package from OSS that adds some
-// enterprise-specific flags.
-package exec
+// Package model provides commands for interacting with Tetragon's application
+// model, including visualization, monitoring, checking, and diffing.
+package model

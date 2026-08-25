@@ -11,7 +11,7 @@
 // The nocloud tag gates the AWS SDK out of the slim tetrabox binary.
 //go:build !nocloud
 
-package exec
+package model
 
 import (
 	"bytes"
