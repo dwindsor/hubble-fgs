@@ -39,14 +39,25 @@ type MetadataService interface {
 
 func GetMetadataService() (MetadataService, error) {
 	if svc, ok, err := getCloudMetadataService(); ok {
-		return svc, err
+		if err != nil {
+			return svc, err
+		}
+		return withAdditionalNodeLabels(svc), nil
 	}
 	switch {
 	case option.Config.Environment == option.EnvironmentKubernetes || ossOption.Config.EnableK8s:
-		return NewKubernetesMetadataService(manager.Get())
+		svc, err := NewKubernetesMetadataService(manager.Get())
+		if err != nil {
+			return nil, err
+		}
+		return withAdditionalNodeLabels(svc), nil
 	case option.K8SControlPlaneEnabled():
-		return NewGenericMetadataService()
+		svc, err := NewGenericMetadataService()
+		if err != nil {
+			return nil, err
+		}
+		return withAdditionalNodeLabels(svc), nil
 	default:
-		return &NoopMetadataService{}, nil
+		return withAdditionalNodeLabels(&NoopMetadataService{}), nil
 	}
 }

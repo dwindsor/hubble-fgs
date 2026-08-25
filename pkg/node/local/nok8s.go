@@ -16,7 +16,10 @@ type MetadataService interface {
 // service.
 func GetMetadataService() (MetadataService, error) {
 	if svc, ok, err := getCloudMetadataService(); ok {
-		return svc, err
+		if err != nil {
+			return svc, err
+		}
+		return withAdditionalNodeLabels(svc), nil
 	}
-	return &NoopMetadataService{}, nil
+	return withAdditionalNodeLabels(&NoopMetadataService{}), nil
 }
