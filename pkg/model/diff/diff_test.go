@@ -708,6 +708,12 @@ func TestToNetworkFlat(t *testing.T) {
 	// values distinguish the two units.
 	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxDropBytes = 10
 	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxDropPackets = 1
+	// Every default-action counter gets its own delta, so a field wired to the
+	// wrong source reads a value that belongs to another counter.
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.DefaultDropBytes = 5
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.DefaultAllowBytes = 10
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.DefaultDropPackets = 2
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.DefaultAllowPackets = 3
 
 	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
@@ -739,6 +745,10 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Equal(t, uint64(1), f[1].RxBytes)
 	assert.Equal(t, uint64(20), f[0].TxDropBytes)
 	assert.Equal(t, uint64(2), f[0].TxDropPackets)
+	assert.Equal(t, uint64(10), f[0].DefaultDropBytes)
+	assert.Equal(t, uint64(15), f[0].DefaultAllowBytes)
+	assert.Equal(t, uint64(3), f[0].DefaultDropPackets)
+	assert.Equal(t, uint64(4), f[0].DefaultAllowPackets)
 	// TxDrops is deprecated and still mirrors the byte count.
 	assert.Equal(t, uint64(20), f[0].TxDrops) //nolint:staticcheck
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
@@ -785,6 +795,12 @@ func TestToNetworkFlatHost(t *testing.T) {
 	// values distinguish the two units.
 	bHost.Processes[1].Connections[0].Stats.TxDropBytes = 10
 	bHost.Processes[1].Connections[0].Stats.TxDropPackets = 1
+	// Every default-action counter gets its own delta, so a field wired to the
+	// wrong source reads a value that belongs to another counter.
+	bHost.Processes[1].Connections[0].Stats.DefaultDropBytes = 5
+	bHost.Processes[1].Connections[0].Stats.DefaultAllowBytes = 10
+	bHost.Processes[1].Connections[0].Stats.DefaultDropPackets = 2
+	bHost.Processes[1].Connections[0].Stats.DefaultAllowPackets = 3
 
 	aModel := &appModelV1.ApplicationModel{
 		Namespaces: []*appModelV1.ApplicationNamespace{},
@@ -813,6 +829,10 @@ func TestToNetworkFlatHost(t *testing.T) {
 	assert.Equal(t, uint64(0), f[0].RxBytes)
 	assert.Equal(t, uint64(20), f[0].TxDropBytes)
 	assert.Equal(t, uint64(2), f[0].TxDropPackets)
+	assert.Equal(t, uint64(10), f[0].DefaultDropBytes)
+	assert.Equal(t, uint64(15), f[0].DefaultAllowBytes)
+	assert.Equal(t, uint64(3), f[0].DefaultDropPackets)
+	assert.Equal(t, uint64(4), f[0].DefaultAllowPackets)
 	// TxDrops is deprecated and still mirrors the byte count.
 	assert.Equal(t, uint64(20), f[0].TxDrops) //nolint:staticcheck
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
@@ -1085,6 +1105,58 @@ func TestTelemetryToConnectionDropPackets(t *testing.T) {
 	assert.NotEqual(t, uint64(deprecatedBytes), edge.NetworkTransmitDropTotal, "must not report deprecated byte count")
 	assert.NotEqual(t, uint64(explicitBytes), edge.NetworkTransmitDropTotal, "must not report byte count")
 	assert.Equal(t, uint64(1234), edge.NetworkTransmitBytesTotal)
+}
+
+// TestTelemetryToConnectionDropPolicyTotal checks that the policy drop total on
+// the edge reads the transmit drop count under both deny shapes and stays a
+// subset of the overall total. The subset is the network_transmit_drop_policy_subset
+// CEL rule on EdgeTypeNetworkTelemetry, and no protovalidate runtime is vendored,
+// so the rule is asserted here by hand.
+func TestTelemetryToConnectionDropPolicyTotal(t *testing.T) {
+	t.Run("fallthrough deny", func(t *testing.T) {
+		// Distinct values, so reading either field from the other's source shows up.
+		const (
+			txDropPackets      = 9
+			defaultDropPackets = 4
+		)
+		telemetry := &appModelV1.NetworkConnectTelemetry{
+			EventType:          appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+			DestinationName:    "192.168.0.2",
+			DestinationType:    appModelV1.DestinationType_DESTINATION_TYPE_CIDR,
+			DestinationPort:    443,
+			TxDropBytes:        5500,
+			TxDropPackets:      txDropPackets,
+			DefaultDropBytes:   2200,
+			DefaultDropPackets: defaultDropPackets,
+		}
+
+		edge := TelemetryToConnection(telemetry).Links[0].GetNetworkTelemetry()
+		assert.Equal(t, uint64(txDropPackets), edge.NetworkTransmitDropTotal)
+		assert.Equal(t, uint64(txDropPackets), edge.NetworkTransmitDropPolicyTotal)
+		assert.NotEqual(t, uint64(defaultDropPackets), edge.NetworkTransmitDropPolicyTotal,
+			"must not report the default-action subset as the policy total")
+		assert.LessOrEqual(t, edge.NetworkTransmitDropPolicyTotal, edge.NetworkTransmitDropTotal,
+			"network_transmit_drop_policy_total must be <= network_transmit_drop_total")
+	})
+
+	// An explicit deny rule sets no fallthrough bit, so send() charges the packet
+	// to tx_drop_packets alone. Reading DefaultDropPackets then reports no policy
+	// drop against a nonzero total.
+	t.Run("explicit deny", func(t *testing.T) {
+		telemetry := &appModelV1.NetworkConnectTelemetry{
+			EventType:       appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+			DestinationName: "192.168.0.2",
+			DestinationType: appModelV1.DestinationType_DESTINATION_TYPE_CIDR,
+			DestinationPort: 443,
+			TxDropBytes:     700,
+			TxDropPackets:   7,
+		}
+
+		edge := TelemetryToConnection(telemetry).Links[0].GetNetworkTelemetry()
+		assert.Equal(t, uint64(7), edge.NetworkTransmitDropPolicyTotal)
+		assert.LessOrEqual(t, edge.NetworkTransmitDropPolicyTotal, edge.NetworkTransmitDropTotal,
+			"network_transmit_drop_policy_total must be <= network_transmit_drop_total")
+	})
 }
 
 func TestApplicationModelToProcessFlat(t *testing.T) {
