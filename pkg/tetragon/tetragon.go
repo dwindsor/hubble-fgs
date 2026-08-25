@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	pprofhttp "net/http/pprof"
@@ -23,6 +24,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -808,6 +810,14 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if !enterpriseOption.K8SControlPlaneEnabled() {
 		go logStatus(ctx, obs)
 	}
+
+	// Start even if BPFDebugAreas is empty;
+	// BPF probe might've been compiled with TETRAGON_BPF_DEBUG
+	// thus all bpf_trace_printk() are forcefully enabled.
+	if option.Config.BPFDebugLog {
+		go logBPFDebug(ctx)
+	}
+
 	updateServiceStarting()
 
 	powershell.StartPowershellEvtSubscriber()
@@ -842,6 +852,45 @@ func logStatus(ctx context.Context, obs *observer.Observer) {
 				obs.PrintStats()
 				prevLost = lost
 				prevErrors = errors
+			}
+		}
+	}
+}
+
+func logBPFDebug(ctx context.Context) {
+	f, err := os.Open("/sys/kernel/debug/tracing/trace_pipe")
+	if err != nil {
+		log.Warn("failed to open /sys/kernel/debug/tracing/trace_pipe", "err", err)
+		return
+	}
+	defer f.Close()
+
+	buf := make([]byte, 4096)
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		n, err := f.Read(buf)
+		if n > 0 {
+			lines := strings.SplitSeq(string(buf[:n]), "\n")
+			for line := range lines {
+				// Only print tetragon messages
+				i := strings.Index(line, "tetragon")
+				if i != -1 {
+					// Drop all stuff before tetragon prefix
+					logger.GetLogger().Info(line[i:])
+				} else if strings.Contains(line, "LOST") {
+					// Print LOST messages, eg:
+					// CPU:12 [LOST 711 EVENTS]
+					// CPU:3 [LOST 3698 EVENTS]
+					// CPU:1 [LOST 8509 EVENTS]
+					logger.GetLogger().Info(line)
+				}
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return
 			}
 		}
 	}
