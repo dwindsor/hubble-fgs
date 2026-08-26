@@ -40,16 +40,15 @@ const (
 )
 
 var (
-	// QuotasDNSDomainMappings stores the mappings between the domain and
-	// their ID generated after parsing a quota policy. So that we can
-	// initialize them once the TCP, UDP, and DNS sensors are online.
-	QuotasInitDNSDomainMappings = map[endpoint.Endpoint]uint64{}
+	// PendingDNSDomainMappings stores userspace domain-to-ID mappings until
+	// the TCP, UDP, and DNS sensors are online and the BPF maps are available.
+	PendingDNSDomainMappings = map[endpoint.Endpoint]uint64{}
 
 	// dnsDomainMap is used to bring DNS/ID mappings up to date at runtime.
 	dnsDomainMap = dnsparser.DomainMap{}
 
-	// quotasDNSMappingsMu protects concurrent access to QuotasInitDNSDomainMappings
-	quotasDNSMappingsMu sync.Mutex
+	// pendingDNSMappingsMu protects concurrent access to PendingDNSDomainMappings.
+	pendingDNSMappingsMu sync.Mutex
 )
 
 func (p *BPFProgrammer) initMaybe() error {
@@ -147,8 +146,6 @@ func (p *bpfRecordBackend) populateStatEntry(key types.DestinationEndpointKey, v
 	return nil
 }
 
-// src *types.ProcessTreeKey, ep *endpoint.Endpoint, quota, reset, deny uint64, init bool) error {
-// what was init for again?
 func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error {
 	var addr [2]uint64
 	var dst uint64
@@ -163,27 +160,27 @@ func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error 
 		dst = 0
 	}
 
-	// A rather annoying ordering problem occurs where we are consuming
-	// quota DNS policy through TCP policy and that may or may not have
-	// initialized the DNS/UDP sensors yet. If DNS is not yet initialized
+	// A rather annoying ordering problem occurs when we consume a userspace
+	// DNS policy through TCP policy before the DNS/UDP sensors are initialized.
+	// If DNS is not yet initialized,
 	// we need to wait until it comes up to instantiate the domain map
 	// entry. Rather than try to sync modules and this code add a retry
 	// logic and backoff to do the map update later. This backoffs with
 	// x2 each iteration.
 	if r.Init {
 		if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
-			quotasDNSMappingsMu.Lock()
+			pendingDNSMappingsMu.Lock()
 			if err := dnsDomainMap.Update(r.Endpoint.EP.Dns, dst); err != nil {
-				QuotasInitDNSDomainMappings[*r.Endpoint.EP] = dst
+				PendingDNSDomainMappings[*r.Endpoint.EP] = dst
 				go scheduleDomainMapFlush()
 			}
-			quotasDNSMappingsMu.Unlock()
+			pendingDNSMappingsMu.Unlock()
 		}
 	} else {
 		if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
-			quotasDNSMappingsMu.Lock()
-			QuotasInitDNSDomainMappings[*r.Endpoint.EP] = dst
-			quotasDNSMappingsMu.Unlock()
+			pendingDNSMappingsMu.Lock()
+			PendingDNSDomainMappings[*r.Endpoint.EP] = dst
+			pendingDNSMappingsMu.Unlock()
 			go scheduleDomainMapFlush()
 		}
 	}
@@ -213,20 +210,16 @@ func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error 
 	}
 
 	value := types.DestinationEndpointValue{
-		TxQuota:        0,
-		TxLimit:        r.Action.QuotaLimit,
-		TxDrops:        0,
-		TxAction:       r.Action.Action,
-		KtimeLastReset: 0,
-		KtimeTxReset:   r.Action.ResetTime,
-		TxBytes:        0,
-		RxBytes:        0,
-		Policy:         id,
-		RuleID:         ruleID,
-		IPv6:           0,
-		KtimeCreate:    0,
-		AddrCreate:     addr,
-		Port:           r.Endpoint.Port,
+		TxDrops:     0,
+		TxAction:    r.Action.Action,
+		TxBytes:     0,
+		RxBytes:     0,
+		Policy:      id,
+		RuleID:      ruleID,
+		IPv6:        0,
+		KtimeCreate: 0,
+		AddrCreate:  addr,
+		Port:        r.Endpoint.Port,
 		// Mark as policy template - BPF will clear this flag when real traffic flows
 		Flags: types.DestFlagPolicyTemplateOnly,
 	}
@@ -303,15 +296,15 @@ func (p *bpfRecordBackend) removeRecord(r record.DatapathRecord) error {
 
 	// Clean up any pending DNS domain mappings for this endpoint
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
-		quotasDNSMappingsMu.Lock()
-		delete(QuotasInitDNSDomainMappings, *r.Endpoint.EP)
-		quotasDNSMappingsMu.Unlock()
+		pendingDNSMappingsMu.Lock()
+		delete(PendingDNSDomainMappings, *r.Endpoint.EP)
+		pendingDNSMappingsMu.Unlock()
 	}
 
 	// On delete leave dnsDomainMap, it should be managed as its own object!
 
-	// Ideally we would keep all the values here and just update the TxDeny, TxQuota and
-	// TxLimit fields. Unfortunately its hard to do a partial update without doing multiple
+	// Ideally we would keep all the values here and just update the policy fields.
+	// Unfortunately its hard to do a partial update without doing multiple
 	// reads. So for now zero entry, but keep the key/value in the map its not obvious
 	// to me that we need to move it given the connection is likely still around.
 	key := types.DestinationEndpointKey{
@@ -323,20 +316,16 @@ func (p *bpfRecordBackend) removeRecord(r record.DatapathRecord) error {
 	}
 
 	value := types.DestinationEndpointValue{
-		TxQuota:        0,
-		TxLimit:        0,
-		TxDrops:        0,
-		TxAction:       0,
-		KtimeLastReset: 0,
-		KtimeTxReset:   0,
-		TxBytes:        0,
-		RxBytes:        0,
-		Policy:         0,
-		RuleID:         0,
-		IPv6:           0,
-		KtimeCreate:    0,
-		AddrCreate:     addr,
-		Port:           0,
+		TxDrops:     0,
+		TxAction:    0,
+		TxBytes:     0,
+		RxBytes:     0,
+		Policy:      0,
+		RuleID:      0,
+		IPv6:        0,
+		KtimeCreate: 0,
+		AddrCreate:  addr,
+		Port:        0,
 	}
 
 	// We can't delete this just because the policy is lost we still want to kep stats.

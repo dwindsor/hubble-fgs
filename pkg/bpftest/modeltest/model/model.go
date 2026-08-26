@@ -418,12 +418,10 @@ func (check *WorkloadConnectionCheck) CheckConnection(connection *v1alpha.Applic
 }
 
 type StatsCheck struct {
-	TxBytes      UInt64Checker
-	RxBytes      UInt64Checker
-	TxDrops      UInt64Checker
-	TxQuota      UInt64Checker
-	TxQuotaUsage UInt64Checker
-	Sessions     UInt64Checker
+	TxBytes  UInt64Checker
+	RxBytes  UInt64Checker
+	TxDrops  UInt64Checker
+	Sessions UInt64Checker
 }
 
 func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
@@ -440,16 +438,6 @@ func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
 	if check.TxDrops != nil {
 		if err := check.TxDrops(stats.TxDrops); err != nil {
 			return fmt.Errorf("txDrops check failed: %w", err)
-		}
-	}
-	if check.TxQuota != nil {
-		if err := check.TxQuota(stats.TxQuota); err != nil {
-			return fmt.Errorf("txQuota check failed: %w", err)
-		}
-	}
-	if check.TxQuotaUsage != nil {
-		if err := check.TxQuotaUsage(stats.TxQuotaUsage); err != nil {
-			return fmt.Errorf("txQuotaUsage check failed: %w", err)
 		}
 	}
 	if check.Sessions != nil {

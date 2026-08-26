@@ -33,8 +33,6 @@ func connStatsA() *appModelV1.ConnectionStats {
 		TxBytes:           10,
 		RxBytes:           20,
 		TxDrops:           30,
-		TxQuota:           40,
-		TxQuotaUsage:      1,
 		DefaultDropBytes:  15,
 		DefaultAllowBytes: 25,
 		Sessions:          7,
@@ -46,8 +44,6 @@ func connStatsB() *appModelV1.ConnectionStats {
 		TxBytes:           1,
 		RxBytes:           2,
 		TxDrops:           3,
-		TxQuota:           4,
-		TxQuotaUsage:      1,
 		DefaultDropBytes:  1,
 		DefaultAllowBytes: 2,
 		Sessions:          2,
@@ -59,8 +55,6 @@ func connStatsDiff() *appModelV1.ConnectionStats {
 		TxBytes:           9,
 		RxBytes:           18,
 		TxDrops:           27,
-		TxQuota:           40,
-		TxQuotaUsage:      1,
 		DefaultDropBytes:  14,
 		DefaultAllowBytes: 23,
 		Sessions:          5,
@@ -71,8 +65,6 @@ func connStatsEqual(t *testing.T, a, b *appModelV1.ConnectionStats) {
 	assert.Equal(t, a.TxBytes, b.TxBytes)
 	assert.Equal(t, a.RxBytes, b.RxBytes)
 	assert.Equal(t, a.TxDrops, b.TxDrops)
-	assert.Equal(t, a.TxQuota, b.TxQuota)
-	assert.Equal(t, a.TxQuotaUsage, b.TxQuotaUsage)
 	assert.Equal(t, a.DefaultDropBytes, b.DefaultDropBytes)
 	assert.Equal(t, a.DefaultAllowBytes, b.DefaultAllowBytes)
 	assert.Equal(t, a.Sessions, b.Sessions)

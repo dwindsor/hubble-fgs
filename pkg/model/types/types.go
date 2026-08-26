@@ -68,14 +68,10 @@ func (v DestinationEndpointKey) String() string {
 const DestFlagPolicyTemplateOnly uint64 = 0x1
 
 type DestinationEndpointValue struct {
-	TxQuota           uint64
-	TxLimit           uint64
 	TxDrops           uint64
 	AllowDefaultBytes uint64
 	DenyDefaultBytes  uint64
 	TxAction          uint64
-	KtimeLastReset    uint64
-	KtimeTxReset      uint64
 	TxBytes           uint64
 	RxBytes           uint64
 	Policy            uint64
@@ -186,11 +182,6 @@ type TetragonNetworkDestination struct {
 	Ports      []uint32
 }
 
-type TetragonQuotaAction struct {
-	Quota string
-	Reset string
-}
-
 type TetragonEnforceAction struct {
 	Deny   bool
 	Allow  bool
@@ -198,7 +189,6 @@ type TetragonEnforceAction struct {
 }
 
 type TetragonNetworkAction struct {
-	QuotaAction   *TetragonQuotaAction
 	EnforceAction *TetragonEnforceAction
 }
 

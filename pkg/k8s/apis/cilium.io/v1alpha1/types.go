@@ -822,13 +822,6 @@ type UdpWatermarksPolicySpec struct {
 	DipTriggerPercent uint32 `json:"dipTriggerPercent"`
 }
 
-type QuotaDestination struct {
-	// +kubebuilder:validation:Required
-	Dns []string `json:"dns"`
-	// +kubebuilder:validation:Optional
-	Port []uint32 `json:"port,omitempty"`
-}
-
 type NetworkWatermarksExitGenPolicySpec struct {
 	// Enable watermarks checks for end events from userland
 	// +kubebuilder:default=true

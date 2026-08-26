@@ -26,11 +26,9 @@ import (
 
 	"github.com/cilium/ebpf"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	ossoption "github.com/cilium/tetragon/pkg/option"
@@ -168,8 +166,6 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 			DestinationId:     k.DestinationId,
 			DestinationSource: k.DestinationSource,
 			DestinationPort:   uint64(k.DestinationPort),
-			TxQuota:           v.TxQuota,
-			TxLimit:           v.TxLimit,
 			TxDrops:           v.TxDrops,
 			DefaultAllowBytes: v.AllowDefaultBytes,
 			DefaultDenyBytes:  v.DenyDefaultBytes,
@@ -637,15 +633,6 @@ func getProcessModel(namespaces []string,
 			DefaultDenyBytes:  dstVal.DenyDefaultBytes,
 			Sessions:          dstVal.Sessions,
 		}
-		// Report quota-related stats if TxLimit is set.
-		if dstVal.TxLimit != 0 {
-			stats.TxLimit = dstVal.TxLimit
-			stats.TxQuota = dstVal.TxQuota
-			stats.KtimeLastReset = ktime.ToProto(dstVal.KtimeLastReset)
-			lastReset := stats.KtimeLastReset.AsTime()
-			stats.KtimeTxReset = timestamppb.New(lastReset.Add(time.Duration(dstVal.KtimeTxReset)))
-		}
-
 		if dstVal.Policy != 0 {
 			policy, ok := library.GetRepository().GetName(dstVal.Policy)
 			if !ok {

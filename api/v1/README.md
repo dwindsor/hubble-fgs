@@ -4238,8 +4238,6 @@ Determins the behaviour of a field filter
 | destination_id | [uint64](#uint64) |  |  |
 | destination_source | [uint64](#uint64) |  |  |
 | destination_port | [uint64](#uint64) |  |  |
-| tx_quota | [uint64](#uint64) |  |  |
-| tx_limit | [uint64](#uint64) |  |  |
 | tx_drops | [uint64](#uint64) |  |  |
 | default_allow_bytes | [uint64](#uint64) |  |  |
 | default_deny_bytes | [uint64](#uint64) |  |  |
@@ -4261,10 +4259,6 @@ Determins the behaviour of a field filter
 | TxBytes | [uint64](#uint64) |  |  |
 | RxBytes | [uint64](#uint64) |  |  |
 | TxDrops | [uint64](#uint64) |  |  |
-| TxLimit | [uint64](#uint64) |  |  |
-| TxQuota | [uint64](#uint64) |  |  |
-| KtimeLastReset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
-| KtimeTxReset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | DefaultAllowBytes | [uint64](#uint64) |  |  |
 | DefaultDenyBytes | [uint64](#uint64) |  |  |
 

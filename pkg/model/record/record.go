@@ -61,10 +61,6 @@ func (r DatapathRecord) ToKey() RecordKey {
 }
 
 type DatapathAction struct {
-	// Quota limit in bytes
-	QuotaLimit uint64
-	// Reset time in nanoseconds
-	ResetTime uint64
 	// Action that could be none, allow or deny
 	Action uint64
 }
@@ -81,7 +77,7 @@ func (a *DatapathAction) String() string {
 	case PolicyReject:
 		policy = "reject"
 	}
-	return fmt.Sprintf("Quota %d Reset %d Policy %s", a.QuotaLimit, a.ResetTime, policy)
+	return fmt.Sprintf("Policy %s", policy)
 }
 
 type DatapathEndpoint struct {

@@ -23,7 +23,6 @@ package tetragon
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 	reflect "reflect"
 	sync "sync"
@@ -215,10 +214,6 @@ type DestinationStats struct {
 	TxBytes           uint64                 `protobuf:"varint,1,opt,name=TxBytes,proto3" json:"TxBytes,omitempty"`
 	RxBytes           uint64                 `protobuf:"varint,2,opt,name=RxBytes,proto3" json:"RxBytes,omitempty"`
 	TxDrops           uint64                 `protobuf:"varint,3,opt,name=TxDrops,proto3" json:"TxDrops,omitempty"`
-	TxLimit           uint64                 `protobuf:"varint,4,opt,name=TxLimit,proto3" json:"TxLimit,omitempty"`
-	TxQuota           uint64                 `protobuf:"varint,5,opt,name=TxQuota,proto3" json:"TxQuota,omitempty"`
-	KtimeLastReset    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=KtimeLastReset,proto3" json:"KtimeLastReset,omitempty"`
-	KtimeTxReset      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=KtimeTxReset,proto3" json:"KtimeTxReset,omitempty"`
 	DefaultAllowBytes uint64                 `protobuf:"varint,8,opt,name=DefaultAllowBytes,proto3" json:"DefaultAllowBytes,omitempty"`
 	DefaultDenyBytes  uint64                 `protobuf:"varint,9,opt,name=DefaultDenyBytes,proto3" json:"DefaultDenyBytes,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -274,34 +269,6 @@ func (x *DestinationStats) GetTxDrops() uint64 {
 		return x.TxDrops
 	}
 	return 0
-}
-
-func (x *DestinationStats) GetTxLimit() uint64 {
-	if x != nil {
-		return x.TxLimit
-	}
-	return 0
-}
-
-func (x *DestinationStats) GetTxQuota() uint64 {
-	if x != nil {
-		return x.TxQuota
-	}
-	return 0
-}
-
-func (x *DestinationStats) GetKtimeLastReset() *timestamppb.Timestamp {
-	if x != nil {
-		return x.KtimeLastReset
-	}
-	return nil
-}
-
-func (x *DestinationStats) GetKtimeTxReset() *timestamppb.Timestamp {
-	if x != nil {
-		return x.KtimeTxReset
-	}
-	return nil
 }
 
 func (x *DestinationStats) GetDefaultAllowBytes() uint64 {
@@ -961,8 +928,6 @@ type DestinationEndpointDebug struct {
 	DestinationId     uint64                 `protobuf:"varint,3,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty"`
 	DestinationSource uint64                 `protobuf:"varint,4,opt,name=destination_source,json=destinationSource,proto3" json:"destination_source,omitempty"`
 	DestinationPort   uint64                 `protobuf:"varint,5,opt,name=destination_port,json=destinationPort,proto3" json:"destination_port,omitempty"`
-	TxQuota           uint64                 `protobuf:"varint,6,opt,name=tx_quota,json=txQuota,proto3" json:"tx_quota,omitempty"`
-	TxLimit           uint64                 `protobuf:"varint,7,opt,name=tx_limit,json=txLimit,proto3" json:"tx_limit,omitempty"`
 	TxDrops           uint64                 `protobuf:"varint,8,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
 	DefaultAllowBytes uint64                 `protobuf:"varint,9,opt,name=default_allow_bytes,json=defaultAllowBytes,proto3" json:"default_allow_bytes,omitempty"`
 	DefaultDenyBytes  uint64                 `protobuf:"varint,10,opt,name=default_deny_bytes,json=defaultDenyBytes,proto3" json:"default_deny_bytes,omitempty"`
@@ -1032,20 +997,6 @@ func (x *DestinationEndpointDebug) GetDestinationSource() uint64 {
 func (x *DestinationEndpointDebug) GetDestinationPort() uint64 {
 	if x != nil {
 		return x.DestinationPort
-	}
-	return 0
-}
-
-func (x *DestinationEndpointDebug) GetTxQuota() uint64 {
-	if x != nil {
-		return x.TxQuota
-	}
-	return 0
-}
-
-func (x *DestinationEndpointDebug) GetTxLimit() uint64 {
-	if x != nil {
-		return x.TxLimit
 	}
 	return 0
 }
@@ -1162,7 +1113,7 @@ var File_tetragon_processmodel_proto protoreflect.FileDescriptor
 
 const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\n" +
-	"\x1btetragon/processmodel.proto\x12\btetragon\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a\x12tetragon/fgs.proto\x1a\x17tetragon/tetragon.proto\"N\n" +
+	"\x1btetragon/processmodel.proto\x12\btetragon\x1a\x1egoogle/protobuf/wrappers.proto\x1a\x12tetragon/fgs.proto\x1a\x17tetragon/tetragon.proto\"N\n" +
 	"\x16GetProcessModelRequest\x12\x1e\n" +
 	"\n" +
 	"namespaces\x18\x01 \x03(\tR\n" +
@@ -1170,17 +1121,13 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\x05debug\x18\x02 \x01(\bR\x05debug\"2\n" +
 	"\bWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind\"\xf2\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\"\x82\x02\n" +
 	"\x10DestinationStats\x12\x18\n" +
 	"\aTxBytes\x18\x01 \x01(\x04R\aTxBytes\x12\x18\n" +
 	"\aRxBytes\x18\x02 \x01(\x04R\aRxBytes\x12\x18\n" +
-	"\aTxDrops\x18\x03 \x01(\x04R\aTxDrops\x12\x18\n" +
-	"\aTxLimit\x18\x04 \x01(\x04R\aTxLimit\x12\x18\n" +
-	"\aTxQuota\x18\x05 \x01(\x04R\aTxQuota\x12B\n" +
-	"\x0eKtimeLastReset\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0eKtimeLastReset\x12>\n" +
-	"\fKtimeTxReset\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\fKtimeTxReset\x12,\n" +
+	"\aTxDrops\x18\x03 \x01(\x04R\aTxDrops\x12,\n" +
 	"\x11DefaultAllowBytes\x18\b \x01(\x04R\x11DefaultAllowBytes\x12*\n" +
-	"\x10DefaultDenyBytes\x18\t \x01(\x04R\x10DefaultDenyBytes\"\xfc\x01\n" +
+	"\x10DefaultDenyBytes\x18\t \x01(\x04R\x10DefaultDenyBytesJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\aTxLimitR\aTxQuotaR\x0eKtimeLastResetR\fKtimeTxReset\"\xfc\x01\n" +
 	"\vDestination\x12+\n" +
 	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\x126\n" +
 	"\x0fdestination_pod\x18\x02 \x01(\v2\r.tetragon.PodR\x0edestinationPod\x12\x12\n" +
@@ -1229,20 +1176,18 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\aprocess\x18\x01 \x03(\v2\x15.tetragon.ProcessUUIDR\aprocess\"?\n" +
 	"\x15GetProcessMapResponse\x12&\n" +
 	"\x03map\x18\x01 \x01(\v2\x14.tetragon.ProcessMapR\x03map\"\x16\n" +
-	"\x14GetProcessMapRequest\"\x9d\x03\n" +
+	"\x14GetProcessMapRequest\"\x87\x03\n" +
 	"\x18DestinationEndpointDebug\x12\x19\n" +
 	"\blocal_id\x18\x01 \x01(\x04R\alocalId\x12\x1e\n" +
 	"\vlocal_ns_id\x18\x02 \x01(\x04R\tlocalNsId\x12%\n" +
 	"\x0edestination_id\x18\x03 \x01(\x04R\rdestinationId\x12-\n" +
 	"\x12destination_source\x18\x04 \x01(\x04R\x11destinationSource\x12)\n" +
 	"\x10destination_port\x18\x05 \x01(\x04R\x0fdestinationPort\x12\x19\n" +
-	"\btx_quota\x18\x06 \x01(\x04R\atxQuota\x12\x19\n" +
-	"\btx_limit\x18\a \x01(\x04R\atxLimit\x12\x19\n" +
 	"\btx_drops\x18\b \x01(\x04R\atxDrops\x12.\n" +
 	"\x13default_allow_bytes\x18\t \x01(\x04R\x11defaultAllowBytes\x12,\n" +
 	"\x12default_deny_bytes\x18\n" +
 	" \x01(\x04R\x10defaultDenyBytes\x12\x16\n" +
-	"\x06policy\x18\v \x01(\tR\x06policy\"c\n" +
+	"\x06policy\x18\v \x01(\tR\x06policyJ\x04\b\x06\x10\aJ\x04\b\a\x10\bR\btx_quotaR\btx_limit\"c\n" +
 	"\x19GetDestinationMapResponse\x12F\n" +
 	"\fdestinations\x18\x01 \x03(\v2\".tetragon.DestinationEndpointDebugR\fdestinations\"\x1a\n" +
 	"\x18GetDestinationMapRequest*\xed\x01\n" +
@@ -1296,42 +1241,39 @@ var file_tetragon_processmodel_proto_goTypes = []any{
 	(*DestinationEndpointDebug)(nil),  // 14: tetragon.DestinationEndpointDebug
 	(*GetDestinationMapResponse)(nil), // 15: tetragon.GetDestinationMapResponse
 	(*GetDestinationMapRequest)(nil),  // 16: tetragon.GetDestinationMapRequest
-	(*timestamppb.Timestamp)(nil),     // 17: google.protobuf.Timestamp
-	(*Pod)(nil),                       // 18: tetragon.Pod
-	(*Service)(nil),                   // 19: tetragon.Service
-	(*wrapperspb.BoolValue)(nil),      // 20: google.protobuf.BoolValue
+	(*Pod)(nil),                       // 17: tetragon.Pod
+	(*Service)(nil),                   // 18: tetragon.Service
+	(*wrapperspb.BoolValue)(nil),      // 19: google.protobuf.BoolValue
 }
 var file_tetragon_processmodel_proto_depIdxs = []int32{
-	17, // 0: tetragon.DestinationStats.KtimeLastReset:type_name -> google.protobuf.Timestamp
-	17, // 1: tetragon.DestinationStats.KtimeTxReset:type_name -> google.protobuf.Timestamp
-	18, // 2: tetragon.Destination.destination_pod:type_name -> tetragon.Pod
-	3,  // 3: tetragon.Destination.stats:type_name -> tetragon.DestinationStats
-	19, // 4: tetragon.Destination.destination_service:type_name -> tetragon.Service
-	2,  // 5: tetragon.ProcessModel.workload:type_name -> tetragon.Workload
-	4,  // 6: tetragon.ProcessModel.dest:type_name -> tetragon.Destination
-	20, // 7: tetragon.ProcessModel.in_init_tree:type_name -> google.protobuf.BoolValue
-	0,  // 8: tetragon.Endpoint.type:type_name -> tetragon.EndpointType
-	6,  // 9: tetragon.EndpointMap.endpoints:type_name -> tetragon.Endpoint
-	7,  // 10: tetragon.GetEndpointMapResponse.map:type_name -> tetragon.EndpointMap
-	10, // 11: tetragon.ProcessUUID.children:type_name -> tetragon.ProcessUUID
-	10, // 12: tetragon.ProcessMap.process:type_name -> tetragon.ProcessUUID
-	11, // 13: tetragon.GetProcessMapResponse.map:type_name -> tetragon.ProcessMap
-	14, // 14: tetragon.GetDestinationMapResponse.destinations:type_name -> tetragon.DestinationEndpointDebug
-	9,  // 15: tetragon.ProcessModelService.GetEndpointMap:input_type -> tetragon.GetEndpointMapRequest
-	16, // 16: tetragon.ProcessModelService.GetDestinationMap:input_type -> tetragon.GetDestinationMapRequest
-	1,  // 17: tetragon.ProcessModelService.GetProcesses:input_type -> tetragon.GetProcessModelRequest
-	13, // 18: tetragon.ProcessModelService.GetProcessMap:input_type -> tetragon.GetProcessMapRequest
-	9,  // 19: tetragon.EndpointMapService.GetEndpointMap:input_type -> tetragon.GetEndpointMapRequest
-	8,  // 20: tetragon.ProcessModelService.GetEndpointMap:output_type -> tetragon.GetEndpointMapResponse
-	15, // 21: tetragon.ProcessModelService.GetDestinationMap:output_type -> tetragon.GetDestinationMapResponse
-	5,  // 22: tetragon.ProcessModelService.GetProcesses:output_type -> tetragon.ProcessModel
-	12, // 23: tetragon.ProcessModelService.GetProcessMap:output_type -> tetragon.GetProcessMapResponse
-	8,  // 24: tetragon.EndpointMapService.GetEndpointMap:output_type -> tetragon.GetEndpointMapResponse
-	20, // [20:25] is the sub-list for method output_type
-	15, // [15:20] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	17, // 0: tetragon.Destination.destination_pod:type_name -> tetragon.Pod
+	3,  // 1: tetragon.Destination.stats:type_name -> tetragon.DestinationStats
+	18, // 2: tetragon.Destination.destination_service:type_name -> tetragon.Service
+	2,  // 3: tetragon.ProcessModel.workload:type_name -> tetragon.Workload
+	4,  // 4: tetragon.ProcessModel.dest:type_name -> tetragon.Destination
+	19, // 5: tetragon.ProcessModel.in_init_tree:type_name -> google.protobuf.BoolValue
+	0,  // 6: tetragon.Endpoint.type:type_name -> tetragon.EndpointType
+	6,  // 7: tetragon.EndpointMap.endpoints:type_name -> tetragon.Endpoint
+	7,  // 8: tetragon.GetEndpointMapResponse.map:type_name -> tetragon.EndpointMap
+	10, // 9: tetragon.ProcessUUID.children:type_name -> tetragon.ProcessUUID
+	10, // 10: tetragon.ProcessMap.process:type_name -> tetragon.ProcessUUID
+	11, // 11: tetragon.GetProcessMapResponse.map:type_name -> tetragon.ProcessMap
+	14, // 12: tetragon.GetDestinationMapResponse.destinations:type_name -> tetragon.DestinationEndpointDebug
+	9,  // 13: tetragon.ProcessModelService.GetEndpointMap:input_type -> tetragon.GetEndpointMapRequest
+	16, // 14: tetragon.ProcessModelService.GetDestinationMap:input_type -> tetragon.GetDestinationMapRequest
+	1,  // 15: tetragon.ProcessModelService.GetProcesses:input_type -> tetragon.GetProcessModelRequest
+	13, // 16: tetragon.ProcessModelService.GetProcessMap:input_type -> tetragon.GetProcessMapRequest
+	9,  // 17: tetragon.EndpointMapService.GetEndpointMap:input_type -> tetragon.GetEndpointMapRequest
+	8,  // 18: tetragon.ProcessModelService.GetEndpointMap:output_type -> tetragon.GetEndpointMapResponse
+	15, // 19: tetragon.ProcessModelService.GetDestinationMap:output_type -> tetragon.GetDestinationMapResponse
+	5,  // 20: tetragon.ProcessModelService.GetProcesses:output_type -> tetragon.ProcessModel
+	12, // 21: tetragon.ProcessModelService.GetProcessMap:output_type -> tetragon.GetProcessMapResponse
+	8,  // 22: tetragon.EndpointMapService.GetEndpointMap:output_type -> tetragon.GetEndpointMapResponse
+	18, // [18:23] is the sub-list for method output_type
+	13, // [13:18] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_processmodel_proto_init() }

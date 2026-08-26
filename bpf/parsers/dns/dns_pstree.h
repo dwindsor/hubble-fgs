@@ -24,8 +24,8 @@ static __u64 BPF_FUNC(sk_cgroup_id, void *sk);
 static __u64 BPF_FUNC(sk_ancestor_cgroup_id, void *sk, int ancestor_level);
 
 // DNS needs source in its endpoint_id_value because these IDs can come from the
-// BPF side; from the parser that reads DNS answers or from the userspace side,
-// from the parser of the quota policies.
+// BPF side, from the parser that reads DNS answers, or from userspace network
+// policies.
 struct dns_endpoint_id_value {
 	uint64_t id;
 	uint64_t source;
@@ -58,7 +58,7 @@ struct {
 } tg_dns_ip_id SEC(".maps");
 
 // domain_string -> ID, this is read-write from BPF and userspace. From the BPF
-// DNS parser and the quota policy parser.
+// DNS parser and userspace network policies.
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
@@ -228,8 +228,8 @@ FUNC_INLINE void find_dns_key(struct destination_endpoint_key *key, struct ip_ad
 }
 
 // Assigns an ID from the ip and domain. Most of the time it generates a new ID
-// from BPF side but, in the case a quota policy was parsed by userspace, reuses
-// an existing userspace generated ID. This is only used in the BPF DNS parser.
+// from BPF side but reuses an existing userspace-generated policy ID when one
+// exists. This is only used in the BPF DNS parser.
 FUNC_INLINE int assign_dns_id_mapping(struct __sk_buff *skb, struct ip_addr *ip, char *domain)
 {
 	struct dns_endpoint_id_value *id_val;

@@ -113,10 +113,6 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 			DefaultAllowBytes: bc.GetAllowDefaultBytes(),
 			DefaultDropBytes:  bc.GetDenyDefaultBytes(),
 			TxDrops:           bc.GetTxDrops(),
-			TxQuota:           bc.GetTxQuota(),
-			TxQuotaUsage:      bc.GetTxUsage(),
-			LastQuotaReset:    MaybeTimeToTimestamp(bc.GetLastReset()),
-			NextQuotaReset:    MaybeTimeToTimestamp(bc.GetNextReset()),
 			Sessions:          bc.GetSessions(),
 		},
 		Policy: &appModelV1.NetworkPolicy{
@@ -288,8 +284,7 @@ func ProcessModelToApplicationModel(processModel []*types.ProcessModel, nsFilter
 // ProcessModelToApplicationModelWithProcessData converts process models to an application model
 // and also returns the process monitor data for building telemetry maps.
 func ProcessModelToApplicationModelWithProcessData(processModel []*types.ProcessModel, nsFilter map[string]bool, nodeLabels map[string]string) (*appModelV1.ApplicationModelEvent, ProcessMonitorData) {
-	// Ignore quota info for now.
-	monitor, _, processes := ConvertToMonitorData(processModel, true)
+	monitor, processes := ConvertToMonitorData(processModel, true)
 	nsMap := make(namespaceMap)
 	for key, val := range monitor {
 		handleNetworkEvent(nsMap, key, val)

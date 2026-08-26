@@ -12,14 +12,12 @@ package model
 
 import (
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -115,31 +113,8 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 				},
 			},
 		},
-		// This is quota
-		{
-			Namespace: "client",
-			Workload:  &types.Workload{Kind: "Deployment", Name: "my-app"},
-			Dest: []*types.Destination{
-				{
-					DestinationPod: &types.Pod{
-						Namespace:    "server",
-						WorkloadKind: "Deployment",
-						Workload:     "nginx",
-					},
-					Stats: &types.DestinationStats{
-						TxBytes:        200,
-						RxBytes:        400,
-						TxDrops:        600,
-						TxLimit:        800,
-						TxQuota:        1000,
-						KtimeTxReset:   &timestamppb.Timestamp{Seconds: 1200, Nanos: 1400},
-						KtimeLastReset: &timestamppb.Timestamp{Seconds: 1000, Nanos: 1400},
-					},
-				},
-			},
-		},
 	}
-	data, quota, _ := ConvertToMonitorData(res, false)
+	data, _ := ConvertToMonitorData(res, false)
 	expected := NetworkMonitorData{
 		NetworkKey{
 			SourceNamespace:  HostNamespace,
@@ -185,28 +160,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			RXBytes: 400,
 		},
 	}
-	expectedQuota := NetworkQuotaData{
-		NetworkKey{
-			SourceNamespace:              "client",
-			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-			SourceWorkloadResourceKind:   common.ResourceKind_RESOURCE_KIND_WORKLOAD,
-			SourceWorkloadName:           "my-app",
-			DestinationWorkloadName:      "nginx",
-			DestinationWorkloadNamespace: "server",
-			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_WORKLOAD,
-		}: NetworkQuotaValue{
-			TXBytes:   200,
-			RXBytes:   400,
-			TXDrops:   600,
-			TXQuota:   800,
-			TXUsage:   1000,
-			NextReset: time.Unix(1200, 1400).UTC(),
-			LastReset: time.Unix(1000, 1400).UTC(),
-		},
-	}
 	assert.Empty(t, cmp.Diff(expected, data, protocmp.Transform()))
-	assert.Empty(t, cmp.Diff(expectedQuota, quota, protocmp.Transform()))
 }
 
 func TestDiff(t *testing.T) {
@@ -637,7 +591,7 @@ func TestConvertToMonitorData_ParentAggregation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, processData := ConvertToMonitorData(tt.input, false)
+			_, processData := ConvertToMonitorData(tt.input, false)
 
 			// Check that we got the expected number of process entries
 			assert.Equal(t, len(tt.expected), len(processData), "unexpected number of process entries")
@@ -674,7 +628,7 @@ func TestConvertToMonitorData_ParentWithWorkloadNil(t *testing.T) {
 	}
 
 	// This should not panic
-	_, _, processData := ConvertToMonitorData(input, false)
+	_, processData := ConvertToMonitorData(input, false)
 
 	expected := ProcessKey{
 		Namespace:    HostNamespace,

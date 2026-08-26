@@ -22,10 +22,6 @@ type DestinationStats struct {
 	TxBytes           uint64
 	RxBytes           uint64
 	TxDrops           uint64
-	TxLimit           uint64
-	TxQuota           uint64
-	KtimeLastReset    *timestamppb.Timestamp
-	KtimeTxReset      *timestamppb.Timestamp
 	DefaultAllowBytes uint64
 	DefaultDenyBytes  uint64
 	Sessions          uint64

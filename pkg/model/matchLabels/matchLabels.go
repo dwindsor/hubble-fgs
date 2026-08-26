@@ -92,26 +92,6 @@ func (policy PolicyList) Collection(l *LabelSet) []*LabelSet {
 	return col
 }
 
-// Rule for merging quota: Consume policy with smallest bandwidth
-func (policy *PolicyList) MergedCollection(l *LabelSet) *LabelSet {
-	var selectedQOS *LabelSet
-	set := policy.Collection(l)
-
-	for _, s := range set {
-		if qos := s.Policy.Action.QuotaAction; qos != nil {
-			if selectedQOS == nil {
-				selectedQOS = s
-				continue
-			}
-			if s.Policy.Action.QuotaAction.Quota < selectedQOS.Policy.Action.QuotaAction.Quota {
-				selectedQOS = s
-			}
-		}
-	}
-
-	return selectedQOS
-}
-
 // Careful this is not a copy() so you can't reuse
 // l after this.
 func (policy PolicyList) Add(l *LabelSet) {

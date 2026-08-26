@@ -358,10 +358,7 @@ func (state *PolicyState) createServiceSelectorRecordsForPolicy(podInfo *v1alpha
 func (state *PolicyState) generateServiceSelectorRecords(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy) ([]record.DatapathRecord, error) {
 	var records []record.DatapathRecord
 
-	action, err := calculateAction(&policy.Action)
-	if err != nil {
-		return records, err
-	}
+	action := calculateAction(&policy.Action)
 
 	svcName := policy.Destination.ServiceRef.Name
 	svcNamespace := policy.Destination.ServiceRef.Namespace
@@ -586,11 +583,7 @@ func (state *PolicyState) applyServiceSelectorEndpointCIDRDelta(namespace, name 
 	var addRecords []record.DatapathRecord
 
 	for _, policy := range affectedPolicies {
-		action, err := calculateAction(&policy.Action)
-		if err != nil {
-			log.Warn("Failed to calculate action for policy", logfields.Error, err)
-			continue
-		}
+		action := calculateAction(&policy.Action)
 
 		for _, obj := range state.localObjects {
 			podInfo, ok := obj.(*v1alpha1.PodInfo)

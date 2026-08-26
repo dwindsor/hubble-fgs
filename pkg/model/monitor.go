@@ -134,18 +134,6 @@ func (nmv NetworkMonitorValue) String() string {
 	return fmt.Sprintf("%s%s sent %s received %s dropped", policy, getByteSize(nmv.TXBytes), getByteSize(nmv.RXBytes), getByteSize(nmv.TXDrops))
 }
 
-type NetworkQuotaValue struct {
-	TXBytes           uint64
-	RXBytes           uint64
-	AllowDefaultBytes uint64
-	DenyDefaultBytes  uint64
-	TXDrops           uint64
-	TXQuota           uint64
-	TXUsage           uint64
-	LastReset         time.Time
-	NextReset         time.Time
-}
-
 type byteCounter interface {
 	GetPolicy() string
 	GetRule() string
@@ -154,10 +142,6 @@ type byteCounter interface {
 	GetAllowDefaultBytes() uint64
 	GetDenyDefaultBytes() uint64
 	GetTxDrops() uint64
-	GetTxQuota() uint64
-	GetTxUsage() uint64
-	GetLastReset() *time.Time
-	GetNextReset() *time.Time
 	GetSessions() uint64
 }
 
@@ -189,75 +173,11 @@ func (nmv NetworkMonitorValue) GetTxDrops() uint64 {
 	return nmv.TXDrops
 }
 
-func (NetworkMonitorValue) GetTxQuota() uint64 {
-	return 0
-}
-
-func (NetworkMonitorValue) GetTxUsage() uint64 {
-	return 0
-}
-
-func (NetworkMonitorValue) GetLastReset() *time.Time {
-	return nil
-}
-
-func (NetworkMonitorValue) GetNextReset() *time.Time {
-	return nil
-}
-
 func (nmv NetworkMonitorValue) GetSessions() uint64 {
 	return nmv.Sessions
 }
 
-func (nqv NetworkQuotaValue) GetTxBytes() uint64 {
-	return nqv.TXBytes
-}
-
-func (nqv NetworkQuotaValue) GetRxBytes() uint64 {
-	return nqv.RXBytes
-}
-
-func (nqv NetworkQuotaValue) GetTxDrops() uint64 {
-	return nqv.TXDrops
-}
-
-func (nqv NetworkQuotaValue) GetTxQuota() uint64 {
-	return nqv.TXQuota
-}
-
-func (nqv NetworkQuotaValue) GetTxUsage() uint64 {
-	return nqv.TXUsage
-}
-
-func (nqv NetworkQuotaValue) GetLastReset() *time.Time {
-	return new(nqv.LastReset)
-}
-
-func (nqv NetworkQuotaValue) GetNextReset() *time.Time {
-	return new(nqv.NextReset)
-}
-
-func (NetworkQuotaValue) GetSessions() uint64 {
-	return 0
-}
-
-func (nqv NetworkQuotaValue) String() string {
-	now := time.Now()
-	var reset string
-	if now.Before(nqv.NextReset) {
-		reset = fmt.Sprintf("reset in %s", nqv.NextReset.Sub(now).Truncate(time.Second))
-	} else {
-		reset = "reset on next send"
-	}
-	return fmt.Sprintf("quota %s of %s (%.2f%%) used %s dropped %s",
-		getByteSize(nqv.TXUsage), getByteSize(nqv.TXQuota),
-		100*float64(nqv.TXUsage)/float64(nqv.TXQuota),
-		getByteSize(nqv.TXDrops), reset,
-	)
-}
-
 type NetworkMonitorData map[NetworkKey]NetworkMonitorValue
-type NetworkQuotaData map[NetworkKey]NetworkQuotaValue
 type ProcessMonitorData map[ProcessKey]ProcessValue
 
 type ProcessKey struct {
@@ -292,12 +212,6 @@ func (nmd NetworkMonitorData) Print() {
 	slices.SortFunc(keys, CompareNetworkKeys)
 	for _, key := range keys {
 		fmt.Println(key, nmd[key])
-	}
-}
-
-func (nqd NetworkQuotaData) Print() {
-	for key, val := range nqd {
-		fmt.Println(key, val)
 	}
 }
 
@@ -432,20 +346,6 @@ func getProcessMonitorKey(process *types.ProcessModel) ProcessKey {
 	return pmKey
 }
 
-func getNetworkQuotaValue(dst *types.Destination) NetworkQuotaValue {
-	return NetworkQuotaValue{
-		TXBytes:           dst.Stats.TxBytes,
-		RXBytes:           dst.Stats.RxBytes,
-		AllowDefaultBytes: dst.Stats.DefaultAllowBytes,
-		DenyDefaultBytes:  dst.Stats.DefaultDenyBytes,
-		TXDrops:           dst.Stats.TxDrops,
-		TXQuota:           dst.Stats.TxLimit,
-		TXUsage:           dst.Stats.TxQuota,
-		NextReset:         dst.Stats.KtimeTxReset.AsTime(),
-		LastReset:         dst.Stats.KtimeLastReset.AsTime(),
-	}
-}
-
 func getSyscallInfo(abi string, syscalls []uint32) (*appModelV1.ApplicationSyscalls, error) {
 	syscall_info := &appModelV1.ApplicationSyscalls{}
 	for _, syscall := range syscalls {
@@ -485,10 +385,9 @@ type processAccumulator struct {
 	latestExitTime  *time.Time
 }
 
-func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess bool) (NetworkMonitorData, NetworkQuotaData, ProcessMonitorData) {
+func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess bool) (NetworkMonitorData, ProcessMonitorData) {
 	n := len(processModel)
 	result := make(NetworkMonitorData, n)
-	quota := NetworkQuotaData{}
 	proc := make(ProcessMonitorData, n)
 
 	// Single pass: accumulate network data and per-key process state together.
@@ -545,9 +444,6 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 					currentValue.Sessions += dst.Stats.Sessions
 				}
 				result[key] = currentValue
-			} else if process.Binary == "" && dst.Stats != nil && dst.Stats.TxLimit > 0 {
-				// This is quota-related stats.
-				quota[key] = getNetworkQuotaValue(dst)
 			}
 		}
 	}
@@ -579,7 +475,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 		}
 	}
 
-	return result, quota, proc
+	return result, proc
 }
 
 func Diff(current, newer NetworkMonitorData) NetworkMonitorData {

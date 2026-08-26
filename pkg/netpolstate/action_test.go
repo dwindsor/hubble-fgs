@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -30,11 +29,9 @@ func TestCalculateDeny(t *testing.T) {
 		Allow: false,
 	}
 	a := &types.TetragonNetworkAction{
-		QuotaAction:   nil,
 		EnforceAction: enforce,
 	}
-	da, err := calculateAction(a)
-	require.NoError(t, err)
+	da := calculateAction(a)
 	assert.Equal(t, record.PolicyDeny, da.Action)
 }
 
@@ -44,11 +41,9 @@ func TestCalculateNoDeny(t *testing.T) {
 		Allow: false,
 	}
 	a := &types.TetragonNetworkAction{
-		QuotaAction:   nil,
 		EnforceAction: enforce,
 	}
-	da, err := calculateAction(a)
-	require.NoError(t, err)
+	da := calculateAction(a)
 	assert.Equal(t, record.PolicyNone, da.Action)
 }
 
@@ -58,10 +53,8 @@ func TestCalculateAllow(t *testing.T) {
 		Allow: true,
 	}
 	a := &types.TetragonNetworkAction{
-		QuotaAction:   nil,
 		EnforceAction: enforce,
 	}
-	da, err := calculateAction(a)
-	require.NoError(t, err)
+	da := calculateAction(a)
 	assert.Equal(t, record.PolicyAllow, da.Action)
 }

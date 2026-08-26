@@ -284,7 +284,7 @@ func TestProcessModelToApplicationModel_ParentTracking(t *testing.T) {
 	// Note: The ApplicationProcessGroup doesn't currently have a Parents field in the IPA schema,
 	// but we can verify that the parent information is properly tracked in the monitor data
 	// by converting back to monitor data
-	_, _, processData := ConvertToMonitorData(models, false)
+	_, processData := ConvertToMonitorData(models, false)
 
 	exaKey := ProcessKey{
 		Namespace: HostNamespace,
@@ -361,7 +361,7 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 	require.Equal(t, "--config=/etc/app.conf", process.Arguments)
 
 	// Verify parent aggregation in monitor data
-	_, _, processData := ConvertToMonitorData(models, false)
+	_, processData := ConvertToMonitorData(models, false)
 
 	appKey := ProcessKey{
 		Namespace:    "default",

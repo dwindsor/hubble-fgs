@@ -63,11 +63,6 @@ struct {
 	__type(value, u64); // state ID
 } tg_cgid_wlid SEC(".maps");
 
-static int atomic_xchg(__u64 *cnt, __u64 val)
-{
-	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);
-}
-
 static void get_tree_id(struct tree_id *id)
 {
 	u32 zero = 0;
@@ -381,8 +376,6 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		if (!destvalue)
 			return 0;
 
-		destvalue->tx_quota = 0;
-		destvalue->tx_limit = 0;
 		destvalue->tx_drops = 0;
 		destvalue->allow_default = 0;
 		destvalue->deny_default = 0;
@@ -614,7 +607,6 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->port = tuple->dport;
 			destvalue->protocol = tuple->proto;
 			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
-			destvalue->tx_quota = destvalue->tx_limit = 0;
 			destvalue->tx_bytes = destvalue->rx_bytes = 0;
 			destvalue->sessions = 0;
 			destvalue->policy = dst_value->policy;
@@ -895,81 +887,6 @@ static inline __attribute__((always_inline)) int dest_policy(__u64 *p, __u64 len
 	return SK_PASS;
 }
 
-static inline __attribute__((always_inline)) int qos(struct destination_endpoint_value *dest, struct destination_endpoint_value *port, struct destination_endpoint_value *full, __u64 len)
-{
-	int verdict = SK_PASS;
-	__u64 quota, now;
-
-	/* This is all a bit racy, but if you are surfing on the edge of a
-	 * time window the observer can't tell order of operations between
-	 * two skbs and they can't measure time well enough to know if I did
-	 * it 100% correctly. All this is write_once so values are not going
-	 * to be corrupted.
-	 */
-	now = tg_get_ktime();
-	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
-		atomic_xchg(&dest->tx_quota, 0);
-		atomic_xchg(&dest->ktime_last_reset, now);
-	}
-
-	quota = __sync_add_and_fetch(&dest->tx_quota, len);
-	if (dest->tx_limit && quota > dest->tx_limit) {
-		__sync_fetch_and_add(&full->tx_drops, len);
-		__sync_fetch_and_add(&port->tx_drops, len);
-		__sync_fetch_and_add(&dest->tx_drops, len);
-		verdict = SK_DROP;
-	}
-
-	return verdict;
-}
-
-static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_key *key, __u64 len)
-{
-	struct destination_endpoint_value *dest;
-	struct destination_endpoint_key k;
-	int verdict = SK_PASS;
-	__u64 quota, now;
-
-	if (!key) {
-		return SK_PASS;
-	}
-
-	// QOS keys are per Pod and do not include process level information.
-	k.local_id.uid = 0;
-	k.local_id.cpu = 0;
-	tree_id_set_ignore_args(&k.local_id, false);
-	k.local_nsid = key->local_nsid;
-	k.destination_id = key->destination_id;
-	k.source = key->source;
-	k.port = 0;
-	k.protocol = 0;
-
-	dest = map_lookup_elem(&destination_endpoint_map, &k);
-	if (!dest) {
-		return SK_PASS;
-	}
-
-	/* This is all a bit racy, but if you are surfing on the edge of a
-	 * time window the observer can't tell order of operations between
-	 * two skbs and they can't measure time well enough to know if I did
-	 * it 100% correctly. All this is write_once so values are not going
-	 * to be corrupted.
-	 */
-	now = tg_get_ktime();
-	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
-		atomic_xchg(&dest->tx_quota, 0);
-		atomic_xchg(&dest->ktime_last_reset, now);
-	}
-
-	quota = __sync_add_and_fetch(&dest->tx_quota, len);
-	if (dest->tx_limit && quota > dest->tx_limit) {
-		__sync_fetch_and_add(&dest->tx_drops, len);
-		verdict = SK_DROP;
-	}
-
-	return verdict;
-}
-
 /* Clear the policy template flag when we have real traffic.
  * Policy entries are created with this flag set to indicate they are
  * templates. When actual traffic flows through, we clear the flag so
@@ -984,7 +901,6 @@ static inline __attribute__((always_inline)) void clear_policy_template_flag(str
 static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len, bool enforce)
 {
 	struct destination_endpoint_value *dest;
-	int verdict;
 
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (!dest)
@@ -1005,17 +921,11 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 				bpf_icmp_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_ADM_PROHIBITED);
 		}
 
-		verdict = SK_DROP;
-		goto out;
-	}
-	if (deny & TNP_POLICY_FALLTHRU)
+		if (enforce)
+			return SK_DROP;
+	} else if (deny & TNP_POLICY_FALLTHRU) {
 		__sync_fetch_and_add(&dest->allow_default, len);
-
-	verdict = qos_from_key(key, len);
-out:
-	/* UDP drops are observability-only until enforcement is supported. */
-	if (enforce && verdict == SK_DROP)
-		return SK_DROP;
+	}
 
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 	return SK_PASS;

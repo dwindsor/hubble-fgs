@@ -79,14 +79,10 @@ struct destination_endpoint_key {
 #define DEST_FLAG_POLICY_TEMPLATE_ONLY 0x1 // Entry created by policy, no traffic observed yet
 
 struct destination_endpoint_value {
-	__u64 tx_quota;
-	__u64 tx_limit;
 	__u64 tx_drops;
 	__u64 allow_default;
 	__u64 deny_default;
 	__u64 deny;
-	__u64 ktime_last_reset;
-	__u64 ktime_tx_reset;
 	__u64 tx_bytes;
 	__u64 rx_bytes;
 	__u64 policy;

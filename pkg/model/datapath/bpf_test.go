@@ -113,9 +113,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 			Port: 80,
 		},
 		Action: &record.DatapathAction{
-			QuotaLimit: uint64(0),
-			ResetTime:  uint64(0),
-			Action:     record.PolicyDeny,
+			Action: record.PolicyDeny,
 		},
 	}
 	expectedEntries := []expectedEntry{
@@ -184,9 +182,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 			Port: 80,
 		},
 		Action: &record.DatapathAction{
-			QuotaLimit: uint64(0),
-			ResetTime:  uint64(0),
-			Action:     record.PolicyDeny,
+			Action: record.PolicyDeny,
 		},
 	}
 	expectedEntries := []expectedEntry{
@@ -280,9 +276,7 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 			Port: 80,
 		},
 		Action: &record.DatapathAction{
-			QuotaLimit: uint64(0),
-			ResetTime:  uint64(0),
-			Action:     record.PolicyDeny,
+			Action: record.PolicyDeny,
 		},
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "test-policy",

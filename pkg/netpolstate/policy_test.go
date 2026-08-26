@@ -39,12 +39,8 @@ func testMatchSrcLabelsPolicy(name, labels string) *types.TetragonNetworkPolicy 
 	d := types.TetragonNetworkDestination{
 		FQDN: f,
 	}
-	quota := &types.TetragonQuotaAction{
-		Quota: "1",
-		Reset: "120s",
-	}
 	a := types.TetragonNetworkAction{
-		QuotaAction: quota,
+		EnforceAction: &types.TetragonEnforceAction{Allow: true},
 	}
 	policy := &types.TetragonNetworkPolicy{
 		PolicyUID: types.TetragonPolicyUniqueID{
@@ -87,9 +83,6 @@ func testMatchDstLabelsDenyPolicy(name, src, dst, action string) *types.Tetragon
 		netpol.Action.EnforceAction = allowAction
 		netpol.Default.EnforceAction = denyAction
 	}
-
-	netpol.Action.QuotaAction = nil
-	netpol.Default.QuotaAction = nil
 
 	return netpol
 }

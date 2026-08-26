@@ -549,10 +549,10 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 			return fmt.Errorf("failed to populate the DNS IP to ID maps with localhost: %w", err)
 		}
 
-		// Program the QuotasInitDNSDomainMappings
+		// Program any userspace DNS mappings queued before the maps were ready.
 		var dnsDomainMap dnsparser.DomainMap
 		defer dnsDomainMap.CloseMaps()
-		for endpoint, id := range datapath.QuotasInitDNSDomainMappings {
+		for endpoint, id := range datapath.PendingDNSDomainMappings {
 			err := dnsDomainMap.Update(endpoint.Dns, id)
 			if err != nil {
 				return fmt.Errorf("failed to write BPF domain maps with endpoint %s and id %d: %w", endpoint, id, err)

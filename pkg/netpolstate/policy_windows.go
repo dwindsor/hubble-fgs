@@ -52,19 +52,8 @@ func SanitizeWindowsPath(path string) string {
 func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]record.DatapathRecord, error) {
 	records := []record.DatapathRecord{}
 
-	dfltAction, err := calculateAction(&policy.Default)
-	if err != nil {
-		logger.GetLogger().Error("policy has unsupported or invalid default action", logfields.Error, err,
-			"uid", policy.PolicyUID, "action", policy.Action)
-		return records, err
-	}
-
-	action, err := calculateAction(&policy.Action)
-	if err != nil {
-		logger.GetLogger().Error("policy has unsupported or invalid action", logfields.Error, err,
-			"uid", policy.PolicyUID, "action", policy.Action)
-		return records, err
-	}
+	dfltAction := calculateAction(&policy.Default)
+	action := calculateAction(&policy.Action)
 
 	// Records are mapped to the datapath. We need a distinct record
 	// for each process or lack of processSelector simply apply to

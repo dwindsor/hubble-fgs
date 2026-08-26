@@ -234,11 +234,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 		podEP := createObjectEndpoint(pod)
 		for _, d := range dests {
 			s := state.src[d.Policy.PolicyUID]
-			action, err := calculateAction(&s.Policy.Action)
-			if err != nil {
-				logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
-				continue
-			}
+			action := calculateAction(&s.Policy.Action)
 
 			ep := record.DatapathEndpoint{
 				EP:   podEP,
@@ -308,11 +304,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 	}
 
 	for _, s := range coll {
-		action, err := calculateAction(&s.Policy.Action)
-		if err != nil {
-			logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
-			continue
-		}
+		action := calculateAction(&s.Policy.Action)
 		d := state.dst[s.Policy.PolicyUID]
 
 		// serviceSelector policies populate state.Src (for subject matching) but
@@ -394,11 +386,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRec
 		}
 
 		for _, entry := range s.Policy.Destination.FQDN.Names {
-			action, err := calculateAction(&s.Policy.Action)
-			if err != nil {
-				logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
-				continue
-			}
+			action := calculateAction(&s.Policy.Action)
 			ep := &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 				Dns:  entry,
@@ -467,12 +455,7 @@ func (state *PolicyState) endpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		policyList := state.src[d.Policy.PolicyUID]
 		policy := policyList.Policy.PolicyUID
 		for _, subject := range policyList.Subjects {
-			action, err := calculateAction(&policyList.Policy.Action)
-			if err != nil {
-				logger.GetLogger().Warn("could not calcluate actions, skipping action",
-					logfields.Error, err, "policyName", d.Policy.PolicyUID, "action", d.Policy.Action)
-				continue
-			}
+			action := calculateAction(&policyList.Policy.Action)
 
 			if len(policyList.Policy.Subject.InProcessName) > 0 {
 				for _, process := range policyList.Policy.Subject.InProcessName {
