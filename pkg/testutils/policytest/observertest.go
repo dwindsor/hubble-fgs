@@ -33,6 +33,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/policytestconfig"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -56,6 +57,7 @@ func DoObserverTestUnfiltered(t *testing.T, testpolicyName string, params map[st
 
 func doObserverTest(t *testing.T, testpolicyName string, params map[string]any, filterByPID bool) {
 	t.Helper()
+	policytestconfig.SetEnterpriseBinsDir(testutils.RepoRootPath("contrib/tester-progs"))
 	pts := oss.AllPolicyTests.GetByName(testpolicyName)
 	if len(pts) == 0 {
 		t.Fatalf("no testpolicy with name %q found", testpolicyName)

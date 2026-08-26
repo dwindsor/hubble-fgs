@@ -33,6 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/tetra/common"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/network"
 
+	"github.com/isovalent/hubble-fgs/pkg/testutils/policytestconfig"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/dns"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/file"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/mandate"
@@ -40,8 +41,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/tetra/probe"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/syscallentries"
-
-	_ "github.com/isovalent/hubble-fgs/tests/policytests" // so that enterprise tests are registered
+	_ "github.com/isovalent/hubble-fgs/tests/policytests" // so that tests can be registered
 )
 
 func addCommands(rootCmd *cobra.Command) {
@@ -71,6 +71,7 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(mandate.New())
 	rootCmd.AddCommand(policies.New())
 	ptCmd := policytest.New()
+	policytestconfig.AddEnterprisePolicyTestFlags(ptCmd)
 	// "run" returns errors on test failures, not usage errors, so don't
 	// show the flags block on failure.
 	for _, c := range ptCmd.Commands() {
