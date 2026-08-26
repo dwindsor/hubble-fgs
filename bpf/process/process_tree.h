@@ -984,6 +984,7 @@ static inline __attribute__((always_inline)) void clear_policy_template_flag(str
 static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len, bool enforce)
 {
 	struct destination_endpoint_value *dest;
+	int verdict;
 
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (!dest)
@@ -991,7 +992,6 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 
 	clear_policy_template_flag(dest);
 
-	__sync_fetch_and_add(&dest->tx_bytes, len);
 	if (is_policy_drop(deny)) {
 		__sync_fetch_and_add(&dest->tx_drops, len);
 		if (deny & TNP_POLICY_FALLTHRU)
@@ -1005,12 +1005,20 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 				bpf_icmp_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_ADM_PROHIBITED);
 		}
 
-		return SK_DROP;
+		verdict = SK_DROP;
+		goto out;
 	}
 	if (deny & TNP_POLICY_FALLTHRU)
 		__sync_fetch_and_add(&dest->allow_default, len);
 
-	return qos_from_key(key, len);
+	verdict = qos_from_key(key, len);
+out:
+	/* UDP drops are observability-only until enforcement is supported. */
+	if (enforce && verdict == SK_DROP)
+		return SK_DROP;
+
+	__sync_fetch_and_add(&dest->tx_bytes, len);
+	return SK_PASS;
 }
 
 static int recv(int deny, struct destination_endpoint_key *key, __u64 len)
