@@ -16,7 +16,7 @@ Helm chart for Tetragon Enterprise
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` |  |
-| certgen | object | `{"affinity":{},"annotations":{"cronJob":{},"job":{}},"cronJob":{"failedJobsHistoryLimit":1,"successfulJobsHistoryLimit":1},"generateCA":true,"hostUsers":true,"image":{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/cilium/certgen","tag":"v0.4.10"},"nodeSelector":{},"podLabels":{},"resources":{},"tolerations":[],"ttlSecondsAfterFinished":1800}` | cilium-certgen settings used by tetragon.grpc.tls.auto.method=cronJob. Mirrors the same block in cilium/cilium so operators familiar with the hubble TLS workflow find consistent knobs. |
+| certgen | object | `{"affinity":{},"annotations":{"cronJob":{},"job":{}},"cronJob":{"failedJobsHistoryLimit":1,"successfulJobsHistoryLimit":1},"generateCA":true,"hostUsers":true,"image":{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/cilium/certgen","tag":"v0.4.11"},"nodeSelector":{},"podLabels":{},"resources":{},"tolerations":[],"ttlSecondsAfterFinished":1800}` | cilium-certgen settings used by tetragon.grpc.tls.auto.method=cronJob. Mirrors the same block in cilium/cilium so operators familiar with the hubble TLS workflow find consistent knobs. |
 | certgen.affinity | object | `{}` | Affinity for certgen pods. |
 | certgen.annotations | object | `{"cronJob":{},"job":{}}` | Annotations applied to certgen Job/CronJob objects. |
 | certgen.cronJob.failedJobsHistoryLimit | int | `1` | Number of failed CronJob runs to retain. |
@@ -177,7 +177,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.gops.address | string | `"localhost"` | The address at which to expose gops. |
 | tetragon.gops.enabled | bool | `false` | Whether to enable exposing gops server. |
 | tetragon.gops.port | int | `8118` | The port at which to expose gops. |
-| tetragon.grpc.address | string | `"unix:///var/run/tetragon/tetragon.sock"` | The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock |
+| tetragon.grpc.address | string | `"unix:///var/run/tetragon/tetragon.sock"` | The address at which to expose gRPC. Examples: localhost:54321, unix:///var/run/tetragon/tetragon.sock WARNING: Exposing gRPC on a TCP socket without TLS client verification exposes Tetragon to unprivileged users on the host or with network access. |
 | tetragon.grpc.enabled | bool | `true` | Whether to enable exposing Tetragon gRPC. |
 | tetragon.grpc.tls | object | `{"auto":{"certManagerIssuerRef":{},"certValidityDuration":365,"enabled":true,"method":"helm","schedule":"0 0 1 */4 *"},"ca":{"cert":"","certValidityDuration":1095,"key":""},"enabled":false,"requireClientCert":false,"server":{"existingSecret":"","extraDnsNames":[],"extraIpAddresses":[]}}` | gRPC TLS / mTLS configuration for the optional TCP listener (tetragon.grpc.address); the always-on unix-domain listener at /var/run/tetragon/tetragon.sock is unaffected.  The auto-provisioned server cert uses a wildcard SAN over a synthetic DNS domain (*.tetragon-grpc.cilium.io) so a single Secret covers every DaemonSet pod. Clients must override SNI to <any>.tetragon-grpc.cilium.io to validate. See _helpers.tpl `tetragon.grpcTls.domain` for details; add Service-style or per-node identities via server.extraDnsNames / server.extraIpAddresses below. |
 | tetragon.grpc.tls.auto | object | `{"certManagerIssuerRef":{},"certValidityDuration":365,"enabled":true,"method":"helm","schedule":"0 0 1 */4 *"}` | Configure automatic TLS certificate generation. |

@@ -9,6 +9,7 @@ import (
 	"context"
 	"maps"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -66,7 +67,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			// previous call to Get returned "NotFound" because of a timing issue.
 			// Requeue without returning the error when this happens, otherwise
 			// the controller logs an error.
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: time.Second}, nil
 		}
 		return ctrl.Result{}, err
 	}
@@ -131,21 +132,19 @@ func generatePodInfo(pod *corev1.Pod) *ciliumiov1alpha1.PodInfo {
 	}
 	workloadObject, workloadType := podhelpers.GetWorkloadMetaFromPod(pod)
 	return &ciliumiov1alpha1.PodInfo{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        pod.Name,
-			Namespace:   pod.Namespace,
-			Labels:      pod.Labels,
-			Annotations: pod.Annotations,
-			// setting up owner reference to the pod will ensure that the PodInfo resource is deleted when the pod is deleted.
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         pod.APIVersion,
-					Kind:               pod.Kind,
-					Name:               pod.Name,
-					UID:                pod.UID,
-					Controller:         new(true),
-					BlockOwnerDeletion: new(true),
-				},
+		Name:        pod.Name,
+		Namespace:   pod.Namespace,
+		Labels:      pod.Labels,
+		Annotations: pod.Annotations,
+		// setting up owner reference to the pod will ensure that the PodInfo resource is deleted when the pod is deleted.
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         pod.APIVersion,
+				Kind:               pod.Kind,
+				Name:               pod.Name,
+				UID:                pod.UID,
+				Controller:         new(true),
+				BlockOwnerDeletion: new(true),
 			},
 		},
 		Spec: ciliumiov1alpha1.PodInfoSpec{

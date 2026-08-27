@@ -407,8 +407,8 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.8.0-pre.0.0.20260819112831-350c2fce18d3 => ./modules/tetragon-oss
-## explicit; go 1.26.0
+# github.com/cilium/tetragon v1.8.0-pre.0.0.20260827072436-b8acb6037b54 => ./modules/tetragon-oss
+## explicit; go 1.27.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
 github.com/cilium/tetragon/cmd/tetra/common
@@ -599,16 +599,16 @@ github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/imports
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/types
 # github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss/pkg/k8s
-## explicit; go 1.26.0
+## explicit; go 1.27.0
 github.com/cilium/tetragon-oss/pkg/k8s/crdutils
 # github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000 => ./api
-## explicit; go 1.26.0
+## explicit; go 1.27.0
 github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
 # github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df => ./pkg/k8s
-## explicit; go 1.26.0
+## explicit; go 1.27.0
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
@@ -1072,7 +1072,7 @@ github.com/iceber/iouring-go/syscall
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
 # github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 => ./pkg/k8s-enterprise
-## explicit; go 1.26.0
+## explicit; go 1.27.0
 github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/client
 # github.com/isovalent/ipa v1.20.0-pre.7.0.20260818204622-6fe87f6b2475
 ## explicit; go 1.25.0
@@ -1336,7 +1336,7 @@ github.com/sryoya/protorand
 # github.com/stretchr/objx v0.5.3
 ## explicit; go 1.20
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.12.0
+# github.com/stretchr/testify v1.12.1
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
@@ -2292,7 +2292,7 @@ k8s.io/component-base/metrics/prometheus/feature
 k8s.io/component-base/metrics/prometheusextension
 k8s.io/component-base/version
 k8s.io/component-base/zpages/features
-# k8s.io/cri-api v0.36.3
+# k8s.io/cri-api v0.36.4
 ## explicit; go 1.26.0
 k8s.io/cri-api/pkg/apis/runtime/v1
 # k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b

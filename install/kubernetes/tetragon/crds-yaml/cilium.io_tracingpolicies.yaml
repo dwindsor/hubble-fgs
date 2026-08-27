@@ -658,7 +658,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -736,6 +739,18 @@ spec:
                               type: object
                             maxItems: 1
                             type: array
+                          matchCEL:
+                            description: |-
+                              Match CEL expression. The CEL expression may include:
+                               argX (e.g., arg0) where X is the index of the argument in the Args array.
+                               dataX where X is the index of the data in the Data array.
+                            properties:
+                              expr:
+                                minLength: 1
+                                type: string
+                            required:
+                            - expr
+                            type: object
                           matchCapabilities:
                             description: A list of capabilities and IDs
                             items:
@@ -822,7 +837,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -1134,7 +1152,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -2719,7 +2740,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -2797,6 +2821,18 @@ spec:
                               type: object
                             maxItems: 1
                             type: array
+                          matchCEL:
+                            description: |-
+                              Match CEL expression. The CEL expression may include:
+                               argX (e.g., arg0) where X is the index of the argument in the Args array.
+                               dataX where X is the index of the data in the Data array.
+                            properties:
+                              expr:
+                                minLength: 1
+                                type: string
+                            required:
+                            - expr
+                            type: object
                           matchCapabilities:
                             description: A list of capabilities and IDs
                             items:
@@ -2883,7 +2919,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -3195,7 +3234,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -3773,7 +3815,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -3851,6 +3896,18 @@ spec:
                               type: object
                             maxItems: 1
                             type: array
+                          matchCEL:
+                            description: |-
+                              Match CEL expression. The CEL expression may include:
+                               argX (e.g., arg0) where X is the index of the argument in the Args array.
+                               dataX where X is the index of the data in the Data array.
+                            properties:
+                              expr:
+                                minLength: 1
+                                type: string
+                            required:
+                            - expr
+                            type: object
                           matchCapabilities:
                             description: A list of capabilities and IDs
                             items:
@@ -3937,7 +3994,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -4249,7 +4309,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -5342,7 +5405,10 @@ spec:
                             minimum: 0
                             type: integer
                           operator:
-                            description: Filter operation.
+                            description: |-
+                              Filter operation.
+
+                              Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                             enum:
                             - Equal
                             - NotEqual
@@ -5420,6 +5486,18 @@ spec:
                         type: object
                       maxItems: 1
                       type: array
+                    matchCEL:
+                      description: |-
+                        Match CEL expression. The CEL expression may include:
+                         argX (e.g., arg0) where X is the index of the argument in the Args array.
+                         dataX where X is the index of the data in the Data array.
+                      properties:
+                        expr:
+                          minLength: 1
+                          type: string
+                      required:
+                      - expr
+                      type: object
                     matchCapabilities:
                       description: A list of capabilities and IDs
                       items:
@@ -5505,7 +5583,10 @@ spec:
                             minimum: 0
                             type: integer
                           operator:
-                            description: Filter operation.
+                            description: |-
+                              Filter operation.
+
+                              Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                             enum:
                             - Equal
                             - NotEqual
@@ -5812,7 +5893,10 @@ spec:
                             minimum: 0
                             type: integer
                           operator:
-                            description: Filter operation.
+                            description: |-
+                              Filter operation.
+
+                              Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                             enum:
                             - Equal
                             - NotEqual
@@ -6341,7 +6425,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -6419,6 +6506,18 @@ spec:
                               type: object
                             maxItems: 1
                             type: array
+                          matchCEL:
+                            description: |-
+                              Match CEL expression. The CEL expression may include:
+                               argX (e.g., arg0) where X is the index of the argument in the Args array.
+                               dataX where X is the index of the data in the Data array.
+                            properties:
+                              expr:
+                                minLength: 1
+                                type: string
+                            required:
+                            - expr
+                            type: object
                           matchCapabilities:
                             description: A list of capabilities and IDs
                             items:
@@ -6505,7 +6604,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -6817,7 +6919,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -7635,7 +7740,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -7713,6 +7821,18 @@ spec:
                               type: object
                             maxItems: 1
                             type: array
+                          matchCEL:
+                            description: |-
+                              Match CEL expression. The CEL expression may include:
+                               argX (e.g., arg0) where X is the index of the argument in the Args array.
+                               dataX where X is the index of the data in the Data array.
+                            properties:
+                              expr:
+                                minLength: 1
+                                type: string
+                            required:
+                            - expr
+                            type: object
                           matchCapabilities:
                             description: A list of capabilities and IDs
                             items:
@@ -7799,7 +7919,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -8111,7 +8234,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -8671,7 +8797,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -8749,6 +8878,18 @@ spec:
                               type: object
                             maxItems: 1
                             type: array
+                          matchCEL:
+                            description: |-
+                              Match CEL expression. The CEL expression may include:
+                               argX (e.g., arg0) where X is the index of the argument in the Args array.
+                               dataX where X is the index of the data in the Data array.
+                            properties:
+                              expr:
+                                minLength: 1
+                                type: string
+                            required:
+                            - expr
+                            type: object
                           matchCapabilities:
                             description: A list of capabilities and IDs
                             items:
@@ -8835,7 +8976,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual
@@ -9147,7 +9291,10 @@ spec:
                                   minimum: 0
                                   type: integer
                                 operator:
-                                  description: Filter operation.
+                                  description: |-
+                                    Filter operation.
+
+                                    Note: The CelExpr operator is deprecated and will be removed in Tetragon OSS v1.9.0. Use the MatchCEL selector instead.
                                   enum:
                                   - Equal
                                   - NotEqual

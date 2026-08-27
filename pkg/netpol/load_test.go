@@ -55,7 +55,7 @@ spec:
       ports:
         protocol: "TCP"
         ports: [80, 8080]
-    - fqdn:
+    - FQDN:
       - "ebpf.io"
       - "tetragon.io"
       ports:
@@ -116,7 +116,7 @@ spec:
     hook: "connect"
     action: "allow"
     destination:
-    - fqdn:
+    - FQDN:
       - "ebpf.io"
       - "tetragon.io"
       ports:
@@ -226,7 +226,7 @@ spec:
           D: "d"
       ports:
         protocol: "TCP"
-    - fqdn:
+    - FQDN:
       - "ebpf.io"
       - "tetragon.io"
       ports:
@@ -282,7 +282,7 @@ spec:
           D: "d"
       ports:
         protocol: "TCP"
-    - fqdn:
+    - FQDN:
       - "ebpf.io"
       - "tetragon.io"
       ports:
@@ -338,7 +338,7 @@ spec:
           D: "d"
       ports:
         protocol: "TCP"
-    - fqdn:
+    - FQDN:
       - "ebpf.io"
       - "tetragon.io"
       ports:
@@ -389,7 +389,7 @@ spec:
           D: "d"
       ports:
         protocol: "TCP"
-    - fqdn:
+    - FQDN:
       - "ebpf.io"
       - "tetragon.io"
       ports:

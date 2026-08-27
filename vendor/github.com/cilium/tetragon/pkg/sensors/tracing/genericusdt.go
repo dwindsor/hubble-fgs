@@ -181,7 +181,7 @@ func createGenericUsdtSensor(
 		if err != nil {
 			return nil, err
 		}
-		hasSetAction = hasSetAction || selectors.HasSet(&usdt)
+		hasSetAction = hasSetAction || selectors.HasSet(usdt.Selectors)
 	}
 
 	has.sleepableOffload = hasSetAction && config.EnableV61Progs()
@@ -252,8 +252,8 @@ func createMultiUsdtSensor(
 	maps = append(maps, createSelectorMaps(load, nil)...)
 
 	if has.sleepableOffload {
-		sleepableOffloadMap := program.MapBuilderProgram("write_offload", load)
-		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		sleepableOffloadMap := program.MapShared("write_offload", load)
+		sleepableOffloadMap.SetMaxEntries(option.Config.SleepableOffloadSize)
 		maps = append(maps, sleepableOffloadMap)
 	}
 
@@ -323,8 +323,8 @@ func createUsdtSensorFromEntry(polInfo *policyInfo, usdtEntry *genericUsdt,
 	maps = append(maps, createSelectorMaps(load, usdtEntry.selectors)...)
 
 	if has.sleepableOffload {
-		sleepableOffloadMap := program.MapBuilderProgram("write_offload", load)
-		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		sleepableOffloadMap := program.MapShared("write_offload", load)
+		sleepableOffloadMap.SetMaxEntries(option.Config.SleepableOffloadSize)
 		maps = append(maps, sleepableOffloadMap)
 	}
 
@@ -411,7 +411,7 @@ func addUsdt(spec *v1alpha1.UsdtSpec, in *addUsdtIn, ids []idtable.EntryID, has 
 		}
 
 		// Validate argument for set action
-		if ok, idx := selectors.HasSetArgIndex(spec); ok {
+		if ok, idx := selectors.HasSetArgIndex(spec.Selectors); ok {
 			// argument index is within usdt args in spec
 			if idx > uint32(len(spec.Args)) {
 				return ids, fmt.Errorf("failed to configure usdt '%s/%s', set action argument spec index %d out of bounds",

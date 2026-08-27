@@ -924,7 +924,7 @@ func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 	if op, err := SelectorOp(arg.Operator); err != nil {
 		return fmt.Errorf("ParseMatchArg: %w", err)
 	} else if op == SelectorOpCelExpr {
-		return parseMatchCelExpr(k, arg, sig)
+		return parseMatchCelExpr(k, arg, sig, nil)
 	}
 
 	index, ty, err := argIndexType(arg, sig)
@@ -1083,14 +1083,22 @@ func parseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 	return nil
 }
 
-func ParseMatchArgs(k *KernelSelectorState, matchArgs []v1alpha1.ArgSelector, matchData []v1alpha1.ArgSelector,
-	args []v1alpha1.KProbeArg, data []v1alpha1.KProbeArg) error {
+func ParseMatchArgs(
+	k *KernelSelectorState,
+	matchArgs []v1alpha1.ArgSelector, matchData []v1alpha1.ArgSelector,
+	matchCEL *v1alpha1.CELExprSelector,
+	args []v1alpha1.KProbeArg, data []v1alpha1.KProbeArg,
+) error {
 	maxArgs := 1
 	if config.EnableLargeProgs() {
 		maxArgs = 5 // we support up 5 argument filters under matchArgs with kernels >= 5.3, otherwise 1 argument
 	}
-	if len(matchArgs)+len(matchData) > maxArgs {
-		return fmt.Errorf("parseMatchArgs: supports up to %d filters (%d provided)", maxArgs, len(matchArgs)+len(matchData))
+	nArgs := len(matchArgs) + len(matchData)
+	if matchCEL != nil {
+		nArgs++
+	}
+	if nArgs > maxArgs {
+		return fmt.Errorf("parseMatchArgs: supports up to %d filters (%d provided)", maxArgs, nArgs)
 	}
 	actionOffset := GetCurrentOffset(&k.data)
 	loff := AdvanceSelectorLength(&k.data)
@@ -1122,6 +1130,21 @@ func ParseMatchArgs(k *KernelSelectorState, matchArgs []v1alpha1.ArgSelector, ma
 		}
 		i = i + 1
 	}
+
+	// NB: for now we need to support both the MatchCEL selector and the CelExprs matchArgs
+	// operator, so we use the CelExpr imlementation for both. Once CelExpr is removed
+	// (planned for v1.9.0) we can adjust.
+	if matchCEL != nil {
+		WriteSelectorOffsetUint32(&k.data, argOff[i], GetCurrentOffset(&k.data)-actionOffset)
+		arg := &v1alpha1.ArgSelector{
+			Operator: selectorOpStringTable[SelectorOpCelExpr],
+			Values:   []string{matchCEL.Expr},
+		}
+		if err := parseMatchCelExpr(k, arg, args, data); err != nil {
+			return err
+		}
+	}
+
 	WriteSelectorLength(&k.data, loff)
 	return nil
 }
@@ -1245,8 +1268,19 @@ func ParseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector, a
 	case ActionTypeCleanupEnforcerNotification:
 		// no arguments
 	case ActionTypeSet:
-		WriteSelectorUint32(&k.data, action.ArgIndex)
-		WriteSelectorUint32(&k.data, action.ArgValue)
+		if k.isUprobe {
+			err := parseSetRegs(k, selIdx, action.ArgIndex, action.ArgValue)
+			if err != nil {
+				return err
+			}
+			WriteSelectorUint32(&k.data, k.UprobeRegsMapID(selIdx))
+			// value is discarded since we use `regs_map` to pass the assignments.
+			WriteSelectorUint32(&k.data, action.ArgValue)
+		} else {
+			// usdt
+			WriteSelectorUint32(&k.data, action.ArgIndex)
+			WriteSelectorUint32(&k.data, action.ArgValue)
+		}
 	default:
 		return fmt.Errorf("ParseMatchAction: act %d (%s) is missing a handler", act, actionTypeStringTable[act])
 	}
@@ -1739,7 +1773,7 @@ func InitKernelSelectorState(args *KernelSelectorArgs) (*KernelSelectorState, er
 		if err := ParseMatchBinaries(k, selector.MatchParentBinaries, selIdx, matchParentBinaries); err != nil {
 			return fmt.Errorf("parseMatchParentBinaries error: %w", err)
 		}
-		if err := ParseMatchArgs(k, selector.MatchArgs, selector.MatchData, args.Args, args.Data); err != nil {
+		if err := ParseMatchArgs(k, selector.MatchArgs, selector.MatchData, selector.MatchCEL, args.Args, args.Data); err != nil {
 			return fmt.Errorf("parseMatchArgs  error: %w", err)
 		}
 		if err := ParseMatchWorkloads(k, selector.MatchWorkloads, selIdx); err != nil {
@@ -1758,7 +1792,7 @@ func InitKernelReturnSelectorState(selectors []v1alpha1.KProbeSelector, returnAr
 	actionArgTable *idtable.Table, listReader ValueReader, maps *KernelSelectorMaps) (*KernelSelectorState, error) {
 
 	parse := func(k *KernelSelectorState, selector *v1alpha1.KProbeSelector, selIdx int) error {
-		if err := ParseMatchArgs(k, selector.MatchReturnArgs, []v1alpha1.ArgSelector{}, []v1alpha1.KProbeArg{*returnArg}, []v1alpha1.KProbeArg{}); err != nil {
+		if err := ParseMatchArgs(k, selector.MatchReturnArgs, []v1alpha1.ArgSelector{}, nil, []v1alpha1.KProbeArg{*returnArg}, []v1alpha1.KProbeArg{}); err != nil {
 			return fmt.Errorf("parseMatchArgs  error: %w", err)
 		}
 		if err := ParseMatchActions(k, selector.MatchReturnActions, actionArgTable, selIdx); err != nil {
@@ -1863,8 +1897,8 @@ func HasOperator(selectors []v1alpha1.KProbeSelector, op uint32) bool {
 	return false
 }
 
-func HasSetArgIndex(spec *v1alpha1.UsdtSpec) (bool, uint32) {
-	for _, s := range spec.Selectors {
+func HasSetArgIndex(selectors []v1alpha1.KProbeSelector) (bool, uint32) {
+	for _, s := range selectors {
 		for _, action := range s.MatchActions {
 			act := actionTypeTable[strings.ToLower(action.Action)]
 			if act == ActionTypeSet {
@@ -1875,8 +1909,8 @@ func HasSetArgIndex(spec *v1alpha1.UsdtSpec) (bool, uint32) {
 	return false, 0
 }
 
-func HasSet(spec *v1alpha1.UsdtSpec) bool {
-	ok, _ := HasSetArgIndex(spec)
+func HasSet(selectors []v1alpha1.KProbeSelector) bool {
+	ok, _ := HasSetArgIndex(selectors)
 	return ok
 }
 

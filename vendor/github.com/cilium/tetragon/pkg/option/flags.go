@@ -95,6 +95,7 @@ const (
 	KeyDisableUprobeMulti = "disable-uprobe-multi"
 
 	KeySleepablePreloadSize = "sleepable-preload-size"
+	KeySleepableOffloadSize = "sleepable-offload-size"
 
 	KeyUsePerfRingBuffer = "use-perf-ring-buffer"
 	KeyRBSize            = "rb-size"
@@ -345,6 +346,7 @@ func ReadAndSetFlags() error {
 	Config.RetprobesCacheSize = viper.GetInt(KeyRetprobesCacheSize)
 
 	Config.SleepablePreloadSize = viper.GetInt(KeySleepablePreloadSize)
+	Config.SleepableOffloadSize = viper.GetInt(KeySleepableOffloadSize)
 
 	Config.EnableGRPCDeprecatedTP = viper.GetBool(KeyEnableDeprecatedTPGRPC)
 
@@ -527,7 +529,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.String(KeyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
 	flags.Bool(KeyEnableEventMetrics, true, fmt.Sprintf("Enable per-event metrics. Enabled by default. Health and resource metrics are always available when --%s is set.", KeyMetricsServer))
 	flags.String(KeyMetricsLabelFilter, "namespace,workload,pod,binary", "Comma-separated list of enabled metrics labels. Unknown labels will be ignored.")
-	flags.String(KeyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'). An empty address disables the gRPC server")
+	flags.String(KeyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'). An empty address disables the gRPC server. WARNING: Exposing gRPC on a TCP socket without TLS client verification exposes Tetragon to unprivileged users on the host or with network access.")
 	flags.String(KeyGopsAddr, "", "gops server address (e.g. 'localhost:8118'). Disabled by default")
 	flags.Bool(KeyEnableProcessCred, false, "Enable process_cred events")
 	flags.Bool(KeyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
@@ -639,6 +641,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyRetprobesCacheSize, defaults.DefaultRetprobesCacheSize, "Set {k,u}retprobes events cache maximum size")
 
 	flags.Int(KeySleepablePreloadSize, defaults.DefaultSleepablePreloadSize, "Set the maximum number of entries in the sleepable preload map")
+	flags.Int(KeySleepableOffloadSize, defaults.DefaultSleepableOffloadSize, "Set the maximum number of entries in the sleepable offload map")
 
 	flags.Bool(KeyEnableDeprecatedTPGRPC, false, "Enable deprecated gRPC TracingPolicy APIs")
 

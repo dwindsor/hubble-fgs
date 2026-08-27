@@ -468,6 +468,7 @@ type uprobeHas struct {
 	sleepablePreload     bool
 	substring            bool
 	sleepablePreloadSize int
+	sleepableOffloadSize int
 }
 
 func validateMultiUprobeConsistency(uprobes []v1alpha1.UProbeSpec) error {
@@ -594,6 +595,17 @@ func validateUprobeSpec(spec *v1alpha1.UProbeSpec, state *uprobeConfigState) err
 	if selectors.HasGetUrlOrDnsLookup(spec.Selectors) {
 		return errors.New("failed to configure uprobe, GetUrl and DnsLookup actions not supported")
 	}
+
+	for _, s := range spec.Selectors {
+		for _, action := range s.MatchActions {
+			if action.Action != "Set" {
+				continue
+			}
+			if action.ArgIndex >= api.EventConfigMaxArgs {
+				return fmt.Errorf("uprobe Set action argIndex %d out of range", action.ArgIndex)
+			}
+		}
+	}
 	return nil
 }
 
@@ -601,6 +613,13 @@ func validateUprobeFeatures(spec *v1alpha1.UProbeSpec, has *uprobeHas) error {
 	if selectors.HasOverride(spec.Selectors) {
 		if !bpf.HasUprobeRegsChange() {
 			return errors.New("can't use override regs action, no kernel support")
+		}
+		has.sleepableOffload = true
+	}
+
+	if selectors.HasSet(spec.Selectors) {
+		if !bpf.HasUprobeRegsChange() {
+			return errors.New("can't use set action, no kernel support")
 		}
 		has.sleepableOffload = true
 	}
@@ -904,6 +923,9 @@ func createGenericUprobeSensor(
 
 	// user sleepable_preload override
 	has.sleepablePreloadSize = polInfo.specOpts.SleepablePreloadSize
+
+	// user sleepable_offload override
+	has.sleepableOffloadSize = polInfo.specOpts.SleepableOffloadSize
 
 	if useMulti {
 		// if we are using multi-uprobe, CEL expressions are shared across all uprobes
@@ -1427,6 +1449,19 @@ func getSleepablePreloadMap(userSize int, load *program.Program) *program.Map {
 	return m
 }
 
+func getSleepableOffloadMap(userSize int, load *program.Program) *program.Map {
+	var m *program.Map
+
+	if userSize != 0 {
+		m = program.MapBuilderProgram("sleepable_offload", load)
+		m.SetMaxEntries(userSize)
+	} else {
+		m = program.MapShared("sleepable_offload", load)
+		m.SetMaxEntries(option.Config.SleepableOffloadSize)
+	}
+	return m
+}
+
 func createMultiUprobeSensor(polInfo *policyInfo, sensorPath string, multiIDs []idtable.EntryID, has uprobeHas) ([]*program.Program, []*program.Map, error) {
 	var multiRetIDs []idtable.EntryID
 	var progs []*program.Program
@@ -1489,8 +1524,7 @@ func createMultiUprobeSensor(polInfo *policyInfo, sensorPath string, multiIDs []
 	if has.sleepableOffload {
 		regsMap := program.MapBuilderProgram("regs_map", load)
 		regsMap.SetMaxEntries(max(regsMapEntries, 1))
-		sleepableOffloadMap := program.MapBuilderProgram("sleepable_offload", load)
-		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		sleepableOffloadMap := getSleepableOffloadMap(has.sleepableOffloadSize, load)
 		maps = append(maps, regsMap, sleepableOffloadMap)
 	}
 
@@ -1604,8 +1638,7 @@ func createUprobeSensorFromEntry(polInfo *policyInfo, uprobeEntry *genericUprobe
 		// in the same policy needs the override action)
 		regsMapEntries := max(len(uprobeEntry.loadArgs.selectors.entry.Regs()), 1)
 		regsMap.SetMaxEntries(regsMapEntries)
-		sleepableOffloadMap := program.MapBuilderProgram("sleepable_offload", load)
-		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		sleepableOffloadMap := getSleepableOffloadMap(has.sleepableOffloadSize, load)
 		maps = append(maps, regsMap, sleepableOffloadMap)
 	}
 
