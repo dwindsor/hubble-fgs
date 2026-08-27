@@ -7,7 +7,7 @@ ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static:latest-20
 
 # Chainguard go-dev image (includes shell, make, git via wolfi packages)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
-ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:v1.26.7-dev@sha256:01e417234e002cfd8777fe3cbda5b8bce572ea9811f5195fc2b6915466460da3
+ARG GOLANG_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go:v1.27.0-dev@sha256:0523ac49d0c56099688cdaa6061d7c516575ba2e268319af069342206ea740c4
 
 # Keep Alpine for extracting ca-certificates (Chainguard static already has them)
 ARG ALPINE_IMAGE=docker.io/library/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
