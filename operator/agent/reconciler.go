@@ -13,6 +13,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -43,6 +44,10 @@ const (
 	AggregatorDeploymentName = "tetragon-aggregator"
 )
 
+// requeueDelay is how long to wait before reconciling again after a resource
+// was created or deleted, so that the next pass observes the new state.
+const requeueDelay = 100 * time.Millisecond
+
 // Reconcile gets notified and reconciles the Tetragon operator configuration.
 // Intent is captured in the Operator ConfigMap.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -69,10 +74,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		err = r.Create(ctx, DefaultOperatorConfigMap(log, req.Namespace, OperatorConfigMapName))
 		if err == nil {
 			log.Info("operator ConfigMap created")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 		if apierrors.IsAlreadyExists(err) {
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 		log.Error(err, "unable to create operator ConfigMap")
 		return ctrl.Result{}, err
@@ -100,7 +105,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, err
 		}
 		log.Info("agent ConfigMap created")
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: requeueDelay}, nil
 	}
 	if !equality.Semantic.DeepEqual(agentCM.Labels, desiredCM.Labels) || !equality.Semantic.DeepEqual(agentCM.Data, desiredCM.Data) {
 		log.Info("updating agent ConfigMap")
@@ -145,7 +150,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 			log.Info(fmt.Sprintf("%s ConfigMap created", OtelConfigMapName))
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 		if !equality.Semantic.DeepEqual(otelCM.Labels, desiredOtelCM.Labels) || !equality.Semantic.DeepEqual(otelCM.Data, desiredOtelCM.Data) {
 			log.Info(fmt.Sprintf("updating %s ConfigMap", OtelConfigMapName))
@@ -201,7 +206,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 					return ctrl.Result{}, err
 				}
 				log.Info(fmt.Sprintf("%s Secret created", OtelSecretName))
-				return ctrl.Result{Requeue: true}, nil
+				return ctrl.Result{RequeueAfter: requeueDelay}, nil
 			}
 		} else {
 			if desiredOtelSecret == nil {
@@ -264,7 +269,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, err
 		}
 		log.Info("daemon set created")
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: requeueDelay}, nil
 	}
 	if !equality.Semantic.DeepEqual(ds.Labels, desiredDS.Labels) ||
 		!equality.Semantic.DeepEqual(ds.Spec, desiredDS.Spec) {
@@ -307,7 +312,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 			log.Info("runtime hooks daemon set created")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 	} else {
 		if desiredRTDS == nil {
@@ -316,7 +321,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 			log.Info("runtime hooks daemon set deleted")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 	}
 	if desiredRTDS != nil && (!equality.Semantic.DeepEqual(rtDS.Labels, desiredRTDS.Labels) ||
@@ -365,7 +370,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 			log.Info("aggregator deployment created")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 	} else {
 		if desiredAggregatorDeploy == nil {
@@ -374,7 +379,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 			log.Info("aggregator deployment deleted")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 	}
 	if desiredAggregatorDeploy != nil && (!equality.Semantic.DeepEqual(aggregatorDeploy.Labels, desiredAggregatorDeploy.Labels) ||
@@ -416,7 +421,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 			log.Info("aggregator service created")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 	} else {
 		if desiredAggregatorService == nil {
@@ -425,7 +430,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 			log.Info("aggregator service deleted")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
 		}
 	}
 	if desiredAggregatorService != nil && (!equality.Semantic.DeepEqual(aggregatorService.Labels, desiredAggregatorService.Labels) ||
