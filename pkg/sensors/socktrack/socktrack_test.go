@@ -45,7 +45,7 @@ const (
 
 // Run Tetragon without any config as socktrack should load by default.
 const udpConfig = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "icmp"

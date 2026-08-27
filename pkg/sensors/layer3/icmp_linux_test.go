@@ -62,7 +62,7 @@ import (
 )
 
 const icmpBasicConfig = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "icmp"
@@ -73,7 +73,7 @@ spec:
 `
 
 const icmpAndUdpBasicConfig = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "icmp"

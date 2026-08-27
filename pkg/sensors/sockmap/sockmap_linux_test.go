@@ -70,7 +70,7 @@ spec:
       enable: true
       mode: "socket"
       selectors:
-      - matchports:
+      - matchPorts:
         - 443
     tcp:
       enable: true
@@ -89,7 +89,7 @@ spec:
       enable: true
       mode: "cgroup"
       selectors:
-      - matchports:
+      - matchPorts:
         - 443
     tcp:
       enable: true
@@ -255,7 +255,7 @@ spec:
       enable: true
       mode: "socket"
       selectors:
-      - matchports:
+      - matchPorts:
         - 443
     tcp:
       enable: true
@@ -343,7 +343,7 @@ spec:
       enable: true
       mode: "cgroup"
       selectors:
-      - matchports:
+      - matchPorts:
         - 443
     tcp:
       enable: true

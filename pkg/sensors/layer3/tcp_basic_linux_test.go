@@ -54,7 +54,7 @@ import (
 )
 
 const tcpConfigLegacy = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "tcp"
@@ -75,7 +75,7 @@ spec:
 `
 
 const tcpConfig = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "tcp"
@@ -97,7 +97,7 @@ spec:
 `
 
 const tcpBasicConfig = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "tcp"

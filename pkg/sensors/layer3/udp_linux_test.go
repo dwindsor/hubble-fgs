@@ -73,7 +73,7 @@ import (
 )
 
 const udpConfigLegacy = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -97,7 +97,7 @@ spec:
 `
 
 const udpConfig = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -122,7 +122,7 @@ spec:
 `
 
 const udpConfigWithoutDnsQuestions = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -136,7 +136,7 @@ spec:
 `
 
 const udpConfigWithDnsQuestions = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -151,7 +151,7 @@ spec:
 `
 
 const udpConfigDisableClose = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -169,7 +169,7 @@ spec:
         disableClose: `
 
 const udpConfigDisableListen = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -187,7 +187,7 @@ spec:
         disableListen: `
 
 const udpConfigBasic = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -199,7 +199,7 @@ spec:
 `
 
 const udpBasicConfig = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"

@@ -50,7 +50,7 @@ import (
 )
 
 const rawsockConfigWithCloseEvents = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "rawsock"
@@ -62,7 +62,7 @@ spec:
 `
 
 const rawsockConfigWithCloseEventsWithoutEnable = `
-apiversion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "rawsock"
