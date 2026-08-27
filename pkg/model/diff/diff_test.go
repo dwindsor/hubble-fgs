@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 )
 
 func connStatsA() *appModelV1.ConnectionStats {
@@ -670,7 +671,7 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Nil(t, process)
 	assert.Equal(t, 2, len(network.Namespaces))
 
-	f, err := ApplicationModelToNetworkFlat(ctx, network)
+	f, err := ApplicationModelToNetworkFlat(ctx, network, &local.NoopMetadataService{})
 	assert.NoError(t, err)
 	assert.Equal(t, "ns1", f[0].KubernetesNamespace)
 	assert.Equal(t, "ns2", f[1].KubernetesNamespace)
@@ -720,7 +721,7 @@ func TestToNetworkFlatSessions(t *testing.T) {
 	assert.Nil(t, process)
 	require.NotNil(t, network)
 
-	f, err := ApplicationModelToNetworkFlat(ctx, network)
+	f, err := ApplicationModelToNetworkFlat(ctx, network, &local.NoopMetadataService{})
 	require.NoError(t, err)
 	require.Len(t, f, 1)
 	assert.Equal(t, uint64(3), f[0].Sessions)
@@ -747,7 +748,7 @@ func TestToNetworkFlatHost(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, process)
 
-	f, err := ApplicationModelToNetworkFlat(ctx, network)
+	f, err := ApplicationModelToNetworkFlat(ctx, network, &local.NoopMetadataService{})
 	assert.NoError(t, err)
 	assert.Equal(t, "", f[0].KubernetesNamespace)
 	assert.Equal(t, "", f[0].KubernetesWorkloadName)
@@ -789,7 +790,7 @@ func TestToNetworkFlatProtocol(t *testing.T) {
 		Host: &appModelV1.ApplicationHost{Processes: ps},
 	}
 
-	f, err := ApplicationModelToNetworkFlat(ctx, m)
+	f, err := ApplicationModelToNetworkFlat(ctx, m, &local.NoopMetadataService{})
 	require.NoError(t, err)
 	require.Len(t, f, 2)
 
@@ -1248,7 +1249,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			result, err := ApplicationModelToProcessFlat(ctx, tt.model, tt.telemetryMap)
+			result, err := ApplicationModelToProcessFlat(ctx, tt.model, tt.telemetryMap, &local.NoopMetadataService{})
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -1361,7 +1362,7 @@ func TestApplicationModelToProcessFlat_WithTimeFields(t *testing.T) {
 		},
 	}
 
-	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, telemetryMap)
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, telemetryMap, &local.NoopMetadataService{})
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 
@@ -1405,7 +1406,7 @@ func TestApplicationModelToProcessFlat_UniqueIds(t *testing.T) {
 		},
 	}
 
-	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, nil)
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, nil, &local.NoopMetadataService{})
 	require.NoError(t, err)
 	require.Len(t, result, 5, "should have 5 process telemetry entries")
 
@@ -1459,7 +1460,7 @@ func TestApplicationModelToProcessFlat_ExecutionCount(t *testing.T) {
 		"app1--config=/etc/app.conf": {ExecCount: 42, ExitCount: 13},
 	}
 
-	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, telemetryMap)
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, telemetryMap, &local.NoopMetadataService{})
 	require.NoError(t, err)
 	require.Len(t, result, 4, "should have 4 process telemetry entries")
 
@@ -1495,7 +1496,7 @@ func TestApplicationModelToProcessFlat_ExecutionCountNilMap(t *testing.T) {
 		},
 	}
 
-	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, nil)
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, nil, &local.NoopMetadataService{})
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 

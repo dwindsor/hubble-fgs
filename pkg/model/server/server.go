@@ -1282,7 +1282,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 			}
 			lastModel = newModel
 
-			netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
+			netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel, s.metadataService)
 			if err != nil {
 				logger.GetLogger().Error("Failed to decode application model to network event model", logfields.Error, err)
 				return err

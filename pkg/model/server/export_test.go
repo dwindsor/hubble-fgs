@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 )
 
 func TestCountEntities(t *testing.T) {
@@ -471,7 +472,7 @@ func TestAppModelEncodeFailureDoesNotBlockTelemetry(t *testing.T) {
 	// Call exportTick with the failing app model encoder. The function should
 	// log the encode error but still proceed to export telemetry and connections.
 	_, _ = exportTick(t.Context(), newProcessModels, failingAppModelEncoder, telemetryEncoder, connectionEncoder,
-		lastAppModel, lastTime, emptyFilter, nil)
+		lastAppModel, lastTime, emptyFilter, nil, &local.NoopMetadataService{})
 
 	assert.NotEmpty(t, telemetryBuf.Bytes(), "telemetry encoder should have received data")
 	assert.NotEmpty(t, connectionBuf.Bytes(), "connection encoder should have received data")
@@ -554,7 +555,7 @@ func TestExportTickSetsEntityGauges(t *testing.T) {
 	ctx := context.Background()
 	emptyFilter := make(map[string]bool)
 
-	exportTick(ctx, processModels, nil, nil, nil, nil, time.Now(), emptyFilter, nil)
+	exportTick(ctx, processModels, nil, nil, nil, nil, time.Now(), emptyFilter, nil, &local.NoopMetadataService{})
 
 	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("namespace")))
 	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("workload")))

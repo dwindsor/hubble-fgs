@@ -36,10 +36,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
-func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection *json.Encoder, newModel, lastModel *appModelV1.ApplicationModel, telemetryMap model.TelemetryMap) (time.Time, error) {
+func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection *json.Encoder, newModel, lastModel *appModelV1.ApplicationModel, telemetryMap model.TelemetryMap, metadataService local.MetadataService) (time.Time, error) {
 	now := time.Now()
 
 	diffStart := time.Now()
@@ -58,7 +59,7 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 	}
 
 	if telemetry != nil {
-		procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel, telemetryMap)
+		procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel, telemetryMap, metadataService)
 		if err != nil {
 			logger.GetLogger().Error("Failed to decode application model to process telemetry", logfields.Error, err)
 			appmodelmetrics.RecordError(appmodelmetrics.PhaseExportProcess)
@@ -75,7 +76,7 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 		}
 	}
 
-	netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
+	netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel, metadataService)
 	if err != nil {
 		logger.GetLogger().Error("Failed to decode application model to network telemetry", logfields.Error, err)
 		appmodelmetrics.RecordError(appmodelmetrics.PhaseExportNetwork)
@@ -178,6 +179,7 @@ func exportTick(
 	lastTime time.Time,
 	emptyFilter map[string]bool,
 	nodeLabels map[string]string,
+	metadataService local.MetadataService,
 ) (*appModelV1.ApplicationModelEvent, time.Time) {
 	convStart := time.Now()
 	newModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter, nodeLabels)
@@ -212,7 +214,7 @@ func exportTick(
 	if telemetryEncoder != nil || connectionEncoder != nil {
 		exportStart := time.Now()
 		lastTime, _ = exportTelemetry(ctx, lastTime, telemetryEncoder, connectionEncoder,
-			newModel.ApplicationModel, lastModel.ApplicationModel, telemetryMap)
+			newModel.ApplicationModel, lastModel.ApplicationModel, telemetryMap, metadataService)
 		appmodelmetrics.RecordDuration(appmodelmetrics.PhaseExport, float64(time.Since(exportStart).Microseconds()))
 		lastModel = newModel
 	}
@@ -224,6 +226,11 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	var encoder *json.Encoder
 	var telemetry *json.Encoder
 	var connection *json.Encoder
+	metadataService, err := local.GetMetadataService()
+	if err != nil {
+		logger.GetLogger().Warn("Failed to get metadata service. Node labels will be incomplete", logfields.Error, err)
+		metadataService = &local.NoopMetadataService{}
+	}
 
 	lastTime := time.Now()
 
@@ -278,7 +285,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				appModelEncoder = encoder
 			}
 
-			lastModel, lastTime = exportTick(ctx, res, appModelEncoder, telemetry, connection, lastModel, lastTime, emptyFilter, server.GetNodeLabels(ctx))
+			lastModel, lastTime = exportTick(ctx, res, appModelEncoder, telemetry, connection, lastModel, lastTime, emptyFilter, server.GetNodeLabels(ctx), metadataService)
 			appmodelmetrics.RecordDuration(appmodelmetrics.PhaseExportTick, float64(time.Since(tickStart).Microseconds()))
 		case <-ctx.Done():
 			return

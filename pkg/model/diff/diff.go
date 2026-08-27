@@ -429,12 +429,11 @@ func getDestination(d *appModelV1.Destination) (string, string, string, k8sTypes
 	return name, ns, wlName, wlKind, resourceKind
 }
 
-func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel, telemetryMap model.TelemetryMap) ([]*appModelV1.ProcessTelemetry, error) {
+func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel, telemetryMap model.TelemetryMap, nodeMetadata local.MetadataService) ([]*appModelV1.ProcessTelemetry, error) {
 	t := []*appModelV1.ProcessTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
 	currentTime := timestamppb.Now()
-	labels := make(map[string]string)
 
 	if a == nil {
 		return nil, nil
@@ -444,14 +443,9 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 		telemetryMap = make(model.TelemetryMap)
 	}
 
-	nodeMetadata, err := local.GetMetadataService()
+	labels, err := nodeMetadata.GetLabels(ctx)
 	if err != nil {
-		logger.GetLogger().Warn("Failed to get metadata service. node_labels field will be empty", logfields.Error, err)
-	} else {
-		labels, err = nodeMetadata.GetLabels(ctx)
-		if err != nil {
-			logger.GetLogger().Warn("Failed to get node labels. node_labels field will be empty", logfields.Error, err)
-		}
+		logger.GetLogger().Warn("Failed to get node labels. node_labels field will be empty", logfields.Error, err)
 	}
 
 	for _, ns := range a.Namespaces {
@@ -561,25 +555,19 @@ func policyVerdict(s *appModelV1.ConnectionStats) appModelV1.PolicyVerdict {
 	return appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
 }
 
-func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkConnectTelemetry, error) {
+func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.ApplicationModel, nodeMetadata local.MetadataService) ([]*appModelV1.NetworkConnectTelemetry, error) {
 	n := []*appModelV1.NetworkConnectTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
 	time := timestamppb.Now()
-	labels := make(map[string]string)
 
 	if a == nil {
 		return nil, nil
 	}
 
-	nodeMetadata, err := local.GetMetadataService()
+	labels, err := nodeMetadata.GetLabels(ctx)
 	if err != nil {
 		logger.GetLogger().Warn("Application model to network flat failed to get node info. node_labels field will be empty", logfields.Error, err)
-	} else {
-		labels, err = nodeMetadata.GetLabels(ctx)
-		if err != nil {
-			logger.GetLogger().Warn("Application model to network flat failed to get node info. node_labels field will be empty", logfields.Error, err)
-		}
 	}
 
 	for _, ns := range a.Namespaces {
