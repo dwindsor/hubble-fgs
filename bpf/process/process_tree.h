@@ -908,21 +908,20 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 
 	clear_policy_template_flag(dest);
 
-	if (is_policy_drop(deny)) {
+	if (is_policy_drop(deny) && enforce) {
 		__sync_fetch_and_add(&dest->tx_drops, len);
 		if (deny & TNP_POLICY_FALLTHRU)
 			__sync_fetch_and_add(&dest->deny_default, len);
 
 		// enforce flag can be removed when UDP supports enforcement
-		if (enforce && (deny & TNP_POLICY_REJECT) && bpf_ksym_exists(bpf_icmp_send)) {
+		if ((deny & TNP_POLICY_REJECT) && bpf_ksym_exists(bpf_icmp_send)) {
 			if (skb->protocol == bpf_htons(ETH_P_IP))
 				bpf_icmp_send(skb, ICMP_DEST_UNREACH, ICMP_PKT_FILTERED);
 			else if (skb->protocol == bpf_htons(ETH_P_IPV6))
 				bpf_icmp_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_ADM_PROHIBITED);
 		}
 
-		if (enforce)
-			return SK_DROP;
+		return SK_DROP;
 	} else if (deny & TNP_POLICY_FALLTHRU) {
 		__sync_fetch_and_add(&dest->allow_default, len);
 	}
