@@ -51,8 +51,7 @@ func loadJhashTestCollection(t *testing.T) *ebpf.Collection {
 	}
 	coll, err := ebpf.NewCollectionWithOptions(collSpec, collOpts)
 	if err != nil {
-		var ve *ebpf.VerifierError
-		if errors.As(err, &ve) {
+		if ve, ok := errors.AsType[*ebpf.VerifierError](err); ok {
 			t.Fatalf("verifier error: %+v\n", ve)
 		}
 		t.Fatal(err)
