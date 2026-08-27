@@ -19,24 +19,20 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func svcRequest(namespace, name string) ctrl.Request {
-	return ctrl.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}}
+	return ctrl.Request{Namespace: namespace, Name: name}
 }
 
 func clusterIPService(name, ip string) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-			Labels:    map[string]string{"app": name},
-		},
+		Name:      name,
+		Namespace: "default",
+		Labels:    map[string]string{"app": name},
 		Spec: corev1.ServiceSpec{
 			ClusterIP:  ip,
 			ClusterIPs: []string{ip},
@@ -106,11 +102,9 @@ func endpointSlice(name, svcName, ip string, ready bool) *discoveryv1.EndpointSl
 	port := int32(8080)
 	protocol := corev1.ProtocolTCP
 	return &discoveryv1.EndpointSlice{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-			Labels:    map[string]string{discoveryv1.LabelServiceName: svcName},
-		},
+		Name:      name,
+		Namespace: "default",
+		Labels:    map[string]string{discoveryv1.LabelServiceName: svcName},
 		Endpoints: []discoveryv1.Endpoint{{
 			Addresses:  []string{ip},
 			Conditions: discoveryv1.EndpointConditions{Ready: &ready},

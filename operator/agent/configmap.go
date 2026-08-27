@@ -17,7 +17,6 @@ import (
 	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
-	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"sigs.k8s.io/yaml"
 )
@@ -62,17 +61,13 @@ func DefaultOperatorConfigMap(log logr.Logger, namespace string, name string) *c
 	data[OperatorConfigMapAggregatorKey] = defaultAggregatorConfig
 	data[splunkKey] = defaultSplunkConfig
 	cm := &corev1.ConfigMap{
-		TypeMeta: k8sv1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: k8sv1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			// No label here. This ConfigMap is not managed by the operator.
-			Labels: map[string]string{},
-		},
-		Data: data,
+		Kind:       "ConfigMap",
+		APIVersion: "v1",
+		Name:       name,
+		Namespace:  namespace,
+		// No label here. This ConfigMap is not managed by the operator.
+		Labels: map[string]string{},
+		Data:   data,
 	}
 	return cm
 }
@@ -80,16 +75,12 @@ func DefaultOperatorConfigMap(log logr.Logger, namespace string, name string) *c
 // ExtractAgentConfigMap instantiates a ConfigMap based on the operator configuration.
 func ExtractAgentConfigMap(log logr.Logger, namespace string, name string, opCM *corev1.ConfigMap) *corev1.ConfigMap {
 	agentCM := &corev1.ConfigMap{
-		TypeMeta: k8sv1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: k8sv1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    opCM.Labels,
-		},
-		Data: ValuesAsMap(log, opCM.Data[OperatorConfigMapAgentConfigMapKey]),
+		Kind:       "ConfigMap",
+		APIVersion: "v1",
+		Name:       name,
+		Namespace:  namespace,
+		Labels:     opCM.Labels,
+		Data:       ValuesAsMap(log, opCM.Data[OperatorConfigMapAgentConfigMapKey]),
 	}
 	return agentCM
 }

@@ -213,21 +213,17 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 			extraKindVolumes := []corev1.Volume{
 				{
 					Name: "real-host-proc",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/procRoot",
-							Type: &hostPathDirectoryType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/procRoot",
+						Type: &hostPathDirectoryType,
 					},
 				},
 				// real-export-dir gives us a directory we can use to export files directly to the host
 				{
 					Name: "real-export-dir",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/tetragonExport",
-							Type: &hostPathDirectoryType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/tetragonExport",
+						Type: &hostPathDirectoryType,
 					},
 				},
 			}
@@ -436,10 +432,8 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 		klog.Info("Waiting for Tetragon DaemonSet to be ready...")
 		if o.Wait {
 			ds := v1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      o.DaemonSetName,
-					Namespace: o.Namespace,
-				},
+				Name:      o.DaemonSetName,
+				Namespace: o.Namespace,
 			}
 			err = wait.For(
 				func(_ context.Context) (done bool, err error) {
@@ -474,20 +468,16 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 					}
 				}
 				opCM := corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tetragon-operator-config",
-						Namespace: o.Namespace,
-					},
+					Name:      "tetragon-operator-config",
+					Namespace: o.Namespace,
 				}
 				err = tetragonRes.Get(ctx, opCM.GetName(), opCM.GetNamespace(), &opCM)
 				if err == nil {
 					klog.Info("operator ConfigMap ", opCM)
 				}
 				aCM := corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "tetragon-config",
-						Namespace: o.Namespace,
-					},
+					Name:      "tetragon-config",
+					Namespace: o.Namespace,
 				}
 				err = tetragonRes.Get(ctx, aCM.GetName(), aCM.GetNamespace(), &aCM)
 				if err == nil {
@@ -588,11 +578,9 @@ func createRegistrySecret(ctx context.Context, cfg *envconf.Config, namespace, n
 		return nil, fmt.Errorf("marshal docker config: %w", err)
 	}
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Type: corev1.SecretTypeDockerConfigJson,
+		Name:      name,
+		Namespace: namespace,
+		Type:      corev1.SecretTypeDockerConfigJson,
 		Data: map[string][]byte{
 			corev1.DockerConfigJsonKey: dockerCfgJSON,
 		},

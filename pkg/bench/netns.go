@@ -100,9 +100,7 @@ func createInterface(ns *netns.NsHandle, name, ip string) error {
 
 func CreateVeth() error {
 	veth := &netlink.Veth{
-		LinkAttrs: netlink.LinkAttrs{
-			Name: senderName,
-		},
+		Name:     senderName,
 		PeerName: receiverName,
 	}
 

@@ -52,20 +52,16 @@ func TestAggregatorDeployment(t *testing.T) {
 				},
 			},
 			expected: &appv1.Deployment{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "Deployment",
-					APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+				Name:       "tetragon-aggregator",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance":   "tetragon-aggregator",
+					"app.kubernetes.io/name":       "tetragon-aggregator",
+					"app.kubernetes.io/managed-by": "tetragon-operator",
 				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "tetragon-aggregator",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance":   "tetragon-aggregator",
-						"app.kubernetes.io/name":       "tetragon-aggregator",
-						"app.kubernetes.io/managed-by": "tetragon-operator",
-					},
-					Annotations: map[string]string{},
-				},
+				Annotations: map[string]string{},
 				Spec: appv1.DeploymentSpec{
 					Selector: &v1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -175,22 +171,18 @@ extraVolumeMounts: |
 				},
 			},
 			expected: &appv1.Deployment{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "Deployment",
-					APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+				Name:       "tetragon-aggregator",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance":   "tetragon-aggregator",
+					"app.kubernetes.io/name":       "tetragon-aggregator",
+					"app.kubernetes.io/managed-by": "tetragon-operator",
+					"label1":                       "value1",
 				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "tetragon-aggregator",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance":   "tetragon-aggregator",
-						"app.kubernetes.io/name":       "tetragon-aggregator",
-						"app.kubernetes.io/managed-by": "tetragon-operator",
-						"label1":                       "value1",
-					},
-					Annotations: map[string]string{
-						"key1": "value1",
-					},
+				Annotations: map[string]string{
+					"key1": "value1",
 				},
 				Spec: appv1.DeploymentSpec{
 					Selector: &v1.LabelSelector{
@@ -245,10 +237,8 @@ extraVolumeMounts: |
 							Volumes: []corev1.Volume{
 								{
 									Name: "test-extra-volume1",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "test-extra-path1",
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "test-extra-path1",
 									},
 								},
 							},

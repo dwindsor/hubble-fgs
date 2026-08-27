@@ -213,7 +213,7 @@ func TestTCPFinRxCLI(t *testing.T) {
 	if !utils.SupportCGroupSKBProbeRead() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
-	suite.Run(t, new(TCPFinRx{TCPCommon: TCPCommon{useCLI: true}}))
+	suite.Run(t, new(TCPFinRx{useCLI: true}))
 }
 
 func (suite *TCPFinRx) SetupSuite() {

@@ -18,7 +18,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	corev1 "k8s.io/api/core/v1"
-	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // OtelSecret creates the Secret with the otel TLS certificates.
@@ -60,15 +59,11 @@ func OtelSecret(log logr.Logger, namespace string, name string, opCM *corev1.Con
 		}
 	}
 	return &corev1.Secret{
-		TypeMeta: k8sv1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: k8sv1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    labels,
-		},
-		Data: data,
+		Kind:       "Secret",
+		APIVersion: "v1",
+		Name:       name,
+		Namespace:  namespace,
+		Labels:     labels,
+		Data:       data,
 	}, nil
 }

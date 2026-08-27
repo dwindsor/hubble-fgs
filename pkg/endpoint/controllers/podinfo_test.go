@@ -40,12 +40,10 @@ func getTestClientBuilder() *fake.ClientBuilder {
 
 func TestPodInfoReconcile_Add(t *testing.T) {
 	podInfo := &v1alpha1.PodInfo{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-			Labels: map[string]string{
-				"app": "test",
-			},
+		Name:      "test-pod",
+		Namespace: "default",
+		Labels: map[string]string{
+			"app": "test",
 		},
 		WorkloadType: metav1.TypeMeta{
 			Kind: "Deployment",
@@ -78,12 +76,10 @@ func TestPodInfoReconcile_Add(t *testing.T) {
 
 func TestPodInfoReconcile_Update(t *testing.T) {
 	podInfo := &v1alpha1.PodInfo{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-			Labels: map[string]string{
-				"app": "test",
-			},
+		Name:      "test-pod",
+		Namespace: "default",
+		Labels: map[string]string{
+			"app": "test",
 		},
 		WorkloadType: metav1.TypeMeta{
 			Kind: "Deployment",
@@ -129,14 +125,12 @@ func TestPodInfoReconcile_Update(t *testing.T) {
 
 func TestPodInfoReconcile_Remove(t *testing.T) {
 	podInfo := &v1alpha1.PodInfo{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              "test-pod",
-			Namespace:         "default",
-			DeletionTimestamp: new(metav1.Now()),
-			Finalizers:        []string{finalizer},
-			Labels: map[string]string{
-				"app": "test",
-			},
+		Name:              "test-pod",
+		Namespace:         "default",
+		DeletionTimestamp: new(metav1.Now()),
+		Finalizers:        []string{finalizer},
+		Labels: map[string]string{
+			"app": "test",
 		},
 		WorkloadType: metav1.TypeMeta{
 			Kind: "Deployment",

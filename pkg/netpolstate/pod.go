@@ -146,15 +146,11 @@ func NewPolicyState() *PolicyState {
 	// Initialize the new state with a local object representing the host
 	// itself as a Node with a special label
 	s.localObjects[InternalHostName] = &corev1.Node{
-		TypeMeta: metav1.TypeMeta{
-			Kind: "Node",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   InternalHostName,
-			Labels: map[string]string{InternalLabelKey: InternalHostName},
-			// UID is used as the key for localObjects.
-			UID: InternalHostName,
-		},
+		Kind:   "Node",
+		Name:   InternalHostName,
+		Labels: map[string]string{InternalLabelKey: InternalHostName},
+		// UID is used as the key for localObjects.
+		UID: InternalHostName,
 	}
 
 	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)

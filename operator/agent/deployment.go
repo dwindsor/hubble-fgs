@@ -83,16 +83,12 @@ func AggregatorDeployment(log logr.Logger, namespace string, name string, config
 	}
 
 	deployment := &appv1.Deployment{
-		TypeMeta: k8sv1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: k8sv1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Annotations: configMapOfString(log, config, "annotations"),
-			Labels:      labels,
-		},
+		Kind:        "Deployment",
+		APIVersion:  "apps/v1",
+		Name:        name,
+		Namespace:   namespace,
+		Annotations: configMapOfString(log, config, "annotations"),
+		Labels:      labels,
 		Spec: appv1.DeploymentSpec{
 			Selector: &k8sv1.LabelSelector{
 				MatchLabels: labelsForManaged(name),

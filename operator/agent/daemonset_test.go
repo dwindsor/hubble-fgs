@@ -242,20 +242,16 @@ func TestDaemonSet(t *testing.T) {
 			dsName:    "tetragon",
 			cm:        DefaultOperatorConfigMap(logr.Log, "kube-system", "tetragon"),
 			expected: &appv1.DaemonSet{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "DaemonSet",
-					APIVersion: "apps/v1",
+				Kind:       "DaemonSet",
+				APIVersion: "apps/v1",
+				Name:       "tetragon",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance":   "tetragon",
+					"app.kubernetes.io/name":       "tetragon",
+					"app.kubernetes.io/managed-by": "tetragon-operator",
 				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "tetragon",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance":   "tetragon",
-						"app.kubernetes.io/name":       "tetragon",
-						"app.kubernetes.io/managed-by": "tetragon-operator",
-					},
-					Annotations: map[string]string{},
-				},
+				Annotations: map[string]string{},
 				Spec: appv1.DaemonSetSpec{
 					Selector: &v1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -291,49 +287,37 @@ func TestDaemonSet(t *testing.T) {
 							Volumes: []corev1.Volume{
 								{
 									Name: "cilium-run",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/var/run/cilium",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/var/run/cilium",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "export-logs",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/var/log/tetragon",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/var/log/tetragon",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "tetragon-config",
-									VolumeSource: corev1.VolumeSource{
-										ConfigMap: &corev1.ConfigMapVolumeSource{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tetragon-config",
-											},
-											DefaultMode: &dsVolumeDefaultMode,
-										},
+									ConfigMap: &corev1.ConfigMapVolumeSource{
+										Name:        "tetragon-config",
+										DefaultMode: &dsVolumeDefaultMode,
 									},
 								},
 								{
 									Name: "bpf-maps",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/sys/fs/bpf",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/sys/fs/bpf",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "host-proc",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/proc",
-											Type: &hostPathDirectoryVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/proc",
+										Type: &hostPathDirectoryVolumeType,
 									},
 								},
 							},
@@ -383,11 +367,9 @@ func TestDaemonSet(t *testing.T) {
 									},
 									LivenessProbe: &corev1.Probe{
 										TimeoutSeconds: int32(60),
-										ProbeHandler: corev1.ProbeHandler{
-											GRPC: &corev1.GRPCAction{
-												Port:    6789,
-												Service: &livenessProbeService,
-											},
+										GRPC: &corev1.GRPCAction{
+											Port:    6789,
+											Service: &livenessProbeService,
 										},
 									},
 									SecurityContext: &corev1.SecurityContext{Privileged: &privileged},
@@ -539,21 +521,17 @@ tls:
 				},
 			},
 			expected: &appv1.DaemonSet{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "DaemonSet",
-					APIVersion: "apps/v1",
+				Kind:       "DaemonSet",
+				APIVersion: "apps/v1",
+				Name:       "tetragon",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"test-label1": "test-value1",
+					"test-label2": "test-value2",
 				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "tetragon",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"test-label1": "test-value1",
-						"test-label2": "test-value2",
-					},
-					Annotations: map[string]string{
-						"test-annotation1": "test-value1",
-						"test-annotation2": "test-value2",
-					},
+				Annotations: map[string]string{
+					"test-annotation1": "test-value1",
+					"test-annotation2": "test-value2",
 				},
 				Spec: appv1.DaemonSetSpec{
 					UpdateStrategy: appv1.DaemonSetUpdateStrategy{
@@ -611,134 +589,100 @@ tls:
 							Volumes: []corev1.Volume{
 								{
 									Name: "cilium-run",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/var/run/cilium",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/var/run/cilium",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "export-logs",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/var/run/cilium/tetragon-test",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/var/run/cilium/tetragon-test",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "tetragon-config",
-									VolumeSource: corev1.VolumeSource{
-										ConfigMap: &corev1.ConfigMapVolumeSource{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tetragon-config",
-											},
-											DefaultMode: &dsVolumeDefaultMode,
-										},
+									ConfigMap: &corev1.ConfigMapVolumeSource{
+										Name:        "tetragon-config",
+										DefaultMode: &dsVolumeDefaultMode,
 									},
 								},
 								{
 									Name: "bpf-maps",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/sys/fs/bpf",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/sys/fs/bpf",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "host-proc",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/proc-test",
-											Type: &hostPathDirectoryVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/proc-test",
+										Type: &hostPathDirectoryVolumeType,
 									},
 								},
 								{
 									Name: "oci-hooks-path",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/usr/share/containers/oci/hooks.d/",
-											Type: &hostPathDirectoryVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/usr/share/containers/oci/hooks.d/",
+										Type: &hostPathDirectoryVolumeType,
 									},
 								},
 								{
 									Name: "oci-hooks-install-path",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/opt/tetragon-test",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/opt/tetragon-test",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "otel-agent-config-vol",
-									VolumeSource: corev1.VolumeSource{
-										ConfigMap: &corev1.ConfigMapVolumeSource{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: OtelConfigMapName,
-											},
-											Items: []corev1.KeyToPath{{
-												Key:  "otel-agent-config",
-												Path: "otel-agent-config.yaml",
-											}},
-										},
+									ConfigMap: &corev1.ConfigMapVolumeSource{
+										Name: OtelConfigMapName,
+										Items: []corev1.KeyToPath{{
+											Key:  "otel-agent-config",
+											Path: "otel-agent-config.yaml",
+										}},
 									},
 								},
 								{
-									Name: "file-storage",
-									VolumeSource: corev1.VolumeSource{
-										EmptyDir: &corev1.EmptyDirVolumeSource{},
-									},
+									Name:     "file-storage",
+									EmptyDir: &corev1.EmptyDirVolumeSource{},
 								},
 								{
 									Name: "otel-splunk-tls",
-									VolumeSource: corev1.VolumeSource{
-										Secret: &corev1.SecretVolumeSource{
-											SecretName: "custom-tetragon-splunk-tls",
-										},
+									Secret: &corev1.SecretVolumeSource{
+										SecretName: "custom-tetragon-splunk-tls",
 									},
 								},
 								{
 									Name: "test-extra-volume1",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "test-extra-path1",
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "test-extra-path1",
 									},
 								},
 								{
 									Name: "test-extra-volume2",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "test-extra-path2",
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "test-extra-path2",
 									},
 								},
 								{
 									Name: "test-extra-host-volume1",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "test-extra-host-path1",
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "test-extra-host-path1",
 									},
 								},
 								{
 									Name: "test-extra-host-volume2",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "test-extra-host-path2",
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "test-extra-host-path2",
 									},
 								},
 								{
-									Name: "metadata-files",
-									VolumeSource: corev1.VolumeSource{
-										EmptyDir: &corev1.EmptyDirVolumeSource{},
-									},
+									Name:     "metadata-files",
+									EmptyDir: &corev1.EmptyDirVolumeSource{},
 								},
 							},
 							InitContainers: []corev1.Container{
@@ -894,11 +838,9 @@ tls:
 									},
 									LivenessProbe: &corev1.Probe{
 										TimeoutSeconds: int32(60),
-										ProbeHandler: corev1.ProbeHandler{
-											GRPC: &corev1.GRPCAction{
-												Port:    1234,
-												Service: &livenessProbeService,
-											},
+										GRPC: &corev1.GRPCAction{
+											Port:    1234,
+											Service: &livenessProbeService,
 										},
 									},
 									SecurityContext: &corev1.SecurityContext{Privileged: new(false)},
@@ -928,10 +870,8 @@ tls:
 											Name: "SPLUNK_HEC_TOKEN",
 											ValueFrom: &corev1.EnvVarSource{
 												SecretKeyRef: &corev1.SecretKeySelector{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "splunk-hec",
-													},
-													Key: "hec-token",
+													Name: "splunk-hec",
+													Key:  "hec-token",
 												},
 											},
 										},
@@ -939,10 +879,8 @@ tls:
 											Name: "SPLUNK_HEC_ENDPOINT",
 											ValueFrom: &corev1.EnvVarSource{
 												SecretKeyRef: &corev1.SecretKeySelector{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: "splunk-hec",
-													},
-													Key: "hec-endpoint",
+													Name: "splunk-hec",
+													Key:  "hec-endpoint",
 												},
 											},
 										},
@@ -1292,11 +1230,9 @@ tetragonHealthGrpcPort: 6789`,
 				SecurityContext: &corev1.SecurityContext{Privileged: &privileged},
 				LivenessProbe: &corev1.Probe{
 					TimeoutSeconds: int32(60),
-					ProbeHandler: corev1.ProbeHandler{
-						GRPC: &corev1.GRPCAction{
-							Port:    6789,
-							Service: &livenessProbeService,
-						},
+					GRPC: &corev1.GRPCAction{
+						Port:    6789,
+						Service: &livenessProbeService,
 					},
 				},
 			}},
@@ -1348,11 +1284,9 @@ tetragonHealthGrpcPort: 6789`,
 					SecurityContext: &corev1.SecurityContext{Privileged: &privileged},
 					LivenessProbe: &corev1.Probe{
 						TimeoutSeconds: int32(60),
-						ProbeHandler: corev1.ProbeHandler{
-							GRPC: &corev1.GRPCAction{
-								Port:    6789,
-								Service: &livenessProbeService,
-							},
+						GRPC: &corev1.GRPCAction{
+							Port:    6789,
+							Service: &livenessProbeService,
 						},
 					},
 				},
@@ -1524,11 +1458,9 @@ commandOverride: |
 					},
 					LivenessProbe: &corev1.Probe{
 						TimeoutSeconds: int32(60),
-						ProbeHandler: corev1.ProbeHandler{
-							GRPC: &corev1.GRPCAction{
-								Port:    1234,
-								Service: &livenessProbeService,
-							},
+						GRPC: &corev1.GRPCAction{
+							Port:    1234,
+							Service: &livenessProbeService,
 						},
 					},
 				},
@@ -1568,49 +1500,37 @@ hostProcPath: /proc`,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "export-logs",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "tetragon-config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tetragon-config",
-							},
-							DefaultMode: &dsVolumeDefaultMode,
-						},
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						Name:        "tetragon-config",
+						DefaultMode: &dsVolumeDefaultMode,
 					},
 				},
 				{
 					Name: "bpf-maps",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/sys/fs/bpf",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys/fs/bpf",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "host-proc",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 			},
@@ -1624,20 +1544,16 @@ hostProcPath: /proc`,
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "export-logs",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 			},
@@ -1656,95 +1572,71 @@ tls:
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "export-logs",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "tetragon-config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tetragon-config",
-							},
-							DefaultMode: &dsVolumeDefaultMode,
-						},
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						Name:        "tetragon-config",
+						DefaultMode: &dsVolumeDefaultMode,
 					},
 				},
 				{
 					Name: "bpf-maps",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/sys/fs/bpf",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys/fs/bpf",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "host-proc",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 				{
 					Name: "oci-hooks-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/usr/share/containers/oci/hooks.d/",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/usr/share/containers/oci/hooks.d/",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 				{
 					Name: "oci-hooks-install-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/opt/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/opt/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "otel-agent-config-vol",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: OtelConfigMapName,
-							},
-							Items: []corev1.KeyToPath{{
-								Key:  "otel-agent-config",
-								Path: "otel-agent-config.yaml",
-							}},
-						},
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						Name: OtelConfigMapName,
+						Items: []corev1.KeyToPath{{
+							Key:  "otel-agent-config",
+							Path: "otel-agent-config.yaml",
+						}},
 					},
 				},
 				{
-					Name: "file-storage",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
+					Name:     "file-storage",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 				{
 					Name: "otel-splunk-tls",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: "custom-tetragon-splunk-tls",
-						},
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "custom-tetragon-splunk-tls",
 					},
 				},
 			},
@@ -1773,95 +1665,71 @@ tls:
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "export-logs",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "tetragon-config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tetragon-config",
-							},
-							DefaultMode: &dsVolumeDefaultMode,
-						},
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						Name:        "tetragon-config",
+						DefaultMode: &dsVolumeDefaultMode,
 					},
 				},
 				{
 					Name: "bpf-maps",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/sys/fs/bpf",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys/fs/bpf",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "host-proc",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 				{
 					Name: "oci-hooks-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/usr/share/containers/oci/hooks.d/",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/usr/share/containers/oci/hooks.d/",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 				{
 					Name: "oci-hooks-install-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/opt/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/opt/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "otel-agent-config-vol",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: OtelConfigMapName,
-							},
-							Items: []corev1.KeyToPath{{
-								Key:  "otel-agent-config",
-								Path: "otel-agent-config.yaml",
-							}},
-						},
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						Name: OtelConfigMapName,
+						Items: []corev1.KeyToPath{{
+							Key:  "otel-agent-config",
+							Path: "otel-agent-config.yaml",
+						}},
 					},
 				},
 				{
-					Name: "file-storage",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
+					Name:     "file-storage",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 				{
 					Name: "otel-splunk-tls",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: "tetragon-splunk-tls",
-						},
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "tetragon-splunk-tls",
 					},
 				},
 			},
@@ -1893,108 +1761,82 @@ metadataEnabled: true
 			expected: []corev1.Volume{
 				{
 					Name: "cilium-run",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "export-logs",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/cilium/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/run/cilium/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "tetragon-config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tetragon-config",
-							},
-							DefaultMode: &dsVolumeDefaultMode,
-						},
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						Name:        "tetragon-config",
+						DefaultMode: &dsVolumeDefaultMode,
 					},
 				},
 				{
 					Name: "bpf-maps",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/sys/fs/bpf",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys/fs/bpf",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "host-proc",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 				{
 					Name: "oci-hooks-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/usr/share/containers/oci/hooks.d/",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/usr/share/containers/oci/hooks.d/",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 				{
 					Name: "oci-hooks-install-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/opt/tetragon",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/opt/tetragon",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "extra-volume1",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/extra/test1",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/extra/test1",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "extra-volume2",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/extra/test2",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/extra/test2",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "host-volume1",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/host/test1",
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/host/test1",
 					},
 				},
 				{
 					Name: "host-volume2",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/host/test2",
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/host/test2",
 					},
 				},
 				{
-					Name: "metadata-files",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
+					Name:     "metadata-files",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			},
 		},
@@ -2071,20 +1913,16 @@ func TestVolumesFromConfigMap(t *testing.T) {
 			expected: []corev1.Volume{
 				{
 					Name: "volume1",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/path1",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/path1",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 				{
 					Name: "volume2",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/path2",
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/path2",
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 			},
@@ -2178,20 +2016,16 @@ podSecurityContext: |
 				},
 			},
 			expected: &appv1.DaemonSet{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "DaemonSet",
-					APIVersion: "apps/v1",
+				Kind:       "DaemonSet",
+				APIVersion: "apps/v1",
+				Name:       RTDaemonSetName,
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance":   RTDaemonSetName,
+					"app.kubernetes.io/name":       RTDaemonSetName,
+					"app.kubernetes.io/managed-by": "tetragon-operator",
 				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:      RTDaemonSetName,
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance":   RTDaemonSetName,
-						"app.kubernetes.io/name":       RTDaemonSetName,
-						"app.kubernetes.io/managed-by": "tetragon-operator",
-					},
-					Annotations: map[string]string{},
-				},
+				Annotations: map[string]string{},
 				Spec: appv1.DaemonSetSpec{
 					Selector: &v1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -2255,20 +2089,16 @@ podSecurityContext: |
 							Volumes: []corev1.Volume{
 								{
 									Name: "oci-hooks-install-path",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/opt/tetragon",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/opt/tetragon",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "oci-hooks-path",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/usr/share/containers/oci/hooks.d",
-											Type: new(corev1.HostPathDirectory),
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/usr/share/containers/oci/hooks.d",
+										Type: new(corev1.HostPathDirectory),
 									},
 								},
 							},
@@ -2327,21 +2157,17 @@ failAllowNamespaces: fail-allow-ns
 				},
 			},
 			expected: &appv1.DaemonSet{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "DaemonSet",
-					APIVersion: "apps/v1",
+				Kind:       "DaemonSet",
+				APIVersion: "apps/v1",
+				Name:       RTDaemonSetName,
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"test-label1": "test-value1",
+					"test-label2": "test-value2",
 				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:      RTDaemonSetName,
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"test-label1": "test-value1",
-						"test-label2": "test-value2",
-					},
-					Annotations: map[string]string{
-						"test-annotation1": "test-value1",
-						"test-annotation2": "test-value2",
-					},
+				Annotations: map[string]string{
+					"test-annotation1": "test-value1",
+					"test-annotation2": "test-value2",
 				},
 				Spec: appv1.DaemonSetSpec{
 					Selector: &v1.LabelSelector{
@@ -2426,20 +2252,16 @@ failAllowNamespaces: fail-allow-ns
 							Volumes: []corev1.Volume{
 								{
 									Name: "oci-hooks-install-path",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/opt/custom-tetragon",
-											Type: &hostPathDirectoryOrCreateVolumeType,
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/opt/custom-tetragon",
+										Type: &hostPathDirectoryOrCreateVolumeType,
 									},
 								},
 								{
 									Name: "nri-socket-path",
-									VolumeSource: corev1.VolumeSource{
-										HostPath: &corev1.HostPathVolumeSource{
-											Path: "/var/run/nri/nri-custom.sock",
-											Type: new(corev1.HostPathSocket),
-										},
+									HostPath: &corev1.HostPathVolumeSource{
+										Path: "/var/run/nri/nri-custom.sock",
+										Type: new(corev1.HostPathSocket),
 									},
 								},
 							},

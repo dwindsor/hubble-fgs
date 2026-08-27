@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/tetragon/pkg/server/eventlog"
 	"github.com/google/cel-go/cel"
 	"golang.org/x/time/rate"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
@@ -275,10 +274,8 @@ func (r *AlertRuleManager) ListAlertRules() []*v1alpha1.AlertRule {
 	rules := make([]*v1alpha1.AlertRule, 0, len(r.rules))
 	for _, r := range r.rules {
 		rules = append(rules, &v1alpha1.AlertRule{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   r.name,
-				Labels: r.labels,
-			},
+			Name:   r.name,
+			Labels: r.labels,
 			Spec: v1alpha1.AlertRuleSpec{
 				Severity:  r.severity,
 				Message:   r.message,

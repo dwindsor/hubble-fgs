@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -33,7 +32,7 @@ import (
 
 func npCR(name string, uid k8stypes.UID, generation int64) *v1alpha1.TetragonNetworkPolicy {
 	return &v1alpha1.TetragonNetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{Name: name, UID: uid, Generation: generation},
+		Name: name, UID: uid, Generation: generation,
 	}
 }
 
@@ -149,7 +148,7 @@ func reconcileNP(t *testing.T, name string, objs ...*v1alpha1.TetragonNetworkPol
 	}
 	r := &TetragonNetworkPolicyReconciler{Client: builder.Build()}
 	return r.Reconcile(context.Background(), ctrl.Request{
-		NamespacedName: k8stypes.NamespacedName{Name: name},
+		Name: name,
 	})
 }
 

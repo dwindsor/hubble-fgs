@@ -21,7 +21,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	corev1 "k8s.io/api/core/v1"
-	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -213,15 +212,11 @@ func OtelConfigMap(log logr.Logger, namespace string, name string, opCM *corev1.
 	}
 
 	return &corev1.ConfigMap{
-		TypeMeta: k8sv1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: k8sv1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    labels,
-		},
-		Data: data,
+		Kind:       "ConfigMap",
+		APIVersion: "v1",
+		Name:       name,
+		Namespace:  namespace,
+		Labels:     labels,
+		Data:       data,
 	}, nil
 }

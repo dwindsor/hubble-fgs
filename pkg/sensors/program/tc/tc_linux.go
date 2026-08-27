@@ -78,11 +78,9 @@ func QdiscTCInsert(linkName string, _ bool) error {
 	}
 
 	qdisc := &netlink.Clsact{
-		QdiscAttrs: netlink.QdiscAttrs{
-			LinkIndex: link.Attrs().Index,
-			Handle:    netlink.MakeHandle(0xffff, 0),
-			Parent:    netlink.HANDLE_INGRESS,
-		},
+		LinkIndex: link.Attrs().Index,
+		Handle:    netlink.MakeHandle(0xffff, 0),
+		Parent:    netlink.HANDLE_INGRESS,
 	}
 	if err := netlink.QdiscAdd(qdisc); err != nil {
 		return fmt.Errorf("QdiscAdd failed (%s): %w", linkName, err)

@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
@@ -46,18 +45,14 @@ func TestAggregatorService(t *testing.T) {
 				},
 			},
 			expected: &corev1.Service{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "v1",
-				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "tetragon-aggregator",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance":   "tetragon-aggregator",
-						"app.kubernetes.io/name":       "tetragon-aggregator",
-						"app.kubernetes.io/managed-by": "tetragon-operator",
-					},
+				Kind:       "Service",
+				APIVersion: "v1",
+				Name:       "tetragon-aggregator",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance":   "tetragon-aggregator",
+					"app.kubernetes.io/name":       "tetragon-aggregator",
+					"app.kubernetes.io/managed-by": "tetragon-operator",
 				},
 				Spec: corev1.ServiceSpec{
 					Selector: map[string]string{

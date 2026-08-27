@@ -96,7 +96,7 @@ func TestTCPRTTCLI(t *testing.T) {
 		t.Skipf("RTT hooks are unavailable, skipping")
 	}
 
-	suite.Run(t, new(TCPRTT{TCPCommon: TCPCommon{useCLI: true}}))
+	suite.Run(t, new(TCPRTT{useCLI: true}))
 }
 
 func (suite *TCPRTT) SetupSuite() {

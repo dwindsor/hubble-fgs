@@ -109,14 +109,12 @@ func Test_desiredNode(t *testing.T) {
 				metadata: defaultFakeMetadata,
 			},
 			want: &v1alpha1.TetragonNode{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "ip-10-0-0-1.ec2.internal",
-					Namespace: "default",
-					Labels: map[string]string{
-						"foo":                              "bar",
-						"kubernetes.io/role":               "1",
-						"node.kubernetes.io/instance-type": "m5.large",
-					},
+				Name:      "ip-10-0-0-1.ec2.internal",
+				Namespace: "default",
+				Labels: map[string]string{
+					"foo":                              "bar",
+					"kubernetes.io/role":               "1",
+					"node.kubernetes.io/instance-type": "m5.large",
 				},
 				Status: v1alpha1.TetragonNodeStatus{
 					Id:              "i-0123456789abcdef0",
@@ -168,19 +166,15 @@ func Test_desiredNode(t *testing.T) {
 
 func TestRegisterAddsKubernetesNodeOwnerReference(t *testing.T) {
 	ownerNode := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-node",
-			UID:  types.UID("test-node-uid"),
-		},
+		Name: "test-node",
+		UID:  types.UID("test-node-uid"),
 	}
 	metadata := fakeKubernetesMetadataService{
-		fakeMetadataService: fakeMetadataService{
-			hostName:   ownerNode.Name,
-			labels:     map[string]string{"foo": "bar"},
-			instanceID: ownerNode.Name,
-			internalIP: "10.0.0.1",
-		},
-		node: ownerNode,
+		hostName:   ownerNode.Name,
+		labels:     map[string]string{"foo": "bar"},
+		instanceID: ownerNode.Name,
+		internalIP: "10.0.0.1",
+		node:       ownerNode,
 	}
 	scheme, client := newRegisterTestClient(t)
 	registerer := &registerer{
@@ -197,26 +191,20 @@ func TestRegisterAddsKubernetesNodeOwnerReference(t *testing.T) {
 
 func TestRegisterAddsMissingKubernetesNodeOwnerReference(t *testing.T) {
 	ownerNode := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-node",
-			UID:  types.UID("test-node-uid"),
-		},
+		Name: "test-node",
+		UID:  types.UID("test-node-uid"),
 	}
 	existing := &v1alpha1.TetragonNode{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ownerNode.Name,
-			Namespace: "default",
-			Labels:    map[string]string{"old": "label"},
-		},
+		Name:      ownerNode.Name,
+		Namespace: "default",
+		Labels:    map[string]string{"old": "label"},
 	}
 	metadata := fakeKubernetesMetadataService{
-		fakeMetadataService: fakeMetadataService{
-			hostName:   ownerNode.Name,
-			labels:     map[string]string{"foo": "bar"},
-			instanceID: ownerNode.Name,
-			internalIP: "10.0.0.1",
-		},
-		node: ownerNode,
+		hostName:   ownerNode.Name,
+		labels:     map[string]string{"foo": "bar"},
+		instanceID: ownerNode.Name,
+		internalIP: "10.0.0.1",
+		node:       ownerNode,
 	}
 	scheme, client := newRegisterTestClient(t, existing)
 	registerer := &registerer{

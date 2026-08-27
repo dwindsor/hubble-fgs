@@ -17,9 +17,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -36,11 +34,11 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 }
 
 func TestNamespacedReconcile_TakesNoAction(t *testing.T) {
-	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "np", Namespace: "team-a"}}
+	req := ctrl.Request{Name: "np", Namespace: "team-a"}
 
 	t.Run("present object is ignored", func(t *testing.T) {
 		np := &v1alpha1.TetragonNetworkPolicyNamespaced{
-			ObjectMeta: metav1.ObjectMeta{Name: "np", Namespace: "team-a"},
+			Name: "np", Namespace: "team-a",
 		}
 		cli := fake.NewClientBuilder().WithScheme(newTestScheme(t)).WithObjects(np).Build()
 		r := &TetragonNetworkPolicyNamespacedReconciler{Client: cli}

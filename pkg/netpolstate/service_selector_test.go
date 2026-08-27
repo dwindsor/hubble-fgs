@@ -769,12 +769,10 @@ func TestServiceSelectorNilLabelsMatchesNamespaceOnly(t *testing.T) {
 	srcPod := &v1alpha1.PodInfo{
 		WorkloadType:   metav1.TypeMeta{Kind: "Deployment"},
 		WorkloadObject: v1alpha1.WorkloadObjectMeta{Name: srcPodName, Namespace: srcNamespace},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      srcPodName,
-			Namespace: srcNamespace,
-			UID:       k8stype.UID(srcPodName),
-			Labels:    nil,
-		},
+		Name:           srcPodName,
+		Namespace:      srcNamespace,
+		UID:            k8stype.UID(srcPodName),
+		Labels:         nil,
 	}
 
 	records, err := s.createServiceSelectorRecords(srcPod)

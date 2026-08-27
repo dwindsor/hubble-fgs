@@ -197,10 +197,8 @@ func (b *tpBuilder) Policy() (*SandboxTracingPolicy, error) {
 	b.finalizeSpec()
 	return &SandboxTracingPolicy{
 		tracingpolicy.GenericTracingPolicy{
-			TypeMeta: tracingpolicy.TypeMeta{
-				Kind:       "TracingPolicy",
-				APIVersion: "cilium.io/v1alpha1",
-			},
+			Kind:       "TracingPolicy",
+			APIVersion: "cilium.io/v1alpha1",
 			Metadata: tracingpolicy.ObjectMeta{
 				Name: b.name,
 			},

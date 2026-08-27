@@ -54,14 +54,12 @@ func getClientBuilder() *fake.ClientBuilder {
 
 func newTestPod(name, namespace, uid string, ownerRefs []metav1.OwnerReference) *corev1.Pod {
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            name,
-			Namespace:       namespace,
-			UID:             types.UID(uid),
-			OwnerReferences: ownerRefs,
-			GenerateName:    name + "-",
-			Labels:          make(map[string]string),
-		},
+		Name:            name,
+		Namespace:       namespace,
+		UID:             types.UID(uid),
+		OwnerReferences: ownerRefs,
+		GenerateName:    name + "-",
+		Labels:          make(map[string]string),
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{Name: "test-container"},
@@ -119,10 +117,8 @@ func TestReconcilePodCreated(t *testing.T) {
 	state.cgroupIDResolver = resolver
 
 	req := ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: "default",
-			Name:      "nginx-abc123",
-		},
+		Namespace: "default",
+		Name:      "nginx-abc123",
 	}
 
 	result, err := state.Reconcile(context.Background(), req)
@@ -175,10 +171,8 @@ func TestReconcilePodDeleted(t *testing.T) {
 	state.cgroupIDResolver = resolver
 
 	req := ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: "default",
-			Name:      "nginx-abc123",
-		},
+		Namespace: "default",
+		Name:      "nginx-abc123",
 	}
 
 	// First reconcile - pod exists
@@ -238,10 +232,8 @@ func TestReconcileGetCgroupIDError(t *testing.T) {
 	state.cgroupIDResolver = resolver
 
 	req := ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: "default",
-			Name:      "nginx-abc123",
-		},
+		Namespace: "default",
+		Name:      "nginx-abc123",
 	}
 
 	result, err := state.Reconcile(context.Background(), req)
@@ -267,10 +259,8 @@ func TestReconcileGetContainersCgroupIDsError(t *testing.T) {
 	state.cgroupIDResolver = resolver
 
 	req := ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: "default",
-			Name:      "nginx-abc123",
-		},
+		Namespace: "default",
+		Name:      "nginx-abc123",
 	}
 
 	result, err := state.Reconcile(context.Background(), req)
@@ -306,12 +296,12 @@ func TestReconcileMultiplePods(t *testing.T) {
 	state.cgroupIDResolver = resolver
 
 	_, err := state.Reconcile(context.Background(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Namespace: "default", Name: "nginx-abc123"},
+		Namespace: "default", Name: "nginx-abc123",
 	})
 	require.NoError(t, err)
 
 	_, err = state.Reconcile(context.Background(), ctrl.Request{
-		NamespacedName: types.NamespacedName{Namespace: "default", Name: "redis-xyz789"},
+		Namespace: "default", Name: "redis-xyz789",
 	})
 	require.NoError(t, err)
 
@@ -348,7 +338,7 @@ func TestReconcileSamePodMultipleTimes(t *testing.T) {
 	state.cgroupIDResolver = resolver
 
 	req := ctrl.Request{
-		NamespacedName: types.NamespacedName{Namespace: "default", Name: "nginx-abc123"},
+		Namespace: "default", Name: "nginx-abc123",
 	}
 
 	_, err := state.Reconcile(context.Background(), req)
@@ -430,7 +420,7 @@ func TestReconcileWithDifferentOwnerTypes(t *testing.T) {
 			state.cgroupIDResolver = resolver
 
 			req := ctrl.Request{
-				NamespacedName: types.NamespacedName{Namespace: "default", Name: "test-pod"},
+				Namespace: "default", Name: "test-pod",
 			}
 
 			_, err := state.Reconcile(context.Background(), req)

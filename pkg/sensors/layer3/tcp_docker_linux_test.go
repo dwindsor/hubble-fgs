@@ -57,7 +57,7 @@ func TestTCPDocker(t *testing.T) {
 }
 
 func TestTCPDockerCLI(t *testing.T) {
-	suite.Run(t, new(TCPDocker{TCPCommon: TCPCommon{useCLI: true}}))
+	suite.Run(t, new(TCPDocker{useCLI: true}))
 }
 
 func (suite *TCPDocker) SetupSuite() {

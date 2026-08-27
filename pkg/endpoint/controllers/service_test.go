@@ -17,7 +17,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -28,10 +27,9 @@ import (
 )
 
 func TestReconcile(t *testing.T) {
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+	svc := &corev1.Service{
 		Name:      "my-svc",
 		Namespace: "default",
-	},
 		Spec: corev1.ServiceSpec{
 			ClusterIPs: []string{"1.1.1.1", "2.2.2.2"},
 		},

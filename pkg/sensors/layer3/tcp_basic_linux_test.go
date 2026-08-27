@@ -125,7 +125,7 @@ func TestTCPBasic(t *testing.T) {
 }
 
 func TestTCPBasicCLI(t *testing.T) {
-	suite.Run(t, new(TCPBasic{TCPCommon: TCPCommon{useCLI: true}}))
+	suite.Run(t, new(TCPBasic{useCLI: true}))
 }
 
 func (suite *TCPBasic) SetupSuite() {

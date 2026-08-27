@@ -143,11 +143,9 @@ func desiredNode(ctx context.Context, metadata local.MetadataService) (*v1alpha1
 	}
 
 	return &v1alpha1.TetragonNode{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: getNodeNamespace(),
-			Labels:    validLables,
-		},
+		Name:      name,
+		Namespace: getNodeNamespace(),
+		Labels:    validLables,
 		Status: v1alpha1.TetragonNodeStatus{
 			Id:              id,
 			Addresses:       addresses,

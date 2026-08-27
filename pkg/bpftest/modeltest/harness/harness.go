@@ -33,7 +33,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/e2e-framework/klient"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
@@ -137,9 +136,7 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string,
 
 	// Check if namespace exists, and create it if it doesn't
 	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
-		},
+		Name: namespace,
 	}
 	err := harness.client.Resources().Get(ctx, namespace, "", ns)
 	if err != nil {
@@ -190,10 +187,8 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string,
 
 	// Create the podInfo object
 	podInfo := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
+		Name:      podName,
+		Namespace: namespace,
 		Spec: corev1.PodSpec{
 			Containers:    k8sContainers,
 			RestartPolicy: restartPolicy,
@@ -253,10 +248,8 @@ func (harness *Harness) DeletePod(ctx context.Context, tb testing.TB, namespace,
 	tb.Helper()
 
 	podInfo := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
+		Name:      podName,
+		Namespace: namespace,
 	}
 
 	err := harness.client.Resources().Get(ctx, podName, namespace, podInfo)
@@ -280,10 +273,8 @@ func (harness *Harness) WaitForPodExit(ctx context.Context, tb testing.TB, names
 
 	resources := harness.client.Resources(namespace)
 	podInfo := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
+		Name:      podName,
+		Namespace: namespace,
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -298,10 +289,8 @@ func (harness *Harness) WaitForContainerExit(ctx context.Context, tb testing.TB,
 
 	resources := harness.client.Resources(namespace)
 	podInfo := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
+		Name:      podName,
+		Namespace: namespace,
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -329,10 +318,8 @@ func (harness *Harness) WaitForContainerRestart(ctx context.Context, tb testing.
 
 	resources := harness.client.Resources(namespace)
 	podInfo := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
+		Name:      podName,
+		Namespace: namespace,
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)

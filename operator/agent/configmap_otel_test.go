@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/stretchr/testify/require"
@@ -24,18 +23,14 @@ func TestOtelConfigMap(t *testing.T) {
 	oName := "otel"
 	oNs := "test"
 	expectedOtelCM := &corev1.ConfigMap{
-		TypeMeta: v1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: v1.ObjectMeta{
-			Name:      oName,
-			Namespace: oNs,
-			Labels: map[string]string{"app.kubernetes.io/instance": "otel",
-				"app.kubernetes.io/managed-by": "tetragon-operator",
-				"app.kubernetes.io/name":       "otel",
-				"label1":                       "value1",
-			},
+		Kind:       "ConfigMap",
+		APIVersion: "v1",
+		Name:       oName,
+		Namespace:  oNs,
+		Labels: map[string]string{"app.kubernetes.io/instance": "otel",
+			"app.kubernetes.io/managed-by": "tetragon-operator",
+			"app.kubernetes.io/name":       "otel",
+			"label1":                       "value1",
 		},
 		Data: map[string]string{
 			"otel-agent-config": `exporters:

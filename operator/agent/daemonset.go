@@ -97,16 +97,12 @@ func DaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Config
 	}
 
 	ds := &appv1.DaemonSet{
-		TypeMeta: k8sv1.TypeMeta{
-			Kind:       "DaemonSet",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: k8sv1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Annotations: configMapOfString(log, cmFields, "annotations"),
-			Labels:      labels,
-		},
+		Kind:        "DaemonSet",
+		APIVersion:  "apps/v1",
+		Name:        name,
+		Namespace:   namespace,
+		Annotations: configMapOfString(log, cmFields, "annotations"),
+		Labels:      labels,
 		Spec: appv1.DaemonSetSpec{
 			Selector: &k8sv1.LabelSelector{
 				MatchLabels: labelsForManaged(name),
@@ -198,16 +194,12 @@ func RTDaemonSet(log logr.Logger, namespace string, name string, cm *corev1.Conf
 	}
 
 	ds := &appv1.DaemonSet{
-		TypeMeta: k8sv1.TypeMeta{
-			Kind:       "DaemonSet",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: k8sv1.ObjectMeta{
-			Name:        name,
-			Namespace:   namespace,
-			Annotations: configMapOfString(log, rtCMFields, "annotations"),
-			Labels:      labels,
-		},
+		Kind:        "DaemonSet",
+		APIVersion:  "apps/v1",
+		Name:        name,
+		Namespace:   namespace,
+		Annotations: configMapOfString(log, rtCMFields, "annotations"),
+		Labels:      labels,
 		Spec: appv1.DaemonSetSpec{
 			Selector: &k8sv1.LabelSelector{
 				MatchLabels: labelsForManaged(name),
@@ -479,11 +471,9 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			healthGrpcPort := configValueInt(log, cmFields, "tetragonHealthGrpcPort", 32, 6789)
 			livenessProbe = &corev1.Probe{
 				TimeoutSeconds: int32(60),
-				ProbeHandler: corev1.ProbeHandler{
-					GRPC: &corev1.GRPCAction{
-						Port:    int32(healthGrpcPort),
-						Service: new("liveness"),
-					},
+				GRPC: &corev1.GRPCAction{
+					Port:    int32(healthGrpcPort),
+					Service: new("liveness"),
 				},
 			}
 		}
@@ -594,20 +584,16 @@ func volumes(log logr.Logger, cmFields map[string]any, splunkCMFields map[string
 	volumes := []corev1.Volume{
 		{
 			Name: "cilium-run",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/var/run/cilium",
-					Type: &hostPathDirectoryOrCreateVolumeType,
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "/var/run/cilium",
+				Type: &hostPathDirectoryOrCreateVolumeType,
 			},
 		},
 		{
 			Name: "export-logs",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: configValue(log, cmFields, "exportDirectory", ""),
-					Type: &hostPathDirectoryOrCreateVolumeType,
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: configValue(log, cmFields, "exportDirectory", ""),
+				Type: &hostPathDirectoryOrCreateVolumeType,
 			},
 		},
 	}
@@ -615,31 +601,23 @@ func volumes(log logr.Logger, cmFields map[string]any, splunkCMFields map[string
 		volumes = append(volumes,
 			corev1.Volume{
 				Name: "tetragon-config",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "tetragon-config",
-						},
-						DefaultMode: new(int32(420)),
-					},
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					Name:        "tetragon-config",
+					DefaultMode: new(int32(420)),
 				},
 			},
 			corev1.Volume{
 				Name: "bpf-maps",
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/sys/fs/bpf",
-						Type: &hostPathDirectoryOrCreateVolumeType,
-					},
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/sys/fs/bpf",
+					Type: &hostPathDirectoryOrCreateVolumeType,
 				},
 			},
 			corev1.Volume{
 				Name: "host-proc",
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: configValue(log, cmFields, "hostProcPath", ""),
-						Type: &hostPathDirectoryVolumeType,
-					},
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: configValue(log, cmFields, "hostProcPath", ""),
+					Type: &hostPathDirectoryVolumeType,
 				},
 			},
 		)
@@ -647,20 +625,16 @@ func volumes(log logr.Logger, cmFields map[string]any, splunkCMFields map[string
 			volumes = append(volumes,
 				corev1.Volume{
 					Name: "oci-hooks-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/usr/share/containers/oci/hooks.d/",
-							Type: &hostPathDirectoryVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/usr/share/containers/oci/hooks.d/",
+						Type: &hostPathDirectoryVolumeType,
 					},
 				},
 				corev1.Volume{
 					Name: "oci-hooks-install-path",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: configValue(log, cmFields, "ociHookSetupInstallDir", ""),
-							Type: &hostPathDirectoryOrCreateVolumeType,
-						},
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: configValue(log, cmFields, "ociHookSetupInstallDir", ""),
+						Type: &hostPathDirectoryOrCreateVolumeType,
 					},
 				},
 			)
@@ -669,23 +643,17 @@ func volumes(log logr.Logger, cmFields map[string]any, splunkCMFields map[string
 			volumes = append(volumes,
 				corev1.Volume{
 					Name: "otel-agent-config-vol",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: OtelConfigMapName,
-							},
-							Items: []corev1.KeyToPath{{
-								Key:  "otel-agent-config",
-								Path: "otel-agent-config.yaml",
-							}},
-						},
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						Name: OtelConfigMapName,
+						Items: []corev1.KeyToPath{{
+							Key:  "otel-agent-config",
+							Path: "otel-agent-config.yaml",
+						}},
 					},
 				},
 				corev1.Volume{
-					Name: "file-storage",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
+					Name:     "file-storage",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			)
 
@@ -742,10 +710,8 @@ func volumes(log logr.Logger, cmFields map[string]any, splunkCMFields map[string
 				volumes = append(volumes,
 					corev1.Volume{
 						Name: "otel-splunk-tls",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: tlsSecretName,
-							},
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: tlsSecretName,
 						},
 					},
 				)
@@ -757,10 +723,8 @@ func volumes(log logr.Logger, cmFields map[string]any, splunkCMFields map[string
 	volumes = append(volumes, hostPathVolumesFromConfigMap(log, cmFields, "extraHostPathMounts")...)
 	if configValue(log, cmFields, "metadataEnabled", false) {
 		volumes = append(volumes, corev1.Volume{
-			Name: "metadata-files",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
+			Name:     "metadata-files",
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		})
 	}
 	return volumes
@@ -770,11 +734,9 @@ func rtVolumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "oci-hooks-install-path",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: configValue(log, cmFields, "installDir", ""),
-					Type: new(corev1.HostPathDirectoryOrCreate),
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: configValue(log, cmFields, "installDir", ""),
+				Type: new(corev1.HostPathDirectoryOrCreate),
 			},
 		},
 	}
@@ -782,21 +744,17 @@ func rtVolumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 	case "oci-hooks":
 		volumes = append(volumes, corev1.Volume{
 			Name: "oci-hooks-path",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: configValue(log, cmFields, "ociHooksPath", ""),
-					Type: new(corev1.HostPathDirectory),
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: configValue(log, cmFields, "ociHooksPath", ""),
+				Type: new(corev1.HostPathDirectory),
 			},
 		})
 	case "nri-hook":
 		volumes = append(volumes, corev1.Volume{
 			Name: "nri-socket-path",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: configValue(log, cmFields, "nriHookSocket", ""),
-					Type: new(corev1.HostPathSocket),
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: configValue(log, cmFields, "nriHookSocket", ""),
+				Type: new(corev1.HostPathSocket),
 			},
 		})
 	}
@@ -817,10 +775,8 @@ func hostPathVolumesFromConfigMap(log logr.Logger, cmFields map[string]any, key 
 	for _, volumeMount := range volumeMounts {
 		volume := corev1.Volume{
 			Name: volumeMount.Name,
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: volumeMount.MountPath,
-				},
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: volumeMount.MountPath,
 			},
 		}
 		volumes = append(volumes, volume)
@@ -936,8 +892,8 @@ func otelContainer(log logr.Logger, splunkFields map[string]any, cmFields map[st
 				Name: "SPLUNK_HEC_TOKEN",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: tokenName},
-						Key:                  tokenKey,
+						Name: tokenName,
+						Key:  tokenKey,
 					},
 				},
 			},
@@ -945,8 +901,8 @@ func otelContainer(log logr.Logger, splunkFields map[string]any, cmFields map[st
 				Name: "SPLUNK_HEC_ENDPOINT",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: endpointName},
-						Key:                  endpointKey,
+						Name: endpointName,
+						Key:  endpointKey,
 					},
 				},
 			},

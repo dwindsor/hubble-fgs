@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -97,11 +96,9 @@ func reconcilerKinds() []reconcilerKind {
 			crdName: enterpriseClient.SandboxPolicyCRD.ResName,
 			newObject: func(name string) client.Object {
 				return &v1alpha1.SandboxPolicy{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "SandboxPolicy",
-						APIVersion: "cilium.io/v1alpha1",
-					},
-					ObjectMeta: metav1.ObjectMeta{Name: name},
+					Kind:       "SandboxPolicy",
+					APIVersion: "cilium.io/v1alpha1",
+					Name:       name,
 				}
 			},
 			request:           ctrl.Request{NamespacedName: types.NamespacedName{Name: "p1"}},
@@ -125,11 +122,9 @@ func reconcilerKinds() []reconcilerKind {
 			crdName: enterpriseClient.SandboxPolicyNamespacedCRD.ResName,
 			newObject: func(name string) client.Object {
 				return &v1alpha1.SandboxPolicyNamespaced{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "SandboxPolicyNamespaced",
-						APIVersion: "cilium.io/v1alpha1",
-					},
-					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "team-a"},
+					Kind:       "SandboxPolicyNamespaced",
+					APIVersion: "cilium.io/v1alpha1",
+					Name:       name, Namespace: "team-a",
 				}
 			},
 			request:           ctrl.Request{NamespacedName: types.NamespacedName{Name: "p1", Namespace: "team-a"}},

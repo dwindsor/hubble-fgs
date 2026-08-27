@@ -132,11 +132,9 @@ func TestMergeNamespaceLabels(t *testing.T) {
 
 	t.Run("nil_pod_labels", func(t *testing.T) {
 		pod := &v1alpha1.PodInfo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "p",
-				Namespace: testNamespace,
-				Labels:    nil,
-			},
+			Name:      "p",
+			Namespace: testNamespace,
+			Labels:    nil,
 		}
 		got := s.deps.mergeNamespaceLabels(pod)
 		assert.Equal(t, testNamespace, got["_tnp_kubernetes.io/metadata.name"])
@@ -146,11 +144,9 @@ func TestMergeNamespaceLabels(t *testing.T) {
 	t.Run("pod_labels_preserved_and_namespace_prefixed", func(t *testing.T) {
 		original := map[string]string{"app": "client", "tier": "frontend"}
 		pod := &v1alpha1.PodInfo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "p",
-				Namespace: testNamespace,
-				Labels:    original,
-			},
+			Name:      "p",
+			Namespace: testNamespace,
+			Labels:    original,
 		}
 		got := s.deps.mergeNamespaceLabels(pod)
 		assert.Equal(t, "client", got["app"])
@@ -164,14 +160,12 @@ func TestMergeNamespaceLabels(t *testing.T) {
 
 	t.Run("self_supplied_tnp_keys_are_dropped", func(t *testing.T) {
 		pod := &v1alpha1.PodInfo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "p",
-				Namespace: testNamespace,
-				Labels: map[string]string{
-					"app":                              "client",
-					"_tnp_kubernetes.io/metadata.name": "production", // attempt to spoof namespace
-					"_tnp_attacker":                    "spoofed",    // unrelated _tnp_ key
-				},
+			Name:      "p",
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				"app":                              "client",
+				"_tnp_kubernetes.io/metadata.name": "production", // attempt to spoof namespace
+				"_tnp_attacker":                    "spoofed",    // unrelated _tnp_ key
 			},
 		}
 		got := s.deps.mergeNamespaceLabels(pod)
@@ -1218,15 +1212,13 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 func TestObjectAddConcurrentPodLabelAccess(t *testing.T) {
 	// Create a Pod with labels that will be shared (like in controller-runtime cache)
 	sharedPod := &v1alpha1.PodInfo{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-			UID:       "test-uid-123",
-			Labels: map[string]string{
-				"app":     "test",
-				"version": "v1",
-				"tier":    "backend",
-			},
+		Name:      "test-pod",
+		Namespace: "default",
+		UID:       "test-uid-123",
+		Labels: map[string]string{
+			"app":     "test",
+			"version": "v1",
+			"tier":    "backend",
 		},
 		WorkloadObject: v1alpha1.WorkloadObjectMeta{
 			Name:      "test-deployment",
@@ -1268,12 +1260,10 @@ func TestObjectAddPodLabelsNotModified(t *testing.T) {
 	}
 	originalLen := len(originalLabels)
 	pod := &v1alpha1.PodInfo{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-			UID:       "test-uid-999",
-			Labels:    originalLabels,
-		},
+		Name:      "test-pod",
+		Namespace: "default",
+		UID:       "test-uid-999",
+		Labels:    originalLabels,
 		WorkloadObject: v1alpha1.WorkloadObjectMeta{
 			Name:      "test-deployment",
 			Namespace: "default",

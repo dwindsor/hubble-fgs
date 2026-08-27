@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 
@@ -26,9 +25,7 @@ import (
 )
 
 var exampleAR = &v1alpha1.AlertRule{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "curl",
-	},
+	Name: "curl",
 	Spec: v1alpha1.AlertRuleSpec{
 		Expression: "process_exec.process.binary.contains(\"curl\")",
 		Message:    "Curl is curling.",
@@ -39,9 +36,7 @@ var exampleAR = &v1alpha1.AlertRule{
 }
 
 var updatedAR = &v1alpha1.AlertRule{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: exampleAR.GetName(),
-	},
+	Name: exampleAR.GetName(),
 	Spec: v1alpha1.AlertRuleSpec{
 		Expression: "process_exec.process.binary == \"/usr/bin/curl\"",
 		Message:    "Curl is curling in /usr/bin.",
@@ -53,9 +48,7 @@ var updatedAR = &v1alpha1.AlertRule{
 }
 
 var anotherAR = &v1alpha1.AlertRule{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "shell",
-	},
+	Name: "shell",
 	Spec: v1alpha1.AlertRuleSpec{
 		Expression: "process_exec.process.binary.contains(\"sh\")",
 		Message:    "Looks like shell.",

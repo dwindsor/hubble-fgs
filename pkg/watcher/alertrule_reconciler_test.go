@@ -18,8 +18,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -56,12 +54,12 @@ var k8sRule1 = ruleKey{name: "rule-1", domain: v1alpha1.K8sDomain}
 
 func alertRule(name string) *v1alpha1.AlertRule {
 	return &v1alpha1.AlertRule{
-		TypeMeta:   metav1.TypeMeta{Kind: "AlertRule", APIVersion: "cilium.io/v1alpha1"},
-		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Kind: "AlertRule", APIVersion: "cilium.io/v1alpha1",
+		Name: name,
 	}
 }
 
-var alertRuleReq = ctrl.Request{NamespacedName: types.NamespacedName{Name: "rule-1"}}
+var alertRuleReq = ctrl.Request{Name: "rule-1"}
 
 func TestAlertRuleReconcile_Found_Adds(t *testing.T) {
 	rules := &fakeRuleManager{}

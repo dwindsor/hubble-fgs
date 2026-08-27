@@ -170,17 +170,13 @@ func TestServiceMonitor(t *testing.T) {
 				monitorEndpointsInterval: "10s",
 			},
 			expected: &monitoringv1.ServiceMonitor{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ServiceMonitor",
-					APIVersion: "monitoring.coreos.com/v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance": "tetragon",
-						"app.kubernetes.io/name":     "tetragon",
-					},
+				Kind:       "ServiceMonitor",
+				APIVersion: "monitoring.coreos.com/v1",
+				Name:       "tetragon",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance": "tetragon",
+					"app.kubernetes.io/name":     "tetragon",
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Endpoints: []monitoringv1.Endpoint{
@@ -226,17 +222,13 @@ func TestServiceMonitor(t *testing.T) {
 				},
 			},
 			expected: &monitoringv1.ServiceMonitor{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ServiceMonitor",
-					APIVersion: "monitoring.coreos.com/v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"label1": "value1",
-						"label2": "value2",
-					},
+				Kind:       "ServiceMonitor",
+				APIVersion: "monitoring.coreos.com/v1",
+				Name:       "tetragon",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"label1": "value1",
+					"label2": "value2",
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Endpoints: []monitoringv1.Endpoint{
@@ -274,17 +266,13 @@ func TestServiceMonitor(t *testing.T) {
 				monitorEndpointsInterval: "10s",
 			},
 			expected: &monitoringv1.ServiceMonitor{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ServiceMonitor",
-					APIVersion: "monitoring.coreos.com/v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon-operator",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance": "tetragon",
-						"app.kubernetes.io/name":     "tetragon-operator",
-					},
+				Kind:       "ServiceMonitor",
+				APIVersion: "monitoring.coreos.com/v1",
+				Name:       "tetragon-operator",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance": "tetragon",
+					"app.kubernetes.io/name":     "tetragon-operator",
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Endpoints: []monitoringv1.Endpoint{
@@ -330,17 +318,13 @@ func TestServiceMonitor(t *testing.T) {
 				},
 			},
 			expected: &monitoringv1.ServiceMonitor{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ServiceMonitor",
-					APIVersion: "monitoring.coreos.com/v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon-operator",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"label1": "value1",
-						"label2": "value2",
-					},
+				Kind:       "ServiceMonitor",
+				APIVersion: "monitoring.coreos.com/v1",
+				Name:       "tetragon-operator",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"label1": "value1",
+					"label2": "value2",
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Endpoints: []monitoringv1.Endpoint{
@@ -398,17 +382,13 @@ func TestServiceMonitorService(t *testing.T) {
 				serviceTargetPort: intstr.Parse("2112"),
 			},
 			expected: &corev1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance": "tetragon",
-						"app.kubernetes.io/name":     "tetragon",
-					},
+				Kind:       "Service",
+				APIVersion: "v1",
+				Name:       "tetragon",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance": "tetragon",
+					"app.kubernetes.io/name":     "tetragon",
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{
@@ -443,17 +423,13 @@ func TestServiceMonitorService(t *testing.T) {
 				},
 			},
 			expected: &corev1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"srv-label1": "value1",
-						"srv-label2": "value2",
-					},
+				Kind:       "Service",
+				APIVersion: "v1",
+				Name:       "tetragon",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"srv-label1": "value1",
+					"srv-label2": "value2",
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{
@@ -480,17 +456,13 @@ func TestServiceMonitorService(t *testing.T) {
 				serviceTargetPort: intstr.Parse("2113"),
 			},
 			expected: &corev1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon-operator",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"app.kubernetes.io/instance": "tetragon",
-						"app.kubernetes.io/name":     "tetragon-operator",
-					},
+				Kind:       "Service",
+				APIVersion: "v1",
+				Name:       "tetragon-operator",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"app.kubernetes.io/instance": "tetragon",
+					"app.kubernetes.io/name":     "tetragon-operator",
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{
@@ -525,17 +497,13 @@ func TestServiceMonitorService(t *testing.T) {
 				},
 			},
 			expected: &corev1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "tetragon-operator",
-					Namespace: "kube-system",
-					Labels: map[string]string{
-						"srv-label1": "value1",
-						"srv-label2": "value2",
-					},
+				Kind:       "Service",
+				APIVersion: "v1",
+				Name:       "tetragon-operator",
+				Namespace:  "kube-system",
+				Labels: map[string]string{
+					"srv-label1": "value1",
+					"srv-label2": "value2",
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{
