@@ -443,7 +443,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		Time:          ktime.ToProto(event.Msg.Timestamp),
 		Hook:          fileHookMap[event.Msg.Hook],
 		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
-		TracingPolicy: event.TpName,
+		TracingPolicy: event.TpName, //nolint:staticcheck // deprecated, populated for backwards compatibility with PolicyName
 		PolicyName:    event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
@@ -526,7 +526,7 @@ func GetProcessFileLink(event *MsgFileLinkEventUnix) *tetragon.ProcessFile {
 		Time:          ktime.ToProto(event.Msg.Timestamp),
 		Hook:          fileHookMap[event.Msg.Hook],
 		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
-		TracingPolicy: event.TpName,
+		TracingPolicy: event.TpName, //nolint:staticcheck // deprecated, populated for backwards compatibility with PolicyName
 		PolicyName:    event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
@@ -592,7 +592,7 @@ func GetProcessFileSymlink(event *MsgFileSymlinkEventUnix) *tetragon.ProcessFile
 		Time:          ktime.ToProto(event.Msg.Timestamp),
 		Hook:          fileHookMap[event.Msg.Hook],
 		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
-		TracingPolicy: event.TpName,
+		TracingPolicy: event.TpName, //nolint:staticcheck // deprecated, populated for backwards compatibility with PolicyName
 		PolicyName:    event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
@@ -661,7 +661,7 @@ func GetProcessFileOpenraw(event *MsgFileOpenrawEventUnix) *tetragon.ProcessFile
 		Time:          ktime.ToProto(event.Msg.Timestamp),
 		Hook:          fileHookMap[event.Msg.Hook],
 		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
-		TracingPolicy: event.TpName,
+		TracingPolicy: event.TpName, //nolint:staticcheck // deprecated, populated for backwards compatibility with PolicyName
 		PolicyName:    event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
@@ -1023,7 +1023,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		Time:          ktime.ToProto(event.Msg.Timestamp),
 		Hook:          fileHookMap[event.Msg.Hook],
 		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
-		TracingPolicy: event.TpName,
+		TracingPolicy: event.TpName, //nolint:staticcheck // deprecated, populated for backwards compatibility with PolicyName
 		PolicyName:    event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,

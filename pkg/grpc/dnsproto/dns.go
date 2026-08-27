@@ -111,14 +111,14 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 
 	fgsDns := &tetragon.DnsInfo{
 		Response: msg.Dns.Response,
-		Rcode:    int32(msg.Dns.RCode),
+		Rcode:    int32(msg.Dns.RCode), //nolint:staticcheck // deprecated, populated for backwards compatibility with ReturnCode
 		ReturnCode: &wrapperspb.Int32Value{
 			Value: int32(msg.Dns.RCode),
 		},
 		Ips:           msg.Dns.IPs,
 		Names:         msg.Dns.Names,
-		QuestionTypes: msg.Dns.QuestionTypes,
-		AnswerTypes:   msg.Dns.AnswerTypes,
+		QuestionTypes: msg.Dns.QuestionTypes, //nolint:staticcheck // deprecated, populated for backwards compatibility with QueryTypes
+		AnswerTypes:   msg.Dns.AnswerTypes,   //nolint:staticcheck // deprecated, populated for backwards compatibility with ResponseTypes
 		QueryTypes:    qTypesEnum,
 		ResponseTypes: aTypesEnum,
 	}
