@@ -78,7 +78,7 @@ func TestDNSParserPerPodFeature(t *testing.T) {
 
 	contents, err := fgsRodataMap.LookupBytes(uint32(0))
 	require.NoError(t, err)
-	require.Len(t, contents, 10)
+	require.Len(t, contents, 14)
 	assert.Equal(t, byte(1), contents[0], "DNS_PARSER_PER_POD_ENABLED flag")
 	if utils.SupportProcessTree() {
 		assert.Equal(t, byte(1), contents[3], "DNS_PARSER_ENABLED flag")

@@ -42,6 +42,8 @@ type fgsRodataConfig struct {
 	IGMPv3MaxEventFrags        uint16
 	IGMPv3MaxPMCs              uint16
 	IGMPv3MaxSources           uint16
+	BpfDebugEnabled            uint8
+	Pad                        [3]uint8
 }
 
 func b2u8(b bool) uint8 {
@@ -77,6 +79,9 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 	// IGMP source-list loop bound - never varies today.
 	igmpV3MaxSources := uint16(256)
 
+	// bpf debug match enabled by --bpf-debug for EE specific bpf areas
+	bpfDebugEnabled := enterpriseOption.Config.BPFDebugAreas.ToFGSBPFConfig()
+
 	return fgsRodataConfig{
 		DNSParserPerPodEnabled:     dnsParserPerPodEnabled,
 		MulticastInspectionEnabled: multicastInspectionEnabled,
@@ -85,6 +90,7 @@ func fgsRodataCurrent() (fgsRodataConfig, error) {
 		IGMPv3MaxEventFrags:        igmpV3MaxEventFrags,
 		IGMPv3MaxPMCs:              igmpV3MaxPMCs,
 		IGMPv3MaxSources:           igmpV3MaxSources,
+		BpfDebugEnabled:            bpfDebugEnabled,
 	}, nil
 }
 
