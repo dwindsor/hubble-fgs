@@ -97,6 +97,12 @@ struct destination_endpoint_value {
 	__u64 tx_drop_packets;
 	__u64 deny_default_packets;
 	__u64 allow_default_packets;
+	__u64 rx_drop_bytes;
+	__u64 rx_drop_packets;
+	__u64 rx_default_drop_bytes;
+	__u64 rx_default_drop_packets;
+	__u64 rx_default_allow_bytes;
+	__u64 rx_default_allow_packets;
 };
 
 /* The destination_endpoint_maps an {src, dstID} pair to its

@@ -396,6 +396,12 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->tx_drop_packets = 0;
 		destvalue->deny_default_packets = 0;
 		destvalue->allow_default_packets = 0;
+		destvalue->rx_drop_bytes = 0;
+		destvalue->rx_drop_packets = 0;
+		destvalue->rx_default_drop_bytes = 0;
+		destvalue->rx_default_drop_packets = 0;
+		destvalue->rx_default_allow_bytes = 0;
+		destvalue->rx_default_allow_packets = 0;
 		destvalue->deny = 0;
 		destvalue->tx_bytes = 0;
 		destvalue->rx_bytes = 0;
@@ -632,6 +638,12 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->tx_drop_packets = 0;
 			destvalue->deny_default_packets = 0;
 			destvalue->allow_default_packets = 0;
+			destvalue->rx_drop_bytes = 0;
+			destvalue->rx_drop_packets = 0;
+			destvalue->rx_default_drop_bytes = 0;
+			destvalue->rx_default_drop_packets = 0;
+			destvalue->rx_default_allow_bytes = 0;
+			destvalue->rx_default_allow_packets = 0;
 			destvalue->policy = dst_value->policy;
 			destvalue->rule = dst_value->rule;
 
@@ -973,7 +985,8 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 	return SK_PASS;
 }
 
-static int recv(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len)
+/* enforce is true only on paths where a policy drop actually drops the packet. */
+static int recv(struct __sk_buff *skb, int deny, struct destination_endpoint_key *key, __u64 len, bool enforce)
 {
 	struct destination_endpoint_value *dest;
 	__u64 segs = skb_wire_segments(skb);
@@ -984,17 +997,30 @@ static int recv(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 
 	clear_policy_template_flag(dest);
 
-	__sync_fetch_and_add(&dest->rx_bytes, len);
-	if (is_policy_drop(deny)) {
+	/* An enforced drop never reaches the socket, so leave its bytes out of
+	 * rx_bytes, the way send() leaves an enforced drop out of tx_bytes.
+	 */
+	if (is_policy_drop(deny) && enforce) {
+		__sync_fetch_and_add(&dest->rx_drop_bytes, len);
+		__sync_fetch_and_add(&dest->rx_drop_packets, segs);
 		if (deny & TNP_POLICY_FALLTHRU) {
-			__sync_fetch_and_add(&dest->deny_default_bytes, len);
-			__sync_fetch_and_add(&dest->deny_default_packets, segs);
+			__sync_fetch_and_add(&dest->rx_default_drop_bytes, len);
+			__sync_fetch_and_add(&dest->rx_default_drop_packets, segs);
 		}
 		return SK_DROP;
 	}
+
+	__sync_fetch_and_add(&dest->rx_bytes, len);
+
+	/* A non-enforced (UDP) drop still lands, so its bytes count above. The
+	 * verdict the caller discards stays a drop.
+	 */
+	if (is_policy_drop(deny))
+		return SK_DROP;
+
 	if (deny & TNP_POLICY_FALLTHRU) {
-		__sync_fetch_and_add(&dest->allow_default_bytes, len);
-		__sync_fetch_and_add(&dest->allow_default_packets, segs);
+		__sync_fetch_and_add(&dest->rx_default_allow_bytes, len);
+		__sync_fetch_and_add(&dest->rx_default_allow_packets, segs);
 	}
 
 	return SK_PASS;
@@ -1099,7 +1125,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
 	rewrite |= policy_gen_stale(v);
 	if (!rewrite) {
-		verdict = recv(skb, v->deny, &v->dst_key, len);
+		verdict = recv(skb, v->deny, &v->dst_key, len, true);
 		if (verdict < 0)
 			goto err_out;
 		return verdict;
@@ -1110,7 +1136,7 @@ err_out:
 	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
 	v->policy_gen = gen;
-	verdict = recv(skb, v->deny, &v->dst_key, len);
+	verdict = recv(skb, v->deny, &v->dst_key, len, true);
 	if (verdict < 0)
 		return SK_PASS;
 	return verdict;
