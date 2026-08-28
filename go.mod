@@ -254,7 +254,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.36.3 // indirect
+	k8s.io/apiextensions-apiserver v0.36.4 // indirect
 	k8s.io/component-base v0.36.4 // indirect
 	k8s.io/cri-api v0.36.4 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
