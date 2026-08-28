@@ -754,6 +754,7 @@ the following criteria:
 | first_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The first time a process in this process group was observed to start. |
 | execution_count | [uint64](#uint64) |  | The total number of times processes in this process group have been executed. |
 | exit_count | [uint64](#uint64) |  | The total number of times processes in this process group have exited. |
+| exec_ids | [string](#string) | repeated | The most recent exec ids seen for this process group. Although the protobuf format allows for any number of exec ids, only a fixed number of exec ids (currently 8) are saved for a given process group in order to cap memory usage in tetragon ebpf maps. Older exec ids are removed to make room for more recent exec ids. For this reason, this is not guaranteed to have the exec id for every process that has executed with the same process name and arguments. |
 
 
 
@@ -803,7 +804,7 @@ the following criteria:
 | ----- | ---- | ----- | ----------- |
 | tx_bytes | [uint64](#uint64) |  |  |
 | rx_bytes | [uint64](#uint64) |  |  |
-| tx_drops | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  | **Deprecated.** Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a count of dropped transmit bytes, not packets. |
 | tx_quota | [uint64](#uint64) |  |  |
 | tx_quota_usage | [uint64](#uint64) |  |  |
 | last_quota_reset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
@@ -811,6 +812,10 @@ the following criteria:
 | default_drop_bytes | [uint64](#uint64) |  |  |
 | default_allow_bytes | [uint64](#uint64) |  |  |
 | sessions | [uint64](#uint64) |  | The cumulative number of TCP connections or UDP sessions observed for this connection over its entire lifespan. This value only increases; consumers can compute deltas by subtracting two consecutive values. |
+| tx_drop_bytes | [uint64](#uint64) |  | Number of transmit bytes dropped. Replaces the deprecated tx_drops. |
+| tx_drop_packets | [uint64](#uint64) |  | Number of transmit packets dropped. |
+| default_drop_packets | [uint64](#uint64) |  | Number of packets dropped by the default policy rule. A subset of tx_drop_packets, which also counts drops an explicit deny rule decided. |
+| default_allow_packets | [uint64](#uint64) |  | Number of packets allowed by the default policy rule. |
 
 
 
@@ -950,8 +955,14 @@ the following criteria:
 | rx_bytes | [uint64](#uint64) |  | The number of receive bytes from connections allowed by the policy rule. This field is not set for `POLICY_VERDICT_DROP` verdict events. |
 | sessions | [uint64](#uint64) |  | The number of TCP connections / UDP sessions. For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the number of TCP connections / UDP sessions created. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of TCP connections / UDP sessions allowed by this policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped TCP connections / UDP sessions dropped by this policy rule. |
 | application_model_id | [string](#string) |  | The ID of the application model from which this telemetry data got derived. |
-| tx_drops | [uint64](#uint64) |  | The number of dropped packets |
+| tx_drops | [uint64](#uint64) |  | **Deprecated.** Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a count of dropped transmit bytes, not packets. |
 | container | [ApplicationContainer](#application_model-v1alpha-ApplicationContainer) |  | The container in which this connection has an endpoint |
+| tx_drop_packets | [uint64](#uint64) |  | The number of transmit packets dropped over the interval since the previous telemetry event. Feeds EdgeTypeNetworkTelemetry.network_transmit_drop_total, and also network_transmit_drop_policy_total when every drop the producer counts here was a policy decision. |
+| tx_drop_bytes | [uint64](#uint64) |  | The number of transmit bytes dropped over the interval since the previous telemetry event. Replaces the deprecated tx_drops. |
+| default_drop_bytes | [uint64](#uint64) |  | The number of transmit bytes dropped by the default policy rule over the interval since the previous telemetry event. |
+| default_allow_bytes | [uint64](#uint64) |  | The number of transmit bytes allowed by the default policy rule over the interval since the previous telemetry event. |
+| default_drop_packets | [uint64](#uint64) |  | The number of transmit packets dropped by the default policy rule over the interval since the previous telemetry event. A subset of tx_drop_packets, which also counts drops an explicit deny rule decided. |
+| default_allow_packets | [uint64](#uint64) |  | The number of transmit packets allowed by the default policy rule over the interval since the previous telemetry event. |
 
 
 

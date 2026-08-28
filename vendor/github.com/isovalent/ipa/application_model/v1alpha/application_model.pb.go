@@ -483,12 +483,36 @@ type NetworkConnectTelemetry struct {
 	Sessions uint64 `protobuf:"varint,27,opt,name=sessions,proto3" json:"sessions,omitempty"`
 	// The ID of the application model from which this telemetry data got derived.
 	ApplicationModelId string `protobuf:"bytes,28,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
-	// The number of dropped packets
+	// Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a
+	// count of dropped transmit bytes, not packets.
+	//
+	// Deprecated: Marked as deprecated in application_model/v1alpha/application_model.proto.
 	TxDrops uint64 `protobuf:"varint,29,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
 	// The container in which this connection has an endpoint
-	Container     *ApplicationContainer `protobuf:"bytes,30,opt,name=container,proto3" json:"container,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Container *ApplicationContainer `protobuf:"bytes,30,opt,name=container,proto3" json:"container,omitempty"`
+	// The number of transmit packets dropped over the interval since the previous
+	// telemetry event. Feeds EdgeTypeNetworkTelemetry.network_transmit_drop_total,
+	// and also network_transmit_drop_policy_total when every drop the producer
+	// counts here was a policy decision.
+	TxDropPackets uint64 `protobuf:"varint,31,opt,name=tx_drop_packets,json=txDropPackets,proto3" json:"tx_drop_packets,omitempty"`
+	// The number of transmit bytes dropped over the interval since the previous
+	// telemetry event. Replaces the deprecated tx_drops.
+	TxDropBytes uint64 `protobuf:"varint,32,opt,name=tx_drop_bytes,json=txDropBytes,proto3" json:"tx_drop_bytes,omitempty"`
+	// The number of transmit bytes dropped by the default policy rule over the
+	// interval since the previous telemetry event.
+	DefaultDropBytes uint64 `protobuf:"varint,33,opt,name=default_drop_bytes,json=defaultDropBytes,proto3" json:"default_drop_bytes,omitempty"`
+	// The number of transmit bytes allowed by the default policy rule over the
+	// interval since the previous telemetry event.
+	DefaultAllowBytes uint64 `protobuf:"varint,34,opt,name=default_allow_bytes,json=defaultAllowBytes,proto3" json:"default_allow_bytes,omitempty"`
+	// The number of transmit packets dropped by the default policy rule over the
+	// interval since the previous telemetry event. A subset of tx_drop_packets,
+	// which also counts drops an explicit deny rule decided.
+	DefaultDropPackets uint64 `protobuf:"varint,35,opt,name=default_drop_packets,json=defaultDropPackets,proto3" json:"default_drop_packets,omitempty"`
+	// The number of transmit packets allowed by the default policy rule over the
+	// interval since the previous telemetry event.
+	DefaultAllowPackets uint64 `protobuf:"varint,36,opt,name=default_allow_packets,json=defaultAllowPackets,proto3" json:"default_allow_packets,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *NetworkConnectTelemetry) Reset() {
@@ -717,6 +741,7 @@ func (x *NetworkConnectTelemetry) GetApplicationModelId() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in application_model/v1alpha/application_model.proto.
 func (x *NetworkConnectTelemetry) GetTxDrops() uint64 {
 	if x != nil {
 		return x.TxDrops
@@ -729,6 +754,48 @@ func (x *NetworkConnectTelemetry) GetContainer() *ApplicationContainer {
 		return x.Container
 	}
 	return nil
+}
+
+func (x *NetworkConnectTelemetry) GetTxDropPackets() uint64 {
+	if x != nil {
+		return x.TxDropPackets
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetTxDropBytes() uint64 {
+	if x != nil {
+		return x.TxDropBytes
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetDefaultDropBytes() uint64 {
+	if x != nil {
+		return x.DefaultDropBytes
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetDefaultAllowBytes() uint64 {
+	if x != nil {
+		return x.DefaultAllowBytes
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetDefaultDropPackets() uint64 {
+	if x != nil {
+		return x.DefaultDropPackets
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.DefaultAllowPackets
+	}
+	return 0
 }
 
 type ApplicationModelEvent struct {
@@ -1244,7 +1311,15 @@ type ApplicationProcessGroup struct {
 	// executed.
 	ExecutionCount uint64 `protobuf:"varint,12,opt,name=execution_count,json=executionCount,proto3" json:"execution_count,omitempty"`
 	// The total number of times processes in this process group have exited.
-	ExitCount     uint64 `protobuf:"varint,13,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
+	ExitCount uint64 `protobuf:"varint,13,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
+	// The most recent exec ids seen for this process group. Although the protobuf
+	// format allows for any number of exec ids, only a fixed number of exec ids
+	// (currently 8) are saved for a given process group in order to cap memory
+	// usage in tetragon ebpf maps. Older exec ids are removed to make room for
+	// more recent exec ids. For this reason, this is not guaranteed to have the
+	// exec id for every process that has executed with the same process name and
+	// arguments.
+	ExecIds       []string `protobuf:"bytes,14,rep,name=exec_ids,json=execIds,proto3" json:"exec_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1368,6 +1443,13 @@ func (x *ApplicationProcessGroup) GetExitCount() uint64 {
 		return x.ExitCount
 	}
 	return 0
+}
+
+func (x *ApplicationProcessGroup) GetExecIds() []string {
+	if x != nil {
+		return x.ExecIds
+	}
+	return nil
 }
 
 type NetworkPolicy struct {
@@ -1513,9 +1595,13 @@ func (x *ApplicationConnection) GetProtocol() v1alpha1.IPProtocol {
 }
 
 type ConnectionStats struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	TxBytes           uint64                 `protobuf:"varint,1,opt,name=tx_bytes,json=txBytes,proto3" json:"tx_bytes,omitempty"`
-	RxBytes           uint64                 `protobuf:"varint,2,opt,name=rx_bytes,json=rxBytes,proto3" json:"rx_bytes,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	TxBytes uint64                 `protobuf:"varint,1,opt,name=tx_bytes,json=txBytes,proto3" json:"tx_bytes,omitempty"`
+	RxBytes uint64                 `protobuf:"varint,2,opt,name=rx_bytes,json=rxBytes,proto3" json:"rx_bytes,omitempty"`
+	// Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a
+	// count of dropped transmit bytes, not packets.
+	//
+	// Deprecated: Marked as deprecated in application_model/v1alpha/application_model.proto.
 	TxDrops           uint64                 `protobuf:"varint,3,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
 	TxQuota           uint64                 `protobuf:"varint,4,opt,name=tx_quota,json=txQuota,proto3" json:"tx_quota,omitempty"`
 	TxQuotaUsage      uint64                 `protobuf:"varint,5,opt,name=tx_quota_usage,json=txQuotaUsage,proto3" json:"tx_quota_usage,omitempty"`
@@ -1526,9 +1612,18 @@ type ConnectionStats struct {
 	// The cumulative number of TCP connections or UDP sessions observed for this
 	// connection over its entire lifespan. This value only increases; consumers
 	// can compute deltas by subtracting two consecutive values.
-	Sessions      uint64 `protobuf:"varint,10,opt,name=sessions,proto3" json:"sessions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Sessions uint64 `protobuf:"varint,10,opt,name=sessions,proto3" json:"sessions,omitempty"`
+	// Number of transmit bytes dropped. Replaces the deprecated tx_drops.
+	TxDropBytes uint64 `protobuf:"varint,11,opt,name=tx_drop_bytes,json=txDropBytes,proto3" json:"tx_drop_bytes,omitempty"`
+	// Number of transmit packets dropped.
+	TxDropPackets uint64 `protobuf:"varint,12,opt,name=tx_drop_packets,json=txDropPackets,proto3" json:"tx_drop_packets,omitempty"`
+	// Number of packets dropped by the default policy rule. A subset of
+	// tx_drop_packets, which also counts drops an explicit deny rule decided.
+	DefaultDropPackets uint64 `protobuf:"varint,13,opt,name=default_drop_packets,json=defaultDropPackets,proto3" json:"default_drop_packets,omitempty"`
+	// Number of packets allowed by the default policy rule.
+	DefaultAllowPackets uint64 `protobuf:"varint,14,opt,name=default_allow_packets,json=defaultAllowPackets,proto3" json:"default_allow_packets,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ConnectionStats) Reset() {
@@ -1575,6 +1670,7 @@ func (x *ConnectionStats) GetRxBytes() uint64 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in application_model/v1alpha/application_model.proto.
 func (x *ConnectionStats) GetTxDrops() uint64 {
 	if x != nil {
 		return x.TxDrops
@@ -1627,6 +1723,34 @@ func (x *ConnectionStats) GetDefaultAllowBytes() uint64 {
 func (x *ConnectionStats) GetSessions() uint64 {
 	if x != nil {
 		return x.Sessions
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetTxDropBytes() uint64 {
+	if x != nil {
+		return x.TxDropBytes
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetTxDropPackets() uint64 {
+	if x != nil {
+		return x.TxDropPackets
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetDefaultDropPackets() uint64 {
+	if x != nil {
+		return x.DefaultDropPackets
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.DefaultAllowPackets
 	}
 	return 0
 }
@@ -2410,7 +2534,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"exit_count\x18\x14 \x01(\x04R\texitCount\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa0\x0e\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb4\x10\n" +
 	"\x17NetworkConnectTelemetry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12G\n" +
@@ -2443,9 +2567,15 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\btx_bytes\x18\x19 \x01(\x04R\atxBytes\x12\x19\n" +
 	"\brx_bytes\x18\x1a \x01(\x04R\arxBytes\x12\x1a\n" +
 	"\bsessions\x18\x1b \x01(\x04R\bsessions\x120\n" +
-	"\x14application_model_id\x18\x1c \x01(\tR\x12applicationModelId\x12\x19\n" +
-	"\btx_drops\x18\x1d \x01(\x04R\atxDrops\x12M\n" +
-	"\tcontainer\x18\x1e \x01(\v2/.application_model.v1alpha.ApplicationContainerR\tcontainer\x1a=\n" +
+	"\x14application_model_id\x18\x1c \x01(\tR\x12applicationModelId\x12\x1d\n" +
+	"\btx_drops\x18\x1d \x01(\x04B\x02\x18\x01R\atxDrops\x12M\n" +
+	"\tcontainer\x18\x1e \x01(\v2/.application_model.v1alpha.ApplicationContainerR\tcontainer\x12&\n" +
+	"\x0ftx_drop_packets\x18\x1f \x01(\x04R\rtxDropPackets\x12\"\n" +
+	"\rtx_drop_bytes\x18  \x01(\x04R\vtxDropBytes\x12,\n" +
+	"\x12default_drop_bytes\x18! \x01(\x04R\x10defaultDropBytes\x12.\n" +
+	"\x13default_allow_bytes\x18\" \x01(\x04R\x11defaultAllowBytes\x120\n" +
+	"\x14default_drop_packets\x18# \x01(\x04R\x12defaultDropPackets\x122\n" +
+	"\x15default_allow_packets\x18$ \x01(\x04R\x13defaultAllowPackets\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x83\x03\n" +
@@ -2492,7 +2622,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x03 \x01(\tR\x05image\x12P\n" +
-	"\tprocesses\x18\x04 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\xd5\x05\n" +
+	"\tprocesses\x18\x04 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\xf0\x05\n" +
 	"\x17ApplicationProcessGroup\x12\x12\n" +
 	"\x04hash\x18\x01 \x01(\tR\x04hash\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
@@ -2509,7 +2639,8 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x10first_start_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12'\n" +
 	"\x0fexecution_count\x18\f \x01(\x04R\x0eexecutionCount\x12\x1d\n" +
 	"\n" +
-	"exit_count\x18\r \x01(\x04R\texitCount\"\x91\x01\n" +
+	"exit_count\x18\r \x01(\x04R\texitCount\x12\x19\n" +
+	"\bexec_ids\x18\x0e \x03(\tR\aexecIds\"\x91\x01\n" +
 	"\rNetworkPolicy\x12B\n" +
 	"\averdict\x18\x14 \x01(\x0e2(.application_model.v1alpha.PolicyVerdictR\averdict\x12\x1f\n" +
 	"\vpolicy_name\x18\x15 \x01(\tR\n" +
@@ -2519,11 +2650,11 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\vdestination\x18\x01 \x01(\v2&.application_model.v1alpha.DestinationR\vdestination\x12@\n" +
 	"\x05stats\x18\x02 \x01(\v2*.application_model.v1alpha.ConnectionStatsR\x05stats\x12@\n" +
 	"\x06policy\x18\x03 \x01(\v2(.application_model.v1alpha.NetworkPolicyR\x06policy\x12:\n" +
-	"\bprotocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\bprotocol\"\xa9\x03\n" +
+	"\bprotocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\bprotocol\"\xdf\x04\n" +
 	"\x0fConnectionStats\x12\x19\n" +
 	"\btx_bytes\x18\x01 \x01(\x04R\atxBytes\x12\x19\n" +
-	"\brx_bytes\x18\x02 \x01(\x04R\arxBytes\x12\x19\n" +
-	"\btx_drops\x18\x03 \x01(\x04R\atxDrops\x12\x19\n" +
+	"\brx_bytes\x18\x02 \x01(\x04R\arxBytes\x12\x1d\n" +
+	"\btx_drops\x18\x03 \x01(\x04B\x02\x18\x01R\atxDrops\x12\x19\n" +
 	"\btx_quota\x18\x04 \x01(\x04R\atxQuota\x12$\n" +
 	"\x0etx_quota_usage\x18\x05 \x01(\x04R\ftxQuotaUsage\x12D\n" +
 	"\x10last_quota_reset\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0elastQuotaReset\x12D\n" +
@@ -2531,7 +2662,11 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x12default_drop_bytes\x18\b \x01(\x04R\x10defaultDropBytes\x12.\n" +
 	"\x13default_allow_bytes\x18\t \x01(\x04R\x11defaultAllowBytes\x12\x1a\n" +
 	"\bsessions\x18\n" +
-	" \x01(\x04R\bsessions\"\xf3\x01\n" +
+	" \x01(\x04R\bsessions\x12\"\n" +
+	"\rtx_drop_bytes\x18\v \x01(\x04R\vtxDropBytes\x12&\n" +
+	"\x0ftx_drop_packets\x18\f \x01(\x04R\rtxDropPackets\x120\n" +
+	"\x14default_drop_packets\x18\r \x01(\x04R\x12defaultDropPackets\x122\n" +
+	"\x15default_allow_packets\x18\x0e \x01(\x04R\x13defaultAllowPackets\"\xf3\x01\n" +
 	"\vDestination\x12=\n" +
 	"\x03dns\x18\x01 \x01(\v2).application_model.v1alpha.DestinationDnsH\x00R\x03dns\x12L\n" +
 	"\bworkload\x18\x02 \x01(\v2..application_model.v1alpha.DestinationWorkloadH\x00R\bworkload\x12:\n" +

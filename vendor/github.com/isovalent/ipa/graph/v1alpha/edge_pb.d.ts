@@ -103,62 +103,66 @@ export declare const EdgeTypeBasicSchema: GenMessage<EdgeTypeBasic>;
  */
 export declare type EdgeTypeNetworkTelemetry = Message<"graph.v1alpha.EdgeTypeNetworkTelemetry"> & {
   /**
-   * network_transmit_packets_total is the number of packets transferred.
+   * network_transmit_packets_total is the number of packets transferred during
+   * the selected time window.
    *
    * @generated from field: uint64 network_transmit_packets_total = 1;
    */
   networkTransmitPacketsTotal: bigint;
 
   /**
-   * network_transmit_bytes_total is the number of bytes transferred.
+   * network_transmit_bytes_total is the number of bytes transferred during the
+   * selected time window.
    *
    * @generated from field: uint64 network_transmit_bytes_total = 2;
    */
   networkTransmitBytesTotal: bigint;
 
   /**
-   * network_transmit_drop_total is the number of packets dropped during
-   * transmission.
+   * network_transmit_drop_total is the number of transmit packets dropped
+   * during the selected time window.
    *
    * @generated from field: uint64 network_transmit_drop_total = 3;
    */
   networkTransmitDropTotal: bigint;
 
   /**
-   * network_transmit_drop_policy_total is the number of packets dropped due to
-   * a network policy during transmission. It is always a subset of
-   * network_transmit_drop_total.
+   * network_transmit_drop_policy_total is the number of transmit packets dropped
+   * due to a network policy during the selected time window. It is always a
+   * subset of network_transmit_drop_total.
    *
    * @generated from field: uint64 network_transmit_drop_policy_total = 7;
    */
   networkTransmitDropPolicyTotal: bigint;
 
   /**
-   * network_receive_packets_total is the number of packets received.
+   * network_receive_packets_total is the number of packets received during the
+   * selected time window.
    *
    * @generated from field: uint64 network_receive_packets_total = 4;
    */
   networkReceivePacketsTotal: bigint;
 
   /**
-   * network_receive_bytes_total is the number of bytes received.
+   * network_receive_bytes_total is the number of bytes received during the
+   * selected time window.
    *
    * @generated from field: uint64 network_receive_bytes_total = 5;
    */
   networkReceiveBytesTotal: bigint;
 
   /**
-   * network_receive_drop_total is the number of packets that are received but
-   * discarded.
+   * network_receive_drop_total is the number of received packets discarded
+   * during the selected time window.
    *
    * @generated from field: uint64 network_receive_drop_total = 6;
    */
   networkReceiveDropTotal: bigint;
 
   /**
-   * network_receive_drop_policy_total is the number of packets dropped due to
-   * a network policy during reception. It is always a subset of
-   * network_receive_drop_total.
+   * network_receive_drop_policy_total is the number of received packets dropped
+   * due to a network policy during the selected time window. It is always a
+   * subset of network_receive_drop_total.
    *
    * @generated from field: uint64 network_receive_drop_policy_total = 8;
    */

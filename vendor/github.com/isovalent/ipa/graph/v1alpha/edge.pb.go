@@ -227,27 +227,31 @@ func (*EdgeTypeBasic) Descriptor() ([]byte, []int) {
 // connection.
 type EdgeTypeNetworkTelemetry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// network_transmit_packets_total is the number of packets transferred.
+	// network_transmit_packets_total is the number of packets transferred during
+	// the selected time window.
 	NetworkTransmitPacketsTotal uint64 `protobuf:"varint,1,opt,name=network_transmit_packets_total,json=networkTransmitPacketsTotal,proto3" json:"network_transmit_packets_total,omitempty"`
-	// network_transmit_bytes_total is the number of bytes transferred.
+	// network_transmit_bytes_total is the number of bytes transferred during the
+	// selected time window.
 	NetworkTransmitBytesTotal uint64 `protobuf:"varint,2,opt,name=network_transmit_bytes_total,json=networkTransmitBytesTotal,proto3" json:"network_transmit_bytes_total,omitempty"`
-	// network_transmit_drop_total is the number of packets dropped during
-	// transmission.
+	// network_transmit_drop_total is the number of transmit packets dropped
+	// during the selected time window.
 	NetworkTransmitDropTotal uint64 `protobuf:"varint,3,opt,name=network_transmit_drop_total,json=networkTransmitDropTotal,proto3" json:"network_transmit_drop_total,omitempty"`
-	// network_transmit_drop_policy_total is the number of packets dropped due to
-	// a network policy during transmission. It is always a subset of
-	// network_transmit_drop_total.
+	// network_transmit_drop_policy_total is the number of transmit packets dropped
+	// due to a network policy during the selected time window. It is always a
+	// subset of network_transmit_drop_total.
 	NetworkTransmitDropPolicyTotal uint64 `protobuf:"varint,7,opt,name=network_transmit_drop_policy_total,json=networkTransmitDropPolicyTotal,proto3" json:"network_transmit_drop_policy_total,omitempty"`
-	// network_receive_packets_total is the number of packets received.
+	// network_receive_packets_total is the number of packets received during the
+	// selected time window.
 	NetworkReceivePacketsTotal uint64 `protobuf:"varint,4,opt,name=network_receive_packets_total,json=networkReceivePacketsTotal,proto3" json:"network_receive_packets_total,omitempty"`
-	// network_receive_bytes_total is the number of bytes received.
+	// network_receive_bytes_total is the number of bytes received during the
+	// selected time window.
 	NetworkReceiveBytesTotal uint64 `protobuf:"varint,5,opt,name=network_receive_bytes_total,json=networkReceiveBytesTotal,proto3" json:"network_receive_bytes_total,omitempty"`
-	// network_receive_drop_total is the number of packets that are received but
-	// discarded.
+	// network_receive_drop_total is the number of received packets discarded
+	// during the selected time window.
 	NetworkReceiveDropTotal uint64 `protobuf:"varint,6,opt,name=network_receive_drop_total,json=networkReceiveDropTotal,proto3" json:"network_receive_drop_total,omitempty"`
-	// network_receive_drop_policy_total is the number of packets dropped due to
-	// a network policy during reception. It is always a subset of
-	// network_receive_drop_total.
+	// network_receive_drop_policy_total is the number of received packets dropped
+	// due to a network policy during the selected time window. It is always a
+	// subset of network_receive_drop_total.
 	NetworkReceiveDropPolicyTotal uint64 `protobuf:"varint,8,opt,name=network_receive_drop_policy_total,json=networkReceiveDropPolicyTotal,proto3" json:"network_receive_drop_policy_total,omitempty"`
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache

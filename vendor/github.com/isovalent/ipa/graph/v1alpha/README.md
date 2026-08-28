@@ -158,14 +158,14 @@ connection.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| network_transmit_packets_total | [uint64](#uint64) |  | network_transmit_packets_total is the number of packets transferred. |
-| network_transmit_bytes_total | [uint64](#uint64) |  | network_transmit_bytes_total is the number of bytes transferred. |
-| network_transmit_drop_total | [uint64](#uint64) |  | network_transmit_drop_total is the number of packets dropped during transmission. |
-| network_transmit_drop_policy_total | [uint64](#uint64) |  | network_transmit_drop_policy_total is the number of packets dropped due to a network policy during transmission. It is always a subset of network_transmit_drop_total. |
-| network_receive_packets_total | [uint64](#uint64) |  | network_receive_packets_total is the number of packets received. |
-| network_receive_bytes_total | [uint64](#uint64) |  | network_receive_bytes_total is the number of bytes received. |
-| network_receive_drop_total | [uint64](#uint64) |  | network_receive_drop_total is the number of packets that are received but discarded. |
-| network_receive_drop_policy_total | [uint64](#uint64) |  | network_receive_drop_policy_total is the number of packets dropped due to a network policy during reception. It is always a subset of network_receive_drop_total. |
+| network_transmit_packets_total | [uint64](#uint64) |  | network_transmit_packets_total is the number of packets transferred during the selected time window. |
+| network_transmit_bytes_total | [uint64](#uint64) |  | network_transmit_bytes_total is the number of bytes transferred during the selected time window. |
+| network_transmit_drop_total | [uint64](#uint64) |  | network_transmit_drop_total is the number of transmit packets dropped during the selected time window. |
+| network_transmit_drop_policy_total | [uint64](#uint64) |  | network_transmit_drop_policy_total is the number of transmit packets dropped due to a network policy during the selected time window. It is always a subset of network_transmit_drop_total. |
+| network_receive_packets_total | [uint64](#uint64) |  | network_receive_packets_total is the number of packets received during the selected time window. |
+| network_receive_bytes_total | [uint64](#uint64) |  | network_receive_bytes_total is the number of bytes received during the selected time window. |
+| network_receive_drop_total | [uint64](#uint64) |  | network_receive_drop_total is the number of received packets discarded during the selected time window. |
+| network_receive_drop_policy_total | [uint64](#uint64) |  | network_receive_drop_policy_total is the number of received packets dropped due to a network policy during the selected time window. It is always a subset of network_receive_drop_total. |
 
 
 

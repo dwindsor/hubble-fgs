@@ -390,9 +390,11 @@ export declare type NetworkConnectTelemetry = Message<"application_model.v1alpha
   applicationModelId: string;
 
   /**
-   * The number of dropped packets
+   * Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a
+   * count of dropped transmit bytes, not packets.
    *
-   * @generated from field: uint64 tx_drops = 29;
+   * @generated from field: uint64 tx_drops = 29 [deprecated = true];
+   * @deprecated
    */
   txDrops: bigint;
 
@@ -402,6 +404,57 @@ export declare type NetworkConnectTelemetry = Message<"application_model.v1alpha
    * @generated from field: application_model.v1alpha.ApplicationContainer container = 30;
    */
   container?: ApplicationContainer | undefined;
+
+  /**
+   * The number of transmit packets dropped over the interval since the previous
+   * telemetry event. Feeds EdgeTypeNetworkTelemetry.network_transmit_drop_total,
+   * and also network_transmit_drop_policy_total when every drop the producer
+   * counts here was a policy decision.
+   *
+   * @generated from field: uint64 tx_drop_packets = 31;
+   */
+  txDropPackets: bigint;
+
+  /**
+   * The number of transmit bytes dropped over the interval since the previous
+   * telemetry event. Replaces the deprecated tx_drops.
+   *
+   * @generated from field: uint64 tx_drop_bytes = 32;
+   */
+  txDropBytes: bigint;
+
+  /**
+   * The number of transmit bytes dropped by the default policy rule over the
+   * interval since the previous telemetry event.
+   *
+   * @generated from field: uint64 default_drop_bytes = 33;
+   */
+  defaultDropBytes: bigint;
+
+  /**
+   * The number of transmit bytes allowed by the default policy rule over the
+   * interval since the previous telemetry event.
+   *
+   * @generated from field: uint64 default_allow_bytes = 34;
+   */
+  defaultAllowBytes: bigint;
+
+  /**
+   * The number of transmit packets dropped by the default policy rule over the
+   * interval since the previous telemetry event. A subset of tx_drop_packets,
+   * which also counts drops an explicit deny rule decided.
+   *
+   * @generated from field: uint64 default_drop_packets = 35;
+   */
+  defaultDropPackets: bigint;
+
+  /**
+   * The number of transmit packets allowed by the default policy rule over the
+   * interval since the previous telemetry event.
+   *
+   * @generated from field: uint64 default_allow_packets = 36;
+   */
+  defaultAllowPackets: bigint;
 };
 
 /**
@@ -750,6 +803,19 @@ export declare type ApplicationProcessGroup = Message<"application_model.v1alpha
    * @generated from field: uint64 exit_count = 13;
    */
   exitCount: bigint;
+
+  /**
+   * The most recent exec ids seen for this process group. Although the protobuf
+   * format allows for any number of exec ids, only a fixed number of exec ids
+   * (currently 8) are saved for a given process group in order to cap memory
+   * usage in tetragon ebpf maps. Older exec ids are removed to make room for
+   * more recent exec ids. For this reason, this is not guaranteed to have the
+   * exec id for every process that has executed with the same process name and
+   * arguments.
+   *
+   * @generated from field: repeated string exec_ids = 14;
+   */
+  execIds: string[];
 };
 
 /**
@@ -851,7 +917,11 @@ export declare type ConnectionStats = Message<"application_model.v1alpha.Connect
   rxBytes: bigint;
 
   /**
-   * @generated from field: uint64 tx_drops = 3;
+   * Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a
+   * count of dropped transmit bytes, not packets.
+   *
+   * @generated from field: uint64 tx_drops = 3 [deprecated = true];
+   * @deprecated
    */
   txDrops: bigint;
 
@@ -893,6 +963,35 @@ export declare type ConnectionStats = Message<"application_model.v1alpha.Connect
    * @generated from field: uint64 sessions = 10;
    */
   sessions: bigint;
+
+  /**
+   * Number of transmit bytes dropped. Replaces the deprecated tx_drops.
+   *
+   * @generated from field: uint64 tx_drop_bytes = 11;
+   */
+  txDropBytes: bigint;
+
+  /**
+   * Number of transmit packets dropped.
+   *
+   * @generated from field: uint64 tx_drop_packets = 12;
+   */
+  txDropPackets: bigint;
+
+  /**
+   * Number of packets dropped by the default policy rule. A subset of
+   * tx_drop_packets, which also counts drops an explicit deny rule decided.
+   *
+   * @generated from field: uint64 default_drop_packets = 13;
+   */
+  defaultDropPackets: bigint;
+
+  /**
+   * Number of packets allowed by the default policy rule.
+   *
+   * @generated from field: uint64 default_allow_packets = 14;
+   */
+  defaultAllowPackets: bigint;
 };
 
 /**

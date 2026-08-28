@@ -50,27 +50,31 @@ message EdgeTypeNetworkTelemetry {
     message: "network_receive_drop_policy_total must be <= network_receive_drop_total"
     expression: "this.network_receive_drop_policy_total <= this.network_receive_drop_total"
   };
-  // network_transmit_packets_total is the number of packets transferred.
+  // network_transmit_packets_total is the number of packets transferred during
+  // the selected time window.
   uint64 network_transmit_packets_total = 1;
-  // network_transmit_bytes_total is the number of bytes transferred.
+  // network_transmit_bytes_total is the number of bytes transferred during the
+  // selected time window.
   uint64 network_transmit_bytes_total = 2;
-  // network_transmit_drop_total is the number of packets dropped during
-  // transmission.
+  // network_transmit_drop_total is the number of transmit packets dropped
+  // during the selected time window.
   uint64 network_transmit_drop_total = 3;
-  // network_transmit_drop_policy_total is the number of packets dropped due to
-  // a network policy during transmission. It is always a subset of
-  // network_transmit_drop_total.
+  // network_transmit_drop_policy_total is the number of transmit packets dropped
+  // due to a network policy during the selected time window. It is always a
+  // subset of network_transmit_drop_total.
   uint64 network_transmit_drop_policy_total = 7;
-  // network_receive_packets_total is the number of packets received.
+  // network_receive_packets_total is the number of packets received during the
+  // selected time window.
   uint64 network_receive_packets_total = 4;
-  // network_receive_bytes_total is the number of bytes received.
+  // network_receive_bytes_total is the number of bytes received during the
+  // selected time window.
   uint64 network_receive_bytes_total = 5;
-  // network_receive_drop_total is the number of packets that are received but
-  // discarded.
+  // network_receive_drop_total is the number of received packets discarded
+  // during the selected time window.
   uint64 network_receive_drop_total = 6;
-  // network_receive_drop_policy_total is the number of packets dropped due to
-  // a network policy during reception. It is always a subset of
-  // network_receive_drop_total.
+  // network_receive_drop_policy_total is the number of received packets dropped
+  // due to a network policy during the selected time window. It is always a
+  // subset of network_receive_drop_total.
   uint64 network_receive_drop_policy_total = 8;
 }
 

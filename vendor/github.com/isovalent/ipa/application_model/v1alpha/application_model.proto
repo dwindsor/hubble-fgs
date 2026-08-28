@@ -146,10 +146,32 @@ message NetworkConnectTelemetry {
   uint64 sessions = 27;
   // The ID of the application model from which this telemetry data got derived.
   string application_model_id = 28;
-  // The number of dropped packets
-  uint64 tx_drops = 29;
+  // Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a
+  // count of dropped transmit bytes, not packets.
+  uint64 tx_drops = 29 [deprecated = true];
   // The container in which this connection has an endpoint
   ApplicationContainer container = 30;
+  // The number of transmit packets dropped over the interval since the previous
+  // telemetry event. Feeds EdgeTypeNetworkTelemetry.network_transmit_drop_total,
+  // and also network_transmit_drop_policy_total when every drop the producer
+  // counts here was a policy decision.
+  uint64 tx_drop_packets = 31;
+  // The number of transmit bytes dropped over the interval since the previous
+  // telemetry event. Replaces the deprecated tx_drops.
+  uint64 tx_drop_bytes = 32;
+  // The number of transmit bytes dropped by the default policy rule over the
+  // interval since the previous telemetry event.
+  uint64 default_drop_bytes = 33;
+  // The number of transmit bytes allowed by the default policy rule over the
+  // interval since the previous telemetry event.
+  uint64 default_allow_bytes = 34;
+  // The number of transmit packets dropped by the default policy rule over the
+  // interval since the previous telemetry event. A subset of tx_drop_packets,
+  // which also counts drops an explicit deny rule decided.
+  uint64 default_drop_packets = 35;
+  // The number of transmit packets allowed by the default policy rule over the
+  // interval since the previous telemetry event.
+  uint64 default_allow_packets = 36;
 }
 
 enum PolicyVerdict {
@@ -278,6 +300,14 @@ message ApplicationProcessGroup {
   uint64 execution_count = 12;
   // The total number of times processes in this process group have exited.
   uint64 exit_count = 13;
+  // The most recent exec ids seen for this process group. Although the protobuf
+  // format allows for any number of exec ids, only a fixed number of exec ids
+  // (currently 8) are saved for a given process group in order to cap memory
+  // usage in tetragon ebpf maps. Older exec ids are removed to make room for
+  // more recent exec ids. For this reason, this is not guaranteed to have the
+  // exec id for every process that has executed with the same process name and
+  // arguments.
+  repeated string exec_ids = 14;
 }
 
 message NetworkPolicy {
@@ -310,7 +340,9 @@ message ApplicationConnection {
 message ConnectionStats {
   uint64 tx_bytes = 1;
   uint64 rx_bytes = 2;
-  uint64 tx_drops = 3;
+  // Deprecated: use tx_drop_bytes instead. Despite its name, this field holds a
+  // count of dropped transmit bytes, not packets.
+  uint64 tx_drops = 3 [deprecated = true];
   uint64 tx_quota = 4;
   uint64 tx_quota_usage = 5;
   google.protobuf.Timestamp last_quota_reset = 6;
@@ -321,6 +353,15 @@ message ConnectionStats {
   // connection over its entire lifespan. This value only increases; consumers
   // can compute deltas by subtracting two consecutive values.
   uint64 sessions = 10;
+  // Number of transmit bytes dropped. Replaces the deprecated tx_drops.
+  uint64 tx_drop_bytes = 11;
+  // Number of transmit packets dropped.
+  uint64 tx_drop_packets = 12;
+  // Number of packets dropped by the default policy rule. A subset of
+  // tx_drop_packets, which also counts drops an explicit deny rule decided.
+  uint64 default_drop_packets = 13;
+  // Number of packets allowed by the default policy rule.
+  uint64 default_allow_packets = 14;
 }
 
 message Destination {
