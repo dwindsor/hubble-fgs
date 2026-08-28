@@ -57,7 +57,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 				{
 					DestinationNames: []string{"cisco.com."},
 					Port:             443,
-					Stats:            &types.DestinationStats{TxBytes: 10, RxBytes: 20, TxDropBytes: 1000, TxDropPackets: 2},
+					Stats:            &types.DestinationStats{TxBytes: 10, RxBytes: 20, TxDropBytes: 1000, TxDropPackets: 2, RxDropBytes: 400, RxDropPackets: 8, RxDefaultDropBytes: 100, RxDefaultDropPackets: 3, RxDefaultAllowBytes: 50, RxDefaultAllowPackets: 2},
 				},
 			},
 		},
@@ -68,7 +68,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 				{
 					DestinationNames: []string{"cisco.com."},
 					Port:             443,
-					Stats:            &types.DestinationStats{TxBytes: 30, RxBytes: 40, TxDropBytes: 1500, TxDropPackets: 3},
+					Stats:            &types.DestinationStats{TxBytes: 30, RxBytes: 40, TxDropBytes: 1500, TxDropPackets: 3, RxDropBytes: 600, RxDropPackets: 7, RxDefaultDropBytes: 150, RxDefaultDropPackets: 4, RxDefaultAllowBytes: 70, RxDefaultAllowPackets: 5},
 				},
 			},
 		},
@@ -122,10 +122,16 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			DestinationNames: "cisco.com.",
 			DestinationPort:  443,
 		}: NetworkMonitorValue{
-			TXBytes:       40,
-			RXBytes:       60,
-			TXDropBytes:   2500,
-			TXDropPackets: 5,
+			TXBytes:               40,
+			RXBytes:               60,
+			TXDropBytes:           2500,
+			TXDropPackets:         5,
+			RXDropBytes:           1000,
+			RXDropPackets:         15,
+			RXDefaultDropBytes:    250,
+			RXDefaultDropPackets:  7,
+			RXDefaultAllowBytes:   120,
+			RXDefaultAllowPackets: 7,
 		},
 		NetworkKey{
 			SourceNamespace:  HostNamespace,

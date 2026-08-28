@@ -446,3 +446,45 @@ func TestProcessModelToApplicationModel_PlainIPClassification(t *testing.T) {
 	require.Truef(t, ok, "expected Destination_Ip, got %T (plain IP misclassified)", dst.Type)
 	assert.Equal(t, "10.0.0.1", ipDst.Ip.Ip)
 }
+
+// TestProcessModelToApplicationModel_ReceiveDropCounters checks that the six
+// receive drop counters survive the whole conversion from DestinationStats to
+// the ConnectionStats on the application model.
+func TestProcessModelToApplicationModel_ReceiveDropCounters(t *testing.T) {
+	models := []*types.ProcessModel{
+		{
+			Binary:    "curl",
+			Namespace: HostNamespace,
+			Dest: []*types.Destination{
+				{
+					DestinationIP: "10.0.0.1",
+					Port:          443,
+					Stats: &types.DestinationStats{
+						RxBytes:               200,
+						RxDropBytes:           40,
+						RxDropPackets:         8,
+						RxDefaultDropBytes:    12,
+						RxDefaultDropPackets:  4,
+						RxDefaultAllowBytes:   18,
+						RxDefaultAllowPackets: 6,
+					},
+				},
+			},
+		},
+	}
+
+	result := ProcessModelToApplicationModel(models, map[string]bool{}, nil)
+	require.NotNil(t, result.ApplicationModel.Host)
+	require.Len(t, result.ApplicationModel.Host.Processes, 1)
+	conns := result.ApplicationModel.Host.Processes[0].Connections
+	require.Len(t, conns, 1)
+
+	stats := conns[0].Stats
+	assert.Equal(t, uint64(200), stats.RxBytes)
+	assert.Equal(t, uint64(40), stats.RxDropBytes)
+	assert.Equal(t, uint64(8), stats.RxDropPackets)
+	assert.Equal(t, uint64(12), stats.RxDefaultDropBytes)
+	assert.Equal(t, uint64(4), stats.RxDefaultDropPackets)
+	assert.Equal(t, uint64(18), stats.RxDefaultAllowBytes)
+	assert.Equal(t, uint64(6), stats.RxDefaultAllowPackets)
+}

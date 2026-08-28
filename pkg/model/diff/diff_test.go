@@ -31,46 +31,64 @@ import (
 
 func connStatsA() *appModelV1.ConnectionStats {
 	return &appModelV1.ConnectionStats{
-		TxBytes:             10,
-		RxBytes:             20,
-		TxDrops:             30, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
-		TxDropBytes:         30,
-		TxDropPackets:       3,
-		DefaultDropBytes:    15,
-		DefaultAllowBytes:   25,
-		DefaultDropPackets:  5,
-		DefaultAllowPackets: 7,
-		Sessions:            7,
+		TxBytes:               10,
+		RxBytes:               20,
+		TxDrops:               30, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:           30,
+		TxDropPackets:         3,
+		DefaultDropBytes:      15,
+		DefaultAllowBytes:     25,
+		DefaultDropPackets:    5,
+		DefaultAllowPackets:   7,
+		RxDropBytes:           40,
+		RxDropPackets:         8,
+		RxDefaultDropBytes:    12,
+		RxDefaultDropPackets:  4,
+		RxDefaultAllowBytes:   18,
+		RxDefaultAllowPackets: 6,
+		Sessions:              7,
 	}
 }
 
 func connStatsB() *appModelV1.ConnectionStats {
 	return &appModelV1.ConnectionStats{
-		TxBytes:             1,
-		RxBytes:             2,
-		TxDrops:             3, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
-		TxDropBytes:         3,
-		TxDropPackets:       1,
-		DefaultDropBytes:    1,
-		DefaultAllowBytes:   2,
-		DefaultDropPackets:  1,
-		DefaultAllowPackets: 2,
-		Sessions:            2,
+		TxBytes:               1,
+		RxBytes:               2,
+		TxDrops:               3, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:           3,
+		TxDropPackets:         1,
+		DefaultDropBytes:      1,
+		DefaultAllowBytes:     2,
+		DefaultDropPackets:    1,
+		DefaultAllowPackets:   2,
+		RxDropBytes:           10,
+		RxDropPackets:         2,
+		RxDefaultDropBytes:    3,
+		RxDefaultDropPackets:  1,
+		RxDefaultAllowBytes:   5,
+		RxDefaultAllowPackets: 2,
+		Sessions:              2,
 	}
 }
 
 func connStatsDiff() *appModelV1.ConnectionStats {
 	return &appModelV1.ConnectionStats{
-		TxBytes:             9,
-		RxBytes:             18,
-		TxDrops:             27, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
-		TxDropBytes:         27,
-		TxDropPackets:       2,
-		DefaultDropBytes:    14,
-		DefaultAllowBytes:   23,
-		DefaultDropPackets:  4,
-		DefaultAllowPackets: 5,
-		Sessions:            5,
+		TxBytes:               9,
+		RxBytes:               18,
+		TxDrops:               27, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:           27,
+		TxDropPackets:         2,
+		DefaultDropBytes:      14,
+		DefaultAllowBytes:     23,
+		DefaultDropPackets:    4,
+		DefaultAllowPackets:   5,
+		RxDropBytes:           30,
+		RxDropPackets:         6,
+		RxDefaultDropBytes:    9,
+		RxDefaultDropPackets:  3,
+		RxDefaultAllowBytes:   13,
+		RxDefaultAllowPackets: 4,
+		Sessions:              5,
 	}
 }
 
@@ -83,6 +101,12 @@ func connStatsEqual(t *testing.T, a, b *appModelV1.ConnectionStats) {
 	assert.Equal(t, a.DefaultAllowBytes, b.DefaultAllowBytes)
 	assert.Equal(t, a.DefaultDropPackets, b.DefaultDropPackets)
 	assert.Equal(t, a.DefaultAllowPackets, b.DefaultAllowPackets)
+	assert.Equal(t, a.RxDropBytes, b.RxDropBytes)
+	assert.Equal(t, a.RxDropPackets, b.RxDropPackets)
+	assert.Equal(t, a.RxDefaultDropBytes, b.RxDefaultDropBytes)
+	assert.Equal(t, a.RxDefaultDropPackets, b.RxDefaultDropPackets)
+	assert.Equal(t, a.RxDefaultAllowBytes, b.RxDefaultAllowBytes)
+	assert.Equal(t, a.RxDefaultAllowPackets, b.RxDefaultAllowPackets)
 	assert.Equal(t, a.Sessions, b.Sessions)
 }
 
@@ -112,6 +136,12 @@ func TestStatsDiffUnderflow(t *testing.T) {
 		{name: "TxDropPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.TxDropPackets = v }},
 		{name: "DefaultDropPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.DefaultDropPackets = v }},
 		{name: "DefaultAllowPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.DefaultAllowPackets = v }},
+		{name: "RxDropBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.RxDropBytes = v }},
+		{name: "RxDropPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.RxDropPackets = v }},
+		{name: "RxDefaultDropBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.RxDefaultDropBytes = v }},
+		{name: "RxDefaultDropPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.RxDefaultDropPackets = v }},
+		{name: "RxDefaultAllowBytes", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.RxDefaultAllowBytes = v }},
+		{name: "RxDefaultAllowPackets", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.RxDefaultAllowPackets = v }},
 		{name: "Sessions", bump: func(s *appModelV1.ConnectionStats, v uint64) { s.Sessions = v }},
 	}
 	for _, tt := range tests {
@@ -1171,6 +1201,33 @@ func TestTelemetryToConnectionDropPolicyTotal(t *testing.T) {
 		assert.LessOrEqual(t, edge.NetworkTransmitDropPolicyTotal, edge.NetworkTransmitDropTotal,
 			"network_transmit_drop_policy_total must be <= network_transmit_drop_total")
 	})
+}
+
+// TestTelemetryToConnectionReceiveDrop checks that the receive drop edge fields
+// read the received drop packet count and stay within their subset. The
+// network_receive_drop_policy_subset CEL rule on EdgeTypeNetworkTelemetry is
+// asserted here by hand, as no protovalidate runtime is vendored.
+func TestTelemetryToConnectionReceiveDrop(t *testing.T) {
+	const (
+		rxDropPackets = 6
+		rxDropBytes   = 3300
+	)
+	telemetry := &appModelV1.NetworkConnectTelemetry{
+		EventType:          appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+		DestinationName:    "192.168.0.2",
+		DestinationType:    appModelV1.DestinationType_DESTINATION_TYPE_CIDR,
+		DestinationPort:    443,
+		RxDropBytes:        rxDropBytes,
+		RxDropPackets:      rxDropPackets,
+		RxDefaultDropBytes: 1100,
+	}
+
+	edge := TelemetryToConnection(telemetry).Links[0].GetNetworkTelemetry()
+	assert.Equal(t, uint64(rxDropPackets), edge.NetworkReceiveDropTotal, "must report packet count")
+	assert.Equal(t, uint64(rxDropPackets), edge.NetworkReceiveDropPolicyTotal)
+	assert.NotEqual(t, uint64(rxDropBytes), edge.NetworkReceiveDropTotal, "must not report byte count")
+	assert.LessOrEqual(t, edge.NetworkReceiveDropPolicyTotal, edge.NetworkReceiveDropTotal,
+		"network_receive_drop_policy_total must be <= network_receive_drop_total")
 }
 
 func TestApplicationModelToProcessFlat(t *testing.T) {
