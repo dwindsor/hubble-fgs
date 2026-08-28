@@ -206,6 +206,17 @@ func RedactedSettings() map[string]any {
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
 	flags.Lookup(option.KeyEnableTracingPolicyCRD).Hidden = true
+
+	fl := flags.Lookup(option.KeyBpfDebugArea)
+	if fl != nil {
+		// replace the original OSS config (used as a pflag flag) with our EE one
+		// to add EE specific bpf areas to the underlying SliceEnum.
+		// Keep the same address.
+		*option.Config.BPFDebugAreas = *Config.BPFDebugAreas.BPFDbgEnum // update the enum
+		// replace usage string
+		usageStr, _, _ := strings.Cut(fl.Usage, "(")
+		fl.Usage = usageStr + Config.BPFDebugAreas.Allowed()
+	}
 }
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {

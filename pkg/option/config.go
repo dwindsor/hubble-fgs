@@ -13,6 +13,8 @@ package option
 import (
 	"time"
 
+	"github.com/cilium/tetragon/pkg/option"
+
 	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
@@ -213,6 +215,8 @@ type config struct {
 	NodeNamespace string
 
 	AdditionalNodeLabels map[string]string
+
+	BPFDebugAreas *BPFDbgEnum
 }
 
 const (
@@ -268,5 +272,12 @@ var (
 		EnableTLSMetrics:                  true,
 		EnableHTTP2Handling:               true,
 		EnableHTTPMetrics:                 true,
+		// Set default value for bpf debug areas
+		// to be kept in sync with bpf/libs/debug.h
+		BPFDebugAreas: NewBPFDbgEnum(option.Config.BPFDebugAreas, map[string]uint8{
+			"dns":  1 << 0,
+			"http": 1 << 1,
+			"tcp":  1 << 2,
+		}),
 	}
 )
