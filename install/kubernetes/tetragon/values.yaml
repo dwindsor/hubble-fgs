@@ -53,7 +53,7 @@ tetragon:
   image:
     override: ~
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon
-    tag: v1.20.0-pre.1
+    tag: v1.20.0-pre.2
   resources: {}
   extraArgs: {}
   extraEnv: []
@@ -574,7 +574,7 @@ tetragonOperator:
   image:
     override: ~
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-operator
-    tag: v1.20.0-pre.1
+    tag: v1.20.0-pre.2
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Operator Deployment.
   extraVolumes: []
@@ -694,7 +694,7 @@ rthooks:
   image:
     override: ~
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-rthooks
-    tag: v1.20.0-pre.1
+    tag: v1.20.0-pre.2
   # -- rthooks service account.
   serviceAccount:
     name: ""
@@ -783,7 +783,7 @@ tetragonAggregator:
   image:
     override: ~
     repository: artifactory.devhub-cloud.cisco.com/isovalent-iep-docker/tetragon-aggregator
-    tag: v1.20.0-pre.1
+    tag: v1.20.0-pre.2
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Aggregator Deployment.
   extraVolumes: []
