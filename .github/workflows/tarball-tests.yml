@@ -6,6 +6,10 @@ on:
       - "**.md"
       - "contrib/grafana/**"
 
+concurrency:
+  group: ${{ github.ref }}-tarball-tests
+  cancel-in-progress: true
+
 jobs:
   build-tarballs:
     uses: ./.github/workflows/build-tarballs.yml
