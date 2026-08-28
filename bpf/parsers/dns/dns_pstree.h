@@ -259,7 +259,7 @@ FUNC_INLINE int assign_dns_id_mapping(struct __sk_buff *skb, struct ip_addr *ip,
 		id_val->id = __sync_add_and_fetch(global_id, 1);
 		id_val->source = DESTINATION_SOURCE_DNS;
 
-		DEBUG("ID generated: %d", id_val->id);
+		DEBUG_DNS("ID generated: %d", id_val->id);
 
 		if (map_update_elem(&tg_dns_fqdn_id, domain, id_val, BPF_ANY) < 0)
 			return -DNS_ERR_ASSIGN_FQDNID_UPDATE_FAILED;

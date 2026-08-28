@@ -13,6 +13,7 @@
 
 #include "vmlinux.h"
 #include "bpf_task.h"
+#include "lib/fgs_debug.h"
 
 #define DNS_PORT    53
 #define A_RECORD    1
@@ -109,6 +110,8 @@
 
 #define DNS_PARSER_SKIP	   1
 #define DNS_PARSER_SUCCESS 0
+
+#define DEBUG_DNS(__fmt, ...) FGS_DEBUG_AREA(BPF_AREA_DNS, __fmt, ##__VA_ARGS__)
 
 struct dnshdr {
 	__u16 id;

@@ -19,7 +19,6 @@
 #include "tlsmsg.h"
 #include "parsers/tls/tls_map.h"
 #include "bpf_fd_to_sk.h"
-#include "bpf_tracing.h"
 #include "l3_config.h"
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
@@ -35,6 +34,8 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
+
+#define DEBUG_TCP(__fmt, ...) FGS_DEBUG_AREA(BPF_AREA_TCP, __fmt, ##__VA_ARGS__)
 
 static inline __attribute__((always_inline)) struct msg_ip_with_tnp_event init_msg_ip_with_tnp_event(struct msg_execve_key *key, u64 cookie)
 {
@@ -155,12 +156,12 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 		// Hypershield folks need this information, so let's include it in the
 		// event and document the behaviour.
 		val->verdict = process_socketmap_add(v, &(val->tuple));
-		DEBUG("VERDICT: %d", val->verdict);
+		DEBUG_TCP("VERDICT: %d", val->verdict);
 
 		dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 		if (dest) {
-			DEBUG("POLCIY ID: %d", dest->policy);
-			DEBUG("RULE:      %d", dest->rule);
+			DEBUG_TCP("POLCIY ID: %d", dest->policy);
+			DEBUG_TCP("RULE:      %d", dest->rule);
 			val->policy_id = dest->policy;
 			val->rule_id = dest->rule;
 		}

@@ -23,6 +23,9 @@
 #include "../../networking/bpf_cookie.h"
 #include "../../networking/l3/tcp/bpf_tcp_info.h"
 #include "lib/strncmp.h"
+#include "lib/fgs_debug.h"
+
+#define DEBUG_HTTP(__fmt, ...) DEBUG_AREA(BPF_AREA_HTTP, __fmt, ##__VA_ARGS__)
 
 #define HTTP_REQUEST_MORE 0
 #define HTTP_REQUEST_DONE 1
@@ -154,52 +157,52 @@ __get_method(ctx_md *msg, struct msg_http *http)
 	http->scratch[0] = (u32)0;
 
 	if (!strncmp_exact(http->scratch + skip, sz, "connect")) {
-		DEBUG("method connect");
+		DEBUG_HTTP("method connect");
 		return http_method_connect;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "delete")) {
-		DEBUG("method delete");
+		DEBUG_HTTP("method delete");
 		return http_method_delete;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "get")) {
-		DEBUG("method get");
+		DEBUG_HTTP("method get");
 		return http_method_get;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "head")) {
-		DEBUG("method head");
+		DEBUG_HTTP("method head");
 		return http_method_head;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "options")) {
-		DEBUG("method options");
+		DEBUG_HTTP("method options");
 		return http_method_options;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "post")) {
-		DEBUG("method post");
+		DEBUG_HTTP("method post");
 		return http_method_post;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "put")) {
-		DEBUG("method put");
+		DEBUG_HTTP("method put");
 		return http_method_put;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "patch")) {
-		DEBUG("method patch");
+		DEBUG_HTTP("method patch");
 		return http_method_patch;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "trace")) {
-		DEBUG("method trace");
+		DEBUG_HTTP("method trace");
 		return http_method_trace;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, sz, "pri")) {
-		DEBUG("method pro");
+		DEBUG_HTTP("method pro");
 		// We need to walk the parser back here since http2 parser wants to do string
 		// matching on PRI for the http2 preface.
 		http->offset = old_offset;
@@ -213,14 +216,14 @@ __get_method(ctx_md *msg, struct msg_http *http)
 	 * a bogus method token that merely begins with "http".
 	 */
 	if (!strncmp_truncated(http->scratch + skip, sz, "http/")) {
-		DEBUG("method http");
+		DEBUG_HTTP("method http");
 		// We need to walk the parser back here since we also want to parse this out as
 		// the response protocol.
 		http->offset = old_offset;
 		return http_method_response;
 	}
 
-	DEBUG("unknown method: \"%s\" (sz=%d)", http->scratch + skip, sz);
+	DEBUG_HTTP("unknown method: \"%s\" (sz=%d)", http->scratch + skip, sz);
 	return http_method_unknown;
 }
 
@@ -290,7 +293,7 @@ __attribute__((noinline)) int get_string_scratch(ctx_md *msg, char term)
 	if (i + off + 4 < 512) {
 		http->scratch[i + off + 4] = '\0';
 	}
-	DEBUG("scratch(%d): \"%s\"", *dstsz, http->scratch + 4);
+	DEBUG_HTTP("scratch(%d): \"%s\"", *dstsz, http->scratch + 4);
 	return *dstsz;
 }
 
@@ -339,7 +342,7 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 	}
 
 	if (term == chr_n && i <= 1) {
-		DEBUG("request done");
+		DEBUG_HTTP("request done");
 		return HTTP_REQUEST_DONE;
 	}
 
@@ -376,7 +379,7 @@ get_string(ctx_md *msg, struct msg_http_event *event,
 	if (offset + i + 8 < 1024) {
 		http->url[offset + i + 8] = '\0';
 	}
-	DEBUG("buff(%d): \"%s\"", dstsz[1], http->url + offset + 8);
+	DEBUG_HTTP("buff(%d): \"%s\"", dstsz[1], http->url + offset + 8);
 
 	http->state = http_get_headers;
 	http->url_offset = offset + http->url_continue + i + 8;
@@ -453,26 +456,26 @@ map_header_to_type(ctx_md *msg, struct msg_http *http)
 	sz = (__u32 *)&http->scratch[0];
 
 	if (!strncmp_exact(http->scratch + skip, *sz, "host")) {
-		DEBUG("header: host");
+		DEBUG_HTTP("header: host");
 		return http_request_host;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, *sz, "user-agent")) {
-		DEBUG("header: user-agent");
+		DEBUG_HTTP("header: user-agent");
 		return http_request_user_agent;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, *sz, "content-length")) {
-		DEBUG("header: content-length");
+		DEBUG_HTTP("header: content-length");
 		return http_request_content_length;
 	}
 
 	if (!strncmp_exact(http->scratch + skip, *sz, "transfer-encoding")) {
-		DEBUG("header: transfer-encoding");
+		DEBUG_HTTP("header: transfer-encoding");
 		return http_request_transfer_encoding;
 	}
 
-	DEBUG("unknown header: \"%s\" (sz=%d)", http->scratch + skip, *sz);
+	DEBUG_HTTP("unknown header: \"%s\" (sz=%d)", http->scratch + skip, *sz);
 	http_state_inc(http_state_unknown_header);
 	return http_request_unknown;
 }

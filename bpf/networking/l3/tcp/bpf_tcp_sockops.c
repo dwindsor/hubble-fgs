@@ -198,12 +198,12 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 		// event and document the behaviour.
 		v->deny = process_socketmap_add(v, &(val->tuple));
 		val->verdict = v->deny;
-		DEBUG("VERDICT: %d", val->verdict);
+		DEBUG_TCP("VERDICT: %d", val->verdict);
 
 		dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 		if (dest) {
-			DEBUG("POLCIY ID: %d", dest->policy);
-			DEBUG("RULE:      %d", dest->rule);
+			DEBUG_TCP("POLCIY ID: %d", dest->policy);
+			DEBUG_TCP("RULE:      %d", dest->rule);
 			val->policy_id = dest->policy;
 			val->rule_id = dest->rule;
 			__sync_fetch_and_add(&dest->sessions, 1);

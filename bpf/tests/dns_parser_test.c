@@ -84,7 +84,7 @@ test_dns_parser(struct __sk_buff *skb)
 
 	int parser_ret = parse_dns(skb, (void *)dns - (void *)ip, send);
 	if (parser_ret < 0) {
-		DEBUG("parser failed with: %d", parser_ret);
+		DEBUG_DNS("parser failed with: %d", parser_ret);
 	}
 
 	// Parsing was successful or skipped

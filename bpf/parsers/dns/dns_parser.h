@@ -241,7 +241,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		ip.addr[0] = *(__u32 *)data;
 		ip.addr[1] = 0;
 		ip.af_inet6 = 0;
-		DEBUG("A Record: %d.%d.%d.%d", ip.addr[0] & 0xFF, (ip.addr[0] >> 8) & 0xFF, (ip.addr[0] >> 16) & 0xFF, ip.addr[0] >> 24);
+		DEBUG_DNS("A Record: %d.%d.%d.%d", ip.addr[0] & 0xFF, (ip.addr[0] >> 8) & 0xFF, (ip.addr[0] >> 16) & 0xFF, ip.addr[0] >> 24);
 
 		assign = assign_dns_id_mapping(skb, &ip, name);
 		if (assign < 0)
@@ -258,15 +258,15 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 #ifdef TETRAGON_BPF_DEBUG
 		__u16 *addr = (__u16 *)ip.addr;
 
-		DEBUG("AAAA Record: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
-		      bpf_htons(addr[0]),
-		      bpf_htons(addr[1]),
-		      bpf_htons(addr[2]),
-		      bpf_htons(addr[3]),
-		      bpf_htons(addr[4]),
-		      bpf_htons(addr[5]),
-		      bpf_htons(addr[6]),
-		      bpf_htons(addr[7]));
+		DEBUG_DNS("AAAA Record: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+			  bpf_htons(addr[0]),
+			  bpf_htons(addr[1]),
+			  bpf_htons(addr[2]),
+			  bpf_htons(addr[3]),
+			  bpf_htons(addr[4]),
+			  bpf_htons(addr[5]),
+			  bpf_htons(addr[6]),
+			  bpf_htons(addr[7]));
 #endif
 
 		assign = assign_dns_id_mapping(skb, &ip, name);

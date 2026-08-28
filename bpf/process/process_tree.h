@@ -80,7 +80,7 @@ static void get_tree_id(struct tree_id *id)
 	id->uid = ++(*counter);
 	id->cpu = get_smp_processor_id();
 	/* ignore_args cleared via tree_id_set_ignore_args earlier */
-	DEBUG("ID: %d.%d\n", id->cpu, id->uid);
+	DEBUG_PROCESS("ID: %d.%d\n", id->cpu, id->uid);
 	return;
 }
 
@@ -115,8 +115,8 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 	// if we hadn't found a match. If this process also doesn't have args, it
 	// will match in the next step regardless.
 	if (!self_uid || !tree_id_get_ignore_args(self_uid)) {
-		DEBUG("%s: second lookup with args, ignore_args=%d",
-		      __func__, self_uid ? tree_id_get_ignore_args(self_uid) : -1);
+		DEBUG_PROCESS("%s: second lookup with args, ignore_args=%d",
+			      __func__, self_uid ? tree_id_get_ignore_args(self_uid) : -1);
 		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
 		self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 	}
@@ -132,7 +132,7 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 	map_update_elem(&process_tree_binary_uid_map, tree_key, &new_uid, 0);
 	uint64_t result = ((uint64_t)new_uid.cpu << 32) | (uint64_t)new_uid.uid;
 
-	DEBUG("%s: generated new tree_id=%llu", __func__, result);
+	DEBUG_PROCESS("%s: generated new tree_id=%llu", __func__, result);
 	return result;
 }
 
@@ -221,7 +221,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	buid_scratch = map_lookup_elem(&tg_h_ps_buidkey, &zero);
 
 	map_update_elem(&tg_ee_pid_data, &pid, &local, 0);
-	DEBUG("curr->nspid=%d curr->key.pid=%d", curr->nspid, curr->key.pid);
+	DEBUG_PROCESS("curr->nspid=%d curr->key.pid=%d", curr->nspid, curr->key.pid);
 
 	old = map_lookup_elem(&process_tree_map, k);
 	if (!old) {
@@ -239,7 +239,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		old->maybe_missing_nsid = 0;
 		if (k->wlid == 0 && old->in_container) {
 			// inform userspace that we might need to update the wlid mapping for this process when it becomes available
-			DEBUG("missing wlid pid=%d cgid=%d", pid, cgid);
+			DEBUG_PROCESS("missing wlid pid=%d cgid=%d", pid, cgid);
 			old->maybe_missing_nsid = 1;
 		}
 		if (buid_scratch) {
@@ -258,7 +258,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		__sync_fetch_and_add(&old->exec_count, 1);
 		if (k->wlid == 0 && old->in_container) {
 			// inform userspace that we might need to update the wlid mapping for this process when it becomes available
-			DEBUG("missing wlid pid=%d cgid=%d", pid, cgid);
+			DEBUG_PROCESS("missing wlid pid=%d cgid=%d", pid, cgid);
 			old->maybe_missing_nsid = 1;
 		}
 	}
@@ -360,7 +360,7 @@ int __process_listen_add(struct msg_execve_key *process_key, struct msg_ip_tuple
 static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple *tuple)
 {
 	struct destination_endpoint_value *dest;
-	DEBUG("%s: port=%d", __func__, key->port);
+	DEBUG_PROCESS("%s: port=%d", __func__, key->port);
 	struct destination_endpoint_value *destvalue;
 	int exists = 0, zero = 0;
 	struct tree_id self;
@@ -419,7 +419,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->protocol = tuple->proto;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-		DEBUG("%s: found policy protocol=0 deny=0x%llx", __func__, dest->deny);
+		DEBUG_PROCESS("%s: found policy protocol=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 	key->protocol = tuple->proto; // restore
@@ -435,7 +435,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		key->port = tuple->dport;
 		key->protocol = tuple->proto;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-		DEBUG("%s: found policy port=0 deny=0x%llx", __func__, dest->deny);
+		DEBUG_PROCESS("%s: found policy port=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 
@@ -452,7 +452,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->local_id = self; // restore local_id for caller
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-		DEBUG("%s: found policy local_id=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
+		DEBUG_PROCESS("%s: found policy local_id=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
 		return dest->deny;
 	}
 	/* wildcard local_id with wildcard protocol (specific port) */
@@ -465,7 +465,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		key->local_id = self; // restore local_id for caller
 		key->protocol = tuple->proto;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-		DEBUG("%s: found policy local_id=0 protocol=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
+		DEBUG_PROCESS("%s: found policy local_id=0 protocol=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
 		return dest->deny;
 	}
 	/* wildcard local_id with wildcard port and protocol */
@@ -479,7 +479,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-		DEBUG("%s: found policy local_id=0 port=0 deny=0x%llx", __func__, dest->deny);
+		DEBUG_PROCESS("%s: found policy local_id=0 port=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 	if (!exists)
@@ -510,8 +510,8 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 	destv = find_key(destkey, tuple);
 
 	orv = (dnsv | lpmv | usrv | destv);
-	DEBUG("%s: orv=0x%llx", __func__, orv);
-	DEBUG("%s: port=%d", __func__, tuple->dport);
+	DEBUG_PROCESS("%s: orv=0x%llx", __func__, orv);
+	DEBUG_PROCESS("%s: port=%d", __func__, tuple->dport);
 
 	if (orv & TNP_POLICY_DENY) {
 		if (dnsv & TNP_POLICY_DENY) {

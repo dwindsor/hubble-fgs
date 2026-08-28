@@ -35,6 +35,8 @@ struct fgs_rodata_config {
 	__u16 TG_IGMPV3_MAX_EVENT_FRAGS;
 	__u16 TG_IGMPV3_MAX_PMCS;
 	__u16 TG_IGMPV3_MAX_SOURCES;
+	__u8 BPF_DEBUG_ENABLED;
+	__u8 pad[3];
 };
 
 volatile const struct fgs_rodata_config fgs_rodata_config
