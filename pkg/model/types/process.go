@@ -17,17 +17,23 @@ import (
 )
 
 type DestinationStats struct {
-	Policy              string
-	RuleName            string
-	TxBytes             uint64
-	RxBytes             uint64
-	TxDropBytes         uint64
-	DefaultAllowBytes   uint64
-	DefaultDenyBytes    uint64
-	Sessions            uint64
-	TxDropPackets       uint64
-	DefaultAllowPackets uint64
-	DefaultDenyPackets  uint64
+	Policy                string
+	RuleName              string
+	TxBytes               uint64
+	RxBytes               uint64
+	TxDropBytes           uint64
+	DefaultAllowBytes     uint64
+	DefaultDenyBytes      uint64
+	Sessions              uint64
+	TxDropPackets         uint64
+	DefaultAllowPackets   uint64
+	DefaultDenyPackets    uint64
+	RxDropBytes           uint64
+	RxDropPackets         uint64
+	RxDefaultDropBytes    uint64
+	RxDefaultDropPackets  uint64
+	RxDefaultAllowBytes   uint64
+	RxDefaultAllowPackets uint64
 }
 
 type Service struct {

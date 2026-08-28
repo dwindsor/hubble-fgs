@@ -53,6 +53,18 @@ message DestinationStats {
   uint64 DefaultAllowPackets = 12;
   // Number of packets denied by the default policy rule.
   uint64 DefaultDenyPackets = 13;
+  // Number of receive bytes dropped.
+  uint64 RxDropBytes = 14;
+  // Number of receive packets dropped.
+  uint64 RxDropPackets = 15;
+  // Number of receive bytes dropped by the default policy rule.
+  uint64 RxDefaultDropBytes = 16;
+  // Number of receive packets dropped by the default policy rule.
+  uint64 RxDefaultDropPackets = 17;
+  // Number of receive bytes allowed by the default policy rule.
+  uint64 RxDefaultAllowBytes = 18;
+  // Number of receive packets allowed by the default policy rule.
+  uint64 RxDefaultAllowPackets = 19;
 }
 
 message Destination {

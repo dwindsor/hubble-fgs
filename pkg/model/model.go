@@ -109,16 +109,22 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	nsMap[nsKey][wlkey][contKey][pskey].connections[connKey] = &appModelV1.ApplicationConnection{
 		Destination: nwKeyToDestination(&nk),
 		Stats: &appModelV1.ConnectionStats{
-			TxBytes:             bc.GetTxBytes(),
-			RxBytes:             bc.GetRxBytes(),
-			DefaultAllowBytes:   bc.GetAllowDefaultBytes(),
-			DefaultDropBytes:    bc.GetDenyDefaultBytes(),
-			TxDrops:             bc.GetTxDropBytes(), //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
-			TxDropBytes:         bc.GetTxDropBytes(),
-			TxDropPackets:       bc.GetTxDropPackets(),
-			DefaultDropPackets:  bc.GetDenyDefaultPackets(),
-			DefaultAllowPackets: bc.GetAllowDefaultPackets(),
-			Sessions:            bc.GetSessions(),
+			TxBytes:               bc.GetTxBytes(),
+			RxBytes:               bc.GetRxBytes(),
+			DefaultAllowBytes:     bc.GetAllowDefaultBytes(),
+			DefaultDropBytes:      bc.GetDenyDefaultBytes(),
+			TxDrops:               bc.GetTxDropBytes(), //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+			TxDropBytes:           bc.GetTxDropBytes(),
+			TxDropPackets:         bc.GetTxDropPackets(),
+			DefaultDropPackets:    bc.GetDenyDefaultPackets(),
+			DefaultAllowPackets:   bc.GetAllowDefaultPackets(),
+			RxDropBytes:           bc.GetRxDropBytes(),
+			RxDropPackets:         bc.GetRxDropPackets(),
+			RxDefaultDropBytes:    bc.GetRxDefaultDropBytes(),
+			RxDefaultDropPackets:  bc.GetRxDefaultDropPackets(),
+			RxDefaultAllowBytes:   bc.GetRxDefaultAllowBytes(),
+			RxDefaultAllowPackets: bc.GetRxDefaultAllowPackets(),
+			Sessions:              bc.GetSessions(),
 		},
 		Policy: &appModelV1.NetworkPolicy{
 			PolicyName: bc.GetPolicy(),

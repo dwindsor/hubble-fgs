@@ -228,8 +228,20 @@ type DestinationStats struct {
 	DefaultAllowPackets uint64 `protobuf:"varint,12,opt,name=DefaultAllowPackets,proto3" json:"DefaultAllowPackets,omitempty"`
 	// Number of packets denied by the default policy rule.
 	DefaultDenyPackets uint64 `protobuf:"varint,13,opt,name=DefaultDenyPackets,proto3" json:"DefaultDenyPackets,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Number of receive bytes dropped.
+	RxDropBytes uint64 `protobuf:"varint,14,opt,name=RxDropBytes,proto3" json:"RxDropBytes,omitempty"`
+	// Number of receive packets dropped.
+	RxDropPackets uint64 `protobuf:"varint,15,opt,name=RxDropPackets,proto3" json:"RxDropPackets,omitempty"`
+	// Number of receive bytes dropped by the default policy rule.
+	RxDefaultDropBytes uint64 `protobuf:"varint,16,opt,name=RxDefaultDropBytes,proto3" json:"RxDefaultDropBytes,omitempty"`
+	// Number of receive packets dropped by the default policy rule.
+	RxDefaultDropPackets uint64 `protobuf:"varint,17,opt,name=RxDefaultDropPackets,proto3" json:"RxDefaultDropPackets,omitempty"`
+	// Number of receive bytes allowed by the default policy rule.
+	RxDefaultAllowBytes uint64 `protobuf:"varint,18,opt,name=RxDefaultAllowBytes,proto3" json:"RxDefaultAllowBytes,omitempty"`
+	// Number of receive packets allowed by the default policy rule.
+	RxDefaultAllowPackets uint64 `protobuf:"varint,19,opt,name=RxDefaultAllowPackets,proto3" json:"RxDefaultAllowPackets,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *DestinationStats) Reset() {
@@ -322,6 +334,48 @@ func (x *DestinationStats) GetDefaultAllowPackets() uint64 {
 func (x *DestinationStats) GetDefaultDenyPackets() uint64 {
 	if x != nil {
 		return x.DefaultDenyPackets
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetRxDropBytes() uint64 {
+	if x != nil {
+		return x.RxDropBytes
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetRxDropPackets() uint64 {
+	if x != nil {
+		return x.RxDropPackets
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetRxDefaultDropBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultDropBytes
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetRxDefaultDropPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultDropPackets
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetRxDefaultAllowBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowBytes
+	}
+	return 0
+}
+
+func (x *DestinationStats) GetRxDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowPackets
 	}
 	return 0
 }
@@ -1203,7 +1257,7 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\x05debug\x18\x02 \x01(\bR\x05debug\"2\n" +
 	"\bWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind\"\xb0\x03\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\"\xc4\x05\n" +
 	"\x10DestinationStats\x12\x18\n" +
 	"\aTxBytes\x18\x01 \x01(\x04R\aTxBytes\x12\x18\n" +
 	"\aRxBytes\x18\x02 \x01(\x04R\aRxBytes\x12\x1c\n" +
@@ -1214,7 +1268,13 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	" \x01(\x04R\vTxDropBytes\x12$\n" +
 	"\rTxDropPackets\x18\v \x01(\x04R\rTxDropPackets\x120\n" +
 	"\x13DefaultAllowPackets\x18\f \x01(\x04R\x13DefaultAllowPackets\x12.\n" +
-	"\x12DefaultDenyPackets\x18\r \x01(\x04R\x12DefaultDenyPacketsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\aTxLimitR\aTxQuotaR\x0eKtimeLastResetR\fKtimeTxReset\"\xfc\x01\n" +
+	"\x12DefaultDenyPackets\x18\r \x01(\x04R\x12DefaultDenyPackets\x12 \n" +
+	"\vRxDropBytes\x18\x0e \x01(\x04R\vRxDropBytes\x12$\n" +
+	"\rRxDropPackets\x18\x0f \x01(\x04R\rRxDropPackets\x12.\n" +
+	"\x12RxDefaultDropBytes\x18\x10 \x01(\x04R\x12RxDefaultDropBytes\x122\n" +
+	"\x14RxDefaultDropPackets\x18\x11 \x01(\x04R\x14RxDefaultDropPackets\x120\n" +
+	"\x13RxDefaultAllowBytes\x18\x12 \x01(\x04R\x13RxDefaultAllowBytes\x124\n" +
+	"\x15RxDefaultAllowPackets\x18\x13 \x01(\x04R\x15RxDefaultAllowPacketsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\aTxLimitR\aTxQuotaR\x0eKtimeLastResetR\fKtimeTxReset\"\xfc\x01\n" +
 	"\vDestination\x12+\n" +
 	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\x126\n" +
 	"\x0fdestination_pod\x18\x02 \x01(\v2\r.tetragon.PodR\x0edestinationPod\x12\x12\n" +

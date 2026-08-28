@@ -674,15 +674,21 @@ func getProcessModel(namespaces []string,
 		}
 
 		stats := &types.DestinationStats{
-			TxBytes:             dstVal.TxBytes,
-			RxBytes:             dstVal.RxBytes,
-			TxDropBytes:         dstVal.TxDropBytes,
-			DefaultAllowBytes:   dstVal.AllowDefaultBytes,
-			DefaultDenyBytes:    dstVal.DenyDefaultBytes,
-			Sessions:            dstVal.Sessions,
-			TxDropPackets:       dstVal.TxDropPackets,
-			DefaultAllowPackets: dstVal.AllowDefaultPackets,
-			DefaultDenyPackets:  dstVal.DenyDefaultPackets,
+			TxBytes:               dstVal.TxBytes,
+			RxBytes:               dstVal.RxBytes,
+			TxDropBytes:           dstVal.TxDropBytes,
+			DefaultAllowBytes:     dstVal.AllowDefaultBytes,
+			DefaultDenyBytes:      dstVal.DenyDefaultBytes,
+			Sessions:              dstVal.Sessions,
+			TxDropPackets:         dstVal.TxDropPackets,
+			DefaultAllowPackets:   dstVal.AllowDefaultPackets,
+			DefaultDenyPackets:    dstVal.DenyDefaultPackets,
+			RxDropBytes:           dstVal.RxDropBytes,
+			RxDropPackets:         dstVal.RxDropPackets,
+			RxDefaultDropBytes:    dstVal.RxDefaultDropBytes,
+			RxDefaultDropPackets:  dstVal.RxDefaultDropPackets,
+			RxDefaultAllowBytes:   dstVal.RxDefaultAllowBytes,
+			RxDefaultAllowPackets: dstVal.RxDefaultAllowPackets,
 		}
 		if dstVal.Policy != 0 {
 			policy, ok := library.GetRepository().GetName(dstVal.Policy)

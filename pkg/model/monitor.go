@@ -106,17 +106,23 @@ func (nk NetworkKey) String() string {
 }
 
 type NetworkMonitorValue struct {
-	RuleName            string
-	PolicyName          string
-	TXBytes             uint64
-	RXBytes             uint64
-	AllowDefaultBytes   uint64
-	DenyDefaultBytes    uint64
-	TXDropBytes         uint64
-	Sessions            uint64
-	AllowDefaultPackets uint64
-	DenyDefaultPackets  uint64
-	TXDropPackets       uint64
+	RuleName              string
+	PolicyName            string
+	TXBytes               uint64
+	RXBytes               uint64
+	AllowDefaultBytes     uint64
+	DenyDefaultBytes      uint64
+	TXDropBytes           uint64
+	Sessions              uint64
+	AllowDefaultPackets   uint64
+	DenyDefaultPackets    uint64
+	TXDropPackets         uint64
+	RXDropBytes           uint64
+	RXDropPackets         uint64
+	RXDefaultDropBytes    uint64
+	RXDefaultDropPackets  uint64
+	RXDefaultAllowBytes   uint64
+	RXDefaultAllowPackets uint64
 }
 
 func getByteSize(b uint64) string {
@@ -148,6 +154,12 @@ type byteCounter interface {
 	GetAllowDefaultPackets() uint64
 	GetDenyDefaultPackets() uint64
 	GetTxDropPackets() uint64
+	GetRxDropBytes() uint64
+	GetRxDropPackets() uint64
+	GetRxDefaultDropBytes() uint64
+	GetRxDefaultDropPackets() uint64
+	GetRxDefaultAllowBytes() uint64
+	GetRxDefaultAllowPackets() uint64
 	GetSessions() uint64
 }
 
@@ -189,6 +201,30 @@ func (nmv NetworkMonitorValue) GetDenyDefaultPackets() uint64 {
 
 func (nmv NetworkMonitorValue) GetTxDropPackets() uint64 {
 	return nmv.TXDropPackets
+}
+
+func (nmv NetworkMonitorValue) GetRxDropBytes() uint64 {
+	return nmv.RXDropBytes
+}
+
+func (nmv NetworkMonitorValue) GetRxDropPackets() uint64 {
+	return nmv.RXDropPackets
+}
+
+func (nmv NetworkMonitorValue) GetRxDefaultDropBytes() uint64 {
+	return nmv.RXDefaultDropBytes
+}
+
+func (nmv NetworkMonitorValue) GetRxDefaultDropPackets() uint64 {
+	return nmv.RXDefaultDropPackets
+}
+
+func (nmv NetworkMonitorValue) GetRxDefaultAllowBytes() uint64 {
+	return nmv.RXDefaultAllowBytes
+}
+
+func (nmv NetworkMonitorValue) GetRxDefaultAllowPackets() uint64 {
+	return nmv.RXDefaultAllowPackets
 }
 
 func (nmv NetworkMonitorValue) GetSessions() uint64 {
@@ -471,6 +507,12 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 					currentValue.AllowDefaultPackets += dst.Stats.DefaultAllowPackets
 					currentValue.DenyDefaultPackets += dst.Stats.DefaultDenyPackets
 					currentValue.TXDropPackets += dst.Stats.TxDropPackets
+					currentValue.RXDropBytes += dst.Stats.RxDropBytes
+					currentValue.RXDropPackets += dst.Stats.RxDropPackets
+					currentValue.RXDefaultDropBytes += dst.Stats.RxDefaultDropBytes
+					currentValue.RXDefaultDropPackets += dst.Stats.RxDefaultDropPackets
+					currentValue.RXDefaultAllowBytes += dst.Stats.RxDefaultAllowBytes
+					currentValue.RXDefaultAllowPackets += dst.Stats.RxDefaultAllowPackets
 				}
 				result[key] = currentValue
 			}
@@ -520,32 +562,44 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 		if currentValue, ok := current[newKey]; ok {
 			if !cmp.Equal(currentValue, newValue) {
 				diff[newKey] = NetworkMonitorValue{
-					PolicyName:          newValue.PolicyName,
-					RuleName:            newValue.RuleName,
-					TXBytes:             newValue.TXBytes - currentValue.TXBytes,
-					RXBytes:             newValue.RXBytes - currentValue.RXBytes,
-					TXDropBytes:         newValue.TXDropBytes - currentValue.TXDropBytes,
-					AllowDefaultBytes:   newValue.AllowDefaultBytes - currentValue.AllowDefaultBytes,
-					DenyDefaultBytes:    newValue.DenyDefaultBytes - currentValue.DenyDefaultBytes,
-					Sessions:            newValue.Sessions - currentValue.Sessions,
-					TXDropPackets:       newValue.TXDropPackets - currentValue.TXDropPackets,
-					AllowDefaultPackets: newValue.AllowDefaultPackets - currentValue.AllowDefaultPackets,
-					DenyDefaultPackets:  newValue.DenyDefaultPackets - currentValue.DenyDefaultPackets,
+					PolicyName:            newValue.PolicyName,
+					RuleName:              newValue.RuleName,
+					TXBytes:               newValue.TXBytes - currentValue.TXBytes,
+					RXBytes:               newValue.RXBytes - currentValue.RXBytes,
+					TXDropBytes:           newValue.TXDropBytes - currentValue.TXDropBytes,
+					AllowDefaultBytes:     newValue.AllowDefaultBytes - currentValue.AllowDefaultBytes,
+					DenyDefaultBytes:      newValue.DenyDefaultBytes - currentValue.DenyDefaultBytes,
+					Sessions:              newValue.Sessions - currentValue.Sessions,
+					TXDropPackets:         newValue.TXDropPackets - currentValue.TXDropPackets,
+					AllowDefaultPackets:   newValue.AllowDefaultPackets - currentValue.AllowDefaultPackets,
+					DenyDefaultPackets:    newValue.DenyDefaultPackets - currentValue.DenyDefaultPackets,
+					RXDropBytes:           newValue.RXDropBytes - currentValue.RXDropBytes,
+					RXDropPackets:         newValue.RXDropPackets - currentValue.RXDropPackets,
+					RXDefaultDropBytes:    newValue.RXDefaultDropBytes - currentValue.RXDefaultDropBytes,
+					RXDefaultDropPackets:  newValue.RXDefaultDropPackets - currentValue.RXDefaultDropPackets,
+					RXDefaultAllowBytes:   newValue.RXDefaultAllowBytes - currentValue.RXDefaultAllowBytes,
+					RXDefaultAllowPackets: newValue.RXDefaultAllowPackets - currentValue.RXDefaultAllowPackets,
 				}
 			}
 		} else {
 			diff[newKey] = NetworkMonitorValue{
-				PolicyName:          newValue.PolicyName,
-				RuleName:            newValue.RuleName,
-				TXBytes:             newValue.TXBytes,
-				RXBytes:             newValue.RXBytes,
-				TXDropBytes:         newValue.TXDropBytes,
-				AllowDefaultBytes:   newValue.AllowDefaultBytes,
-				DenyDefaultBytes:    newValue.DenyDefaultBytes,
-				Sessions:            newValue.Sessions,
-				TXDropPackets:       newValue.TXDropPackets,
-				AllowDefaultPackets: newValue.AllowDefaultPackets,
-				DenyDefaultPackets:  newValue.DenyDefaultPackets,
+				PolicyName:            newValue.PolicyName,
+				RuleName:              newValue.RuleName,
+				TXBytes:               newValue.TXBytes,
+				RXBytes:               newValue.RXBytes,
+				TXDropBytes:           newValue.TXDropBytes,
+				AllowDefaultBytes:     newValue.AllowDefaultBytes,
+				DenyDefaultBytes:      newValue.DenyDefaultBytes,
+				Sessions:              newValue.Sessions,
+				TXDropPackets:         newValue.TXDropPackets,
+				AllowDefaultPackets:   newValue.AllowDefaultPackets,
+				DenyDefaultPackets:    newValue.DenyDefaultPackets,
+				RXDropBytes:           newValue.RXDropBytes,
+				RXDropPackets:         newValue.RXDropPackets,
+				RXDefaultDropBytes:    newValue.RXDefaultDropBytes,
+				RXDefaultDropPackets:  newValue.RXDefaultDropPackets,
+				RXDefaultAllowBytes:   newValue.RXDefaultAllowBytes,
+				RXDefaultAllowPackets: newValue.RXDefaultAllowPackets,
 			}
 		}
 	}
