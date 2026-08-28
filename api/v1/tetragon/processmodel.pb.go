@@ -1039,8 +1039,20 @@ type DestinationEndpointDebug struct {
 	DefaultAllowPackets uint64 `protobuf:"varint,14,opt,name=default_allow_packets,json=defaultAllowPackets,proto3" json:"default_allow_packets,omitempty"`
 	// Number of packets denied by the default policy rule.
 	DefaultDenyPackets uint64 `protobuf:"varint,15,opt,name=default_deny_packets,json=defaultDenyPackets,proto3" json:"default_deny_packets,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Number of receive bytes dropped.
+	RxDropBytes uint64 `protobuf:"varint,16,opt,name=rx_drop_bytes,json=rxDropBytes,proto3" json:"rx_drop_bytes,omitempty"`
+	// Number of receive packets dropped.
+	RxDropPackets uint64 `protobuf:"varint,17,opt,name=rx_drop_packets,json=rxDropPackets,proto3" json:"rx_drop_packets,omitempty"`
+	// Number of receive bytes dropped by the default policy rule.
+	RxDefaultDropBytes uint64 `protobuf:"varint,18,opt,name=rx_default_drop_bytes,json=rxDefaultDropBytes,proto3" json:"rx_default_drop_bytes,omitempty"`
+	// Number of receive packets dropped by the default policy rule.
+	RxDefaultDropPackets uint64 `protobuf:"varint,19,opt,name=rx_default_drop_packets,json=rxDefaultDropPackets,proto3" json:"rx_default_drop_packets,omitempty"`
+	// Number of receive bytes allowed by the default policy rule.
+	RxDefaultAllowBytes uint64 `protobuf:"varint,20,opt,name=rx_default_allow_bytes,json=rxDefaultAllowBytes,proto3" json:"rx_default_allow_bytes,omitempty"`
+	// Number of receive packets allowed by the default policy rule.
+	RxDefaultAllowPackets uint64 `protobuf:"varint,21,opt,name=rx_default_allow_packets,json=rxDefaultAllowPackets,proto3" json:"rx_default_allow_packets,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *DestinationEndpointDebug) Reset() {
@@ -1161,6 +1173,48 @@ func (x *DestinationEndpointDebug) GetDefaultAllowPackets() uint64 {
 func (x *DestinationEndpointDebug) GetDefaultDenyPackets() uint64 {
 	if x != nil {
 		return x.DefaultDenyPackets
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetRxDropBytes() uint64 {
+	if x != nil {
+		return x.RxDropBytes
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetRxDropPackets() uint64 {
+	if x != nil {
+		return x.RxDropPackets
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetRxDefaultDropBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultDropBytes
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetRxDefaultDropPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultDropPackets
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetRxDefaultAllowBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowBytes
+	}
+	return 0
+}
+
+func (x *DestinationEndpointDebug) GetRxDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowPackets
 	}
 	return 0
 }
@@ -1323,7 +1377,7 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\aprocess\x18\x01 \x03(\v2\x15.tetragon.ProcessUUIDR\aprocess\"?\n" +
 	"\x15GetProcessMapResponse\x12&\n" +
 	"\x03map\x18\x01 \x01(\v2\x14.tetragon.ProcessMapR\x03map\"\x16\n" +
-	"\x14GetProcessMapRequest\"\xbd\x04\n" +
+	"\x14GetProcessMapRequest\"\xe1\x06\n" +
 	"\x18DestinationEndpointDebug\x12\x19\n" +
 	"\blocal_id\x18\x01 \x01(\x04R\alocalId\x12\x1e\n" +
 	"\vlocal_ns_id\x18\x02 \x01(\x04R\tlocalNsId\x12%\n" +
@@ -1338,7 +1392,13 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\rtx_drop_bytes\x18\f \x01(\x04R\vtxDropBytes\x12&\n" +
 	"\x0ftx_drop_packets\x18\r \x01(\x04R\rtxDropPackets\x122\n" +
 	"\x15default_allow_packets\x18\x0e \x01(\x04R\x13defaultAllowPackets\x120\n" +
-	"\x14default_deny_packets\x18\x0f \x01(\x04R\x12defaultDenyPacketsJ\x04\b\x06\x10\aJ\x04\b\a\x10\bR\btx_quotaR\btx_limit\"c\n" +
+	"\x14default_deny_packets\x18\x0f \x01(\x04R\x12defaultDenyPackets\x12\"\n" +
+	"\rrx_drop_bytes\x18\x10 \x01(\x04R\vrxDropBytes\x12&\n" +
+	"\x0frx_drop_packets\x18\x11 \x01(\x04R\rrxDropPackets\x121\n" +
+	"\x15rx_default_drop_bytes\x18\x12 \x01(\x04R\x12rxDefaultDropBytes\x125\n" +
+	"\x17rx_default_drop_packets\x18\x13 \x01(\x04R\x14rxDefaultDropPackets\x123\n" +
+	"\x16rx_default_allow_bytes\x18\x14 \x01(\x04R\x13rxDefaultAllowBytes\x127\n" +
+	"\x18rx_default_allow_packets\x18\x15 \x01(\x04R\x15rxDefaultAllowPacketsJ\x04\b\x06\x10\aJ\x04\b\a\x10\bR\btx_quotaR\btx_limit\"c\n" +
 	"\x19GetDestinationMapResponse\x12F\n" +
 	"\fdestinations\x18\x01 \x03(\v2\".tetragon.DestinationEndpointDebugR\fdestinations\"\x1a\n" +
 	"\x18GetDestinationMapRequest*\xed\x01\n" +

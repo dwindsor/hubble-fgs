@@ -186,19 +186,25 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 	for iter.Next(&k, &v) {
 		title, _ := library.GetRepository().GetName(v.Policy)
 		d := &tetragon.DestinationEndpointDebug{
-			LocalId:             k.LocalId,
-			LocalNsId:           k.LocalWLID,
-			DestinationId:       k.DestinationId,
-			DestinationSource:   k.DestinationSource,
-			DestinationPort:     uint64(k.DestinationPort),
-			TxDrops:             v.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
-			TxDropBytes:         v.TxDropBytes,
-			TxDropPackets:       v.TxDropPackets,
-			DefaultAllowBytes:   v.AllowDefaultBytes,
-			DefaultDenyBytes:    v.DenyDefaultBytes,
-			DefaultAllowPackets: v.AllowDefaultPackets,
-			DefaultDenyPackets:  v.DenyDefaultPackets,
-			Policy:              title,
+			LocalId:               k.LocalId,
+			LocalNsId:             k.LocalWLID,
+			DestinationId:         k.DestinationId,
+			DestinationSource:     k.DestinationSource,
+			DestinationPort:       uint64(k.DestinationPort),
+			TxDrops:               v.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+			TxDropBytes:           v.TxDropBytes,
+			TxDropPackets:         v.TxDropPackets,
+			DefaultAllowBytes:     v.AllowDefaultBytes,
+			DefaultDenyBytes:      v.DenyDefaultBytes,
+			DefaultAllowPackets:   v.AllowDefaultPackets,
+			DefaultDenyPackets:    v.DenyDefaultPackets,
+			RxDropBytes:           v.RxDropBytes,
+			RxDropPackets:         v.RxDropPackets,
+			RxDefaultDropBytes:    v.RxDefaultDropBytes,
+			RxDefaultDropPackets:  v.RxDefaultDropPackets,
+			RxDefaultAllowBytes:   v.RxDefaultAllowBytes,
+			RxDefaultAllowPackets: v.RxDefaultAllowPackets,
+			Policy:                title,
 		}
 		dests = append(dests, d)
 	}

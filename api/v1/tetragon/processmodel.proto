@@ -175,6 +175,18 @@ message DestinationEndpointDebug {
   uint64 default_allow_packets = 14;
   // Number of packets denied by the default policy rule.
   uint64 default_deny_packets = 15;
+  // Number of receive bytes dropped.
+  uint64 rx_drop_bytes = 16;
+  // Number of receive packets dropped.
+  uint64 rx_drop_packets = 17;
+  // Number of receive bytes dropped by the default policy rule.
+  uint64 rx_default_drop_bytes = 18;
+  // Number of receive packets dropped by the default policy rule.
+  uint64 rx_default_drop_packets = 19;
+  // Number of receive bytes allowed by the default policy rule.
+  uint64 rx_default_allow_bytes = 20;
+  // Number of receive packets allowed by the default policy rule.
+  uint64 rx_default_allow_packets = 21;
 }
 
 message GetDestinationMapResponse {

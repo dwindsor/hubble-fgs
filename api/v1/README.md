@@ -4247,6 +4247,12 @@ Determins the behaviour of a field filter
 | tx_drop_packets | [uint64](#uint64) |  | Number of transmit packets dropped. |
 | default_allow_packets | [uint64](#uint64) |  | Number of packets allowed by the default policy rule. |
 | default_deny_packets | [uint64](#uint64) |  | Number of packets denied by the default policy rule. |
+| rx_drop_bytes | [uint64](#uint64) |  | Number of receive bytes dropped. |
+| rx_drop_packets | [uint64](#uint64) |  | Number of receive packets dropped. |
+| rx_default_drop_bytes | [uint64](#uint64) |  | Number of receive bytes dropped by the default policy rule. |
+| rx_default_drop_packets | [uint64](#uint64) |  | Number of receive packets dropped by the default policy rule. |
+| rx_default_allow_bytes | [uint64](#uint64) |  | Number of receive bytes allowed by the default policy rule. |
+| rx_default_allow_packets | [uint64](#uint64) |  | Number of receive packets allowed by the default policy rule. |
 
 
 
