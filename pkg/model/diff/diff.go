@@ -34,7 +34,11 @@ func StatsZero(a *appModelV1.ConnectionStats) bool {
 	if a.TxBytes == 0 && a.RxBytes == 0 && a.TxDropBytes == 0 &&
 		a.DefaultDropBytes == 0 && a.DefaultAllowBytes == 0 &&
 		a.TxDropPackets == 0 && a.DefaultDropPackets == 0 &&
-		a.DefaultAllowPackets == 0 && a.Sessions == 0 {
+		a.DefaultAllowPackets == 0 &&
+		a.RxDropBytes == 0 && a.RxDropPackets == 0 &&
+		a.RxDefaultDropBytes == 0 && a.RxDefaultDropPackets == 0 &&
+		a.RxDefaultAllowBytes == 0 && a.RxDefaultAllowPackets == 0 &&
+		a.Sessions == 0 {
 		return true
 	}
 	return false
@@ -65,22 +69,46 @@ func StatsDiff(a, b *appModelV1.ConnectionStats) (*appModelV1.ConnectionStats, e
 	if b.DefaultAllowPackets > a.DefaultAllowPackets {
 		return nil, fmt.Errorf("stats diff underflow on DefaultAllowPackets: %d - %d", a.DefaultAllowPackets, b.DefaultAllowPackets)
 	}
+	if b.RxDropBytes > a.RxDropBytes {
+		return nil, fmt.Errorf("stats diff underflow on RxDropBytes: %d - %d", a.RxDropBytes, b.RxDropBytes)
+	}
+	if b.RxDropPackets > a.RxDropPackets {
+		return nil, fmt.Errorf("stats diff underflow on RxDropPackets: %d - %d", a.RxDropPackets, b.RxDropPackets)
+	}
+	if b.RxDefaultDropBytes > a.RxDefaultDropBytes {
+		return nil, fmt.Errorf("stats diff underflow on RxDefaultDropBytes: %d - %d", a.RxDefaultDropBytes, b.RxDefaultDropBytes)
+	}
+	if b.RxDefaultDropPackets > a.RxDefaultDropPackets {
+		return nil, fmt.Errorf("stats diff underflow on RxDefaultDropPackets: %d - %d", a.RxDefaultDropPackets, b.RxDefaultDropPackets)
+	}
+	if b.RxDefaultAllowBytes > a.RxDefaultAllowBytes {
+		return nil, fmt.Errorf("stats diff underflow on RxDefaultAllowBytes: %d - %d", a.RxDefaultAllowBytes, b.RxDefaultAllowBytes)
+	}
+	if b.RxDefaultAllowPackets > a.RxDefaultAllowPackets {
+		return nil, fmt.Errorf("stats diff underflow on RxDefaultAllowPackets: %d - %d", a.RxDefaultAllowPackets, b.RxDefaultAllowPackets)
+	}
 	if b.Sessions > a.Sessions {
 		return nil, fmt.Errorf("stats diff underflow on Sessions: %d - %d", a.Sessions, b.Sessions)
 	}
 
 	txDropBytes := a.TxDropBytes - b.TxDropBytes
 	return &appModelV1.ConnectionStats{
-		TxBytes:             a.TxBytes - b.TxBytes,
-		RxBytes:             a.RxBytes - b.RxBytes,
-		TxDrops:             txDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
-		TxDropBytes:         txDropBytes,
-		TxDropPackets:       a.TxDropPackets - b.TxDropPackets,
-		DefaultDropBytes:    a.DefaultDropBytes - b.DefaultDropBytes,
-		DefaultAllowBytes:   a.DefaultAllowBytes - b.DefaultAllowBytes,
-		DefaultDropPackets:  a.DefaultDropPackets - b.DefaultDropPackets,
-		DefaultAllowPackets: a.DefaultAllowPackets - b.DefaultAllowPackets,
-		Sessions:            a.Sessions - b.Sessions,
+		TxBytes:               a.TxBytes - b.TxBytes,
+		RxBytes:               a.RxBytes - b.RxBytes,
+		TxDrops:               txDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
+		TxDropBytes:           txDropBytes,
+		TxDropPackets:         a.TxDropPackets - b.TxDropPackets,
+		DefaultDropBytes:      a.DefaultDropBytes - b.DefaultDropBytes,
+		DefaultAllowBytes:     a.DefaultAllowBytes - b.DefaultAllowBytes,
+		DefaultDropPackets:    a.DefaultDropPackets - b.DefaultDropPackets,
+		DefaultAllowPackets:   a.DefaultAllowPackets - b.DefaultAllowPackets,
+		RxDropBytes:           a.RxDropBytes - b.RxDropBytes,
+		RxDropPackets:         a.RxDropPackets - b.RxDropPackets,
+		RxDefaultDropBytes:    a.RxDefaultDropBytes - b.RxDefaultDropBytes,
+		RxDefaultDropPackets:  a.RxDefaultDropPackets - b.RxDefaultDropPackets,
+		RxDefaultAllowBytes:   a.RxDefaultAllowBytes - b.RxDefaultAllowBytes,
+		RxDefaultAllowPackets: a.RxDefaultAllowPackets - b.RxDefaultAllowPackets,
+		Sessions:              a.Sessions - b.Sessions,
 	}, nil
 }
 
@@ -627,6 +655,12 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
 							DefaultDropPackets:                c.Stats.DefaultDropPackets,
 							DefaultAllowPackets:               c.Stats.DefaultAllowPackets,
+							RxDropBytes:                       c.Stats.RxDropBytes,
+							RxDropPackets:                     c.Stats.RxDropPackets,
+							RxDefaultDropBytes:                c.Stats.RxDefaultDropBytes,
+							RxDefaultDropPackets:              c.Stats.RxDefaultDropPackets,
+							RxDefaultAllowBytes:               c.Stats.RxDefaultAllowBytes,
+							RxDefaultAllowPackets:             c.Stats.RxDefaultAllowPackets,
 							Sessions:                          c.Stats.Sessions,
 							NodeLabels:                        labels,
 							PolicyName:                        c.Policy.PolicyName,
@@ -677,6 +711,12 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
 					DefaultDropPackets:                c.Stats.DefaultDropPackets,
 					DefaultAllowPackets:               c.Stats.DefaultAllowPackets,
+					RxDropBytes:                       c.Stats.RxDropBytes,
+					RxDropPackets:                     c.Stats.RxDropPackets,
+					RxDefaultDropBytes:                c.Stats.RxDefaultDropBytes,
+					RxDefaultDropPackets:              c.Stats.RxDefaultDropPackets,
+					RxDefaultAllowBytes:               c.Stats.RxDefaultAllowBytes,
+					RxDefaultAllowPackets:             c.Stats.RxDefaultAllowPackets,
 					Sessions:                          c.Stats.Sessions,
 					NodeLabels:                        labels,
 					PolicyName:                        c.Policy.PolicyName,
@@ -762,15 +802,16 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		Type: &graphV1.Edge_NetworkTelemetry{
 			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
 				NetworkTransmitBytesTotal: telemetry.TxBytes,
-				// Both totals carry the same packet count. The datapath only
-				// observes policy drops, so every transmit drop it sees is a
-				// policy drop. Interface drops, which would lift
-				// network_transmit_drop_total above the policy subset, are not
-				// accounted for yet; that is future work.
+				// Each drop total and its policy subset carry the same packet
+				// count. The datapath only observes policy drops, so every drop it
+				// sees is a policy drop. Interface drops, which would lift a total
+				// above its policy subset, are not accounted for yet; that is
+				// future work.
 				NetworkTransmitDropTotal:       telemetry.TxDropPackets,
 				NetworkTransmitDropPolicyTotal: telemetry.TxDropPackets,
 				NetworkReceiveBytesTotal:       telemetry.RxBytes,
-				NetworkReceiveDropTotal:        0,
+				NetworkReceiveDropTotal:        telemetry.RxDropPackets,
+				NetworkReceiveDropPolicyTotal:  telemetry.RxDropPackets,
 			},
 		},
 	}
