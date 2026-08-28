@@ -559,6 +559,18 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
+	// A denied UDP flow reaches recv() with the fallthrough deny set. recv() must
+	// route its drop onto the receive counters, never the transmit-side
+	// deny_default, so the receiver's row cannot break the transmit drop subset.
+	// The graph edge declares that subset as a protovalidate CEL constraint
+	// (network_transmit_drop_policy_subset), so a row that charges more policy
+	// drops than drops is rejected before it reaches the graph.
+	"DropSubsetCounters": {
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			checkDropSubsetCounters,
+		},
+	},
+
 	"UDPNetcatMessage": {
 		Host: model.Binaries{
 			// UDP netcat server

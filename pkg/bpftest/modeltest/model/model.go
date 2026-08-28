@@ -418,15 +418,21 @@ func (check *WorkloadConnectionCheck) CheckConnection(connection *v1alpha.Applic
 }
 
 type StatsCheck struct {
-	TxBytes             UInt64Checker
-	RxBytes             UInt64Checker
-	TxDropBytes         UInt64Checker
-	TxDropPackets       UInt64Checker
-	DefaultDropBytes    UInt64Checker
-	DefaultDropPackets  UInt64Checker
-	DefaultAllowBytes   UInt64Checker
-	DefaultAllowPackets UInt64Checker
-	Sessions            UInt64Checker
+	TxBytes               UInt64Checker
+	RxBytes               UInt64Checker
+	TxDropBytes           UInt64Checker
+	TxDropPackets         UInt64Checker
+	DefaultDropBytes      UInt64Checker
+	DefaultDropPackets    UInt64Checker
+	DefaultAllowBytes     UInt64Checker
+	DefaultAllowPackets   UInt64Checker
+	RxDropBytes           UInt64Checker
+	RxDropPackets         UInt64Checker
+	RxDefaultDropBytes    UInt64Checker
+	RxDefaultDropPackets  UInt64Checker
+	RxDefaultAllowBytes   UInt64Checker
+	RxDefaultAllowPackets UInt64Checker
+	Sessions              UInt64Checker
 }
 
 func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
@@ -468,6 +474,36 @@ func (check *StatsCheck) CheckStats(stats *v1alpha.ConnectionStats) error {
 	if check.DefaultAllowPackets != nil {
 		if err := check.DefaultAllowPackets(stats.DefaultAllowPackets); err != nil {
 			return fmt.Errorf("DefaultAllowPackets check failed: %w", err)
+		}
+	}
+	if check.RxDropBytes != nil {
+		if err := check.RxDropBytes(stats.RxDropBytes); err != nil {
+			return fmt.Errorf("RxDropBytes check failed: %w", err)
+		}
+	}
+	if check.RxDropPackets != nil {
+		if err := check.RxDropPackets(stats.RxDropPackets); err != nil {
+			return fmt.Errorf("RxDropPackets check failed: %w", err)
+		}
+	}
+	if check.RxDefaultDropBytes != nil {
+		if err := check.RxDefaultDropBytes(stats.RxDefaultDropBytes); err != nil {
+			return fmt.Errorf("RxDefaultDropBytes check failed: %w", err)
+		}
+	}
+	if check.RxDefaultDropPackets != nil {
+		if err := check.RxDefaultDropPackets(stats.RxDefaultDropPackets); err != nil {
+			return fmt.Errorf("RxDefaultDropPackets check failed: %w", err)
+		}
+	}
+	if check.RxDefaultAllowBytes != nil {
+		if err := check.RxDefaultAllowBytes(stats.RxDefaultAllowBytes); err != nil {
+			return fmt.Errorf("RxDefaultAllowBytes check failed: %w", err)
+		}
+	}
+	if check.RxDefaultAllowPackets != nil {
+		if err := check.RxDefaultAllowPackets(stats.RxDefaultAllowPackets); err != nil {
+			return fmt.Errorf("RxDefaultAllowPackets check failed: %w", err)
 		}
 	}
 	if check.Sessions != nil {

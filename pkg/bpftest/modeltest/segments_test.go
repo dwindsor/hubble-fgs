@@ -128,7 +128,7 @@ func checkSegmentPacketCounters(ctx context.Context, tb testing.TB, tc *testcase
 
 	result := <-sink
 	require.NoError(tb, result.err, "draining the bulk transfer")
-	tb.Logf("the peer socket was charged %d segments for %d bytes", result.segs, segmentsTransferBytes)
+	tb.Logf("the peer socket was charged %d receive and %d transmit segments for %d bytes", result.segsIn, result.segsOut, segmentsTransferBytes)
 
 	// Workaround for the empty-arguments bug
 	// (https://github.com/isovalent/hubble-fgs/issues/8915): a process matched by a
@@ -149,11 +149,17 @@ func checkSegmentPacketCounters(ctx context.Context, tb testing.TB, tc *testcase
 				Port:     model.UInt64Exactly(uint64(port)),
 				Protocol: commonNetV1.IPProtocol_IP_PROTOCOL_TCP,
 				Stats: model.StatsCheck{
-					DefaultAllowBytes:   model.UInt64GreaterThan(segmentsTransferBytes),
-					DefaultAllowPackets: segmentPacketChecker(result.segs),
+					DefaultAllowBytes: model.UInt64GreaterThan(segmentsTransferBytes),
+					// send() charges the transmit direction (the data the sink
+					// received) and recv() the receive direction (the ACKs the
+					// sink sent back), each on its own counter now.
+					DefaultAllowPackets:   segmentPacketChecker(result.segsIn),
+					RxDefaultAllowPackets: segmentPacketChecker(result.segsOut),
 					// Nothing is dropped on the default-allow path.
 					TxDropBytes:   model.UInt64Exactly(0),
 					TxDropPackets: model.UInt64Exactly(0),
+					RxDropBytes:   model.UInt64Exactly(0),
+					RxDropPackets: model.UInt64Exactly(0),
 				},
 			},
 		},
@@ -161,7 +167,7 @@ func checkSegmentPacketCounters(ctx context.Context, tb testing.TB, tc *testcase
 }
 
 // segmentPacketChecker requires a packet count within segmentsSlack of the peer
-// socket's own segment count (segs_in + segs_out). Both sides count the same
+// socket's own segment count for one direction. Both sides count the same
 // per-skb quantity send() and recv() charge, so the totals are comparable.
 func segmentPacketChecker(peerSegs uint64) model.UInt64Checker {
 	return func(packets uint64) error {
@@ -178,8 +184,9 @@ func segmentPacketChecker(peerSegs uint64) model.UInt64Checker {
 }
 
 type segmentSinkResult struct {
-	segs uint64
-	err  error
+	segsIn  uint64
+	segsOut uint64
+	err     error
 }
 
 // startSegmentSink listens on loopback, drains the one connection it accepts,
@@ -208,19 +215,19 @@ func startSegmentSink(tb testing.TB) (int, <-chan segmentSinkResult) {
 			return
 		}
 
-		segs, err := socketSegments(conn.(*net.TCPConn))
-		result <- segmentSinkResult{segs: segs, err: err}
+		segsIn, segsOut, err := socketSegments(conn.(*net.TCPConn))
+		result <- segmentSinkResult{segsIn: segsIn, segsOut: segsOut, err: err}
 	}()
 
 	return ln.Addr().(*net.TCPAddr).Port, result
 }
 
-// socketSegments returns the number of segments the kernel charged conn in both
-// directions.
-func socketSegments(conn *net.TCPConn) (uint64, error) {
+// socketSegments returns the number of segments the kernel charged conn in the
+// receive and transmit directions.
+func socketSegments(conn *net.TCPConn) (uint64, uint64, error) {
 	raw, err := conn.SyscallConn()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	var info *unix.TCPInfo
@@ -228,13 +235,13 @@ func socketSegments(conn *net.TCPConn) (uint64, error) {
 	if err := raw.Control(func(fd uintptr) {
 		info, getErr = unix.GetsockoptTCPInfo(int(fd), unix.IPPROTO_TCP, unix.TCP_INFO)
 	}); err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	if getErr != nil {
-		return 0, fmt.Errorf("TCP_INFO: %w", getErr)
+		return 0, 0, fmt.Errorf("TCP_INFO: %w", getErr)
 	}
 
-	return uint64(info.Segs_in) + uint64(info.Segs_out), nil
+	return uint64(info.Segs_in), uint64(info.Segs_out), nil
 }
 
 // ethtoolValue mirrors struct ethtool_value: a command word and one word of
