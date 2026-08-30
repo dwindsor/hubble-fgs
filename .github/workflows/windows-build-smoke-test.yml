@@ -289,7 +289,7 @@ jobs:
 
   windows-tetragon-build:
     name: Build, Unit Test and Upload Windows Tetragon and Tetra Binaries
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 15
     needs: [windows-ebpf-prog-build, windows-ebpfsvc-build]
 
@@ -449,7 +449,7 @@ jobs:
 
   windows-build-msi:
     name: "Build Tetragon EE MSI"
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 15
     needs: windows-tetragon-build
 
@@ -588,7 +588,7 @@ jobs:
 
   windows-smoke-test:
     name: Deploy and Test tetragon for Windows
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 15
     needs: windows-build-msi
 
@@ -626,48 +626,16 @@ jobs:
       - name: Run Smoke test Windows
         shell: pwsh
         run: |
-          # Tests
-          Write-Output "::group::PATH:"
-          $env:Path -split ';'
-          Write-Output "::endgroup::"
-
-          # Stop Running Tetragon Service, we need to change args
+          # Stop the service the MSI started: the smoke test runs the binary
+          # itself so it can set its own flags and own the export file.
           net.exe stop TetragonEnterprise
 
-          # Start the process in the background and capture its PID
-          $TetragonArgs = @(
-            '--debug', 
-            '--enable-tcp', 
-            '--enable-udp', 
-            '--enable-application-model',
-            '--enable-cgidmap',
-            '--network-policy ${{ github.workspace }}\examples\tetragonnetworkpolicy\example.yaml',
-            '--export-filename "C:\Program Files\Tetragon\events.json"'
-          )
+          & '${{ github.workspace }}\tests\e2e\windows\smoke-test.ps1'
 
-          $tetragonBackgroundProcess = Start-Process `
-            -FilePath "C:\Program Files\Tetragon\cmd\Tetragon.exe" `
-            -WorkingDirectory "C:\Program Files\Tetragon\cmd" `
-            -ArgumentList $TetragonArgs `
-            -RedirectStandardOutput "C:\Program Files\Tetragon\tetragon.log" `
-            -NoNewWindow `
-            -PassThru
-
-          Start-Sleep -Seconds 5
-          if(Get-Process -id $tetragonBackgroundProcess.Id) {
-            Write-Output "✓ Tetragon is Running "
-          }
-          else {
-            throw "✗ Tetragon Could not be started"
-          }
-
-          & "${{ github.workspace }}\tests\e2e\windows\test-script.ps1"
-          if ($LASTEXITCODE -ne 0) {
-              Write-Output "✗ Smoke tests failed with exit code $LASTEXITCODE"
-              Write-Host
-              exit $LASTEXITCODE
-          }
-          Write-Output "✓ Smoke tests passed"
+          # The smoke test exits with its number of failed checks, but an `exit`
+          # inside a called script only ends that script -- without this the step
+          # would pass no matter how many checks failed.
+          exit $LASTEXITCODE
 
       - name: Upload Tetragon logs on failure
         if: failure()
@@ -676,5 +644,6 @@ jobs:
           name: tetragon-smoke-test-logs
           path: |
             C:\Program Files\Tetragon\tetragon.log
+            C:\Program Files\Tetragon\tetragon.err.log
             C:\Program Files\Tetragon\events.json
           retention-days: 5
