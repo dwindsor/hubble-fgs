@@ -17,7 +17,7 @@ require (
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.3.4
 	github.com/containernetworking/plugins v1.9.1
-	github.com/cri-o/cri-o v1.36.3
+	github.com/cri-o/cri-o v1.36.4
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.19.0
 	github.com/gdamore/tcell/v2 v2.13.10
