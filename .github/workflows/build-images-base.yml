@@ -51,7 +51,7 @@ jobs:
 
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Login to Artifactory
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -289,7 +289,7 @@ jobs:
     needs: chart-metadata
     permissions:
       contents: read
-    uses: isovalent/reusable-workflows/.github/workflows/push-helm-chart.yml@ab64038003d9a501689655ed8d6eba7ba13d05c3 # v0.15.1
+    uses: isovalent/reusable-workflows/.github/workflows/push-helm-chart.yml@3cb4b5fb5982273b11c56b46247b4d789026b5c0 # v0.16.2
     with:
       chartRepository: oci://${{ vars.ARTIFACTORY_HOST }}/${{ needs.chart-metadata.outputs.registry_path }}
       chartName: tetragon
