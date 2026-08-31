@@ -419,7 +419,7 @@ func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, en
 	logger.GetLogger().Debug("Removing ProcessTreeKey from app model state", "uid", key.Self, "wlid", key.WLID)
 
 	// Remove the process tree entry itself.
-	if err := tree.Delete(key); err != nil {
+	if err := tree.Delete(key); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 		logger.GetLogger().Warn("Failed to delete stale process tree key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID)
 	}
 
@@ -439,14 +439,14 @@ func removeProcessTreeKeyFromModel(key *types.ProcessTreeKey, tree *ebpf.Map, en
 		logger.GetLogger().Warn("Failed iterating destination endpoint map for stale process key cleanup", logfields.Error, err)
 	}
 	for _, k := range keysToDelete {
-		if err := endpt.Delete(&k); err != nil {
+		if err := endpt.Delete(&k); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 			logger.GetLogger().Warn("Failed to delete stale destination endpoint key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID, "destinationID", k.DestinationId)
 		}
 	}
 
 	if option.Config.EnableSyscallTracking {
 		// Remove syscall tracking entry for this process tree key.
-		if err := sm.Delete(key.Self); err != nil {
+		if err := sm.Delete(key.Self); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 			logger.GetLogger().Warn("Failed to delete stale syscall key for process tree key", logfields.Error, err, "uid", key.Self, "wlid", key.WLID)
 		}
 	}
