@@ -7,6 +7,7 @@ TETRAGON_IMAGE_NAME ?= isovalent/tetragon
 TETRAGON_SLIM_IMAGE_NAME ?= isovalent/tetragon-slim
 AGGREGATOR_IMAGE_NAME ?= isovalent/tetragon-aggregator
 OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
+RTHOOKS_IMAGE_NAME ?= isovalent/tetragon-rthooks
 LOCAL_CLANG ?= 0
 LOCAL_CLANG_FORMAT ?= 0
 FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h'
@@ -260,6 +261,12 @@ image-aggregator: ## Build the Tetragon aggregator container image.
 	$(CONTAINER_ENGINE) build -f Dockerfile.aggregator -t "${AGGREGATOR_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push ${AGGREGATOR_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-rthooks
+image-rthooks:
+	$(CONTAINER_ENGINE) build -f Dockerfile.rthooks -t "${RTHOOKS_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
+	@echo "Push like this when ready:"
+	@echo "${CONTAINER_ENGINE} push ${RTHOOKS_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
 
 .PHONY: image-operator
 image-operator: ## Build the Tetragon operator container image.
