@@ -27,7 +27,10 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 
 	"github.com/cilium/tetragon/pkg/observer"
 
@@ -102,6 +105,9 @@ func doObserverTest(t *testing.T, testpolicyName string, params map[string]any, 
 	obs := enterpriseoth.GetNoConfigObserver(t, ctx, filterByPID)
 
 	require.NoError(t, layer3.StartLayer3Progs(ctx, nil))
+	require.NoError(t, sockops.StartSockopsSensor(ctx))
+	require.NoError(t, sockmap.StartSockmapSensor(ctx))
+	require.NoError(t, http.StartHttpProgs(ctx))
 
 	tp, err := tracingpolicy.FromYAML(string(policyStr))
 	require.NoError(t, err)
