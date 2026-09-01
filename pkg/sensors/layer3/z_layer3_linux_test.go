@@ -37,6 +37,7 @@ import (
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
@@ -246,14 +247,6 @@ const layer3RawConfig = `
       reportClose: true
 `
 
-const noConfig = `
-apiVersion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "noconfig"
-spec: {}
-`
-
 func layer3Config(t *testing.T, CLISwitches, withRTT, withICMP, withRaw bool) string {
 	c := layer3ConfigTcp
 	switches := []cli.SwitchSettings{
@@ -302,7 +295,7 @@ func layer3Config(t *testing.T, CLISwitches, withRTT, withICMP, withRaw bool) st
 
 	if CLISwitches {
 		require.NoError(t, cli.SetSwitches(t, switches))
-		return noConfig
+		return enterpriseoth.EmptyTracingPolicy
 	}
 	return c
 }

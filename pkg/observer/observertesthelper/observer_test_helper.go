@@ -36,7 +36,7 @@ import (
 const (
 	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 
-	noConfig = `
+	EmptyTracingPolicy = `
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -105,7 +105,7 @@ func GetDefaultObserverWithConfig(tb testing.TB, ctx context.Context, config, li
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
 func GetNoConfigObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer { //nolint:revive
-	if err := oss.WriteConfigFile(testConfigFile, noConfig); err != nil {
+	if err := oss.WriteConfigFile(testConfigFile, EmptyTracingPolicy); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
