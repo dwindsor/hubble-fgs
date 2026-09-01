@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251031160646-dbc076c50cfc
-	github.com/isovalent/ipa/k8s v1.19.2
+	github.com/isovalent/ipa/k8s v1.19.3
 	github.com/stretchr/testify v1.12.1
 	k8s.io/apiextensions-apiserver v0.36.4
 	k8s.io/apimachinery v0.36.4
