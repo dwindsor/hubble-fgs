@@ -183,3 +183,64 @@ func checkPolicyReResolve(ctx context.Context, tb testing.TB, _ *testcase.TestCa
 	require.Zero(tb, sink.bBytes.Load(),
 		"phase-2 traffic arrived after the deny policy; the socket kept its cached allow verdict")
 }
+
+// checkPolicyReResolveOnRemoval mirrors checkPolicyReResolve: it proves a deny
+// policy removed mid-connection stops enforcing on an established socket. Phase 1
+// flows before any policy, the deny lands and drops phase 2, and removing the
+// deny must re-resolve the socket to allow so the phase-2 bytes the kernel
+// buffered for retransmission reach the sink.
+//
+// The socket cannot open under the deny, because enforcement runs in a cgroup_skb
+// hook that drops the SYN, so it establishes under allow first. Enforcing the
+// deny mid-connection is the precondition here, not the assertion.
+// checkPolicyReResolve covers that direction.
+func checkPolicyReResolveOnRemoval(ctx context.Context, tb testing.TB, _ *testcase.TestCase, _ *modelserver.Server, _ *harness.Harness) {
+	sender := modelutils.FixupBinaryPathname("python3")
+
+	port, sink := startReResolveSink(ctx, tb)
+
+	cmd := exec.CommandContext(ctx, "python3", "-c",
+		fmt.Sprintf(reResolveSendScript, reResolvePhaseBytes, reResolvePhaseBytes),
+		strconv.Itoa(port))
+	stdin, err := cmd.StdinPipe()
+	require.NoError(tb, err, "opening the sender's stdin")
+	require.NoError(tb, cmd.Start(), "starting the sender")
+
+	// Phase 1 flows before any policy exists, so delivering it confirms the
+	// connection is live before the deny lands.
+	require.Eventually(tb, func() bool {
+		return sink.aBytes.Load() >= reResolvePhaseBytes
+	}, 3*time.Second, 50*time.Millisecond, "phase-1 traffic never arrived; the allow path is broken")
+
+	np, err := netpol.FromYAML(fmt.Sprintf(reResolveDenyLoopback, sender))
+	require.NoError(tb, err, "failed to parse deny policy")
+	require.NoError(tb, netpol.Add(np), "failed to add deny policy")
+	// Registered first so it runs last, after the removal below.
+	releaseLeakedBinaryUIDs(tb, np.Spec.ProcessSelector.Values...)
+	tb.Cleanup(func() { netpol.Delete(np) })
+
+	// Release phase 2 into the deny. It fits the send buffer, so sendall() returns
+	// and the sender exits, but the kernel keeps the unacked bytes for
+	// retransmission, ready to flow once the deny is gone.
+	_, err = io.WriteString(stdin, "\n")
+	require.NoError(tb, err, "releasing the sender's second phase")
+	stdin.Close()
+	require.NoError(tb, cmd.Wait(), "the sender exited with an error")
+
+	// The deny has to hold on the established socket, or the removal below proves
+	// nothing. A phase-2 byte still missing after the drain window was dropped,
+	// not delayed.
+	time.Sleep(reResolveDrainWindow)
+	require.Zero(tb, sink.bBytes.Load(),
+		"phase-2 traffic arrived under the deny policy; the mid-connection deny never took effect")
+
+	require.NoError(tb, netpol.Delete(np), "failed to remove deny policy")
+
+	// Removing the policy re-resolves the socket to allow, and the buffered
+	// phase-2 bytes reach the sink on the next retransmit. Without the re-resolve
+	// the socket keeps its cached deny and they never arrive.
+	require.Eventually(tb, func() bool {
+		return sink.bBytes.Load() >= reResolvePhaseBytes
+	}, 5*time.Second, 100*time.Millisecond,
+		"phase-2 traffic never arrived after the deny was removed; the socket kept its cached deny verdict")
+}

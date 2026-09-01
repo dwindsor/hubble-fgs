@@ -551,6 +551,14 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
+	// Mirror of the case above: a deny removed mid-connection must re-resolve an
+	// established socket back to allow. See checkPolicyReResolveOnRemoval.
+	"PolicyReResolveOnRemoval": {
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			checkPolicyReResolveOnRemoval,
+		},
+	},
+
 	"UDPNetcatMessage": {
 		Host: model.Binaries{
 			// UDP netcat server
