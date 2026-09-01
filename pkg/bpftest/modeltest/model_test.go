@@ -542,6 +542,15 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
+	// A socket resolves its verdict once at connect and the fast paths reuse it,
+	// so a policy added mid-connection takes effect only if it forces a
+	// re-resolve. See checkPolicyReResolve.
+	"PolicyReResolveMidConnection": {
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			checkPolicyReResolve,
+		},
+	},
+
 	"UDPNetcatMessage": {
 		Host: model.Binaries{
 			// UDP netcat server
