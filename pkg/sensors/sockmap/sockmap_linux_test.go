@@ -114,7 +114,7 @@ func testTLS13(t *testing.T, CLISwitches, cgroup bool) {
 
 	curlChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("curl")).
-		WithArguments(sm.Full("--tlsv1.3 -4 https://www.google.com"))
+		WithArguments(sm.Full("--curves X25519 --tlsv1.3 -4 https://www.google.com"))
 
 	tlsChecker := ec.NewTlsChecker("curlTls").
 		WithProcess(curlChecker).
@@ -178,7 +178,7 @@ func testTLS13(t *testing.T, CLISwitches, cgroup bool) {
 		require.NoError(t, err)
 	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observertesthelper.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
+	observertesthelper.ExecWGCurl(&readyWG, 10, "--curves", "X25519", "--tlsv1.3", "-4", "https://www.google.com")
 
 	require.NoError(t, jsonchecker.JsonTestCheck(t, checker))
 }
