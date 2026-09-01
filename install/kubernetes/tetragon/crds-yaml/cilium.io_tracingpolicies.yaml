@@ -817,6 +817,42 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchCmdArgs:
+                            description: |-
+                              A list of command-line argument filters. MatchCmdArgs are ANDed.
+                              Indexes are zero-based and exclude argv[0].
+                            items:
+                              properties:
+                                index:
+                                  description: |-
+                                    Position of the command-line argument to apply the filter to. Indexes
+                                    are zero-based and exclude argv[0], which is represented by the binary.
+                                  format: int32
+                                  maximum: 31
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Values to compare the command-line
+                                    argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchData:
                             description: A list of argument filters. MatchData are
                               ANDed.
@@ -2899,6 +2935,42 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchCmdArgs:
+                            description: |-
+                              A list of command-line argument filters. MatchCmdArgs are ANDed.
+                              Indexes are zero-based and exclude argv[0].
+                            items:
+                              properties:
+                                index:
+                                  description: |-
+                                    Position of the command-line argument to apply the filter to. Indexes
+                                    are zero-based and exclude argv[0], which is represented by the binary.
+                                  format: int32
+                                  maximum: 31
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Values to compare the command-line
+                                    argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchData:
                             description: A list of argument filters. MatchData are
                               ANDed.
@@ -3970,6 +4042,42 @@ spec:
                                     type: string
                                   type: array
                               required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchCmdArgs:
+                            description: |-
+                              A list of command-line argument filters. MatchCmdArgs are ANDed.
+                              Indexes are zero-based and exclude argv[0].
+                            items:
+                              properties:
+                                index:
+                                  description: |-
+                                    Position of the command-line argument to apply the filter to. Indexes
+                                    are zero-based and exclude argv[0], which is represented by the binary.
+                                  format: int32
+                                  maximum: 31
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Values to compare the command-line
+                                    argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
                               - operator
                               - values
                               type: object
@@ -5564,6 +5672,42 @@ spec:
                         - values
                         type: object
                       type: array
+                    matchCmdArgs:
+                      description: |-
+                        A list of command-line argument filters. MatchCmdArgs are ANDed.
+                        Indexes are zero-based and exclude argv[0].
+                      items:
+                        properties:
+                          index:
+                            description: |-
+                              Position of the command-line argument to apply the filter to. Indexes
+                              are zero-based and exclude argv[0], which is represented by the binary.
+                            format: int32
+                            maximum: 31
+                            minimum: 0
+                            type: integer
+                          operator:
+                            description: Filter operation.
+                            enum:
+                            - Equal
+                            - NotEqual
+                            - Prefix
+                            - NotPrefix
+                            - Postfix
+                            - NotPostfix
+                            type: string
+                          values:
+                            description: Values to compare the command-line argument
+                              against.
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - index
+                        - operator
+                        - values
+                        type: object
+                      type: array
                     matchData:
                       description: A list of argument filters. MatchData are ANDed.
                       items:
@@ -6580,6 +6724,42 @@ spec:
                                     type: string
                                   type: array
                               required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchCmdArgs:
+                            description: |-
+                              A list of command-line argument filters. MatchCmdArgs are ANDed.
+                              Indexes are zero-based and exclude argv[0].
+                            items:
+                              properties:
+                                index:
+                                  description: |-
+                                    Position of the command-line argument to apply the filter to. Indexes
+                                    are zero-based and exclude argv[0], which is represented by the binary.
+                                  format: int32
+                                  maximum: 31
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Values to compare the command-line
+                                    argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
                               - operator
                               - values
                               type: object
@@ -7899,6 +8079,42 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchCmdArgs:
+                            description: |-
+                              A list of command-line argument filters. MatchCmdArgs are ANDed.
+                              Indexes are zero-based and exclude argv[0].
+                            items:
+                              properties:
+                                index:
+                                  description: |-
+                                    Position of the command-line argument to apply the filter to. Indexes
+                                    are zero-based and exclude argv[0], which is represented by the binary.
+                                  format: int32
+                                  maximum: 31
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Values to compare the command-line
+                                    argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchData:
                             description: A list of argument filters. MatchData are
                               ANDed.
@@ -8952,6 +9168,42 @@ spec:
                                     type: string
                                   type: array
                               required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchCmdArgs:
+                            description: |-
+                              A list of command-line argument filters. MatchCmdArgs are ANDed.
+                              Indexes are zero-based and exclude argv[0].
+                            items:
+                              properties:
+                                index:
+                                  description: |-
+                                    Position of the command-line argument to apply the filter to. Indexes
+                                    are zero-based and exclude argv[0], which is represented by the binary.
+                                  format: int32
+                                  maximum: 31
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Values to compare the command-line
+                                    argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
                               - operator
                               - values
                               type: object

@@ -117,7 +117,7 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 	if (!self_uid || !tree_id_get_ignore_args(self_uid)) {
 		DEBUG_PROCESS("%s: second lookup with args, ignore_args=%d",
 			      __func__, self_uid ? tree_id_get_ignore_args(self_uid) : -1);
-		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
+		probe_read_kernel(&tree_key->args, curr->args.len & (MAXARGLENGTH - 1), curr->args.buf);
 		self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 	}
 
