@@ -47,6 +47,13 @@ options:
       default_value: "100"
       usage: |
         Maximum number of host processes per application model telemetry event
+    - name: bpf-debug-area
+      usage: |
+        Enable BPF tracing messages for specified areas (all, dns, generic, http, process, tcp)
+    - name: bpf-debug-log
+      default_value: "false"
+      usage: |
+        Enable forwarding BPF trace messages to tetragon log as info messages
     - name: bpf-dir
       default_value: tetragon
       usage: Set tetragon bpf directory (default 'tetragon')
@@ -743,5 +750,8 @@ options:
         Resolve UIDs to user names for processes running in host namespace
     - name: verbose
       default_value: "0"
+      usage: deprecated alias for --verifier-log-level
+    - name: verifier-log-level
+      default_value: "0"
       usage: |
-        set verbosity level for eBPF verifier dumps. Pass 0 for silent, 1 for truncated logs, 2 for a full dump
+        set eBPF verifier log level. Pass 0 for silent, 1 for truncated logs, 2 for a full dump

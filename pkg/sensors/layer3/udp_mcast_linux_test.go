@@ -122,7 +122,7 @@ func testUdpMulticastRTPConnID(t *testing.T, CLISwitches bool) {
 		{KeyPtr: &enterpriseOption.Config.MulticastPorts, Value: []int{dest.port}},
 		{KeyPtr: &enterpriseOption.Config.MulticastSeqCheck, Value: true},
 		{KeyPtr: &option.Config.Debug, Value: true},
-		{KeyPtr: &option.Config.Verbosity, Value: 4},
+		{KeyPtr: &option.Config.VerifierLogLevel, Value: 4},
 	}
 	if CLISwitches {
 		switches = append(switches, []cli.SwitchSettings{

@@ -103,7 +103,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	bpf.CheckOrMountCgroup2()
 
 	if args.FgsDebug {
-		option.Config.Verbosity = 5
+		option.Config.VerifierLogLevel = 5
 	}
 
 	if _, err := os.Stat("../../bpf/objs"); err == nil {

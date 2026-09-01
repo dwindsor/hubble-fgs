@@ -31,6 +31,7 @@ const (
 	KeyBTF                    = "btf"
 	KeyProcFS                 = "procfs"
 	KeyKernelVersion          = "kernel"
+	KeyVerifierLogLevel       = "verifier-log-level"
 	KeyVerbosity              = "verbose"
 	KeyProcessCacheSize       = "process-cache-size"
 	KeyDisableProcessCache    = "disable-process-cache"
@@ -160,6 +161,13 @@ const (
 	KeyServerTLSKeyFile           = "server-tls-key-file"
 	KeyServerTLSClientCAFiles     = "server-tls-client-ca-files"
 	KeyServerTLSRequireClientCert = "server-tls-require-client-cert"
+
+	KeyBpfDebugArea = "bpf-debug-area"
+	KeyBpfDebugLog  = "bpf-debug-log"
+)
+
+const (
+	VerifierLogLevelHelp = "set eBPF verifier log level. Pass 0 for silent, 1 for truncated logs, 2 for a full dump"
 )
 
 type UsernameMetadaCode int
@@ -182,7 +190,10 @@ func ReadAndSetFlags() error {
 	Config.BTF = viper.GetString(KeyBTF)
 	Config.ProcFS = viper.GetString(KeyProcFS)
 	Config.KernelVersion = viper.GetString(KeyKernelVersion)
-	Config.Verbosity = viper.GetInt(KeyVerbosity)
+	Config.VerifierLogLevel = viper.GetInt(KeyVerifierLogLevel)
+	if !viper.IsSet(KeyVerifierLogLevel) && viper.IsSet(KeyVerbosity) {
+		Config.VerifierLogLevel = viper.GetInt(KeyVerbosity)
+	}
 	Config.ForceSmallProgs = viper.GetBool(KeyForceSmallProgs)
 	Config.ForceLargeProgs = viper.GetBool(KeyForceLargeProgs)
 	Config.Debug = viper.GetBool(KeyDebug)
@@ -358,6 +369,8 @@ func ReadAndSetFlags() error {
 		return err
 	}
 
+	Config.BPFDebugLog = viper.GetBool(KeyBpfDebugLog)
+
 	warnIgnoredProcessCacheFlags(Config)
 
 	return nil
@@ -505,7 +518,9 @@ func AddFlags(flags *pflag.FlagSet) {
 
 	flags.String(KeyProcFS, "/proc/", "Location of procfs to consume existing PIDs")
 	flags.String(KeyKernelVersion, "", "Kernel version")
-	flags.Int(KeyVerbosity, 0, "set verbosity level for eBPF verifier dumps. Pass 0 for silent, 1 for truncated logs, 2 for a full dump")
+	flags.Int(KeyVerifierLogLevel, 0, VerifierLogLevelHelp)
+	flags.Int(KeyVerbosity, 0, "deprecated alias for --"+KeyVerifierLogLevel)
+	flags.MarkDeprecated(KeyVerbosity, "use --"+KeyVerifierLogLevel+" instead")
 	flags.Int(KeyProcessCacheSize, 65536, "Size of the process cache")
 	flags.Bool(KeyDisableProcessCache, false, "Disable process cache")
 	flags.Int(KeyDataCacheSize, 1024, "Size of the data events cache")
@@ -650,4 +665,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.String(KeyServerTLSKeyFile, "", "Path to the PEM-encoded private key matching --"+KeyServerTLSCertFile+". Required when --"+KeyServerTLSCertFile+" is set.")
 	flags.StringSlice(KeyServerTLSClientCAFiles, []string{}, "Paths to PEM-encoded CA bundles used to verify client certificates. Required when --"+KeyServerTLSRequireClientCert+" is true.")
 	flags.Bool(KeyServerTLSRequireClientCert, false, "Require and verify client certificates (mTLS). Requires --"+KeyServerTLSClientCAFiles+".")
+
+	flags.Var(Config.BPFDebugAreas, KeyBpfDebugArea, "Enable BPF tracing messages for specified areas "+Config.BPFDebugAreas.Allowed())
+	flags.Bool(KeyBpfDebugLog, false, "Enable forwarding BPF trace messages to tetragon log as info messages")
 }
