@@ -44,6 +44,10 @@ type binaryUIDKey struct {
 // policy's identity and reports empty arguments. Since case order comes from a
 // Go map, a policy case can land ahead of another case that runs the same
 // binary. Delete this once the agent releases the UID itself.
+//
+// datapath.ForgetBinaryID goes with the map delete. GetBinaryId memoizes the uid
+// and returns it without rewriting the map, so a later case that runs the same
+// binary would otherwise get a uid whose entry this cleanup already removed.
 func releaseLeakedBinaryUIDs(tb testing.TB, binaries ...string) {
 	tb.Helper()
 	tb.Cleanup(func() {
@@ -53,6 +57,7 @@ func releaseLeakedBinaryUIDs(tb testing.TB, binaries ...string) {
 		defer m.Close()
 
 		for _, binary := range binaries {
+			datapath.ForgetBinaryID(binary)
 			var key binaryUIDKey
 			copy(key.binary[:], binary)
 			// The uidMap memo in pkg/model/datapath can short-circuit

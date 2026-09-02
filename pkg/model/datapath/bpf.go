@@ -555,3 +555,14 @@ func (p *BPFProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64,
 	uidMap[binaryName] = id
 	return id, nil
 }
+
+// ForgetBinaryID drops the cached uid for binaryName so the next GetBinaryId
+// re-registers it and rewrites the BPF map entry. GetBinaryId returns the memoized
+// uid without touching the map, so deleting a binary's map entry while the memo
+// still holds its uid leaves the model referencing an entry that no longer exists.
+// Callers that delete an entry out of band must forget the uid too.
+func ForgetBinaryID(binaryName string) {
+	processLock.Lock()
+	defer processLock.Unlock()
+	delete(uidMap, binaryName)
+}
