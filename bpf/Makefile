@@ -137,7 +137,7 @@ PROCESS += bpf_execve_map_update.o bpf_execve_map_update_v53.o bpf_execve_map_up
 
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
-	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_fallocate_v419.o bpf_vfs_open.o bpf_vfs_open_v419.o \
+	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_security_file_permission_observe_fentry.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_fallocate_v419.o bpf_vfs_open.o bpf_vfs_open_v419.o \
 	  bpf_vfs_mkdir.o bpf_vfs_mkdir_v419.o bpf_security_inode_rmdir.o bpf_security_inode_rmdir_v419.o bpf_security_path_rename.o bpf_security_path_rename_v419.o bpf_vfs_rename.o bpf_vfs_rename_v419.o \
 	  bpf_iterate_dir.o bpf_iterate_dir_v419.o bpf_security_inode_setattr.o bpf_security_inode_setattr_v419.o \
 	  bpf_security_mmap_file_lsm.o bpf_security_mmap_file_fmod.o \
@@ -424,6 +424,12 @@ objs/%_lsm.o:
 
 $(DEPSDIR)%_lsm.d:
 	$(call rule_d,-D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM)
+
+objs/%_observe_fentry.o: $(FILEDIR)%.c
+	$(call rule_o,-D__LARGE_BPF_PROG -D__FILE_FENTRY)
+
+$(DEPSDIR)%_observe_fentry.d: $(FILEDIR)%.c
+	$(call rule_d,-D__LARGE_BPF_PROG -D__FILE_FENTRY)
 
 objs/%_lsm_digest.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__FILE_ENFORCE_LSM -D__FILE_DIGEST_LSM)

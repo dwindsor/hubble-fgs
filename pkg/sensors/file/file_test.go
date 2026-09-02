@@ -1001,7 +1001,7 @@ func TestLoadFileSensor(t *testing.T) {
 		1:  tus.SensorProg{Name: "filemap_fault", Type: ebpf.Kprobe},
 		2:  tus.SensorProg{Name: "filemap_map_pages", Type: ebpf.Kprobe},
 		3:  tus.SensorProg{Name: "filemap_page_mkwrite", Type: ebpf.Kprobe},
-		4:  tus.SensorProg{Name: "security_file_permission", Type: ebpf.Kprobe},
+		4:  tus.SensorProg{Name: "security_file_permission", Type: fm.If(utils.SupportFentry(), ebpf.Tracing, ebpf.Kprobe)},
 		5:  tus.SensorProg{Name: fmt.Sprintf("vfs_unlink_v%s", unlinkVerSuffix), Type: ebpf.Kprobe},
 		6:  tus.SensorProg{Name: "finish_open", Type: ebpf.Kprobe},
 		7:  tus.SensorProg{Name: "security_inode_rmdir", Type: ebpf.Kprobe},

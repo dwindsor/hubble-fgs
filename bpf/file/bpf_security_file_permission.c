@@ -3,8 +3,13 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
+#ifdef __FILE_FENTRY
+SEC("fentry/security_file_permission")
+int BPF_PROG(security_file_permission, struct file *file, int mask)
+#else
 SEC("kprobe/security_file_permission")
 int BPF_KPROBE(security_file_permission, struct file *file, int mask)
+#endif
 {
 	int action = (mask == MAY_READ) ? (action_read) : (action_write);
 	int err;

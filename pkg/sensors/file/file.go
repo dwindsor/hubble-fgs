@@ -308,7 +308,6 @@ var (
 
 	FimHooksObserve = [...]FimHook{
 		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate", fm.NewSet(tetragon.FileAction_FILE_WRITE)}}},
-		{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
 		{"kprobe", "vfs_unlink", []FimFunc{
 			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419", fm.NewSet(FileAction_REQUIRED)},
 			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512", fm.NewSet(FileAction_REQUIRED)},
@@ -361,6 +360,10 @@ var (
 			{"int vfs_mknod(struct mnt_idmap*, struct inode*, struct dentry*, umode_t, dev_t, struct delegated_inode*)", "bpf_vfs_mknod.o", "vfs_mknod", fm.NewSet(FileAction_REQUIRED)},
 		}},
 	}
+
+	FimHooksObserveRWKprobe = FimHook{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}}
+
+	FimHooksObserveRWFentry = FimHook{"fentry", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_observe_fentry.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}}
 
 	FimHooksMmapObserve = [...]FimHook{
 		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
@@ -2191,6 +2194,11 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	case Observe:
 		hooks = FimHooksObserve[:]
+		if utils.SupportFentry() {
+			hooks = append(hooks, FimHooksObserveRWFentry)
+		} else {
+			hooks = append(hooks, FimHooksObserveRWKprobe)
+		}
 		if enableMmapFileAccesses {
 			hooks = append(hooks, FimHooksMmapObserve[:]...)
 		}
