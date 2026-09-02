@@ -61,7 +61,9 @@ import (
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 
@@ -542,10 +544,6 @@ func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.Fil
 }
 
 // tests in "hubble-fgs/contrib/tester-progs/read_write"
-
-func testFileRead(gt *testing.T, t *testing.T) {
-	runReadWriteTest(gt, t, "tester-progs/read_write/read", true, tetragon.FileAction_FILE_READ)
-}
 
 func testFileReadV(gt *testing.T, t *testing.T) {
 	runReadWriteTest(gt, t, "tester-progs/read_write/readv", true, tetragon.FileAction_FILE_READ)
@@ -2969,7 +2967,6 @@ func TestFileOps(t *testing.T) {
 	readyWG.Wait()
 
 	for name, fn := range map[string]func(*testing.T, *testing.T){
-		"read":               testFileRead,
 		"readv":              testFileReadV,
 		"preadv":             testFilePReadV,
 		"preadv2":            testFilePReadV2,
@@ -3032,6 +3029,15 @@ func TestFileOps(t *testing.T) {
 			break // stop on first failure
 		}
 	}
+}
+
+func TestFileReadPolicy(t *testing.T) {
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		pol.ResetFIMTracingPolicies()
+	})
+	enterprisepolicytest.DoObserverTest(t, "file-read", nil)
 }
 
 func TestFileUserDefinedMapSizes(t *testing.T) {
