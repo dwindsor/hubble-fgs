@@ -84,7 +84,9 @@ static inline __attribute__((always_inline)) __u32 path_symlink(void *ctx, const
 
 	target_op = eval_selectors((struct sel_args){ .action = action_symlink, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->target.str, msg->target.size }, &target_msg_id);
 
-	operation = link_op ? link_op : target_op;
+	// Preserve enforcement from both paths. A post action on the link must
+	// not hide a block action on the target.
+	operation = link_op | target_op;
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

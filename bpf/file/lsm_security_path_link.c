@@ -115,7 +115,9 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 
 	target_op = eval_selectors((struct sel_args){ .action = action_link, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->target.path.str, msg->target.path.size }, &target_msg_id);
 
-	operation = link_op ? link_op : target_op;
+	// Preserve enforcement from both paths. A post action on the link must
+	// not hide a block action on the target.
+	operation = link_op | target_op;
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

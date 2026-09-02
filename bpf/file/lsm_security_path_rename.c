@@ -111,8 +111,9 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	path = get_combined_path(&msg->dst.path, &path_size);
 	dst_op = eval_selectors((struct sel_args){ .action = action_rename, .flags = msg->flags, .retval = 0 }, 0, (struct sel_path){ path, path_size }, &dst_msg_id);
 
-	// check both the one non-zero operation
-	operation = src_op ? src_op : dst_op;
+	// Preserve enforcement from both paths. A post action on the source must
+	// not hide a block action on the destination.
+	operation = src_op | dst_op;
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
@@ -128,7 +129,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_rename_ops));
 
-	return 0;
+	return operation;
 }
 
 SEC("lsm/path_rename")
