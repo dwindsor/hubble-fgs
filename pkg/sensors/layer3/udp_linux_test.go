@@ -58,7 +58,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
+	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	//_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
@@ -1632,7 +1634,7 @@ func TestDnsEventsWithQuestions(t *testing.T) {
 }
 
 func TestDnsEventsWithoutQuestions(t *testing.T) {
-	testDnsEvents(t, false, false)
+	enterprisepolicytest.DoObserverTest(t, "layer3-dns-curl", nil)
 }
 
 func TestDnsEventsWithQuestionsCLI(t *testing.T) {
@@ -1641,7 +1643,7 @@ func TestDnsEventsWithQuestionsCLI(t *testing.T) {
 }
 
 func TestDnsEventsWithoutQuestionsCLI(t *testing.T) {
-	testDnsEvents(t, true, false)
+	enterprisepolicytest.DoObserverTest(t, "layer3-dns-curl-no-policy", nil)
 }
 
 func testDisableCloseConfig(t *testing.T, CLISwitches, disableClose bool) {
