@@ -589,6 +589,14 @@ func TestUDPBasicCLI(t *testing.T) {
 	suite.Run(t, &UDPBasic{useCLI: true})
 }
 
+func TestUDPSockStatsPolicy(t *testing.T) {
+	enterprisepolicytest.DoObserverTest(t, "layer3-udp-sockstats", nil)
+}
+
+func TestUDPSockStatsCLI(t *testing.T) {
+	enterprisepolicytest.DoObserverTest(t, "layer3-udp-sockstats-no-policy", nil)
+}
+
 func (suite *UDPBasic) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 
@@ -659,163 +667,6 @@ func (suite *UDPBasic) startExistingUDPServices() {
 func (suite *UDPBasic) stopExistingUDPServices() {
 	killAndWaitCommand(suite.T(), cmdServerUDP8981)
 	killAndWaitCommand(suite.T(), cmdServerUDP8981V6)
-}
-
-func (suite *UDPBasic) TestUdpConnectEvent4() {
-	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
-		suite.T().Skip("Test requires amd64 or kernel >=5.8")
-	}
-
-	server := getNCCommand(suite.T(), "nc.openbsd")
-	client := server
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8081 -s 0.0.0.0"))
-
-	ncCliChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-u 127.0.0.1 8081"))
-
-	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
-		WithProcess(ncCliChecker).
-		WithParent(selfChecker).
-		WithSocket(ec.NewSockInfoChecker().
-			WithProtocol(tetragon.SocketProtocol_UDP).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithDestinationPort(8081))
-
-	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
-		WithProcess(ncSrvChecker).
-		WithParent(selfChecker).
-		WithSocket(ec.NewSockInfoChecker().
-			WithProtocol(tetragon.SocketProtocol_UDP).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("serverExec").
-			WithProcess(ncSrvChecker).
-			WithParent(selfChecker),
-		ec.NewProcessExecChecker("clientExec").
-			WithProcess(ncCliChecker).
-			WithParent(selfChecker),
-		ec.NewProcessConnectChecker("serverConnect").
-			WithProcess(ncSrvChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(tetragon.SocketProtocol_UDP),
-		ec.NewProcessCloseChecker("serverClose").
-			WithProcess(ncSrvChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(tetragon.SocketProtocol_UDP),
-		ec.NewProcessCloseChecker("clientClose").
-			WithProcess(ncCliChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithDestinationPort(8081).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(tetragon.SocketProtocol_UDP),
-		clientStatsChecker,
-		serverStatsChecker,
-	)
-
-	// We need to check sockstats using a custom stateful checker since stats events can
-	// be split up and so checking the individual events won't work. We need to instead
-	// keep a cumulative count of the stats we have seen and compare them to expected
-	// totals.
-	var clientBytesSent uint64
-	var clientSegsOut uint32
-	var serverBytesReceived uint64
-	var serverSegsIn uint32
-	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, _ *slog.Logger) (bool, error) {
-			event, ok := event_.(*tetragon.ProcessSockStats)
-			if !ok {
-				return false, fmt.Errorf("event is not a sockstats event")
-			}
-
-			if event.Stats == nil {
-				return false, fmt.Errorf("event has no stats field")
-			}
-
-			if clientStatsChecker.Check(event) == nil {
-				clientBytesSent += event.Stats.BytesSent
-				clientSegsOut += event.Stats.SegsOut
-				return false, nil
-			}
-
-			if serverStatsChecker.Check(event) == nil {
-				serverBytesReceived += event.Stats.BytesReceived
-				serverSegsIn += event.Stats.SegsIn
-				return false, nil
-			}
-
-			return false, fmt.Errorf("sockstats event is neither from client nor server")
-		},
-		FinalCheckFn: func(_ *slog.Logger) error {
-			defer func() {
-				clientBytesSent = 0
-				clientSegsOut = 0
-				serverBytesReceived = 0
-				serverSegsIn = 0
-			}()
-
-			if clientBytesSent != 5 {
-				return fmt.Errorf("Unexecpected clientBytesSent, wanted 5, got %d", clientBytesSent)
-			}
-
-			if clientSegsOut != 1 {
-				return fmt.Errorf("Unexecpected clientSegsOut, wanted 1, got %d", clientSegsOut)
-			}
-
-			if serverBytesReceived != 5 {
-				return fmt.Errorf("Unexecpected serverBytesReceived, wanted 5, got %d", serverBytesReceived)
-			}
-
-			if serverSegsIn != 1 {
-				return fmt.Errorf("Unexecpected serverSegsIn, wanted 1, got %d", serverSegsIn)
-			}
-
-			return nil
-		},
-	}
-
-	suite.readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8081", "-s", "0.0.0.0")
-	stdout, err := cmdServer.StdoutPipe()
-	suite.Assert().NoError(err)
-	suite.Assert().NoError(cmdServer.Start())
-	err = waitForSocketToListen(suite.T(), net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
-	suite.Assert().NoError(err)
-
-	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
-	stdin, err := cmdClient.StdinPipe()
-	suite.Assert().NoError(err)
-	suite.Assert().NoError(cmdClient.Start())
-	sendData(suite.T(), stdin, "hello")
-	waitForData(suite.T(), stdout, "hello")
-
-	killAndWaitCommand(suite.T(), cmdClient)
-	killAndWaitCommand(suite.T(), cmdServer)
-
-	err = jsonchecker.JsonTestCheck(suite.T(), checker)
-	suite.Assert().NoError(err)
-
-	err = jsonchecker.JsonTestCheck(suite.T(), statsChecker)
-	suite.Assert().NoError(err)
 }
 
 func (suite *UDPBasic) TestListenEvent4() {
