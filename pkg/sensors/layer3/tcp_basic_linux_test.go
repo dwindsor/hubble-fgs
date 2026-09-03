@@ -48,7 +48,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
+	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
@@ -126,6 +128,14 @@ func TestTCPBasic(t *testing.T) {
 
 func TestTCPBasicCLI(t *testing.T) {
 	suite.Run(t, new(TCPBasic{useCLI: true}))
+}
+
+func TestTCPPolicy(t *testing.T) {
+	enterprisepolicytest.DoObserverTest(t, "layer3-tcp", nil)
+}
+
+func TestTCPCLI(t *testing.T) {
+	enterprisepolicytest.DoObserverTest(t, "layer3-tcp-no-policy", nil)
 }
 
 func (suite *TCPBasic) SetupSuite() {
@@ -224,45 +234,6 @@ func (suite *TCPBasic) stopExistingTCPServices() {
 	killAndWaitCommand(suite.T(), cmdServerTCP8083V6)
 	killAndWaitCommand(suite.T(), cmdServerTCP8094)
 	killAndWaitCommand(suite.T(), cmdServerTCP8094V6)
-}
-
-func (suite *TCPBasic) TestFailedConnectEvent4() {
-	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
-		suite.T().Skip("Test requires amd64 or kernel >=5.8")
-	}
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	curlChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix("curl")).
-		WithArguments(sm.Full("127.0.0.1"))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("curlExec").
-			WithProcess(curlChecker).
-			WithParent(selfChecker),
-		ec.NewProcessConnectChecker("curlConnect").
-			WithProcess(curlChecker).
-			WithParent(selfChecker).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithDestinationPort(80).
-			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker("curlClose").
-			WithProcess(curlChecker).
-			WithParent(selfChecker).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithDestinationPort(80).
-			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("connect reset")),
-	)
-
-	observertesthelper.ExecWGCurl(&suite.readyWG, 10, "127.0.0.1")
-	err := jsonchecker.JsonTestCheck(suite.T(), checker)
-	suite.Assert().NoError(err)
 }
 
 func (suite *TCPBasic) TestExecEventClone4() {
@@ -465,76 +436,6 @@ func (suite *TCPBasic) TestExistingRootCWDListenEvent4() {
 	killAndWaitCommand(suite.T(), cmdServerTCP8094)
 
 	err := jsonchecker.JsonTestCheck(suite.T(), checker)
-	suite.Assert().NoError(err)
-}
-
-func (suite *TCPBasic) TestListenAcceptClose4() {
-	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
-		suite.T().Skip("Test requires amd64 or kernel >=5.8")
-	}
-
-	server := getNCCommand(suite.T(), "nc.openbsd")
-	client := server
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	ncChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8085 -s 0.0.0.0"))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("ncExec").
-			WithProcess(ncChecker).
-			WithParent(selfChecker),
-		ec.NewProcessListenChecker("ncListen").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8085).
-			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessAcceptChecker("ncAccept").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8085).
-			WithProtocol(tetragon.SocketProtocol_TCP),
-		ec.NewProcessCloseChecker("ncClose").
-			WithProcess(ncChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("0.0.0.0")).
-			WithSourcePort(8085).
-			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("listen")),
-		// TODO: it would be good if we could also check the close event on
-		// the accept socket, but it goes into TIME_WAIT and then
-		// eventually close and I don't want to wait for it. So we need
-		// some go way to close the sockets.
-	)
-
-	suite.readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8085", "-s", "0.0.0.0")
-	stdout, err := cmdServer.StdoutPipe()
-	suite.Assert().NoError(err)
-	suite.Assert().NoError(cmdServer.Start())
-	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
-	suite.Assert().NoError(err)
-	cmdClient := exec.Command(client, "127.0.0.1", "8085")
-	stdin, err := cmdClient.StdinPipe()
-	suite.Assert().NoError(err)
-	suite.Assert().NoError(cmdClient.Start())
-
-	sendData(suite.T(), stdin, "hello")
-	waitForData(suite.T(), stdout, "hello")
-
-	killAndWaitCommand(suite.T(), cmdServer)
-	killAndWaitCommand(suite.T(), cmdClient)
-
-	// Wait for the sockets to close
-	err = waitAndCheckForSocketsToClose(suite.T(), checker, net.ParseIP("127.0.0.1"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
 	suite.Assert().NoError(err)
 }
 
