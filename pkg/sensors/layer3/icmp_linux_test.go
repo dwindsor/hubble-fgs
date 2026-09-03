@@ -58,7 +58,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
+	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 )
 
 const icmpBasicConfig = `
@@ -107,6 +109,14 @@ func TestICMPBasicCLI(t *testing.T) {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 	suite.Run(t, new(ICMPBasic{useCLI: true}))
+}
+
+func TestICMPPingPolicy(t *testing.T) {
+	enterprisepolicytest.DoObserverTest(t, "layer3-icmp-ping", nil)
+}
+
+func TestICMPPingCLI(t *testing.T) {
+	enterprisepolicytest.DoObserverTest(t, "layer3-icmp-ping-no-policy", nil)
 }
 
 func (suite *ICMPBasic) SetupSuite() {
@@ -209,57 +219,6 @@ func (suite *ICMPUDP) HandleStats(_ string, stats *suite.SuiteInformation) {
 func (suite *ICMPUDP) TearDownSuite() {
 	suite.cancel()
 	cli.RevertSwitchesConfig(suite.switches)
-}
-
-func (suite *ICMPBasic) TestPingOutbound4() {
-	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
-		suite.T().Skip("Test requires amd64 or kernel >=5.8")
-	}
-
-	cmd := "ping"
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	pingChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(cmd)).
-		WithArguments(sm.Full("-c1 127.0.0.1"))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("pingExec").
-			WithProcess(pingChecker).
-			WithParent(selfChecker),
-		ec.NewProcessIcmpChecker("pingEcho").
-			WithProcess(pingChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(tetragon.SocketProtocol_ICMP).
-			WithIcmpType(sm.Full("Echo")).
-			WithSequenceNumber(1).
-			WithIcmpDataLen(56).
-			WithDirection(sm.Full("egress")),
-		ec.NewProcessIcmpChecker("pingEchoReply").
-			WithProcess(pingChecker).
-			WithParent(selfChecker).
-			WithSourceIp(sm.Full("127.0.0.1")).
-			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(tetragon.SocketProtocol_ICMP).
-			WithIcmpType(sm.Full("Echo Reply")).
-			WithSequenceNumber(1).
-			WithIcmpDataLen(56).
-			WithDirection(sm.Full("ingress")),
-	)
-
-	suite.readyWG.Wait()
-	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
-	assert.NoError(suite.T(), cmdServer.Run())
-
-	err := jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
-	assert.NoError(suite.T(), err)
 }
 
 func parseArgs(a string) string {
