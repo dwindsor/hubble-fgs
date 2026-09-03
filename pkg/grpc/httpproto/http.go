@@ -34,6 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/protoutils"
 )
 
 func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
@@ -91,11 +92,11 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	if len(event.Request.Method) != 0 {
 		fgsHttpRequest = &tetragon.HttpRequest{
 			Timestamp:        ktime.ToProto(event.Request.Ktime),
-			Method:           event.Request.Method,
-			Uri:              event.Request.Uri,
+			Method:           protoutils.SanitizeString(event.Request.Method),
+			Uri:              protoutils.SanitizeString(event.Request.Uri),
 			Version:          event.Request.Protocol,
-			Host:             event.Request.Host,
-			Agent:            event.Request.UserAgent,
+			Host:             protoutils.SanitizeString(event.Request.Host),
+			Agent:            protoutils.SanitizeString(event.Request.UserAgent),
 			ContentLength:    &wrapperspb.UInt32Value{Value: uint32(length)},
 			Flags:            strings.Join(HttpErrorFlags(event.Request.Flags), " "),
 			TransferEncoding: event.Request.TransferEncoding,
