@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/stretchr/testify/require"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -83,4 +84,21 @@ func StartMinimalTetragonModel(ctx context.Context, t testing.TB) *model.Server 
 	require.NoError(t, err)
 
 	return server
+}
+
+// FlushGhostCache clears the cached ALLOW entries a curl mints from the zeroed
+// templates RemoveRecords leaves in destination_endpoint_map. A record test that
+// reuses one datapath across subtests must flush between them, or a cached ALLOW
+// shadows a later subtest's deny.
+func FlushGhostCache(tb testing.TB, prog datapath.Interface) {
+	tb.Helper()
+	require.NoError(tb, prog.FlushCachedEntries())
+}
+
+// FlushGhostCacheOnCleanup registers a cleanup that flushes the ghost cache when the
+// (sub)test ends, so a test running many subtests over one datapath starts each with a
+// clean cache without a trailing flush in every subtest body.
+func FlushGhostCacheOnCleanup(tb testing.TB, prog datapath.Interface) {
+	tb.Helper()
+	tb.Cleanup(func() { FlushGhostCache(tb, prog) })
 }

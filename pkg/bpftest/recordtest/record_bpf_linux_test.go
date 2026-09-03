@@ -714,8 +714,7 @@ func unloadRecords(r *recordTest, t *testing.T) {
 	err := prog.RemoveRecords(r.records)
 	require.NoError(t, err)
 
-	err = prog.FlushCachedEntries()
-	require.NoError(t, err)
+	bpftest.FlushGhostCache(t, prog)
 }
 
 func checkCurlResult(t *testing.T, err error, expectDeny, expectReject bool) {
@@ -803,12 +802,7 @@ func TestRecords(t *testing.T) {
 			err := curlCmd.Run()
 			require.NoError(t, err)
 
-			// Flush ghost cached entries created by the clean-state curl
-			// above. The curl triggers BPF processing which can find zeroed
-			// default templates (left by RemoveRecords) and create cached
-			// ALLOW entries that leak into the next subtest.
-			err = prog.FlushCachedEntries()
-			require.NoError(t, err)
+			bpftest.FlushGhostCache(t, prog)
 		})
 	}
 

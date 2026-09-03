@@ -145,6 +145,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: Basic CIDR deny (simulates blocking ClusterIP)
 	t.Run("DenyClusterIP", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-clusterip", "127.0.0.1/32"),
 		}
@@ -166,6 +168,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: CIDR deny for subnet (simulates blocking multiple endpoints)
 	t.Run("DenySubnet", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-subnet", "127.0.0.0/24"),
 		}
@@ -187,6 +191,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: CIDR allow (verify allow doesn't block)
 	t.Run("AllowClusterIP", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		records := []record.DatapathRecord{
 			makeCIDRAllowRecord("allow-clusterip", "127.0.0.1/32"),
 		}
@@ -204,6 +210,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: Default deny blocks traffic
 	t.Run("DefaultDeny", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		records := []record.DatapathRecord{
 			makeDefaultRecord("default-deny-policy", false),
 		}
@@ -226,6 +234,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 	// Subtest: Allow rule with default deny
 	// This simulates: "allow access to this service, deny everything else"
 	t.Run("AllowWithDefaultDeny", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		records := []record.DatapathRecord{
 			makeCIDRAllowRecord("allow-default-deny-policy", "127.0.0.1/32"),
 			makeDefaultRecord("allow-default-deny-policy", false),
@@ -244,6 +254,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: Multiple CIDR records (simulates ClusterIP + endpoint blocking)
 	t.Run("MultipleCIDRDeny", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		// Block 127.0.0.1 (simulates ClusterIP) and 127.0.0.2 (simulates endpoint)
 		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-multi-1", "127.0.0.1/32"),
@@ -268,6 +280,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 	// Subtest: Deny and allow different IPs
 	// This simulates: "deny service A, allow service B"
 	t.Run("DenyOneAllowAnother", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		// Deny 127.0.0.2 but allow 127.0.0.1
 		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-other", "127.0.0.2/32"),
@@ -288,6 +302,8 @@ func TestServiceSelectorBlocking(t *testing.T) {
 	// Subtest: ServiceMap integration test
 	// This tests the full flow: servicemap + CIDR blocking
 	t.Run("WithServiceMap", func(t *testing.T) {
+		bpftest.FlushGhostCacheOnCleanup(t, prog)
+
 		// Populate servicemap (simulates K8s service tracking)
 		sm := servicemap.NewServiceMap(nil)
 		clusterIP := netip.MustParseAddr("127.0.0.1")
