@@ -156,7 +156,7 @@ func procArgs(p *procs) string {
 }
 
 func procKernel() procs {
-	kernelArgs := []byte("<kernel>\u0000")
+	kernelArgs := []byte("<kernel>")
 	return procs{
 		ppid:        kernelPid,
 		pnspid:      0,
