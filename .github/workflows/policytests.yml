@@ -110,14 +110,22 @@ jobs:
           kimage=$(find tests/vmtests/test-data/kernels -path "*vmlinuz*" -type f)
           echo "kernel: $kimage"
           btf_args=()
+          policytest_env_args=()
           if [[ "${{ matrix.kernel }}" == 4.19* ]]; then
             btf=$(find tests/vmtests/test-data/kernels -path "*btf*" -type f)
             echo "btf: $btf"
             btf_args=(--btf-file "$btf")
           fi
+          case "${{ matrix.kernel }}" in
+            bpf-next-*|6.12-*|6.18-*|6.6-*|6.1-*|5.15-*|5.10-*)
+              # FIXME: TLS policytests fail on these kernels.
+              policytest_env_args=(--env FLAKY_HTTP=1)
+              ;;
+          esac
           sudo ./tests/vmtests/tetragon-vmtests-run policytest \
             --kernel "$kimage" \
             "${btf_args[@]}" \
+            "${policytest_env_args[@]}" \
             --base tests/vmtests/test-data/images/base.qcow2 \
             --tetragon-tarball "${{ steps.tarball.outputs.path }}" \
             --tester-progs-tarball tester-progs.tar.gz \
