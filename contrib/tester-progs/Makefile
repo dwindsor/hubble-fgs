@@ -5,14 +5,10 @@ PROGS = sigkill-tester capabilities-tester namespace-tester \
 	dup-tester fork-tester nop dlopen \
 	syscall-tester proctree memfd_exec
 
+SUBDIRS = aio io_uring open read_write splice mmap net
+
 all: $(PROGS)
-	make -C aio/
-	make -C io_uring/
-	make -C open/
-	make -C read_write/
-	make -C splice/
-	make -C mmap/
-	make -C net/
+	@for dir in $(SUBDIRS); do $(MAKE) -C $$dir || exit; done
 
 sigkill-tester: sigkill-tester.c
 	$(GCC) -Wall -o sigkill-tester sigkill-tester.c
@@ -46,12 +42,14 @@ memfd_exec: memfd_exec.c
 
 .PHONY: clean
 clean:
-	make -C aio/ clean
-	make -C io_uring/ clean
-	make -C open/ clean
-	make -C read_write/ clean
-	make -C splice/ clean
-	make -C mmap/ clean
+	@for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean || exit; done
 	rm -f $(PROGS)
+
+.PHONY: all-files
+all-files:
+	@printf '%s\n' $(PROGS)
+	@for dir in $(SUBDIRS); do \
+		$(MAKE) -s -C $$dir all-files | sed "s|^|$$dir/|"; \
+	done
 
 FORCE:

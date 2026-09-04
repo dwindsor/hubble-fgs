@@ -35,6 +35,7 @@ compile_commands.json
 .DS_Store
 /tetrabox
 /tetrabox-k8s
+/ee-tester-progs.tar.gz
 **/_data/**
 !**/_data/images.json
 !**/_data/kernels.json

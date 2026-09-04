@@ -44,3 +44,7 @@ copy_file_range: copy_file_range.c
 .PHONY: clean
 clean:
 	rm -f $(PROGS)
+
+.PHONY: all-files
+all-files:
+	@printf '%s\n' $(PROGS)

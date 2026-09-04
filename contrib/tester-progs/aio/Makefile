@@ -20,3 +20,7 @@ aio_pwritev: aio_pwritev.c
 .PHONY: clean
 clean:
 	rm -f $(PROGS)
+
+.PHONY: all-files
+all-files:
+	@printf '%s\n' $(PROGS)

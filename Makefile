@@ -393,6 +393,13 @@ tester-progs:
 	# programs. We can probably refactor OSS to deal with it, but that's for another day.
 	ln -s -f $(OSS_DIR)/contrib vendor/github.com/cilium/tetragon/
 
+.PHONY: ee-tester-progs-tarball
+ee-tester-progs-tarball:
+	$(MAKE) -C $(TESTER_PROGS_DIR)
+	tar -C $(TESTER_PROGS_DIR) -czf ee-tester-progs.tar.gz \
+		--transform 's:^:ee-tester-progs/:' \
+		$(shell $(MAKE) -s -C $(TESTER_PROGS_DIR) all-files)
+
 .PHONY: tetragon-bpf-test
 ifeq (1,$(LOCAL_CLANG))
 tetragon-bpf-test: tetragon-bpf-test-local ## Compile BPF unit test programs.
