@@ -44,6 +44,16 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
+// quoteEmptyArg mirrors how sensors/exec renders an empty argv entry
+// (resolveArgs in exec_linux.go), so expected argument strings built here
+// match the process arguments actually reported for a "" pattern.
+func quoteEmptyArg(s string) string {
+	if s == "" {
+		return `""`
+	}
+	return s
+}
+
 func waitForSocket(s *bufio.Scanner) {
 	for s.Scan() {
 		line := s.Text()
@@ -73,11 +83,11 @@ func (suite *TCPFinRx) testFinRx(port uint32, serverIterations, clientIterations
 
 	srvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full(fmt.Sprintf("%d %d %s", port, serverIterations, serverPattern)))
+		WithArguments(sm.Full(fmt.Sprintf("%d %d %s", port, serverIterations, quoteEmptyArg(serverPattern))))
 
 	cliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full(fmt.Sprintf("%d %d %s", port, clientIterations, clientPattern)))
+		WithArguments(sm.Full(fmt.Sprintf("%d %d %s", port, clientIterations, quoteEmptyArg(clientPattern))))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").

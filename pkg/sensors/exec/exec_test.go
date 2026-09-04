@@ -21,7 +21,6 @@ import (
 	"github.com/cilium/tetragon/pkg/api/dataapi"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/observer"
-	proc "github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,8 +43,7 @@ func TestExecParse(t *testing.T) {
 	// reflected in MsgExec::Flags.
 	//
 	// Based on the MsgExec::Flags the execParse function parses out MsgProcess
-	// object, and we retrieve and check its Args value with ArgsDecoder
-	// function which is used in GetProcess.
+	// object.
 
 	var err error
 
@@ -73,11 +71,8 @@ func TestExecParse(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, string(filename), process.Filename)
-		assert.Equal(t, string(cwd), process.Args)
-
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Empty(t, decArgs)
-		assert.Equal(t, string(cwd), decCwd)
+		assert.Equal(t, string(cwd), process.Cwd)
+		assert.Empty(t, process.Args)
 	})
 
 	t.Run("Empty args and cwd", func(t *testing.T) {
@@ -104,10 +99,7 @@ func TestExecParse(t *testing.T) {
 
 		assert.Equal(t, string(filename), process.Filename)
 		assert.Empty(t, process.Args)
-
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Empty(t, decArgs)
-		assert.Empty(t, decCwd)
+		assert.Empty(t, process.Cwd)
 	})
 
 	t.Run("Filename as data event", func(t *testing.T) {
@@ -138,14 +130,9 @@ func TestExecParse(t *testing.T) {
 		process, err := execParse(reader)
 		require.NoError(t, err)
 
-		// execParse check
 		assert.Equal(t, string(filename), process.Filename)
-		assert.Equal(t, string(cwd), process.Args)
-
-		// ArgsDecoder check
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Empty(t, decArgs)
-		assert.Equal(t, string(cwd), decCwd)
+		assert.Equal(t, string(cwd), process.Cwd)
+		assert.Empty(t, process.Args)
 	})
 
 	t.Run("Args as data event", func(t *testing.T) {
@@ -180,14 +167,80 @@ func TestExecParse(t *testing.T) {
 		process, err := execParse(reader)
 		require.NoError(t, err)
 
-		// execParse check
 		assert.Equal(t, string(filename), process.Filename)
-		assert.Equal(t, string(args)+string(cwd), process.Args)
+		assert.Equal(t, "arg1 arg2", process.Args)
+		assert.Equal(t, string(cwd), process.Cwd)
+	})
 
-		// ArgsDecoder check
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Equal(t, "arg1 arg2", decArgs)
-		assert.Equal(t, string(cwd), decCwd)
+	t.Run("Empty last arg", func(t *testing.T) {
+		observer.DataPurge()
+
+		// - filename (string)
+		// - args (string), last one empty
+		// - cwd (string)
+
+		// BPF strips the trailing '\0', so the one left ends "arg1"
+		// and starts the empty argument.
+		var args []byte
+		args = append(args, 'a', 'r', 'g', '1', 0)
+
+		exec.Flags = 0
+		exec.Size = uint32(processapi.MSG_SIZEOF_EXECVE + len(filename) + len(args) + len(cwd))
+		exec.SizePath = uint16(len(filename))
+		exec.SizeArgs = uint16(len(args))
+		exec.SizeCwd = uint16(len(cwd))
+
+		var buf bytes.Buffer
+		binary.Write(&buf, binary.LittleEndian, exec)
+		binary.Write(&buf, binary.LittleEndian, filename)
+		binary.Write(&buf, binary.LittleEndian, args)
+		binary.Write(&buf, binary.LittleEndian, cwd)
+
+		reader := bytes.NewReader(buf.Bytes())
+
+		process, err := execParse(reader)
+		require.NoError(t, err)
+
+		assert.Equal(t, string(filename), process.Filename)
+		assert.Equal(t, `arg1 ""`, process.Args)
+		assert.Equal(t, string(cwd), process.Cwd)
+	})
+
+	t.Run("Empty last arg as data event", func(t *testing.T) {
+		observer.DataPurge()
+
+		// - filename (string)
+		// - args (data event), last one empty
+		// - cwd (string)
+
+		var args []byte
+		args = append(args, 'a', 'r', 'g', '1', 0, 0)
+
+		id := dataapi.DataEventId{Pid: 1, Time: 2}
+		desc := dataapi.DataEventDesc{Error: 0, Pad: 0, Leftover: 0, Size: uint32(len(args[:])), Id: id}
+		err = observer.DataAdd(id, args)
+		require.NoError(t, err)
+
+		exec.Flags = api.EventDataArgs
+		exec.Size = uint32(processapi.MSG_SIZEOF_EXECVE + len(filename) + binary.Size(desc) + len(cwd))
+		exec.SizePath = uint16(len(filename))
+		exec.SizeArgs = uint16(binary.Size(desc))
+		exec.SizeCwd = uint16(len(cwd))
+
+		var buf bytes.Buffer
+		binary.Write(&buf, binary.LittleEndian, exec)
+		binary.Write(&buf, binary.LittleEndian, filename)
+		binary.Write(&buf, binary.LittleEndian, desc)
+		binary.Write(&buf, binary.LittleEndian, cwd)
+
+		reader := bytes.NewReader(buf.Bytes())
+
+		process, err := execParse(reader)
+		require.NoError(t, err)
+
+		assert.Equal(t, string(filename), process.Filename)
+		assert.Equal(t, `arg1 ""`, process.Args)
+		assert.Equal(t, string(cwd), process.Cwd)
 	})
 
 	t.Run("Filename and args as data event", func(t *testing.T) {
@@ -227,14 +280,9 @@ func TestExecParse(t *testing.T) {
 		process, err := execParse(reader)
 		require.NoError(t, err)
 
-		// execParse check
 		assert.Equal(t, string(filename), process.Filename)
-		assert.Equal(t, string(args)+string(cwd), process.Args)
-
-		// ArgsDecoder check
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Equal(t, "arg1 arg2", decArgs)
-		assert.Equal(t, string(cwd), decCwd)
+		assert.Equal(t, "arg1 arg2", process.Args)
+		assert.Equal(t, string(cwd), process.Cwd)
 	})
 
 	t.Run("Filename and args as non-utf8", func(t *testing.T) {
@@ -271,14 +319,9 @@ func TestExecParse(t *testing.T) {
 		process, err := execParse(reader)
 		require.NoError(t, err)
 
-		// execParse check
 		assert.Equal(t, strutils.UTF8FromBPFBytes(filename), process.Filename)
-		assert.Equal(t, strutils.UTF8FromBPFBytes(args)+strutils.UTF8FromBPFBytes(cwd), process.Args)
-
-		// ArgsDecoder check
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Equal(t, "�( arg2", decArgs)
-		assert.Equal(t, strutils.UTF8FromBPFBytes(cwd), decCwd)
+		assert.Equal(t, "�( arg2", process.Args)
+		assert.Equal(t, strutils.UTF8FromBPFBytes(cwd), process.Cwd)
 	})
 
 	t.Run("Filename with api.EventErrorFilename", func(t *testing.T) {
@@ -304,11 +347,8 @@ func TestExecParse(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "<enomem>", process.Filename)
-		assert.Equal(t, string(cwd), process.Args)
-
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Empty(t, decArgs)
-		assert.Equal(t, string(cwd), decCwd)
+		assert.Equal(t, string(cwd), process.Cwd)
+		assert.Empty(t, process.Args)
 	})
 
 	t.Run("Filename, args, cwd and envs", func(t *testing.T) {
@@ -347,9 +387,8 @@ func TestExecParse(t *testing.T) {
 		assert.Equal(t, string(filename), process.Filename)
 		assert.Equal(t, []string{"A=1", "B=2"}, process.Envs)
 
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Equal(t, "arg1 arg2", decArgs)
-		assert.Equal(t, string(cwd), decCwd)
+		assert.Equal(t, "arg1 arg2", process.Args)
+		assert.Equal(t, string(cwd), process.Cwd)
 	})
 
 	t.Run("Filename, args, cwd and zero envs", func(t *testing.T) {
@@ -384,9 +423,8 @@ func TestExecParse(t *testing.T) {
 		assert.Equal(t, string(filename), process.Filename)
 		assert.Equal(t, []string(nil), process.Envs)
 
-		decArgs, decCwd := proc.ArgsDecoder(process.Args, process.Flags)
-		assert.Equal(t, "arg1 arg2", decArgs)
-		assert.Equal(t, string(cwd), decCwd)
+		assert.Equal(t, "arg1 arg2", process.Args)
+		assert.Equal(t, string(cwd), process.Cwd)
 	})
 
 	observer.DataPurge()
