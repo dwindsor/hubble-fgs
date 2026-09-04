@@ -511,8 +511,29 @@ type NetworkConnectTelemetry struct {
 	// The number of transmit packets allowed by the default policy rule over the
 	// interval since the previous telemetry event.
 	DefaultAllowPackets uint64 `protobuf:"varint,36,opt,name=default_allow_packets,json=defaultAllowPackets,proto3" json:"default_allow_packets,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The number of receive bytes dropped over the interval since the previous
+	// telemetry event.
+	RxDropBytes uint64 `protobuf:"varint,37,opt,name=rx_drop_bytes,json=rxDropBytes,proto3" json:"rx_drop_bytes,omitempty"`
+	// The number of receive packets dropped over the interval since the previous
+	// telemetry event. Feeds EdgeTypeNetworkTelemetry.network_receive_drop_total,
+	// and also network_receive_drop_policy_total when every drop the producer
+	// counts here was a policy decision.
+	RxDropPackets uint64 `protobuf:"varint,38,opt,name=rx_drop_packets,json=rxDropPackets,proto3" json:"rx_drop_packets,omitempty"`
+	// The number of receive bytes dropped by the default policy rule over the
+	// interval since the previous telemetry event.
+	RxDefaultDropBytes uint64 `protobuf:"varint,39,opt,name=rx_default_drop_bytes,json=rxDefaultDropBytes,proto3" json:"rx_default_drop_bytes,omitempty"`
+	// The number of receive packets dropped by the default policy rule over the
+	// interval since the previous telemetry event. A subset of rx_drop_packets,
+	// which also counts drops an explicit deny rule decided.
+	RxDefaultDropPackets uint64 `protobuf:"varint,40,opt,name=rx_default_drop_packets,json=rxDefaultDropPackets,proto3" json:"rx_default_drop_packets,omitempty"`
+	// The number of receive bytes allowed by the default policy rule over the
+	// interval since the previous telemetry event.
+	RxDefaultAllowBytes uint64 `protobuf:"varint,41,opt,name=rx_default_allow_bytes,json=rxDefaultAllowBytes,proto3" json:"rx_default_allow_bytes,omitempty"`
+	// The number of receive packets allowed by the default policy rule over the
+	// interval since the previous telemetry event.
+	RxDefaultAllowPackets uint64 `protobuf:"varint,42,opt,name=rx_default_allow_packets,json=rxDefaultAllowPackets,proto3" json:"rx_default_allow_packets,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *NetworkConnectTelemetry) Reset() {
@@ -794,6 +815,48 @@ func (x *NetworkConnectTelemetry) GetDefaultDropPackets() uint64 {
 func (x *NetworkConnectTelemetry) GetDefaultAllowPackets() uint64 {
 	if x != nil {
 		return x.DefaultAllowPackets
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetRxDropBytes() uint64 {
+	if x != nil {
+		return x.RxDropBytes
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetRxDropPackets() uint64 {
+	if x != nil {
+		return x.RxDropPackets
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetRxDefaultDropBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultDropBytes
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetRxDefaultDropPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultDropPackets
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetRxDefaultAllowBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowBytes
+	}
+	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetRxDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowPackets
 	}
 	return 0
 }
@@ -1622,8 +1685,22 @@ type ConnectionStats struct {
 	DefaultDropPackets uint64 `protobuf:"varint,13,opt,name=default_drop_packets,json=defaultDropPackets,proto3" json:"default_drop_packets,omitempty"`
 	// Number of packets allowed by the default policy rule.
 	DefaultAllowPackets uint64 `protobuf:"varint,14,opt,name=default_allow_packets,json=defaultAllowPackets,proto3" json:"default_allow_packets,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Number of receive bytes dropped.
+	RxDropBytes uint64 `protobuf:"varint,15,opt,name=rx_drop_bytes,json=rxDropBytes,proto3" json:"rx_drop_bytes,omitempty"`
+	// Number of receive packets dropped.
+	RxDropPackets uint64 `protobuf:"varint,16,opt,name=rx_drop_packets,json=rxDropPackets,proto3" json:"rx_drop_packets,omitempty"`
+	// Number of receive bytes dropped by the default policy rule. A subset of
+	// rx_drop_bytes, which also counts drops an explicit deny rule decided.
+	RxDefaultDropBytes uint64 `protobuf:"varint,17,opt,name=rx_default_drop_bytes,json=rxDefaultDropBytes,proto3" json:"rx_default_drop_bytes,omitempty"`
+	// Number of receive packets dropped by the default policy rule. A subset of
+	// rx_drop_packets, which also counts drops an explicit deny rule decided.
+	RxDefaultDropPackets uint64 `protobuf:"varint,18,opt,name=rx_default_drop_packets,json=rxDefaultDropPackets,proto3" json:"rx_default_drop_packets,omitempty"`
+	// Number of receive bytes allowed by the default policy rule.
+	RxDefaultAllowBytes uint64 `protobuf:"varint,19,opt,name=rx_default_allow_bytes,json=rxDefaultAllowBytes,proto3" json:"rx_default_allow_bytes,omitempty"`
+	// Number of receive packets allowed by the default policy rule.
+	RxDefaultAllowPackets uint64 `protobuf:"varint,20,opt,name=rx_default_allow_packets,json=rxDefaultAllowPackets,proto3" json:"rx_default_allow_packets,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ConnectionStats) Reset() {
@@ -1751,6 +1828,48 @@ func (x *ConnectionStats) GetDefaultDropPackets() uint64 {
 func (x *ConnectionStats) GetDefaultAllowPackets() uint64 {
 	if x != nil {
 		return x.DefaultAllowPackets
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetRxDropBytes() uint64 {
+	if x != nil {
+		return x.RxDropBytes
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetRxDropPackets() uint64 {
+	if x != nil {
+		return x.RxDropPackets
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetRxDefaultDropBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultDropBytes
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetRxDefaultDropPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultDropPackets
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetRxDefaultAllowBytes() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowBytes
+	}
+	return 0
+}
+
+func (x *ConnectionStats) GetRxDefaultAllowPackets() uint64 {
+	if x != nil {
+		return x.RxDefaultAllowPackets
 	}
 	return 0
 }
@@ -2534,7 +2653,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"exit_count\x18\x14 \x01(\x04R\texitCount\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb4\x10\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd8\x12\n" +
 	"\x17NetworkConnectTelemetry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12G\n" +
@@ -2575,7 +2694,13 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x12default_drop_bytes\x18! \x01(\x04R\x10defaultDropBytes\x12.\n" +
 	"\x13default_allow_bytes\x18\" \x01(\x04R\x11defaultAllowBytes\x120\n" +
 	"\x14default_drop_packets\x18# \x01(\x04R\x12defaultDropPackets\x122\n" +
-	"\x15default_allow_packets\x18$ \x01(\x04R\x13defaultAllowPackets\x1a=\n" +
+	"\x15default_allow_packets\x18$ \x01(\x04R\x13defaultAllowPackets\x12\"\n" +
+	"\rrx_drop_bytes\x18% \x01(\x04R\vrxDropBytes\x12&\n" +
+	"\x0frx_drop_packets\x18& \x01(\x04R\rrxDropPackets\x121\n" +
+	"\x15rx_default_drop_bytes\x18' \x01(\x04R\x12rxDefaultDropBytes\x125\n" +
+	"\x17rx_default_drop_packets\x18( \x01(\x04R\x14rxDefaultDropPackets\x123\n" +
+	"\x16rx_default_allow_bytes\x18) \x01(\x04R\x13rxDefaultAllowBytes\x127\n" +
+	"\x18rx_default_allow_packets\x18* \x01(\x04R\x15rxDefaultAllowPackets\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x83\x03\n" +
@@ -2650,7 +2775,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\vdestination\x18\x01 \x01(\v2&.application_model.v1alpha.DestinationR\vdestination\x12@\n" +
 	"\x05stats\x18\x02 \x01(\v2*.application_model.v1alpha.ConnectionStatsR\x05stats\x12@\n" +
 	"\x06policy\x18\x03 \x01(\v2(.application_model.v1alpha.NetworkPolicyR\x06policy\x12:\n" +
-	"\bprotocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\bprotocol\"\xdf\x04\n" +
+	"\bprotocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\bprotocol\"\x83\a\n" +
 	"\x0fConnectionStats\x12\x19\n" +
 	"\btx_bytes\x18\x01 \x01(\x04R\atxBytes\x12\x19\n" +
 	"\brx_bytes\x18\x02 \x01(\x04R\arxBytes\x12\x1d\n" +
@@ -2666,7 +2791,13 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\rtx_drop_bytes\x18\v \x01(\x04R\vtxDropBytes\x12&\n" +
 	"\x0ftx_drop_packets\x18\f \x01(\x04R\rtxDropPackets\x120\n" +
 	"\x14default_drop_packets\x18\r \x01(\x04R\x12defaultDropPackets\x122\n" +
-	"\x15default_allow_packets\x18\x0e \x01(\x04R\x13defaultAllowPackets\"\xf3\x01\n" +
+	"\x15default_allow_packets\x18\x0e \x01(\x04R\x13defaultAllowPackets\x12\"\n" +
+	"\rrx_drop_bytes\x18\x0f \x01(\x04R\vrxDropBytes\x12&\n" +
+	"\x0frx_drop_packets\x18\x10 \x01(\x04R\rrxDropPackets\x121\n" +
+	"\x15rx_default_drop_bytes\x18\x11 \x01(\x04R\x12rxDefaultDropBytes\x125\n" +
+	"\x17rx_default_drop_packets\x18\x12 \x01(\x04R\x14rxDefaultDropPackets\x123\n" +
+	"\x16rx_default_allow_bytes\x18\x13 \x01(\x04R\x13rxDefaultAllowBytes\x127\n" +
+	"\x18rx_default_allow_packets\x18\x14 \x01(\x04R\x15rxDefaultAllowPackets\"\xf3\x01\n" +
 	"\vDestination\x12=\n" +
 	"\x03dns\x18\x01 \x01(\v2).application_model.v1alpha.DestinationDnsH\x00R\x03dns\x12L\n" +
 	"\bworkload\x18\x02 \x01(\v2..application_model.v1alpha.DestinationWorkloadH\x00R\bworkload\x12:\n" +

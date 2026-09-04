@@ -172,6 +172,27 @@ message NetworkConnectTelemetry {
   // The number of transmit packets allowed by the default policy rule over the
   // interval since the previous telemetry event.
   uint64 default_allow_packets = 36;
+  // The number of receive bytes dropped over the interval since the previous
+  // telemetry event.
+  uint64 rx_drop_bytes = 37;
+  // The number of receive packets dropped over the interval since the previous
+  // telemetry event. Feeds EdgeTypeNetworkTelemetry.network_receive_drop_total,
+  // and also network_receive_drop_policy_total when every drop the producer
+  // counts here was a policy decision.
+  uint64 rx_drop_packets = 38;
+  // The number of receive bytes dropped by the default policy rule over the
+  // interval since the previous telemetry event.
+  uint64 rx_default_drop_bytes = 39;
+  // The number of receive packets dropped by the default policy rule over the
+  // interval since the previous telemetry event. A subset of rx_drop_packets,
+  // which also counts drops an explicit deny rule decided.
+  uint64 rx_default_drop_packets = 40;
+  // The number of receive bytes allowed by the default policy rule over the
+  // interval since the previous telemetry event.
+  uint64 rx_default_allow_bytes = 41;
+  // The number of receive packets allowed by the default policy rule over the
+  // interval since the previous telemetry event.
+  uint64 rx_default_allow_packets = 42;
 }
 
 enum PolicyVerdict {
@@ -362,6 +383,20 @@ message ConnectionStats {
   uint64 default_drop_packets = 13;
   // Number of packets allowed by the default policy rule.
   uint64 default_allow_packets = 14;
+  // Number of receive bytes dropped.
+  uint64 rx_drop_bytes = 15;
+  // Number of receive packets dropped.
+  uint64 rx_drop_packets = 16;
+  // Number of receive bytes dropped by the default policy rule. A subset of
+  // rx_drop_bytes, which also counts drops an explicit deny rule decided.
+  uint64 rx_default_drop_bytes = 17;
+  // Number of receive packets dropped by the default policy rule. A subset of
+  // rx_drop_packets, which also counts drops an explicit deny rule decided.
+  uint64 rx_default_drop_packets = 18;
+  // Number of receive bytes allowed by the default policy rule.
+  uint64 rx_default_allow_bytes = 19;
+  // Number of receive packets allowed by the default policy rule.
+  uint64 rx_default_allow_packets = 20;
 }
 
 message Destination {

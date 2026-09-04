@@ -455,6 +455,57 @@ export declare type NetworkConnectTelemetry = Message<"application_model.v1alpha
    * @generated from field: uint64 default_allow_packets = 36;
    */
   defaultAllowPackets: bigint;
+
+  /**
+   * The number of receive bytes dropped over the interval since the previous
+   * telemetry event.
+   *
+   * @generated from field: uint64 rx_drop_bytes = 37;
+   */
+  rxDropBytes: bigint;
+
+  /**
+   * The number of receive packets dropped over the interval since the previous
+   * telemetry event. Feeds EdgeTypeNetworkTelemetry.network_receive_drop_total,
+   * and also network_receive_drop_policy_total when every drop the producer
+   * counts here was a policy decision.
+   *
+   * @generated from field: uint64 rx_drop_packets = 38;
+   */
+  rxDropPackets: bigint;
+
+  /**
+   * The number of receive bytes dropped by the default policy rule over the
+   * interval since the previous telemetry event.
+   *
+   * @generated from field: uint64 rx_default_drop_bytes = 39;
+   */
+  rxDefaultDropBytes: bigint;
+
+  /**
+   * The number of receive packets dropped by the default policy rule over the
+   * interval since the previous telemetry event. A subset of rx_drop_packets,
+   * which also counts drops an explicit deny rule decided.
+   *
+   * @generated from field: uint64 rx_default_drop_packets = 40;
+   */
+  rxDefaultDropPackets: bigint;
+
+  /**
+   * The number of receive bytes allowed by the default policy rule over the
+   * interval since the previous telemetry event.
+   *
+   * @generated from field: uint64 rx_default_allow_bytes = 41;
+   */
+  rxDefaultAllowBytes: bigint;
+
+  /**
+   * The number of receive packets allowed by the default policy rule over the
+   * interval since the previous telemetry event.
+   *
+   * @generated from field: uint64 rx_default_allow_packets = 42;
+   */
+  rxDefaultAllowPackets: bigint;
 };
 
 /**
@@ -992,6 +1043,50 @@ export declare type ConnectionStats = Message<"application_model.v1alpha.Connect
    * @generated from field: uint64 default_allow_packets = 14;
    */
   defaultAllowPackets: bigint;
+
+  /**
+   * Number of receive bytes dropped.
+   *
+   * @generated from field: uint64 rx_drop_bytes = 15;
+   */
+  rxDropBytes: bigint;
+
+  /**
+   * Number of receive packets dropped.
+   *
+   * @generated from field: uint64 rx_drop_packets = 16;
+   */
+  rxDropPackets: bigint;
+
+  /**
+   * Number of receive bytes dropped by the default policy rule. A subset of
+   * rx_drop_bytes, which also counts drops an explicit deny rule decided.
+   *
+   * @generated from field: uint64 rx_default_drop_bytes = 17;
+   */
+  rxDefaultDropBytes: bigint;
+
+  /**
+   * Number of receive packets dropped by the default policy rule. A subset of
+   * rx_drop_packets, which also counts drops an explicit deny rule decided.
+   *
+   * @generated from field: uint64 rx_default_drop_packets = 18;
+   */
+  rxDefaultDropPackets: bigint;
+
+  /**
+   * Number of receive bytes allowed by the default policy rule.
+   *
+   * @generated from field: uint64 rx_default_allow_bytes = 19;
+   */
+  rxDefaultAllowBytes: bigint;
+
+  /**
+   * Number of receive packets allowed by the default policy rule.
+   *
+   * @generated from field: uint64 rx_default_allow_packets = 20;
+   */
+  rxDefaultAllowPackets: bigint;
 };
 
 /**

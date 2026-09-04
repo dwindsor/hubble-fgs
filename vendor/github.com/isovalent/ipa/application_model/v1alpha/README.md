@@ -816,6 +816,12 @@ the following criteria:
 | tx_drop_packets | [uint64](#uint64) |  | Number of transmit packets dropped. |
 | default_drop_packets | [uint64](#uint64) |  | Number of packets dropped by the default policy rule. A subset of tx_drop_packets, which also counts drops an explicit deny rule decided. |
 | default_allow_packets | [uint64](#uint64) |  | Number of packets allowed by the default policy rule. |
+| rx_drop_bytes | [uint64](#uint64) |  | Number of receive bytes dropped. |
+| rx_drop_packets | [uint64](#uint64) |  | Number of receive packets dropped. |
+| rx_default_drop_bytes | [uint64](#uint64) |  | Number of receive bytes dropped by the default policy rule. A subset of rx_drop_bytes, which also counts drops an explicit deny rule decided. |
+| rx_default_drop_packets | [uint64](#uint64) |  | Number of receive packets dropped by the default policy rule. A subset of rx_drop_packets, which also counts drops an explicit deny rule decided. |
+| rx_default_allow_bytes | [uint64](#uint64) |  | Number of receive bytes allowed by the default policy rule. |
+| rx_default_allow_packets | [uint64](#uint64) |  | Number of receive packets allowed by the default policy rule. |
 
 
 
@@ -963,6 +969,12 @@ the following criteria:
 | default_allow_bytes | [uint64](#uint64) |  | The number of transmit bytes allowed by the default policy rule over the interval since the previous telemetry event. |
 | default_drop_packets | [uint64](#uint64) |  | The number of transmit packets dropped by the default policy rule over the interval since the previous telemetry event. A subset of tx_drop_packets, which also counts drops an explicit deny rule decided. |
 | default_allow_packets | [uint64](#uint64) |  | The number of transmit packets allowed by the default policy rule over the interval since the previous telemetry event. |
+| rx_drop_bytes | [uint64](#uint64) |  | The number of receive bytes dropped over the interval since the previous telemetry event. |
+| rx_drop_packets | [uint64](#uint64) |  | The number of receive packets dropped over the interval since the previous telemetry event. Feeds EdgeTypeNetworkTelemetry.network_receive_drop_total, and also network_receive_drop_policy_total when every drop the producer counts here was a policy decision. |
+| rx_default_drop_bytes | [uint64](#uint64) |  | The number of receive bytes dropped by the default policy rule over the interval since the previous telemetry event. |
+| rx_default_drop_packets | [uint64](#uint64) |  | The number of receive packets dropped by the default policy rule over the interval since the previous telemetry event. A subset of rx_drop_packets, which also counts drops an explicit deny rule decided. |
+| rx_default_allow_bytes | [uint64](#uint64) |  | The number of receive bytes allowed by the default policy rule over the interval since the previous telemetry event. |
+| rx_default_allow_packets | [uint64](#uint64) |  | The number of receive packets allowed by the default policy rule over the interval since the previous telemetry event. |
 
 
 
