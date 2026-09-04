@@ -49,7 +49,7 @@ func (c *curlTrigger) Trigger(ctx context.Context) error {
 	return err
 }
 
-var _ = policytest.NewBuilder("http-11-curl").WithLabels("http").WithSkip(func(_ *policytest.SkipInfo) string {
+func httpPolicySkip(_ *policytest.SkipInfo) string {
 	// TODO: These checks are run locally, but they should come from agent info. We want to eventually be able to
 	// run "tetra policytests" on a different host than the agent under test.
 	if v := "6.1.56"; !kernels.MinKernelVersion(v) {
@@ -62,26 +62,9 @@ var _ = policytest.NewBuilder("http-11-curl").WithLabels("http").WithSkip(func(_
 		return "Skipping test on flaky kernel"
 	}
 	return ""
-}).WithPolicyTemplate(`
-apiVersion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "http"
-spec:
-  parser:
-    tls:
-      enable: false
-      selectors:
-      - matchPorts:
-        - 1
-    http:
-      enable: true
-      selectors:
-      - matchPorts:
-        - 80
-    tcp:
-      enable: true
-`).AddScenario(func(_ *policytest.Conf) *policytest.Scenario {
+}
+
+func http11CurlScenario(_ *policytest.Conf) *policytest.Scenario {
 	// TODO: In the future, the trigger will be run on the agent host, instead of locally. When this happens,
 	// filepath.Base(os.Args[0]) will need to be replaced with the path of tetragon on the agent-under-test's host.
 	selfChecker := ec.NewProcessChecker().
@@ -120,4 +103,46 @@ spec:
 				WithHttp(httpChecker),
 		),
 	}
-}).RegisterAtInit()
+}
+
+var _ = policytest.NewBuilder("http-11-curl").
+	WithLabels("http").
+	WithSkip(httpPolicySkip).
+	WithPolicyTemplate(`
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "http"
+spec:
+  parser:
+    tls:
+      enable: false
+      selectors:
+      - matchPorts:
+        - 1
+    http:
+      enable: true
+      selectors:
+      - matchPorts:
+        - 80
+    tcp:
+      enable: true
+`).
+	AddScenario(http11CurlScenario).
+	RegisterAtInit()
+
+var _ = policytest.NewBuilder("http-11-curl-no-policy").
+	WithLabels("http").
+	WithCLIFlags(
+		policytest.CLIFlag{Name: "enable-udp", Value: true},
+		policytest.CLIFlag{Name: "enable-udp-cgroup", Value: true},
+		policytest.CLIFlag{Name: "enable-user-dns", Value: true},
+		policytest.CLIFlag{Name: "dns-ports", Value: []int{53}},
+		policytest.CLIFlag{Name: "enable-tcp", Value: true},
+		policytest.CLIFlag{Name: "enable-http-sensor", Value: true},
+		policytest.CLIFlag{Name: "http-sensor-ports", Value: []int{80}},
+	).
+	WithSkip(httpPolicySkip).
+	WithPolicyTemplate(emptyTracingPolicy).
+	AddScenario(http11CurlScenario).
+	RegisterAtInit()
