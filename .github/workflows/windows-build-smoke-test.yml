@@ -419,14 +419,14 @@ jobs:
           go test ./ -v
           if (!$?) {
             $errcode = $LASTEXITCODE
-            Write-Output "✗ recordtest unit tests failed"
+            Write-Error "✗ recordtest unit tests failed"
             exit $errcode
           }
           cd ../netpoltest
           go test ./ -v
           if (!$?) {
             $errcode = $LASTEXITCODE
-            Write-Output "✗ netpoltest unit tests failed"
+            Write-Error "✗ netpoltest unit tests failed"
             exit $errcode
           }
 
@@ -565,7 +565,7 @@ jobs:
 
           if (!$?) {
             $errcode = $LASTEXITCODE
-            Write-Output "✗ MSI Build failed"
+            Write-Error "✗ MSI Build failed"
             exit $errcode
           }
 
