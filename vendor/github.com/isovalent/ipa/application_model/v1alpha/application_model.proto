@@ -199,6 +199,9 @@ message NetworkConnectTelemetry {
   string kubernetes_workload_uid = 43;
   // UID of the destination Kubernetes resource.
   string destination_kubernetes_resource_uid = 44;
+  // Side of the connection from which the observer saw this network connect
+  // policy verdict.
+  ObservationPoint observation_point = 45;
 }
 
 enum PolicyVerdict {
@@ -218,6 +221,16 @@ enum TelemetryType {
   TELEMETRY_TYPE_UNSPECIFIED = 0;
   TELEMETRY_TYPE_PROCESS = 1;
   TELEMETRY_TYPE_NETWORK_CONNECT = 2;
+}
+
+// ObservationPoint identifies, relative to a connection's direction, the side
+// from which the observer saw the connection. An ApplicationConnection always
+// hangs off the observing process's own process group, so unlike
+// graph.v1alpha.ObservationPoint this has no intermediate value.
+enum ObservationPoint {
+  OBSERVATION_POINT_UNSPECIFIED = 0;
+  OBSERVATION_POINT_SOURCE = 1;
+  OBSERVATION_POINT_DESTINATION = 2;
 }
 
 message ApplicationModelEvent {
@@ -364,6 +377,8 @@ message ApplicationConnection {
   NetworkPolicy policy = 3;
   // Network protocol of the connection at the L3/L4 layer.
   common.net.v1alpha.IPProtocol protocol = 4;
+  // Side of the connection from which the observer saw the connection.
+  ObservationPoint observation_point = 5;
 }
 
 message ConnectionStats {

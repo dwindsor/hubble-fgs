@@ -527,6 +527,14 @@ export declare type NetworkConnectTelemetry = Message<"application_model.v1alpha
    * @generated from field: string destination_kubernetes_resource_uid = 44;
    */
   destinationKubernetesResourceUid: string;
+
+  /**
+   * Side of the connection from which the observer saw this network connect
+   * policy verdict.
+   *
+   * @generated from field: application_model.v1alpha.ObservationPoint observation_point = 45;
+   */
+  observationPoint: ObservationPoint;
 };
 
 /**
@@ -973,6 +981,13 @@ export declare type ApplicationConnection = Message<"application_model.v1alpha.A
    * @generated from field: common.net.v1alpha.IPProtocol protocol = 4;
    */
   protocol: IPProtocol;
+
+  /**
+   * Side of the connection from which the observer saw the connection.
+   *
+   * @generated from field: application_model.v1alpha.ObservationPoint observation_point = 5;
+   */
+  observationPoint: ObservationPoint;
 };
 
 /**
@@ -1510,6 +1525,36 @@ export enum TelemetryType {
  * Describes the enum application_model.v1alpha.TelemetryType.
  */
 export declare const TelemetryTypeSchema: GenEnum<TelemetryType>;
+
+/**
+ * ObservationPoint identifies, relative to a connection's direction, the side
+ * from which the observer saw the connection. An ApplicationConnection always
+ * hangs off the observing process's own process group, so unlike
+ * graph.v1alpha.ObservationPoint this has no intermediate value.
+ *
+ * @generated from enum application_model.v1alpha.ObservationPoint
+ */
+export enum ObservationPoint {
+  /**
+   * @generated from enum value: OBSERVATION_POINT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: OBSERVATION_POINT_SOURCE = 1;
+   */
+  SOURCE = 1,
+
+  /**
+   * @generated from enum value: OBSERVATION_POINT_DESTINATION = 2;
+   */
+  DESTINATION = 2,
+}
+
+/**
+ * Describes the enum application_model.v1alpha.ObservationPoint.
+ */
+export declare const ObservationPointSchema: GenEnum<ObservationPoint>;
 
 /**
  * @generated from service application_model.v1alpha.ApplicationModelService

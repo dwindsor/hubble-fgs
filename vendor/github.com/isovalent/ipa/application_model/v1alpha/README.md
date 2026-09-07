@@ -40,6 +40,7 @@
     - [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse)
   
     - [DestinationType](#application_model-v1alpha-DestinationType)
+    - [ObservationPoint](#application_model-v1alpha-ObservationPoint)
     - [PolicyVerdict](#application_model-v1alpha-PolicyVerdict)
     - [TelemetryType](#application_model-v1alpha-TelemetryType)
   
@@ -582,6 +583,7 @@ WARNING for consumers: numbers are arbitrary.
 | stats | [ConnectionStats](#application_model-v1alpha-ConnectionStats) |  | Statistics associated with the connection |
 | policy | [NetworkPolicy](#application_model-v1alpha-NetworkPolicy) |  | Policy information associated with the connection |
 | protocol | [common.net.v1alpha.IPProtocol](#common-net-v1alpha-IPProtocol) |  | Network protocol of the connection at the L3/L4 layer. |
+| observation_point | [ObservationPoint](#application_model-v1alpha-ObservationPoint) |  | Side of the connection from which the observer saw the connection. |
 
 
 
@@ -979,6 +981,7 @@ the following criteria:
 | rx_default_allow_packets | [uint64](#uint64) |  | The number of receive packets allowed by the default policy rule over the interval since the previous telemetry event. |
 | kubernetes_workload_uid | [string](#string) |  | UID of the Kubernetes workload from which the connection originated. |
 | destination_kubernetes_resource_uid | [string](#string) |  | UID of the destination Kubernetes resource. |
+| observation_point | [ObservationPoint](#application_model-v1alpha-ObservationPoint) |  | Side of the connection from which the observer saw this network connect policy verdict. |
 
 
 
@@ -1176,6 +1179,22 @@ the following criteria:
 | DESTINATION_TYPE_DNS | 1 |  |
 | DESTINATION_TYPE_CIDR | 2 |  |
 | DESTINATION_TYPE_KUBERNETES | 3 |  |
+
+
+
+<a name="application_model-v1alpha-ObservationPoint"></a>
+
+### ObservationPoint
+ObservationPoint identifies, relative to a connection&#39;s direction, the side
+from which the observer saw the connection. An ApplicationConnection always
+hangs off the observing process&#39;s own process group, so unlike
+graph.v1alpha.ObservationPoint this has no intermediate value.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OBSERVATION_POINT_UNSPECIFIED | 0 |  |
+| OBSERVATION_POINT_SOURCE | 1 |  |
+| OBSERVATION_POINT_DESTINATION | 2 |  |
 
 
 
