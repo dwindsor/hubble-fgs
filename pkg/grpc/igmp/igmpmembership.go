@@ -86,7 +86,7 @@ func GetProcessIGMPMembershipReport(
 	for gidx, g := range event.Group {
 		saddrs := make([]string, len(g.SAddr))
 		for sidx, s := range g.SAddr {
-			saddrs[sidx] = string(networkapi.GetIPv4(s, 0))
+			saddrs[sidx] = networkapi.GetIPv4(s, 0).String()
 		}
 		groups[gidx] = &tetragon.IgmpGroupRecord{
 			Type:      tetragon.IgmpGroupRecordType(g.Msg.Type),
