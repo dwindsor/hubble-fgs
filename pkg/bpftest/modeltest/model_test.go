@@ -20,6 +20,7 @@ import (
 
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	commonNetV1 "github.com/isovalent/ipa/common/net/v1alpha"
+	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -603,6 +604,154 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						},
 					},
 				},
+			},
+		},
+	},
+
+	"UDPObservationPoint": {
+		Host: model.Binaries{
+			// The server receives first, so it observes the flow at the destination.
+			{
+				Cmd:             "nc",
+				Args:            []string{"-4", "-u", "-l", "-p", "9993"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:            []string{"localhost."},
+						Protocol:         commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						ObservationPoint: v1alpha.ObservationPoint_OBSERVATION_POINT_DESTINATION,
+						Stats: model.StatsCheck{
+							RxBytes:  model.UInt64GreaterThan(0),
+							Sessions: model.UInt64Exactly(1),
+						},
+					},
+				},
+			},
+			// The client sends first, so it observes the flow at the source.
+			{
+				Cmd:  "nc",
+				Args: []string{"-4", "-u", "-w1", "localhost", "9993"},
+				Dependencies: []deps.Dependency{
+					deps.NewUDPPortOpen(9993),
+				},
+				Stdin:           "hello udp",
+				Timeout:         5 * time.Second,
+				TimeoutExpected: true,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:            []string{"localhost."},
+						Port:             model.UInt64Exactly(9993),
+						Protocol:         commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						ObservationPoint: v1alpha.ObservationPoint_OBSERVATION_POINT_SOURCE,
+						Stats: model.StatsCheck{
+							TxBytes:  model.UInt64GreaterThan(0),
+							Sessions: model.UInt64Exactly(1),
+						},
+					},
+				},
+			},
+			// The server receives first and replies, but the observation point
+			// stays DESTINATION: the direction is decided once, at flow
+			// creation, not per packet.
+			{
+				Cmd:             "socat",
+				Args:            []string{"-T5", "UDP-RECVFROM:9994,fork", "SYSTEM:cat"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:            []string{"localhost."},
+						Protocol:         commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						ObservationPoint: v1alpha.ObservationPoint_OBSERVATION_POINT_DESTINATION,
+						Stats: model.StatsCheck{
+							RxBytes: model.UInt64GreaterThan(0),
+							TxBytes: model.UInt64GreaterThan(0),
+						},
+					},
+				},
+			},
+			{
+				Cmd:  "nc",
+				Args: []string{"-4", "-u", "-w1", "localhost", "9994"},
+				Dependencies: []deps.Dependency{
+					deps.NewUDPPortOpen(9994),
+				},
+				Stdin:   "hello udp",
+				Timeout: 5 * time.Second,
+			},
+		},
+	},
+
+	"UDPDestinationCounters": {
+		Host: model.Binaries{
+			// The server answers a 9-byte request with 64 bytes, so the two
+			// directions of the exchange carry different counts.
+			{
+				Cmd:             "socat",
+				Args:            []string{"-T5", "UDP-RECVFROM:9995,fork", "SYSTEM:head -c 64 /dev/zero"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:            []string{"localhost."},
+						Protocol:         commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						ObservationPoint: v1alpha.ObservationPoint_OBSERVATION_POINT_DESTINATION,
+						Stats: model.StatsCheck{
+							RxBytes: model.UInt64Exactly(9),
+							TxBytes: model.UInt64Exactly(64),
+						},
+					},
+				},
+			},
+			{
+				Cmd:             "nc",
+				Args:            []string{"-4", "-u", "-w1", "localhost", "9995"},
+				Dependencies:    []deps.Dependency{deps.NewUDPPortOpen(9995)},
+				Stdin:           "hello udp",
+				Timeout:         5 * time.Second,
+				TimeoutExpected: true,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names:            []string{"localhost."},
+						Port:             model.UInt64Exactly(9995),
+						Protocol:         commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						ObservationPoint: v1alpha.ObservationPoint_OBSERVATION_POINT_SOURCE,
+						Stats: model.StatsCheck{
+							TxBytes: model.UInt64Exactly(9),
+							RxBytes: model.UInt64Exactly(64),
+						},
+					},
+				},
+			},
+		},
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(ctx context.Context, tb testing.TB, _ *testcase.TestCase, server *modelserver.Server, _ *harness.Harness) {
+				response, err := server.GetModel(ctx, &v1alpha.GetModelRequest{Host: true})
+				require.NoError(tb, err)
+				telemetry, err := modeldiff.ApplicationModelToNetworkFlat(
+					ctx, response.GetModel().GetApplicationModel(), &local.NoopMetadataService{})
+				require.NoError(tb, err)
+
+				// The client and the server each record the same exchange, so
+				// both records must count the request as transmit and the reply
+				// as receive. The destination name skips the client's lookup of
+				// localhost, which a resolver may answer over its own flow.
+				seen := make(map[graphV1.ObservationPoint]bool)
+				for _, event := range telemetry {
+					if !strings.Contains(event.GetProcessArguments(), "9995") ||
+						event.GetDestinationName() != "localhost." {
+						continue
+					}
+					connection := modeldiff.TelemetryToConnection(event)
+					op := connection.GetObservationPoint()
+					counters := connection.GetLinks()[0].GetNetworkTelemetry()
+					assert.Equal(tb, uint64(9), counters.GetNetworkTransmitBytesTotal(), "transmit on the %s record", op)
+					assert.Equal(tb, uint64(64), counters.GetNetworkReceiveBytesTotal(), "receive on the %s record", op)
+					seen[op] = true
+				}
+				assert.True(tb, seen[graphV1.ObservationPoint_OBSERVATION_POINT_SOURCE], "no SOURCE record for the exchange")
+				assert.True(tb, seen[graphV1.ObservationPoint_OBSERVATION_POINT_DESTINATION], "no DESTINATION record for the exchange")
 			},
 		},
 	},

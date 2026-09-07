@@ -252,10 +252,11 @@ type ConnectionChecker interface {
 }
 
 type DNSConnectionCheck struct {
-	Names    []string
-	Port     UInt64Checker
-	Protocol commonNetV1.IPProtocol
-	Stats    StatsCheck
+	Names            []string
+	Port             UInt64Checker
+	Protocol         commonNetV1.IPProtocol
+	ObservationPoint v1alpha.ObservationPoint
+	Stats            StatsCheck
 }
 
 // String implements ConnectionChecker.
@@ -295,6 +296,10 @@ func (check *DNSConnectionCheck) CheckConnection(connection *v1alpha.Application
 	// Check protocol
 	if check.Protocol != 0 && check.Protocol != connection.Protocol {
 		return fmt.Errorf("protocol mismatch, expected %s, got %s", check.Protocol, connection.Protocol)
+	}
+	// Check observation point
+	if check.ObservationPoint != 0 && check.ObservationPoint != connection.GetObservationPoint() {
+		return fmt.Errorf("observation point mismatch, expected %s, got %s", check.ObservationPoint, connection.GetObservationPoint())
 	}
 	return nil
 }
