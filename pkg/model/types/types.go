@@ -68,6 +68,14 @@ func (v DestinationEndpointKey) String() string {
 // that has not yet observed any actual network traffic.
 const DestFlagPolicyTemplateOnly uint64 = 0x1
 
+// DestFlagObservedAtDestination indicates the first real traffic on this entry
+// was ingress, so the local workload observed this connection at the destination.
+const DestFlagObservedAtDestination uint64 = 0x2
+
+// DestFlagObservationDecided indicates the observation point has been decided
+// for this entry, so later traffic must not revisit the direction.
+const DestFlagObservationDecided uint64 = 0x4
+
 type DestinationEndpointValue struct {
 	TxDropBytes           uint64
 	TxDefaultAllowBytes   uint64

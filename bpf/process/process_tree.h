@@ -363,7 +363,7 @@ int __process_listen_add(struct msg_execve_key *process_key, struct msg_ip_tuple
 	return 0;
 }
 
-static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple *tuple)
+static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple *tuple, bool egress)
 {
 	struct destination_endpoint_value *dest;
 	DEBUG_PROCESS("%s: port=%d", __func__, key->port);
@@ -414,6 +414,9 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->addr_create[1] = tuple->daddr[1];
 		destvalue->port = tuple->dport;
 		destvalue->protocol = tuple->proto;
+		destvalue->flags = DEST_FLAG_OBSERVATION_DECIDED;
+		if (!egress)
+			destvalue->flags |= DEST_FLAG_OBSERVED_AT_DESTINATION;
 	}
 
 	/* These do not check TNP_POLICY_REFRESH because we only cache keys for
@@ -430,7 +433,13 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->protocol = tuple->proto;
-		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		/* An existing entry takes destvalue in place, but when the value
+		 * needs to be created, BPF_NOEXIST stops a racing CPU from
+		 * overwriting an entry another CPU just created, so the first
+		 * creator's observation point stands.
+		 */
+		if (!exists)
+			map_update_elem(&destination_endpoint_map, key, destvalue, BPF_NOEXIST);
 		DEBUG_PROCESS("%s: found policy protocol=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
@@ -446,7 +455,8 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->port = tuple->dport;
 		key->protocol = tuple->proto;
-		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		if (!exists)
+			map_update_elem(&destination_endpoint_map, key, destvalue, BPF_NOEXIST);
 		DEBUG_PROCESS("%s: found policy port=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
@@ -463,7 +473,8 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->local_id = self; // restore local_id for caller
-		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		if (!exists)
+			map_update_elem(&destination_endpoint_map, key, destvalue, BPF_NOEXIST);
 		DEBUG_PROCESS("%s: found policy local_id=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
 		return dest->deny;
 	}
@@ -476,7 +487,8 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->local_id = self; // restore local_id for caller
 		key->protocol = tuple->proto;
-		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		if (!exists)
+			map_update_elem(&destination_endpoint_map, key, destvalue, BPF_NOEXIST);
 		DEBUG_PROCESS("%s: found policy local_id=0 protocol=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
 		return dest->deny;
 	}
@@ -490,12 +502,13 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
-		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		if (!exists)
+			map_update_elem(&destination_endpoint_map, key, destvalue, BPF_NOEXIST);
 		DEBUG_PROCESS("%s: found policy local_id=0 port=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 	if (!exists)
-		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		map_update_elem(&destination_endpoint_map, key, destvalue, BPF_NOEXIST);
 	return 0;
 }
 
@@ -512,14 +525,15 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 							     struct destination_endpoint_key *usrkey,
 							     struct destination_endpoint_key *destkey,
 							     struct msg_ip_tuple *tuple,
-							     struct destination_endpoint_key *dst_key)
+							     struct destination_endpoint_key *dst_key,
+							     bool egress)
 {
 	uint64_t dnsv, usrv, destv, lpmv, orv;
 
-	dnsv = find_key(dnskey, tuple);
-	lpmv = find_key(lpmkey, tuple);
-	usrv = find_key(usrkey, tuple);
-	destv = find_key(destkey, tuple);
+	dnsv = find_key(dnskey, tuple, egress);
+	lpmv = find_key(lpmkey, tuple, egress);
+	usrv = find_key(usrkey, tuple, egress);
+	destv = find_key(destkey, tuple, egress);
 
 	orv = (dnsv | lpmv | usrv | destv);
 	DEBUG_PROCESS("%s: orv=0x%llx", __func__, orv);
@@ -646,8 +660,11 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->rx_default_allow_packets = 0;
 			destvalue->policy = dst_value->policy;
 			destvalue->rule = dst_value->rule;
+			destvalue->flags = DEST_FLAG_OBSERVATION_DECIDED;
+			if (!egress)
+				destvalue->flags |= DEST_FLAG_OBSERVED_AT_DESTINATION;
 
-			map_update_elem(&destination_endpoint_map, updatekey, destvalue, 0);
+			map_update_elem(&destination_endpoint_map, updatekey, destvalue, BPF_NOEXIST);
 			return dst_value->deny | TNP_POLICY_FALLTHRU;
 		}
 	}
@@ -668,14 +685,42 @@ struct {
 	__uint(max_entries, 1);
 } tg_h_ps_keys SEC(".maps");
 
-static inline __attribute__((always_inline)) int __process_socketmap_add(struct msg_execve_key *process_key, struct destination_endpoint_key *dst_key, struct msg_ip_tuple *tuple, __u64 cgid)
+/* Decide the observation point of an entry that existed undecided before
+ * this packet resolved it, such as a policy template. find_key decides the
+ * entries it creates. The CPU whose OR flips DECIDED becomes the sole writer
+ * of the direction, and every later packet leaves it alone.
+ */
+static inline __attribute__((always_inline)) void
+mark_observation_point(struct destination_endpoint_key *scratch, struct destination_endpoint_key *dst_key, bool egress)
+{
+	struct destination_endpoint_value *dest;
+	__u64 old;
+
+	/* dst_key points into a socket map value, which the 5.15 and 6.1
+	 * verifiers reject as a bpf_map_lookup_elem key. Copy it into the
+	 * per-CPU heap scratch, whose pointer they accept (find_key looks up
+	 * the same map the same way). A stack copy would work too, but the
+	 * cgroup egress program is one stack frame short of the 512 byte
+	 * limit, so the key stays off the stack.
+	 */
+	*scratch = *dst_key;
+	dest = map_lookup_elem(&destination_endpoint_map, scratch);
+	if (!dest)
+		return;
+
+	old = __sync_fetch_and_or(&dest->flags, DEST_FLAG_OBSERVATION_DECIDED);
+	if (!(old & DEST_FLAG_OBSERVATION_DECIDED) && !egress)
+		__sync_fetch_and_or(&dest->flags, DEST_FLAG_OBSERVED_AT_DESTINATION);
+}
+
+static inline __attribute__((always_inline)) int __process_socketmap_add(struct msg_execve_key *process_key, struct destination_endpoint_key *dst_key, struct msg_ip_tuple *tuple, __u64 cgid, bool egress)
 {
 	struct destination_endpoint_keys_heap *heap_keys;
 	struct destination_endpoint_key *dnskey, *lpmkey, *usrkey, *destkey;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct tree_id self_uid;
-	int zero = 0;
+	int zero = 0, verdict;
 	__u64 *wlid, uid;
 
 	struct endpoint_id_value *value;
@@ -775,7 +820,12 @@ found_id:
 			dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = *wlid;
 	}
 
-	return resolve_key(dnskey, lpmkey, usrkey, destkey, tuple, dst_key);
+	verdict = resolve_key(dnskey, lpmkey, usrkey, destkey, tuple, dst_key, egress);
+	/* resolve_key has returned, so destkey is free to reuse as the lookup
+	 * scratch for the observation point.
+	 */
+	mark_observation_point(destkey, dst_key, egress);
+	return verdict;
 }
 
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
@@ -783,11 +833,14 @@ static inline __attribute__((always_inline)) int process_socketmap_add(struct tc
 	__u64 cgid;
 
 	cgid = tg_sockops_get_current_cgroup_id();
-	return __process_socketmap_add(&v->key, &v->dst_key, tuple, cgid);
+	/* TCP connect is always the initiator, so this entry is always observed
+	 * at the source.
+	 */
+	return __process_socketmap_add(&v->key, &v->dst_key, tuple, cgid, true);
 }
 
 #ifdef PROCESS_TREE
-__attribute__((noinline)) int process_socketmap_add_udp(struct udpsocketmap_value *udp, struct msg_ip_tuple *tuple)
+__attribute__((noinline)) int process_socketmap_add_udp(struct udpsocketmap_value *udp, struct msg_ip_tuple *tuple, bool egress)
 {
 	__u64 cgid;
 
@@ -799,7 +852,7 @@ __attribute__((noinline)) int process_socketmap_add_udp(struct udpsocketmap_valu
 	 */
 	if (!udp)
 		return 0;
-	return __process_socketmap_add(&udp->key, &udp->dst_key, tuple, cgid);
+	return __process_socketmap_add(&udp->key, &udp->dst_key, tuple, cgid, egress);
 }
 #endif
 
@@ -838,7 +891,10 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 			if (!v)
 				return 0;
 			cgid = 0;
-			__process_socketmap_add(&v->key, &v->dst_key, tuple, cgid);
+			/* No listen entry matches this established socket, so treat it
+			 * as the connecting side, observed at the source.
+			 */
+			__process_socketmap_add(&v->key, &v->dst_key, tuple, cgid, true);
 		}
 	}
 	return 0;
@@ -1093,7 +1149,11 @@ err_out:
 	 */
 	gen = current_policy_gen();
 	cgid = tg_get_socket_cgroup_id(skb->sk);
-	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
+	/* A TCP entry belongs to the connecting side, so it is observed at the
+	 * source. check_process_socketmap_add assumes the same for an
+	 * established socket with no matching listen entry.
+	 */
+	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid, true);
 	v->policy_gen = gen;
 	verdict = send(skb, v->deny, &v->dst_key, len, true);
 	if (verdict < 0)
@@ -1134,7 +1194,11 @@ err_out:
 	/* See the ordering note in process_socketmap_send. */
 	gen = current_policy_gen();
 	cgid = tg_get_socket_cgroup_id(skb->sk);
-	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
+	/* A TCP entry belongs to the connecting side, so it is observed at the
+	 * source. check_process_socketmap_add assumes the same for an
+	 * established socket with no matching listen entry.
+	 */
+	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid, true);
 	v->policy_gen = gen;
 	verdict = recv(skb, v->deny, &v->dst_key, len, true);
 	if (verdict < 0)

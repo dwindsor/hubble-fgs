@@ -167,7 +167,9 @@ struct {
 #define TNP_POLICY_REFRESH 0xC
 
 // Flags for destination_endpoint_value
-#define DEST_FLAG_POLICY_TEMPLATE_ONLY 0x1 // Entry created by policy, no traffic observed yet
+#define DEST_FLAG_POLICY_TEMPLATE_ONLY	  0x1 // Entry created by policy, no traffic observed yet
+#define DEST_FLAG_OBSERVED_AT_DESTINATION 0x2 // First real traffic on this entry was ingress
+#define DEST_FLAG_OBSERVATION_DECIDED	  0x4 // Direction has been decided; never revisited
 
 struct destination_endpoint_value {
 	__u64 tx_drop_bytes;

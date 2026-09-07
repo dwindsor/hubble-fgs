@@ -162,7 +162,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	if (!udpsock)
 		return 0;
 	udpsock->key = process->key;
-	value->deny = process_socketmap_add_udp(udpsock, &key->tuple);
+	value->deny = process_socketmap_add_udp(udpsock, &key->tuple, egress != 0);
 	value->dst_key = udpsock->dst_key;
 	count_session(&value->dst_key);
 #endif
