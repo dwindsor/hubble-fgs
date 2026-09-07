@@ -750,6 +750,15 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 	return n, nil
 }
 
+// observationPoint maps the app-model observation point, which has no
+// intermediate value, onto the graph enum.
+func observationPoint(op appModelV1.ObservationPoint) graphV1.ObservationPoint {
+	if op == appModelV1.ObservationPoint_OBSERVATION_POINT_DESTINATION {
+		return graphV1.ObservationPoint_OBSERVATION_POINT_DESTINATION
+	}
+	return graphV1.ObservationPoint_OBSERVATION_POINT_SOURCE
+}
+
 func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graphV1.Connection {
 	sResourceType := k8sTypes.ResourceKind_RESOURCE_KIND_UNSPECIFIED
 	if telemetry.KubernetesWorkloadKind != k8sTypes.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
@@ -816,26 +825,40 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		}
 	}
 
+	txBytes, rxBytes := telemetry.TxBytes, telemetry.RxBytes
+	txDrops, rxDrops := telemetry.TxDropPackets, telemetry.RxDropPackets
+	op := observationPoint(telemetry.ObservationPoint)
+	if op == graphV1.ObservationPoint_OBSERVATION_POINT_DESTINATION && destination != nil {
+		// The peer initiated this connection towards the local workload,
+		// and source always names the initiator. Transmit counts traffic
+		// from source to destination, so the local workload's sends move
+		// to the receive side.
+		source, destination = destination, source
+		txBytes, rxBytes = rxBytes, txBytes
+		txDrops, rxDrops = rxDrops, txDrops
+	}
+
 	link := &graphV1.Edge{
 		Type: &graphV1.Edge_NetworkTelemetry{
 			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
-				NetworkTransmitBytesTotal: telemetry.TxBytes,
+				NetworkTransmitBytesTotal: txBytes,
 				// Each drop total and its policy subset carry the same packet
 				// count. The datapath only observes policy drops, so every drop it
 				// sees is a policy drop. Interface drops, which would lift a total
 				// above its policy subset, are not accounted for yet; that is
 				// future work.
-				NetworkTransmitDropTotal:       telemetry.TxDropPackets,
-				NetworkTransmitDropPolicyTotal: telemetry.TxDropPackets,
-				NetworkReceiveBytesTotal:       telemetry.RxBytes,
-				NetworkReceiveDropTotal:        telemetry.RxDropPackets,
-				NetworkReceiveDropPolicyTotal:  telemetry.RxDropPackets,
+				NetworkTransmitDropTotal:       txDrops,
+				NetworkTransmitDropPolicyTotal: txDrops,
+				NetworkReceiveBytesTotal:       rxBytes,
+				NetworkReceiveDropTotal:        rxDrops,
+				NetworkReceiveDropPolicyTotal:  rxDrops,
 			},
 		},
 	}
 	return &graphV1.Connection{
-		Source:      source,
-		Destination: destination,
-		Links:       []*graphV1.Edge{link},
+		Source:           source,
+		Destination:      destination,
+		Links:            []*graphV1.Edge{link},
+		ObservationPoint: op,
 	}
 }
