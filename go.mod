@@ -17,7 +17,7 @@ require (
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.3.4
 	github.com/containernetworking/plugins v1.9.1
-	github.com/cri-o/cri-o v1.36.4
+	github.com/cri-o/cri-o v1.36.5
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.19.0
 	github.com/gdamore/tcell/v2 v2.13.10
@@ -42,7 +42,7 @@ require (
 	github.com/operator-framework/api v0.45.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.93.1
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/client_model v0.6.2
+	github.com/prometheus/client_model v0.6.3
 	github.com/prometheus/common v0.70.1
 	github.com/rivo/tview v0.42.0
 	github.com/sirupsen/logrus v1.10.2
