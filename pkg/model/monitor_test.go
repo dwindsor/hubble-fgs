@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,6 +132,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			SourceNamespace:  HostNamespace,
 			DestinationNames: "cisco.com.",
 			DestinationPort:  443,
+			ObservationPoint: appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 		}: NetworkMonitorValue{
 			TXBytes:               40,
 			RXBytes:               60,
@@ -147,6 +149,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			SourceNamespace:  HostNamespace,
 			DestinationNames: "cisco.com.",
 			DestinationPort:  80,
+			ObservationPoint: appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 		}: NetworkMonitorValue{
 			TXBytes: 100,
 			RXBytes: 200,
@@ -163,6 +166,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_SERVICE,
 			DestinationWorkloadUID:       "service-uid",
 			DestinationPort:              443,
+			ObservationPoint:             appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 		}: NetworkMonitorValue{
 			TXBytes: 300,
 			RXBytes: 500,
@@ -178,6 +182,7 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			DestinationWorkloadUID:       "destination-uid",
 			DestinationPort:              8080,
+			ObservationPoint:             appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 		}: NetworkMonitorValue{
 			TXBytes: 200,
 			RXBytes: 400,

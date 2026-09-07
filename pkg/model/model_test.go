@@ -165,6 +165,7 @@ func TestModelToMonitorData(t *testing.T) {
 			SourceProcessArgs: "arg1",
 			DestinationNames:  "dest1",
 			DestinationPort:   80,
+			ObservationPoint:  appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 		}: NetworkMonitorValue{
 			TXBytes: 100,
 			RXBytes: 200,
@@ -177,6 +178,7 @@ func TestModelToMonitorData(t *testing.T) {
 			SourceProcessArgs:  "arg1",
 			DestinationNames:   "dest2",
 			DestinationPort:    443,
+			ObservationPoint:   appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 		}: NetworkMonitorValue{
 			TXBytes: 300,
 			RXBytes: 400,

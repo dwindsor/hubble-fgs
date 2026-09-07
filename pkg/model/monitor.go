@@ -61,6 +61,7 @@ type NetworkKey struct {
 	SourceProcessArgs          string
 	DestinationPort            uint32
 	Protocol                   commonNetV1.IPProtocol
+	ObservationPoint           appModelV1.ObservationPoint
 	// DNS
 	DestinationNames string
 	// IP
@@ -327,10 +328,14 @@ func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 
 	nwKey.DestinationPort = dst.Port
 	nwKey.Protocol = commonNetV1.IPProtocol(dst.Protocol)
+	nwKey.ObservationPoint = appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE
+	if dst.ObservedAtDestination {
+		nwKey.ObservationPoint = appModelV1.ObservationPoint_OBSERVATION_POINT_DESTINATION
+	}
 }
 
 // addDestinationInfoAppModel adds destination information from a [appModelV1.Destination] to a [NetworkKey].
-func addDestinationInfoAppModel(dst *appModelV1.Destination, protocol commonNetV1.IPProtocol, nwKey *NetworkKey) {
+func addDestinationInfoAppModel(dst *appModelV1.Destination, protocol commonNetV1.IPProtocol, observationPoint appModelV1.ObservationPoint, nwKey *NetworkKey) {
 	switch dt := dst.Type.(type) {
 	case *appModelV1.Destination_Dns:
 		nwKey.DestinationNames = strings.Join(dt.Dns.DestinationNames, ",")
@@ -348,6 +353,12 @@ func addDestinationInfoAppModel(dst *appModelV1.Destination, protocol commonNetV
 
 	nwKey.DestinationPort = uint32(dst.Port)
 	nwKey.Protocol = protocol
+	// Events written before the observation point existed carry the zero
+	// value, which means source.
+	if observationPoint == appModelV1.ObservationPoint_OBSERVATION_POINT_UNSPECIFIED {
+		observationPoint = appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE
+	}
+	nwKey.ObservationPoint = observationPoint
 }
 
 // nwKeyToDestination creates an [appModelV1.Destination] corresponding to a [NetworkKey].

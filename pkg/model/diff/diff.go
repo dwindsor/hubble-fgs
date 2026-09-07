@@ -129,10 +129,11 @@ func ConnectionDiff(a, b []*appModelV1.ApplicationConnection) ([]*appModelV1.App
 				}
 
 				diff := &appModelV1.ApplicationConnection{
-					Destination: connA.Destination,
-					Stats:       stats,
-					Policy:      connA.Policy,
-					Protocol:    connA.Protocol,
+					Destination:      connA.Destination,
+					Stats:            stats,
+					Policy:           connA.Policy,
+					Protocol:         connA.Protocol,
+					ObservationPoint: connA.ObservationPoint,
 				}
 				if !StatsZero(diff.Stats) {
 					connsDiff = append(connsDiff, diff)
@@ -680,6 +681,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							Verdict:                           verdict,
 							ApplicationModelId:                a.Id,
 							Protocol:                          c.Protocol,
+							ObservationPoint:                  c.ObservationPoint,
 						}
 						entry.KubernetesWorkloadUid = wl.Uid
 						entry.DestinationKubernetesResourceUid = duid
@@ -738,6 +740,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					Verdict:                           verdict,
 					ApplicationModelId:                a.Id,
 					Protocol:                          c.Protocol,
+					ObservationPoint:                  c.ObservationPoint,
 				}
 				entry.DestinationKubernetesResourceUid = duid
 				n = append(n, entry)

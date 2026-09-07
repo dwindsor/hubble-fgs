@@ -697,6 +697,8 @@ func getProcessModel(namespaces []string,
 			continue
 		}
 
+		observedAtDestination := dstVal.Flags&types.DestFlagObservedAtDestination != 0
+
 		stats := &types.DestinationStats{
 			TxBytes:               dstVal.TxBytes,
 			RxBytes:               dstVal.RxBytes,
@@ -736,17 +738,19 @@ func getProcessModel(namespaces []string,
 		switch ep.Type {
 		case tetragon.EndpointType_ENDPOINT_TYPE_UNKNOWN:
 			d = &types.Destination{
-				DestinationNames: []string{},
-				Port:             0,
-				Stats:            stats,
-				Protocol:         dstVal.Protocol,
+				DestinationNames:      []string{},
+				Port:                  0,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_DNS:
 			d = &types.Destination{
-				DestinationNames: strings.Split(ep.Dns, ","),
-				Port:             dstVal.Port,
-				Stats:            stats,
-				Protocol:         dstVal.Protocol,
+				DestinationNames:      strings.Split(ep.Dns, ","),
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_POD:
 			workloadUID := ep.UID
@@ -766,19 +770,21 @@ func getProcessModel(namespaces []string,
 					WorkloadKind: ep.Kind,
 					WorkloadUID:  workloadUID,
 				},
-				Port:     dstVal.Port,
-				Stats:    stats,
-				Protocol: dstVal.Protocol,
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
 			// Report the address via DestinationIP so it classifies as a plain
 			// IP downstream. Do not put it in DestinationNames, which would
 			// misfile it as a DNS name and emit it in world_entity.dns_name.
 			d = &types.Destination{
-				DestinationIP: ep.CIDR.Addr().String(),
-				Port:          dstVal.Port,
-				Stats:         stats,
-				Protocol:      dstVal.Protocol,
+				DestinationIP:         ep.CIDR.Addr().String(),
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_SERVICE:
 			d = &types.Destination{
@@ -787,38 +793,43 @@ func getProcessModel(namespaces []string,
 					Name:      ep.Name,
 					UID:       ep.UID,
 				},
-				Port:     dstVal.Port,
-				Stats:    stats,
-				Protocol: dstVal.Protocol,
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_LISTEN:
 			d = &types.Destination{
-				Port:     dstVal.Port,
-				Stats:    stats,
-				Protocol: dstVal.Protocol,
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_BPF_DNS:
 			d = &types.Destination{
-				DestinationNames: []string{ep.Name},
-				Port:             dstVal.Port,
-				Stats:            stats,
-				Protocol:         dstVal.Protocol,
+				DestinationNames:      []string{ep.Name},
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_NODE:
 			d = &types.Destination{
-				DestinationNames: []string{ep.Name},
-				Port:             dstVal.Port,
-				Stats:            stats,
-				Protocol:         dstVal.Protocol,
+				DestinationNames:      []string{ep.Name},
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_CIDR:
 			// Report the address via DestinationIP so it classifies as a plain
 			// IP downstream, matching ENDPOINT_TYPE_IP.
 			d = &types.Destination{
-				DestinationIP: ep.CIDR.Addr().String(),
-				Port:          dstVal.Port,
-				Stats:         stats,
-				Protocol:      dstVal.Protocol,
+				DestinationIP:         ep.CIDR.Addr().String(),
+				Port:                  dstVal.Port,
+				Stats:                 stats,
+				Protocol:              dstVal.Protocol,
+				ObservedAtDestination: observedAtDestination,
 			}
 		}
 

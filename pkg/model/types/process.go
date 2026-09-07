@@ -98,7 +98,8 @@ type Destination struct {
 	// DestinationIP is the resolved peer IP address for plain-IP and CIDR
 	// destinations. It is set instead of DestinationNames so the destination
 	// classifies as a plain IP rather than being misfiled as a DNS name.
-	DestinationIP string
+	DestinationIP         string
+	ObservedAtDestination bool
 }
 
 type Workload struct {

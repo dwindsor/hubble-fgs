@@ -68,12 +68,16 @@ func sortProcessGroups(procs []*appModelV1.ApplicationProcessGroup) {
 	}
 }
 
-// CompareConnection compares two [appModelV1.ApplicationConnection] by destination and protocol.
+// CompareConnection compares two [appModelV1.ApplicationConnection] by
+// destination, protocol, and observation point.
 func CompareConnection(a, b *appModelV1.ApplicationConnection) int {
 	if res := CompareDestination(a.Destination, b.Destination); res != 0 {
 		return res
 	}
-	return cmp.Compare(int32(a.Protocol), int32(b.Protocol))
+	if res := cmp.Compare(int32(a.Protocol), int32(b.Protocol)); res != 0 {
+		return res
+	}
+	return cmp.Compare(int32(a.ObservationPoint), int32(b.ObservationPoint))
 }
 
 // Stable ordinals for each concrete Destination type variant, used to order

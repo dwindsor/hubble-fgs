@@ -135,7 +135,8 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 			PolicyName: bc.GetPolicy(),
 			RuleName:   bc.GetRule(),
 		},
-		Protocol: nk.Protocol,
+		Protocol:         nk.Protocol,
+		ObservationPoint: nk.ObservationPoint,
 	}
 }
 
@@ -559,7 +560,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 							SourceProcessName: ps.GetName(),
 							SourceProcessArgs: ps.GetArguments(),
 						}
-						addDestinationInfoAppModel(conn.Destination, conn.GetProtocol(), &nmk)
+						addDestinationInfoAppModel(conn.Destination, conn.GetProtocol(), conn.GetObservationPoint(), &nmk)
 						nmd[nmk] = NetworkMonitorValue{
 							TXBytes: conn.Stats.TxBytes,
 							RXBytes: conn.Stats.RxBytes,
@@ -586,7 +587,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 				SourceProcessName:  ps.GetName(),
 				SourceProcessArgs:  ps.GetArguments(),
 			}
-			addDestinationInfoAppModel(conn.Destination, conn.GetProtocol(), &nmk)
+			addDestinationInfoAppModel(conn.Destination, conn.GetProtocol(), conn.GetObservationPoint(), &nmk)
 			nmd[nmk] = NetworkMonitorValue{
 				TXBytes: conn.Stats.TxBytes,
 				RXBytes: conn.Stats.RxBytes,
