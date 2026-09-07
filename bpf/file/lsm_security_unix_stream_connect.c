@@ -27,7 +27,9 @@ static inline __attribute__((always_inline)) __u32 unix_stream_connect(void *ctx
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(&msg->path, _(&unix_sock->path));
+	err = generate_path(&msg->path, _(&unix_sock->path));
+	if (err < 0)
+		return err;
 
 	operation = eval_selectors((struct sel_args){ .action = action_unix_socket_connect, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))

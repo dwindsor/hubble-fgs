@@ -507,7 +507,8 @@ struct delegated_inode {
 #define FILE_ERR_GET_PATTERN_MAP	     43 // map_lookup_elem(&patterns_map_alloc, ...) == 0
 #define FILE_ERR_GET_OPENRAW_KPATH	     44 // map_lookup_elem(&open_user_to_kernel_path, ...) == 0
 #define FILE_ERR_UNEXPECTED		     45
-#define FILE_ERR_MAX			     46
+#define FILE_ERR_PATH_RESOLUTION	     46 // path generation failed or returned an empty path
+#define FILE_ERR_MAX			     47
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];

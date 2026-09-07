@@ -123,6 +123,7 @@ var (
 		fileapi.FileErrLookupPatternsMap:        "lookup_patterns_map",
 		fileapi.FIleErrLookupOpenrawKpathMap:    "lookup_openraw_kpath_map",
 		fileapi.FileErrUnexpected:               "unexpected",
+		fileapi.FileErrPathResolution:           "path_resolution",
 	}
 )
 

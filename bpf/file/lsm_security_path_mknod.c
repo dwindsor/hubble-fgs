@@ -11,6 +11,7 @@ static inline __attribute__((always_inline)) __u32 path_mknod(void *ctx, const s
 	__u64 uid_gid = get_current_uid_gid();
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
+	int err;
 
 	if (!policy_filter_match())
 		return 0;
@@ -30,7 +31,9 @@ static inline __attribute__((always_inline)) __u32 path_mknod(void *ctx, const s
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path_mixed(&msg->path, (struct path *)dir, dentry);
+	err = generate_path_mixed(&msg->path, (struct path *)dir, dentry);
+	if (err < 0)
+		return err;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

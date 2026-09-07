@@ -60,7 +60,9 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 	if (err < 0)
 		goto lsm_bprm_check_security_error;
 
-	generate_path(&msg->path, _(&file->f_path));
+	err = generate_path(&msg->path, _(&file->f_path));
+	if (err < 0)
+		goto lsm_bprm_check_security_error;
 
 	msg->digest = digest_value;
 	digest = &msg->digest;

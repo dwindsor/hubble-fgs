@@ -1937,43 +1937,50 @@ static inline __attribute__((always_inline)) int generate_new_file_path(struct d
 	return 0;
 }
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) int
 __generate_path(struct path *path, char *buf, __u32 bufsz, __u32 *sz, __u32 *flags)
 {
 	int error = 0, buflen = 0;
 	char *p;
+
+	*sz = 0;
+	*flags = 0;
 
 #ifdef __LARGE_BPF_PROG
 	if (USE_BPF_D_PATH_HELPER) {
 		long ret;
 
 		ret = d_path(path, buf, bufsz);
-		if (ret > 0)
-			*sz = ret - 1;
+		if (ret <= 0)
+			return -FILE_ERR_PATH_RESOLUTION;
+		*sz = ret - 1;
 	} else
 #endif /* __LARGE_BPF_PROG */
 	{
 		p = d_path_local(path, &buflen, &error);
-		if (!error) {
+		if (!error && buflen > 0) {
 			asm volatile("%[buflen] &= 0xff;\n"
 				     : [buflen] "+r"(buflen));
 			probe_read_kernel(buf, buflen, p);
 			*sz = buflen;
+		} else {
+			return -FILE_ERR_PATH_RESOLUTION;
 		}
 	}
 	*flags = PATH_BASED_FILE;
+	return 0;
 }
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) int
 generate_path(struct msg_file_path *p, struct path *path)
 {
-	__generate_path(path, p->str, sizeof(p->str), &p->size, &p->flags);
+	return __generate_path(path, p->str, sizeof(p->str), &p->size, &p->flags);
 }
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline)) int
 generate_path_rename(struct msg_rename_elem *msg, struct path *path)
 {
-	__generate_path(path, msg->path.dir, sizeof(msg->path.dir), &msg->path.dir_size, &msg->path.flags);
+	return __generate_path(path, msg->path.dir, sizeof(msg->path.dir), &msg->path.dir_size, &msg->path.flags);
 }
 
 static inline __attribute__((always_inline)) void
@@ -2115,7 +2122,9 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(&msg->path, _(&file->f_path));
+	err = generate_path(&msg->path, _(&file->f_path));
+	if (err < 0)
+		return err;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
@@ -2132,13 +2141,16 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	return operation;
 }
 
-static inline __attribute__((always_inline)) void generate_path_mixed(struct msg_file_path *p, struct path *dir, struct dentry *new_dentry)
+static inline __attribute__((always_inline)) int generate_path_mixed(struct msg_file_path *p, struct path *dir, struct dentry *new_dentry)
 {
 	__u64 path_size, dlen_size = 0;
 	struct qstr d_name;
+	int err;
 
 	// first copy the dir path
-	generate_path(p, dir);
+	err = generate_path(p, dir);
+	if (err < 0)
+		return err;
 	path_size = p->size;
 
 	// now write a "/" after the dentry name
@@ -2154,6 +2166,7 @@ static inline __attribute__((always_inline)) void generate_path_mixed(struct msg
 
 	p->size = path_size;
 	p->flags = PATH_BASED_FILE;
+	return 0;
 }
 
 static inline __attribute__((always_inline)) void

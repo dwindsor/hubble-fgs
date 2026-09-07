@@ -37,7 +37,9 @@ FUNC_LOCAL __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(&msg->path, _(&bprm->file->f_path));
+	err = generate_path(&msg->path, _(&bprm->file->f_path));
+	if (err < 0)
+		return err;
 
 	msg->is_exe_from_memfd = is_memfd(BPF_CORE_READ(bprm, file));
 	msg->is_exe_upper_layer = is_dentry_upper(BPF_CORE_READ(bprm, file));

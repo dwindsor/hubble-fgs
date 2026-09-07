@@ -39,20 +39,23 @@ static struct msg_file_link_ops *get_msg_link_init()
 	return msg;
 }
 
-static void __get_path_local(struct msg_file_path *p, struct path *path)
+static int __get_path_local(struct msg_file_path *p, struct path *path)
 {
 	int error = 0, buflen = 0;
 	char *pp;
 
 	pp = d_path_local(path, &buflen, &error);
-	if (!error) {
+	if (!error && buflen > 0) {
 		asm volatile("%[buflen] &= 0xff;\n"
 			     : [buflen] "+r"(buflen));
 		probe_read_kernel(p->str, buflen, pp);
 		p->size = buflen;
+	} else {
+		return -FILE_ERR_PATH_RESOLUTION;
 	}
 
 	p->flags = PATH_BASED_FILE;
+	return 0;
 }
 
 static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct dentry *old_dentry, const struct path *dir, struct dentry *new_dentry)
@@ -63,6 +66,7 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 	__u32 link_op = 0, target_op = 0, link_msg_id = 0, target_msg_id = 0;
 	struct dentry *parent_dentry;
 	struct inode *inode;
+	int err;
 
 	if (!policy_filter_match())
 		return 0;
@@ -105,11 +109,15 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path_mixed(&msg->link.path, (struct path *)dir, new_dentry);
+	err = generate_path_mixed(&msg->link.path, (struct path *)dir, new_dentry);
+	if (err < 0)
+		return err;
 
 	new_path.dentry = old_dentry;
 	new_path.mnt = BPF_CORE_READ(dir, mnt);
-	__get_path_local(&msg->target.path, &new_path);
+	err = __get_path_local(&msg->target.path, &new_path);
+	if (err < 0)
+		return err;
 
 	link_op = eval_selectors((struct sel_args){ .action = action_link, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->link.path.str, msg->link.path.size }, &link_msg_id);
 

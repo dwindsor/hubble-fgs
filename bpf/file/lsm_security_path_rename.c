@@ -94,21 +94,27 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 		return 0;
 
 	// get source dir path
-	generate_path_rename(&msg->src, (struct path *)old_dir);
+	if (generate_path_rename(&msg->src, (struct path *)old_dir) < 0)
+		return -FILE_ERR_PATH_RESOLUTION;
 
 	// get the dentry name for the source
 	rename_copy_dname(old_dentry, &msg->src);
 
 	path = get_combined_path(&msg->src.path, &path_size);
+	if (!path)
+		return -FILE_ERR_GET_BUFFER_HEAP;
 	src_op = eval_selectors((struct sel_args){ .action = action_rename, .flags = msg->flags, .retval = 0 }, 0, (struct sel_path){ path, path_size }, &src_msg_id);
 
 	// get destination dir path
-	generate_path_rename(&msg->dst, (struct path *)new_dir);
+	if (generate_path_rename(&msg->dst, (struct path *)new_dir) < 0)
+		return -FILE_ERR_PATH_RESOLUTION;
 
 	// get the dentry name for the destination
 	rename_copy_dname(new_dentry, &msg->dst);
 
 	path = get_combined_path(&msg->dst.path, &path_size);
+	if (!path)
+		return -FILE_ERR_GET_BUFFER_HEAP;
 	dst_op = eval_selectors((struct sel_args){ .action = action_rename, .flags = msg->flags, .retval = 0 }, 0, (struct sel_path){ path, path_size }, &dst_msg_id);
 
 	// Preserve enforcement from both paths. A post action on the source must

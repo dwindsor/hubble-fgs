@@ -340,7 +340,8 @@ const (
 	FileErrLookupPatternsMap        = 43
 	FIleErrLookupOpenrawKpathMap    = 44
 	FileErrUnexpected               = 45
-	FileErrMax                      = 46
+	FileErrPathResolution           = 46
+	FileErrMax                      = 47
 )
 
 const (

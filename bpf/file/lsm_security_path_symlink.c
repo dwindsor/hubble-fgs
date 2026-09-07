@@ -75,10 +75,13 @@ static inline __attribute__((always_inline)) __u32 path_symlink(void *ctx, const
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path_mixed(&msg->link.path, (struct path *)dir, dentry);
+	ret = generate_path_mixed(&msg->link.path, (struct path *)dir, dentry);
+	if (ret < 0)
+		return ret;
 	ret = probe_read_kernel_str(msg->target.str, MAX_FILEPATH_SIZE, old_name);
-	if (ret > 0) // on success
-		msg->target.size = ret - 1; // as this includes the trailing NUL character
+	if (ret <= 0)
+		return -FILE_ERR_PATH_RESOLUTION;
+	msg->target.size = ret - 1; // includes the trailing NUL character
 
 	link_op = eval_selectors((struct sel_args){ .action = action_symlink, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->link.path.str, msg->link.path.size }, &link_msg_id);
 
