@@ -556,6 +556,65 @@ func TestExportTickSetsObserver(t *testing.T) {
 	}
 }
 
+func TestExportTickSetsConnectionObservationPoint(t *testing.T) {
+	// Build a "last" model with a process but no destinations.
+	lastProcessModels := []*types.ProcessModel{
+		{
+			Binary:     "nc",
+			BinaryArgs: "-u -l 8080",
+			Parent:     "bash",
+			Parents:    []string{"bash"},
+			Namespace:  model.HostNamespace,
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+		},
+	}
+
+	// Build a "new" model with the same process plus a destination observed
+	// at the destination, as a UDP receiver's would be. The diff between
+	// last and new will produce a network telemetry entry for it.
+	newProcessModels := []*types.ProcessModel{
+		{
+			Binary:     "nc",
+			BinaryArgs: "-u -l 8080",
+			Parent:     "bash",
+			Parents:    []string{"bash"},
+			Namespace:  model.HostNamespace,
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+			Dest: []*types.Destination{
+				{
+					DestinationIP:         "192.168.0.2",
+					Port:                  8080,
+					Stats:                 &types.DestinationStats{RxBytes: 1024},
+					ObservedAtDestination: true,
+				},
+			},
+		},
+	}
+
+	emptyFilter := make(map[string]bool)
+	lastAppModel, _ := model.ProcessModelToApplicationModelWithProcessData(lastProcessModels, emptyFilter, nil)
+
+	telemetryEncoder := json.NewEncoder(&bytes.Buffer{})
+	var connectionBuf bytes.Buffer
+	connectionEncoder := json.NewEncoder(&connectionBuf)
+
+	lastTime := time.Now().Add(-10 * time.Second)
+
+	_, _ = exportTick(t.Context(), newProcessModels, nil, telemetryEncoder, connectionEncoder,
+		lastAppModel, lastTime, emptyFilter, nil, &local.NoopMetadataService{})
+
+	require.NotEmpty(t, connectionBuf.Bytes(), "connection encoder should have received data")
+
+	var log graphV1.ConnectionLog
+	require.NoError(t, json.Unmarshal(connectionBuf.Bytes(), &log))
+	require.Len(t, log.GetConnections(), 1)
+	conn := log.GetConnections()[0]
+	assert.Equal(t, graphV1.ObservationPoint_OBSERVATION_POINT_DESTINATION, conn.GetObservationPoint())
+	assert.Equal(t, "192.168.0.2", conn.GetSource().GetWorldEntity().GetIp())
+}
+
 func TestExportTickSetsEntityGauges(t *testing.T) {
 	// Two namespaces, two workloads, three namespaced processes (3 connections),
 	// plus one host process (1 connection) = 4 processes, 4 connections total.

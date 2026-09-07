@@ -281,6 +281,35 @@ func TestConnectionDiffDistinguishesProtocol(t *testing.T) {
 	assert.Equal(t, uint64(180), byProtocol[commonNetV1.IPProtocol_IP_PROTOCOL_UDP].Stats.TxBytes)
 }
 
+func TestConnectionDiffPreservesObservationPoint(t *testing.T) {
+	// A connection observed at the destination on tick one must still report
+	// that on tick two, when it is found in both models rather than freshly
+	// appearing.
+	a := []*appModelV1.ApplicationConnection{
+		{
+			Destination:      destA(),
+			Stats:            &appModelV1.ConnectionStats{RxBytes: 20},
+			Policy:           policy(),
+			Protocol:         commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+			ObservationPoint: appModelV1.ObservationPoint_OBSERVATION_POINT_DESTINATION,
+		},
+	}
+	b := []*appModelV1.ApplicationConnection{
+		{
+			Destination:      destA(),
+			Stats:            &appModelV1.ConnectionStats{RxBytes: 10},
+			Policy:           policy(),
+			Protocol:         commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+			ObservationPoint: appModelV1.ObservationPoint_OBSERVATION_POINT_DESTINATION,
+		},
+	}
+
+	d, err := ConnectionDiff(a, b)
+	require.NoError(t, err)
+	require.Len(t, d, 1)
+	assert.Equal(t, appModelV1.ObservationPoint_OBSERVATION_POINT_DESTINATION, d[0].ObservationPoint)
+}
+
 func psGroup() []*appModelV1.ApplicationProcessGroup {
 	a := make([]*appModelV1.ApplicationProcessGroup, 2)
 
@@ -1056,6 +1085,7 @@ func TestTelemetryToConnection(t *testing.T) {
 						},
 					},
 				},
+				ObservationPoint: graphV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 			},
 		},
 		{
@@ -1104,6 +1134,7 @@ func TestTelemetryToConnection(t *testing.T) {
 						},
 					},
 				},
+				ObservationPoint: graphV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
 			},
 		},
 		{
@@ -1169,6 +1200,68 @@ func TestTelemetryToConnection(t *testing.T) {
 						},
 					},
 				},
+				ObservationPoint: graphV1.ObservationPoint_OBSERVATION_POINT_SOURCE,
+			},
+		},
+		{
+			name: "UDP receiver observed at destination",
+			telemetry: &appModelV1.NetworkConnectTelemetry{
+				EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+				ClusterName:            "my-cluster",
+				NodeName:               "my-node",
+				KubernetesNamespace:    "tetragon",
+				KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+				KubernetesWorkloadName: "tetragon-grafana",
+				DestinationName:        "192.168.0.2",
+				DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_CIDR,
+				DestinationPort:        443,
+				TxBytes:                5678,
+				RxBytes:                1234,
+				TxDropPackets:          3,
+				RxDropPackets:          7,
+				ApplicationModelId:     "u-u-i-d",
+				Protocol:               commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+				ObservationPoint:       appModelV1.ObservationPoint_OBSERVATION_POINT_DESTINATION,
+			},
+			expected: &graphV1.Connection{
+				Source: &graphV1.Vertex{
+					Family: &graphV1.Vertex_WorldEntity{
+						WorldEntity: &graphV1.VertexFamilyWorldEntity{
+							Ip:         "192.168.0.2",
+							Port:       443,
+							IpProtocol: commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+						},
+					},
+				},
+				Destination: &graphV1.Vertex{
+					Family: &graphV1.Vertex_Kubernetes{
+						Kubernetes: &graphV1.VertexFamilyKubernetes{
+							ResourceName:         "tetragon-grafana",
+							ResourceKind:         common.ResourceKind_RESOURCE_KIND_WORKLOAD,
+							ClusterName:          "my-cluster",
+							Namespace:            "tetragon",
+							NodeName:             "my-node",
+							WorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+							IpProtocol:           commonNetV1.IPProtocol_IP_PROTOCOL_UDP,
+							ApplicationModelUuid: "u-u-i-d",
+						},
+					},
+				},
+				Links: []*graphV1.Edge{
+					{
+						Type: &graphV1.Edge_NetworkTelemetry{
+							NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
+								NetworkTransmitBytesTotal:      1234,
+								NetworkTransmitDropTotal:       7,
+								NetworkTransmitDropPolicyTotal: 7,
+								NetworkReceiveBytesTotal:       5678,
+								NetworkReceiveDropTotal:        3,
+								NetworkReceiveDropPolicyTotal:  3,
+							},
+						},
+					},
+				},
+				ObservationPoint: graphV1.ObservationPoint_OBSERVATION_POINT_DESTINATION,
 			},
 		},
 	}
