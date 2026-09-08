@@ -12,6 +12,8 @@ int BPF_PROG(security_mmap_file_lsm, struct file *file, unsigned long reqprot, u
 
 	if (ret)
 		return ret;
+	if (!file)
+		return 0;
 
 	file_backed = (flags & MAP_SHARED) || (flags & MAP_PRIVATE) || (flags & MAP_SHARED_VALIDATE);
 	if (!file_backed)
@@ -44,6 +46,8 @@ int BPF_PROG(security_mmap_file_fmod, struct file *file, unsigned long prot, uns
 
 	if (ret != 0)
 		return ret;
+	if (!file)
+		return 0;
 
 	file_backed = (flags & MAP_SHARED) || (flags & MAP_PRIVATE) || (flags & MAP_SHARED_VALIDATE);
 	if (!file_backed)

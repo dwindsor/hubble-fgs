@@ -10,6 +10,8 @@ int BPF_PROG(lsm_security_mmap_file, struct file *file, unsigned long reqprot, u
 {
 	if (ret)
 		return ret;
+	if (!file)
+		return 0;
 
 	return handle_dispatcher(ctx);
 }
