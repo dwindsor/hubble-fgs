@@ -90,8 +90,8 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 		// the lsm.s program and they communicate through the exec_retprobe_map map.
 		err = map_update_elem(&exec_retprobe_map, &key, msg, 0);
 		if (err != 0) {
-			err = -FILE_ERR_UPDATE_EXEC_RETPROBE_MAP;
-			goto lsm_bprm_check_security_error;
+			inc_error(hook_security_bprm_check, FILE_ERR_UPDATE_EXEC_RETPROBE_MAP);
+			goto lsm_bprm_check_security_ret;
 		}
 	} else {
 		map_update_elem(&exec_cred_map, &key, msg, 0);
