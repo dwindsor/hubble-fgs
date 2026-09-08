@@ -772,7 +772,9 @@ type RedactionFilter struct {
 	// Regular expressions to use for redaction. Strings inside capture groups are redacted.
 	Redact []string `protobuf:"bytes,2,rep,name=redact,proto3" json:"redact,omitempty"`
 	// Regular expression to match binary name. If supplied, redactions will only be applied to matching processes.
-	BinaryRegex   []string `protobuf:"bytes,3,rep,name=binary_regex,json=binaryRegex,proto3" json:"binary_regex,omitempty"`
+	BinaryRegex []string `protobuf:"bytes,3,rep,name=binary_regex,json=binaryRegex,proto3" json:"binary_regex,omitempty"`
+	// Optional replacement string for redacted content. Defaults to "*****" if not specified.
+	RedactStr     string `protobuf:"bytes,4,opt,name=redact_str,json=redactStr,proto3" json:"redact_str,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -827,6 +829,13 @@ func (x *RedactionFilter) GetBinaryRegex() []string {
 		return x.BinaryRegex
 	}
 	return nil
+}
+
+func (x *RedactionFilter) GetRedactStr() string {
+	if x != nil {
+		return x.RedactStr
+	}
+	return ""
 }
 
 type RateLimitInfo struct {
@@ -1899,11 +1908,13 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x03any\x18\x01 \x03(\x0e2\x1a.tetragon.CapabilitiesTypeR\x03any\x12,\n" +
 	"\x03all\x18\x02 \x03(\x0e2\x1a.tetragon.CapabilitiesTypeR\x03all\x124\n" +
 	"\aexactly\x18\x03 \x03(\x0e2\x1a.tetragon.CapabilitiesTypeR\aexactly\x12.\n" +
-	"\x04none\x18\x04 \x03(\x0e2\x1a.tetragon.CapabilitiesTypeR\x04none\"x\n" +
+	"\x04none\x18\x04 \x03(\x0e2\x1a.tetragon.CapabilitiesTypeR\x04none\"\x97\x01\n" +
 	"\x0fRedactionFilter\x12*\n" +
 	"\x05match\x18\x01 \x03(\v2\x10.tetragon.FilterB\x02\x18\x01R\x05match\x12\x16\n" +
 	"\x06redact\x18\x02 \x03(\tR\x06redact\x12!\n" +
-	"\fbinary_regex\x18\x03 \x03(\tR\vbinaryRegex\"W\n" +
+	"\fbinary_regex\x18\x03 \x03(\tR\vbinaryRegex\x12\x1d\n" +
+	"\n" +
+	"redact_str\x18\x04 \x01(\tR\tredactStr\"W\n" +
 	"\rRateLimitInfo\x12F\n" +
 	" number_of_dropped_process_events\x18\x01 \x01(\x04R\x1cnumberOfDroppedProcessEvents\"U\n" +
 	"\x0fProcessThrottle\x12*\n" +

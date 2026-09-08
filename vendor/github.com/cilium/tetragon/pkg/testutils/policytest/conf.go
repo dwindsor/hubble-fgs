@@ -54,7 +54,9 @@ type Conf struct {
 	tempFilesMu sync.Mutex
 
 	// Timeout for the policy tests
-	Timeout *time.Duration
+	Timeout time.Duration
+	// Timeout for each Scenario
+	ScenarioTimeout time.Duration
 }
 
 func (c *Conf) TestBinary(s string) string {

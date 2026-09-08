@@ -199,6 +199,8 @@ message RedactionFilter {
   repeated string redact = 2;
   // Regular expression to match binary name. If supplied, redactions will only be applied to matching processes.
   repeated string binary_regex = 3;
+  // Optional replacement string for redacted content. Defaults to "*****" if not specified.
+  string redact_str = 4;
 }
 
 message RateLimitInfo {

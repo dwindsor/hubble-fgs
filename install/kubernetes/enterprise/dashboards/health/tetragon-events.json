@@ -120,9 +120,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (type) (rate(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"}[$__rate_interval]))",
+          "expr": "sum by (event_type) (rate(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"}[$__rate_interval]))",
           "instant": false,
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{event_type}}",
           "range": true,
           "refId": "A"
         }
@@ -507,9 +507,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (type) (rate(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"}[$__rate_interval]))",
+          "expr": "sum by (event_type) (rate(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"}[$__rate_interval]))",
           "instant": false,
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{event_type}}",
           "range": true,
           "refId": "A"
         }
@@ -577,9 +577,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"}[$__range])) by (type)",
+          "expr": "sum(increase(tetragon_events_total{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", pod=~\"$pod\", node=~\"$node\", binary=~\"$binary\"}[$__range])) by (event_type)",
           "instant": false,
-          "legendFormat": "{{type}}",
+          "legendFormat": "{{event_type}}",
           "range": true,
           "refId": "A"
         }

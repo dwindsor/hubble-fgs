@@ -3430,6 +3430,7 @@ For an aggregated response, this field to set to the timestamp at which the even
 | match | [Filter](#tetragon-Filter) | repeated | **Deprecated.** Deprecated, do not use. |
 | redact | [string](#string) | repeated | Regular expressions to use for redaction. Strings inside capture groups are redacted. |
 | binary_regex | [string](#string) | repeated | Regular expression to match binary name. If supplied, redactions will only be applied to matching processes. |
+| redact_str | [string](#string) |  | Optional replacement string for redacted content. Defaults to &#34;*****&#34; if not specified. |
 
 
 

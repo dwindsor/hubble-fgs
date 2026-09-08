@@ -21,7 +21,8 @@ Number of Tetragon perf events that are failed to be sent from the kernel.
 | label | values |
 | ----- | ------ |
 | `error` | `E2BIG, EAGAIN, EBUSY, EINVAL, ENOENT, ENOSPC, unknown` |
-| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
+| `opcode` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
+| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle` |
 
 ### `tetragon_build_info`
 
@@ -30,7 +31,7 @@ Build information about tetragon
 | label | values |
 | ----- | ------ |
 | `commit` | `931b70f2c9878ba985ba6b589827bea17da6ec33` |
-| `go_version` | `go1.27.0` |
+| `go_version` | `go1.27.1` |
 | `modified` | `false` |
 | `time ` | `2022-05-13T15:54:45Z` |
 | `version` | `v1.2.0` |
@@ -77,7 +78,7 @@ The size of received data events.
 
 | label | values |
 | ----- | ------ |
-| `op   ` | `bad, ok` |
+| `status` | `bad, ok` |
 
 ### `tetragon_data_events_total`
 
@@ -199,6 +200,7 @@ The total number of event handler errors. For internal use only.
 | ----- | ------ |
 | `error` | `event_handler_failed, perf_empty_data, unknown_opcode` |
 | `opcode` | `0, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
+| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle, Undef` |
 
 ### `tetragon_handling_latency`
 
@@ -206,7 +208,8 @@ The latency of handling messages in us.
 
 | label | values |
 | ----- | ------ |
-| `op   ` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
+| `opcode` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
+| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle` |
 
 ### `tetragon_map_capacity`
 
@@ -264,7 +267,8 @@ The total number of times we encounter a given message opcode. For internal use 
 
 | label | values |
 | ----- | ------ |
-| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
+| `opcode` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
+| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle` |
 
 ### `tetragon_notify_overflowed_events_total`
 
@@ -444,7 +448,7 @@ Information about the Go environment.
 
 | label | values |
 | ----- | ------ |
-| `version` | `go1.27.0` |
+| `version` | `go1.27.1` |
 
 ### `go_memstats_alloc_bytes`
 
@@ -773,10 +777,10 @@ The total number of Tetragon events
 | label | values |
 | ----- | ------ |
 | `binary` | `example-binary` |
+| `event_type` | `IGMP_MEMBERSHIP_REPORT, INTERFACE_STATS, POWERSHELL_SCRIPT_BLOCK, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IGMP_JOIN, PROCESS_IGMP_LEAVE, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_MULTICAST_SAMPLE, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, PROCESS_USDT, RATE_LIMIT_INFO` |
 | `namespace` | `example-namespace` |
 | `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
-| `type ` | `IGMP_MEMBERSHIP_REPORT, INTERFACE_STATS, POWERSHELL_SCRIPT_BLOCK, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IGMP_JOIN, PROCESS_IGMP_LEAVE, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_MULTICAST_SAMPLE, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, PROCESS_USDT, RATE_LIMIT_INFO` |
 | `workload` | `example-workload` |
 
 ### `tetragon_policy_events_total`
