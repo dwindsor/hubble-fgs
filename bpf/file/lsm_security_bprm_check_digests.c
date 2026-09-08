@@ -14,9 +14,10 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 		.bprm_ptr = (__u64)bprm,
 	};
 	__u32 operation, rule_id, msg_id = 0;
+	struct digest_key digest_value = { .ok = 1 };
 	struct digest_key *digest = 0;
 	struct msg_file_ops *msg;
-	union exec_flags flags;
+	union exec_flags flags = { 0 };
 	struct dentry *dentry;
 	struct file *file;
 	int err;
@@ -27,12 +28,6 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 
 	if (!policy_filter_match())
 		return 0;
-
-	msg = get_msg_init();
-	if (!msg) {
-		err = -FILE_ERR_GET_MSG_HEAP;
-		goto lsm_bprm_check_security_error;
-	}
 
 	file = _(bprm->file);
 	if (!file) {
@@ -46,18 +41,28 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm, int ret)
 		goto lsm_bprm_check_security_error;
 	}
 
-	err = generate_inode_metadata(msg, dentry);
-	if (err < 0)
-		goto lsm_bprm_check_security_error;
-
 	rule_id = run_matcher(BPF_CORE_READ(file, f_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
+	// Do not retain a pointer to the per-CPU message heap while the IMA
+	// helper may sleep. Build the digest in task-owned stack storage first
+	// and acquire the message only after the sleepable work is complete.
+	digest_value.algo = ima_file_hash(file, digest_value.digest, IMA_MAX_DIGEST_SIZE);
+
+	msg = get_msg_init();
+	if (!msg) {
+		err = -FILE_ERR_GET_MSG_HEAP;
+		goto lsm_bprm_check_security_error;
+	}
+
+	err = generate_inode_metadata(msg, dentry);
+	if (err < 0)
+		goto lsm_bprm_check_security_error;
+
 	generate_path(&msg->path, _(&file->f_path));
 
-	msg->digest.ok = 1;
-	msg->digest.algo = ima_file_hash(_(bprm->file), msg->digest.digest, IMA_MAX_DIGEST_SIZE);
+	msg->digest = digest_value;
 	digest = &msg->digest;
 
 	msg->is_exe_from_memfd = is_memfd(file);
