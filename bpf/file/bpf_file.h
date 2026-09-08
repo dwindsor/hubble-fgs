@@ -1175,8 +1175,11 @@ static inline __attribute__((always_inline)) int check_match_openraw_result(__u3
 	if (!sel_res) // no matchOpenrawResult for this selector -- match
 		return 1;
 
+	// The kernel open path treats an allocated fd >= 0 as success before
+	// installing it (fs/open.c):
+	// https://github.com/torvalds/linux/blob/master/fs/open.c
 	if (*sel_res == SEL_OPENRAW_SUCCESS) // match succeed open call
-		return result > 0;
+		return result >= 0;
 	else if (*sel_res == SEL_OPENRAW_FAILURE) // match failed open call
 		return result < 0;
 
