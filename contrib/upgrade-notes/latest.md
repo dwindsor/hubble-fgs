@@ -87,6 +87,9 @@ Depending on your setup, changes listed here might require a manual intervention
 ### Helm Values
 
 * The tetragon.layer3.latency.enabled parameter was removed.
+* The default tracing policies configured by `tracingPolicies.default`
+  and its `fim`, `network`, `mount`, `osi`, and `privileges` options are
+  deprecated and will be removed in the next release.
 * The following parameters were added to configure layer3 and layer7 functionality
   without using a tracing policy:
   * tetragon.layer3.icmp.v6info: false

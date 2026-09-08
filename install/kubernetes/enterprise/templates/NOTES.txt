@@ -1,0 +1,7 @@
+{{/*
+SPDX-License-Identifier: Apache-2.0
+Copyright Authors of Tetragon
+*/}}
+{{- if or .Values.tracingPolicies.default.enabled .Values.tracingPolicies.default.fim.enabled .Values.tracingPolicies.default.network.enabled .Values.tracingPolicies.default.mount.enabled .Values.tracingPolicies.default.osi.enabled .Values.tracingPolicies.default.privileges.enabled }}
+WARNING: Default tracing policies are deprecated and will be removed in the next release.
+{{- end }}
