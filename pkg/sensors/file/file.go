@@ -1389,7 +1389,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 	l := logger.GetLogger()
 
 	var tailId uint32
-	if eeOption.Config.EnableFimDispatcher && config.PolicyId != 0 {
+	if useFimDispatcher(config.PolicyId) {
 		var err error
 		tailId, err = allocNewTailId(config.PolicyId)
 		if err != nil {
@@ -2045,7 +2045,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			return nil
 		},
 		PreUnloadHook: func() error {
-			if eeOption.Config.EnableFimDispatcher && config.PolicyId != 0 {
+			if useFimDispatcher(config.PolicyId) {
 				clearTailId(tailId)
 			}
 			pol.FileMonitoringTable.RmFIM(config.TpId)
@@ -2141,6 +2141,10 @@ func getFileCreateHooks(spec *btf.Spec, hooks []FimHook, config *fileapi.FileCon
 	return append(hooks, FimHooksFileCreate418[:]...)
 }
 
+func useFimDispatcher(policyID uint32) bool {
+	return eeOption.Config.EnableFimDispatcher && policyID != policyfilter.NoFilterPolicyID
+}
+
 func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, mode ModeWithError, digestSupport, ioUringSupport, enableMmapFileAccesses bool) ([]FimProg, error) {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
@@ -2154,7 +2158,7 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 	m := ""
 	switch mode.Md {
 	case PathBased:
-		if eeOption.Config.EnableFimDispatcher {
+		if useFimDispatcher(config.PolicyId) {
 			hooks = FimPathBasedTailCallHooks[:]
 			m = "path-based-with-dispatcher"
 			if digestSupport {
