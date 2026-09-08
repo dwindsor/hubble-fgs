@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/cilium/pkg/k8s/client"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/promise"
+	"github.com/cilium/cilium/pkg/slices"
 	"github.com/cilium/cilium/pkg/time"
 )
 
@@ -69,8 +70,24 @@ func (def CRDSyncConfig) Flags(flags *pflag.FlagSet) {
 // promise Reject to the result of the promise Await() call.
 type CRDSync struct{}
 
-// CRDSyncResourceNames is a slice of CRD resource names CRDSync promise waits for
-type CRDSyncResourceNames []string
+// CRDSyncResourceName represents a CRD resource name CRDSync promise waits for
+type CRDSyncResourceName string
+
+// CRDSyncResourceNamesOut is a utility struct for providing a list of [CRDSyncResourceName] to the hive.
+type CRDSyncResourceNamesOut struct {
+	cell.Out
+
+	Names []CRDSyncResourceName `group:"crd-sync-resource-names,flatten"`
+}
+
+func NewCRDSyncResourceNamesOut(names ...string) (out CRDSyncResourceNamesOut) {
+	out.Names = slices.Map(names,
+		func(name string) CRDSyncResourceName {
+			return CRDSyncResourceName(name)
+		},
+	)
+	return out
+}
 
 var ErrCRDSyncDisabled = errors.New("CRDSync promise is disabled")
 
@@ -86,13 +103,11 @@ type syncCRDsPromiseParams struct {
 
 	Logger *slog.Logger
 
-	Lifecycle     cell.Lifecycle
-	Jobs          job.Registry
-	Health        cell.Health
+	JobGroup      job.Group
 	Clientset     client.Clientset
 	Resources     *Resources
 	APIGroups     *APIGroups
-	ResourceNames CRDSyncResourceNames
+	ResourceNames []CRDSyncResourceName `group:"crd-sync-resource-names"`
 	Config        CRDSyncConfig
 }
 
@@ -103,9 +118,9 @@ func newCRDSyncPromise(params syncCRDsPromiseParams) promise.Promise[CRDSync] {
 		return crdSyncPromise
 	}
 
-	g := params.Jobs.NewGroup(params.Health, params.Lifecycle)
-	g.Add(job.OneShot("sync-crds", func(ctx context.Context, health cell.Health) error {
-		err := SyncCRDs(ctx, params.Logger, params.Clientset, params.ResourceNames, params.Resources, params.APIGroups, params.Config)
+	params.JobGroup.Add(job.OneShot("sync-crds", func(ctx context.Context, health cell.Health) error {
+		names := slices.Map(params.ResourceNames, func(in CRDSyncResourceName) string { return string(in) })
+		err := SyncCRDs(ctx, params.Logger, params.Clientset, names, params.Resources, params.APIGroups, params.Config)
 		if err != nil {
 			crdSyncResolver.Reject(err)
 		} else {

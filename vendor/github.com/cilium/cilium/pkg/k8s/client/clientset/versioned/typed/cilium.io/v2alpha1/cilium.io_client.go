@@ -21,12 +21,15 @@ type CiliumV2alpha1Interface interface {
 	CiliumBGPNodeConfigOverridesGetter
 	CiliumBGPPeerConfigsGetter
 	CiliumCIDRGroupsGetter
+	CiliumDatapathPluginsGetter
 	CiliumEndpointSlicesGetter
 	CiliumGatewayClassConfigsGetter
 	CiliumL2AnnouncementPoliciesGetter
 	CiliumLoadBalancerIPPoolsGetter
-	CiliumNodeConfigsGetter
+	CiliumNetworkDriverClusterConfigsGetter
+	CiliumNetworkDriverNodeConfigsGetter
 	CiliumPodIPPoolsGetter
+	CiliumResourceIPPoolsGetter
 }
 
 // CiliumV2alpha1Client is used to interact with features provided by the cilium.io group.
@@ -58,12 +61,16 @@ func (c *CiliumV2alpha1Client) CiliumCIDRGroups() CiliumCIDRGroupInterface {
 	return newCiliumCIDRGroups(c)
 }
 
+func (c *CiliumV2alpha1Client) CiliumDatapathPlugins() CiliumDatapathPluginInterface {
+	return newCiliumDatapathPlugins(c)
+}
+
 func (c *CiliumV2alpha1Client) CiliumEndpointSlices() CiliumEndpointSliceInterface {
 	return newCiliumEndpointSlices(c)
 }
 
-func (c *CiliumV2alpha1Client) CiliumGatewayClassConfigs() CiliumGatewayClassConfigInterface {
-	return newCiliumGatewayClassConfigs(c)
+func (c *CiliumV2alpha1Client) CiliumGatewayClassConfigs(namespace string) CiliumGatewayClassConfigInterface {
+	return newCiliumGatewayClassConfigs(c, namespace)
 }
 
 func (c *CiliumV2alpha1Client) CiliumL2AnnouncementPolicies() CiliumL2AnnouncementPolicyInterface {
@@ -74,12 +81,20 @@ func (c *CiliumV2alpha1Client) CiliumLoadBalancerIPPools() CiliumLoadBalancerIPP
 	return newCiliumLoadBalancerIPPools(c)
 }
 
-func (c *CiliumV2alpha1Client) CiliumNodeConfigs(namespace string) CiliumNodeConfigInterface {
-	return newCiliumNodeConfigs(c, namespace)
+func (c *CiliumV2alpha1Client) CiliumNetworkDriverClusterConfigs() CiliumNetworkDriverClusterConfigInterface {
+	return newCiliumNetworkDriverClusterConfigs(c)
+}
+
+func (c *CiliumV2alpha1Client) CiliumNetworkDriverNodeConfigs() CiliumNetworkDriverNodeConfigInterface {
+	return newCiliumNetworkDriverNodeConfigs(c)
 }
 
 func (c *CiliumV2alpha1Client) CiliumPodIPPools() CiliumPodIPPoolInterface {
 	return newCiliumPodIPPools(c)
+}
+
+func (c *CiliumV2alpha1Client) CiliumResourceIPPools() CiliumResourceIPPoolInterface {
+	return newCiliumResourceIPPools(c)
 }
 
 // NewForConfig creates a new CiliumV2alpha1Client for the given config.

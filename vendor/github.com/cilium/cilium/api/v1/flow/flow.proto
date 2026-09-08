@@ -96,6 +96,19 @@ message Flow {
     // only applicable to Verdict = DROPPED.
     DropReason drop_reason_desc = 25;
 
+    // ext_error is the extended error code reported by the datapath alongside
+    // the primary drop reason (see DropNotify.ExtError in pkg/monitor). It
+    // provides additional context for the drop (for example, the BPF FIB
+    // lookup result for DROP_NO_FIB). Only applicable to Verdict = DROPPED.
+    int32 ext_error = 42;
+
+    // ext_drop_reason_desc is the human-readable extended drop reason
+    // combining drop_reason_desc with ext_error (equivalent to the string
+    // produced by cilium monitor's DropReasonExt). Only set for drops
+    // reported via DropNotify; not populated for policy verdict denials,
+    // which carry their reason in drop_reason_desc.
+    string ext_drop_reason_desc = 43;
+
     // is_reply indicates that this was a packet (L4) or message (L7) in the
     // reply direction. May be absent (in which case it is unknown whether it
     // is a reply or not).
@@ -151,6 +164,10 @@ message Flow {
     // this list is empty. Duplicate values are elided; each
     // entry is unique.
     repeated string policy_log = 21006;
+
+    // Aggregate contains flow aggregation counters when flow aggregation is enabled.
+    // This field is only populated for aggregated flows.
+    Aggregate aggregate = 21007;
 }
 
 // Emitter identifies the source that emits a Hubble flow.
@@ -302,6 +319,8 @@ message Endpoint {
     repeated string labels = 4;
     string pod_name = 5;
     repeated Workload workloads = 6;
+    // pod_uid is the Kubernetes UID of the Pod represented by this endpoint.
+    string pod_uid = 8;
 }
 
 message Workload {
@@ -353,6 +372,17 @@ message UDP {
 message SCTP {
     uint32 source_port = 1;
     uint32 destination_port = 2;
+    SCTPChunkType chunk_type = 3;
+}
+
+enum SCTPChunkType {
+    UNSUPPORTED = 0;
+    INIT = 1;
+    INIT_ACK = 2;
+    SHUTDOWN = 3;
+    SHUTDOWN_ACK = 4;
+    SHUTDOWN_COMPLETE = 5;
+    ABORT = 6;
 }
 
 message ICMPv4 {
@@ -392,6 +422,7 @@ message Tunnel {
     Protocol protocol = 1;
     IP IP = 2;
     Layer4 l4 = 3;
+    uint32 vni = 4;
 }
 
 enum Verdict {
@@ -508,6 +539,11 @@ enum DropReason {
     DROP_NO_EGRESS_IP = 204;
     // Punt packet to a user space proxy.
     DROP_PUNT_PROXY = 205;
+    // A non-first IP fragment from the world was dropped because its first
+    // fragment (carrying the L4 ports) was never seen, so host policy cannot
+    // be evaluated. Split from DROP_FRAG_NOT_FOUND to distinguish ambient
+    // external fragments from in-cluster fragment-tracking bugs.
+    DROP_FRAG_NOT_FOUND_WORLD = 207;
 }
 
 enum TrafficDirection {
@@ -672,6 +708,11 @@ message FlowFilter {
     repeated string trace_id = 28;
     // ip_trace_id filters flows by IPTraceID
     repeated uint64 ip_trace_id = 39;
+
+    // encrypted filters flows based on encryption status (WireGuard/IPsec).
+    // When set to true, only encrypted flows are returned.
+    // When set to false, only unencrypted flows are returned.
+    repeated bool encrypted = 40;
 
     // Experimental contains filters that are not stable yet. Support for
     // experimental features is always optional and subject to change.
@@ -992,4 +1033,16 @@ enum DebugEventType {
     DBG_SKIP_POLICY = 66;
     DBG_LB6_LOOPBACK_SNAT = 67;
     DBG_LB6_LOOPBACK_SNAT_REV = 68;
+}
+
+// Aggregate contains flow aggregation counters
+message Aggregate {
+    // ingress_flow_count is the count of flows in the ingress direction
+    uint32 ingress_flow_count = 1;
+
+    // egress_flow_count is the count of flows in the egress direction  
+    uint32 egress_flow_count = 2;
+
+    // unknown_direction_flow_count is the count of flows with unknown traffic direction
+    uint32 unknown_direction_flow_count = 3;
 }

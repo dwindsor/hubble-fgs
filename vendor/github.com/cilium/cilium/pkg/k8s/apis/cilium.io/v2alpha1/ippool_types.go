@@ -6,6 +6,7 @@ package v2alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	iputil "github.com/cilium/cilium/pkg/ip"
 	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
 )
 
@@ -14,14 +15,14 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:categories={cilium},singular="ciliumpodippool",path="ciliumpodippools",scope="Cluster",shortName={cpip}
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion
-
+// +kubebuilder:deprecatedversion:warning="cilium.io/v2alpha1 CiliumPodIPPool is deprecated; use cilium.io/v2 CiliumPodIPPool"
 // CiliumPodIPPool defines an IP pool that can be used for pooled IPAM (i.e. the multi-pool IPAM
 // mode).
 type CiliumPodIPPool struct {
 	// +deepequal-gen=false
 	metav1.TypeMeta `json:",inline"`
 	// +deepequal-gen=false
+	// +kubebuilder:validation:Optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// +kubebuilder:validation:Required
@@ -32,12 +33,32 @@ type IPPoolSpec struct {
 	// IPv4 specifies the IPv4 CIDRs and mask sizes of the pool
 	//
 	// +kubebuilder:validation:Optional
-	IPv4 *IPv4PoolSpec `json:"ipv4"`
+	IPv4 *IPv4PoolSpec `json:"ipv4,omitempty"`
 
 	// IPv6 specifies the IPv6 CIDRs and mask sizes of the pool
 	//
 	// +kubebuilder:validation:Optional
-	IPv6 *IPv6PoolSpec `json:"ipv6"`
+	IPv6 *IPv6PoolSpec `json:"ipv6,omitempty"`
+
+	// AllowFirstIP allows the first IP of each allocated CIDR to be used. If
+	// unset or false, this IP is reserved. This field is ignored for /{31,32}
+	// and /{127,128} CIDRs since reserving the first and last IPs would make
+	// the CIDRs unusable. This field is immutable.
+	//
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf", message="allowFirstIP is immutable"
+	AllowFirstIP bool `json:"allowFirstIP,omitempty"`
+
+	// AllowLastIP allows the last IP of each allocated CIDR to be used. If
+	// unset or false, this IP is reserved. This field is ignored for /{31,32}
+	// and /{127,128} CIDRs since reserving the first and last IPs would make
+	// the CIDRs unusable. This field is immutable.
+	//
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf", message="allowLastIP is immutable"
+	AllowLastIP bool `json:"allowLastIP,omitempty"`
 
 	// PodSelector selects the set of Pods that are eligible to receive IPs from
 	// this pool when neither the Pod nor its Namespace specify an explicit
@@ -72,14 +93,14 @@ type IPv4PoolSpec struct {
 	//
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
-	CIDRs []PoolCIDR `json:"cidrs"`
+	CIDRs []iputil.Prefix `json:"cidrs"`
 
 	// MaskSize is the mask size of the pool.
 	//
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=32
-	// +kubebuilder:validation:ExclusiveMaximum=false
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf", message="maskSize is immutable"
 	MaskSize uint8 `json:"maskSize"`
 }
 
@@ -88,21 +109,16 @@ type IPv6PoolSpec struct {
 	//
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
-	CIDRs []PoolCIDR `json:"cidrs"`
+	CIDRs []iputil.Prefix `json:"cidrs"`
 
 	// MaskSize is the mask size of the pool.
 	//
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=128
-	// +kubebuilder:validation:ExclusiveMaximum=false
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf", message="maskSize is immutable"
 	MaskSize uint8 `json:"maskSize"`
 }
-
-// PoolCIDR is an IP pool CIDR.
-//
-// +kubebuilder:validation:Format=cidr
-type PoolCIDR string
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +deepequal-gen=false

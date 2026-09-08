@@ -38,12 +38,8 @@ func (in *Node) DeepEqual(other *Node) bool {
 		}
 	}
 
-	if (in.IPv4AllocCIDR == nil) != (other.IPv4AllocCIDR == nil) {
+	if !in.IPv4AllocCIDR.DeepEqual(&other.IPv4AllocCIDR) {
 		return false
-	} else if in.IPv4AllocCIDR != nil {
-		if !in.IPv4AllocCIDR.DeepEqual(other.IPv4AllocCIDR) {
-			return false
-		}
 	}
 
 	if ((in.IPv4SecondaryAllocCIDRs != nil) && (other.IPv4SecondaryAllocCIDRs != nil)) || ((in.IPv4SecondaryAllocCIDRs == nil) != (other.IPv4SecondaryAllocCIDRs == nil)) {
@@ -56,19 +52,15 @@ func (in *Node) DeepEqual(other *Node) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if !inElement.DeepEqual((*other)[i]) {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
 		}
 	}
 
-	if (in.IPv6AllocCIDR == nil) != (other.IPv6AllocCIDR == nil) {
+	if !in.IPv6AllocCIDR.DeepEqual(&other.IPv6AllocCIDR) {
 		return false
-	} else if in.IPv6AllocCIDR != nil {
-		if !in.IPv6AllocCIDR.DeepEqual(other.IPv6AllocCIDR) {
-			return false
-		}
 	}
 
 	if ((in.IPv6SecondaryAllocCIDRs != nil) && (other.IPv6SecondaryAllocCIDRs != nil)) || ((in.IPv6SecondaryAllocCIDRs == nil) != (other.IPv6SecondaryAllocCIDRs == nil)) {
@@ -81,79 +73,27 @@ func (in *Node) DeepEqual(other *Node) bool {
 			return false
 		} else {
 			for i, inElement := range *in {
-				if !inElement.DeepEqual((*other)[i]) {
+				if !inElement.DeepEqual(&(*other)[i]) {
 					return false
 				}
 			}
 		}
 	}
 
-	if ((in.IPv4HealthIP != nil) && (other.IPv4HealthIP != nil)) || ((in.IPv4HealthIP == nil) != (other.IPv4HealthIP == nil)) {
-		in, other := &in.IPv4HealthIP, &other.IPv4HealthIP
-		if other == nil {
-			return false
-		}
-
-		if len(*in) != len(*other) {
-			return false
-		} else {
-			for i, inElement := range *in {
-				if inElement != (*other)[i] {
-					return false
-				}
-			}
-		}
+	if !in.IPv4HealthIP.DeepEqual(&other.IPv4HealthIP) {
+		return false
 	}
 
-	if ((in.IPv6HealthIP != nil) && (other.IPv6HealthIP != nil)) || ((in.IPv6HealthIP == nil) != (other.IPv6HealthIP == nil)) {
-		in, other := &in.IPv6HealthIP, &other.IPv6HealthIP
-		if other == nil {
-			return false
-		}
-
-		if len(*in) != len(*other) {
-			return false
-		} else {
-			for i, inElement := range *in {
-				if inElement != (*other)[i] {
-					return false
-				}
-			}
-		}
+	if !in.IPv6HealthIP.DeepEqual(&other.IPv6HealthIP) {
+		return false
 	}
 
-	if ((in.IPv4IngressIP != nil) && (other.IPv4IngressIP != nil)) || ((in.IPv4IngressIP == nil) != (other.IPv4IngressIP == nil)) {
-		in, other := &in.IPv4IngressIP, &other.IPv4IngressIP
-		if other == nil {
-			return false
-		}
-
-		if len(*in) != len(*other) {
-			return false
-		} else {
-			for i, inElement := range *in {
-				if inElement != (*other)[i] {
-					return false
-				}
-			}
-		}
+	if !in.IPv4IngressIP.DeepEqual(&other.IPv4IngressIP) {
+		return false
 	}
 
-	if ((in.IPv6IngressIP != nil) && (other.IPv6IngressIP != nil)) || ((in.IPv6IngressIP == nil) != (other.IPv6IngressIP == nil)) {
-		in, other := &in.IPv6IngressIP, &other.IPv6IngressIP
-		if other == nil {
-			return false
-		}
-
-		if len(*in) != len(*other) {
-			return false
-		} else {
-			for i, inElement := range *in {
-				if inElement != (*other)[i] {
-					return false
-				}
-			}
-		}
+	if !in.IPv6IngressIP.DeepEqual(&other.IPv6IngressIP) {
+		return false
 	}
 
 	if in.ClusterID != other.ClusterID {
@@ -207,9 +147,6 @@ func (in *Node) DeepEqual(other *Node) bool {
 		}
 	}
 
-	if in.NodeIdentity != other.NodeIdentity {
-		return false
-	}
 	if in.WireguardPubKey != other.WireguardPubKey {
 		return false
 	}

@@ -65,17 +65,6 @@ const (
 	// LBIPPoolName is the full name of Cilium Load Balancer IP Pool
 	LBIPPoolName = PoolPluralName + "." + CustomResourceDefinitionGroup
 
-	// CiliumNodeConfig (CNC)
-
-	// CNCPluralName is the plural name of Cilium Node Config
-	CNCPluralName = "ciliumnodeconfigs"
-
-	// CNCKindDefinition is the kind name of Cilium Node Config
-	CNCKindDefinition = "CiliumNodeConfig"
-
-	// CNCName is the full name of Cilium Node Config
-	CNCName = CNCPluralName + "." + CustomResourceDefinitionGroup
-
 	// Cilium L2 Announcement policy
 
 	// L2AnnouncementSingularName is the singular name ofCilium L2 announcement policy
@@ -100,6 +89,29 @@ const (
 	CGCCListName       = "ciliumgatewayclassconfiglists"
 	CGCCKindDefinition = "CiliumGatewayClassConfig"
 	CGCCName           = CGCCPluralName + "." + CustomResourceDefinitionGroup
+
+	CDPPPluralName     = "ciliumdatapathplugins"
+	CDPPKindDefinition = "CiliumDatapathPlugin"
+	CDPPName           = CDPPPluralName + "." + CustomResourceDefinitionGroup
+
+	// CiliumNetworkDriverClusterConfig
+	CiliumNetworkDriverClusterConfigSingularName   = "ciliumnetworkdriverclusterconfig"
+	CiliumNetworkDriverClusterConfigPluralName     = "ciliumnetworkdriverclusterconfigs"
+	CiliumNetworkDriverClusterConfigKindDefinition = "CiliumNetworkDriverClusterConfig"
+
+	CiliumNetworkDriverClusterConfigName = CiliumNetworkDriverClusterConfigPluralName + "." + CustomResourceDefinitionGroup
+
+	// CiliumNetworkDriverNodeConfig
+	CiliumNetworkDriverNodeConfigSingularName   = "ciliumnetworkdrivernodeconfig"
+	CiliumNetworkDriverNodeConfigPluralName     = "ciliumnetworkdrivernodeconfigs"
+	CiliumNetworkDriverNodeConfigKindDefinition = "CiliumNetworkDriverNodeConfig"
+
+	CiliumNetworkDriverNodeConfigName = CiliumNetworkDriverNodeConfigPluralName + "." + CustomResourceDefinitionGroup
+
+	// CiliumResourcePPool (CRIP)
+	CRIPPluralName     = "ciliumresourceippools"
+	CRIPKindDefinition = "CiliumResourceIPPool"
+	CRIPName           = CRIPPluralName + "." + CustomResourceDefinitionGroup
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -169,6 +181,16 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		// new Gateway API types
 		&CiliumGatewayClassConfig{},
 		&CiliumGatewayClassConfigList{},
+
+		&CiliumDatapathPlugin{},
+
+		// Cilium Network Driver types
+		&CiliumNetworkDriverClusterConfig{},
+		&CiliumNetworkDriverClusterConfigList{},
+		&CiliumNetworkDriverNodeConfig{},
+		&CiliumNetworkDriverNodeConfigList{},
+		&CiliumResourceIPPool{},
+		&CiliumResourceIPPoolList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

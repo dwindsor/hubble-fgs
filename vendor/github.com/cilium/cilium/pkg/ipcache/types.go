@@ -74,7 +74,7 @@ type IPMetadata any
 // is otherwise read-only.
 type namedPortMultiMapUpdater interface {
 	types.NamedPortMultiMap
-	Update(old, new types.NamedPortMap) (namedPortChanged bool)
+	Update(epID identity.NumericIdentity, old, new types.NamedPortMap) (namedPortChanged bool)
 }
 
 // merge overwrites the field in 'resourceInfo' corresponding to 'info'. This
@@ -131,6 +131,8 @@ func (m *resourceInfo) unmerge(logger *slog.Logger, info IPMetadata) {
 		m.requestedIdentity = ipcachetypes.RequestedIdentity(identity.IdentityUnknown)
 	case ipcachetypes.EndpointFlags:
 		m.endpointFlags = ipcachetypes.EndpointFlags{}
+	case ipcachetypes.AllMetadata:
+		*m = resourceInfo{}
 	default:
 		logger.Error(
 			"BUG: Invalid IPMetadata passed to ipinfo.unmerge()",
@@ -138,55 +140,6 @@ func (m *resourceInfo) unmerge(logger *slog.Logger, info IPMetadata) {
 		)
 		return
 	}
-}
-
-// has returns true if the resourceInfo already has the particular metadata.
-// in the case of labels, the existing labels may be a superset.
-// In other words, returns true if merging info would result in m
-// being unchanged. It is used to prevent needless cache busting
-// when updating metadata.
-func (m *resourceInfo) has(src source.Source, infos []IPMetadata) bool {
-	if m == nil {
-		return false
-	}
-	if m.source != src {
-		return false
-	}
-
-	for _, info := range infos {
-		switch i := info.(type) {
-		case labels.Labels:
-			for key, newLabel := range i {
-				existingLabel, ok := m.labels[key]
-				if !ok || newLabel != existingLabel {
-					return false
-				}
-			}
-		case overrideIdentity:
-			if m.identityOverride != i {
-				return false
-			}
-		case ipcachetypes.TunnelPeer:
-			if m.tunnelPeer != i {
-				return false
-			}
-		case ipcachetypes.EncryptKey:
-			if m.encryptKey != i {
-				return false
-			}
-		case ipcachetypes.RequestedIdentity:
-			if m.requestedIdentity != i {
-				return false
-			}
-		case ipcachetypes.EndpointFlags:
-			if m.endpointFlags != i {
-				return false
-			}
-		default:
-			return false
-		}
-	}
-	return true
 }
 
 func (m *resourceInfo) isValid() bool {
@@ -302,13 +255,6 @@ func (r *resourceInfo) IdentityOverride() bool {
 // In the event of a conflict, entries with a higher precedence source
 // will win.
 func (s *prefixInfo) flatten(scopedLog *slog.Logger) *resourceInfo {
-	// shortcut: with exactly one resource, we just return it
-	if len(s.byResource) == 1 {
-		for _, r := range s.byResource {
-			return r
-		}
-	}
-
 	out := &resourceInfo{}
 
 	var (
@@ -448,4 +394,29 @@ func (s *prefixInfo) flatten(scopedLog *slog.Logger) *resourceInfo {
 	}
 
 	return out
+}
+
+func (s *prefixInfo) highestPrecedenceSource() source.Source {
+	if len(s.byResource) == 0 {
+		return source.Unspec
+	}
+	if len(s.byResource) == 1 {
+		for _, info := range s.byResource {
+			return info.source
+		}
+	}
+
+	var bestSrc source.Source
+	for _, info := range s.byResource {
+		if info.source == source.KubeAPIServer {
+			return info.source
+		}
+		if bestSrc == "" {
+			bestSrc = info.source
+		} else if bestSrc != info.source && source.AllowOverwrite(bestSrc, info.source) {
+			bestSrc = info.source
+		}
+	}
+
+	return bestSrc
 }

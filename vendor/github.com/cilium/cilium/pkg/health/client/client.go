@@ -4,6 +4,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -18,6 +19,7 @@ import (
 	"github.com/go-openapi/strfmt"
 
 	clientapi "github.com/cilium/cilium/api/v1/health/client"
+	"github.com/cilium/cilium/api/v1/health/client/connectivity"
 	"github.com/cilium/cilium/api/v1/health/models"
 	"github.com/cilium/cilium/pkg/health/defaults"
 )
@@ -56,12 +58,12 @@ func configureTransport(tr *http.Transport, proto, addr string) *http.Transport 
 	if proto == "unix" {
 		// No need for compression in local communications.
 		tr.DisableCompression = true
-		tr.Dial = func(_, _ string) (net.Conn, error) {
+		tr.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
 			return net.Dial(proto, addr)
 		}
 	} else {
 		tr.Proxy = http.ProxyFromEnvironment
-		tr.Dial = (&net.Dialer{}).Dial
+		tr.DialContext = (&net.Dialer{}).DialContext
 	}
 
 	return tr
@@ -439,7 +441,7 @@ func GetAndFormatHealthStatus(w io.Writer, allNodes bool, verbose bool, maxLines
 		fmt.Fprintf(w, "Cluster health:\t\t\tClient error: %s\n", err)
 		return
 	}
-	hr, err := client.Connectivity.GetStatus(nil)
+	hr, err := client.Connectivity.GetStatus(connectivity.NewGetStatusParams())
 	if err != nil {
 		// The regular `cilium status` output will print the reason why.
 		fmt.Fprintf(w, "Cluster health:\t\t\tWarning\tcilium-health daemon unreachable\n")

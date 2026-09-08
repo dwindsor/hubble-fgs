@@ -21,6 +21,7 @@ import (
 // +kubebuilder:printcolumn:JSONPath=".status.conditions[?(@.type=='Valid')].status",name="Valid",type=string
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
+// +kubebuilder:validation:XValidation:rule="has(self.spec) || has(self.specs)",message="spec or specs must be provided"
 
 // CiliumClusterwideNetworkPolicy is a Kubernetes third-party resource with an
 // modified version of CiliumNetworkPolicy which is cluster scoped rather than
@@ -29,12 +30,17 @@ type CiliumClusterwideNetworkPolicy struct {
 	// +deepequal-gen=false
 	metav1.TypeMeta `json:",inline"`
 	// +deepequal-gen=false
+	// +kubebuilder:validation:Required
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec is the desired Cilium specific rule specification.
+	//
+	// +kubebuilder:validation:Optional
 	Spec *api.Rule `json:"spec,omitempty"`
 
 	// Specs is a list of desired Cilium specific rule specification.
+	//
+	// +kubebuilder:validation:Optional
 	Specs api.Rules `json:"specs,omitempty"`
 
 	// Status is the status of the Cilium policy rule.
@@ -44,7 +50,7 @@ type CiliumClusterwideNetworkPolicy struct {
 	// field does not exist in the structure.
 	//
 	// +kubebuilder:validation:Optional
-	Status CiliumNetworkPolicyStatus `json:"status"`
+	Status CiliumNetworkPolicyStatus `json:"status,omitempty"`
 }
 
 // DeepEqual compares 2 CCNPs while ignoring the LastAppliedConfigAnnotation
@@ -76,38 +82,76 @@ type CiliumClusterwideNetworkPolicyList struct {
 	Items []CiliumClusterwideNetworkPolicy `json:"items"`
 }
 
-// Parse parses a CiliumClusterwideNetworkPolicy and returns a list of cilium
-// policy rules.
-func (r *CiliumClusterwideNetworkPolicy) Parse(logger *slog.Logger, clusterName string) (api.Rules, error) {
+// Validate validates the CiliumClusterwideNetworkPolicy object
+func (r *CiliumClusterwideNetworkPolicy) Validate() error {
 	if r.ObjectMeta.Name == "" {
-		return nil, NewErrParse("CiliumClusterwideNetworkPolicy must have name")
+		return NewErrParse("CiliumClusterwideNetworkPolicy must have name")
 	}
 
+	if r.Spec == nil && r.Specs == nil {
+		return ErrEmptyCCNP
+	}
+
+	if r.Spec != nil {
+		if err := r.Spec.Validate(); err != nil {
+			return NewErrParse(fmt.Sprintf("Invalid CiliumClusterwideNetworkPolicy spec: %s", err))
+		}
+	}
+	if r.Specs != nil {
+		for _, rule := range r.Specs {
+			if err := rule.Validate(); err != nil {
+				return NewErrParse(fmt.Sprintf("Invalid CiliumClusterwideNetworkPolicy specs: %s", err))
+			}
+		}
+	}
+
+	return nil
+}
+
+// Sanitize sanitizes the CiliumClusterwideNetworkPolicy object modifying object in place
+// to make it ready for parsing.
+//
+// NOTE: This method assumes that the CCNP object is validated beforehand.
+func (r *CiliumClusterwideNetworkPolicy) Sanitize() {
+	if r.Spec != nil {
+		r.Spec.Sanitize()
+	}
+	if r.Specs != nil {
+		for i := range r.Specs {
+			r.Specs[i].Sanitize()
+		}
+	}
+}
+
+// ParseRules parses the CiliumClusterwideNetworkPolicy and returns a list of cilium policy
+// rules ready for processing by downstream subsystems.
+//
+// NOTE: This method assumes that the CCNP object is validated beforehand.
+func (r *CiliumClusterwideNetworkPolicy) ParseRules(logger *slog.Logger, clusterName string) api.Rules {
 	name := r.ObjectMeta.Name
 	uid := r.ObjectMeta.UID
 
 	retRules := api.Rules{}
 
-	if r.Spec == nil && r.Specs == nil {
-		return nil, ErrEmptyCCNP
-	}
-
 	if r.Spec != nil {
-		if err := r.Spec.Sanitize(); err != nil {
-			return nil, NewErrParse(fmt.Sprintf("Invalid CiliumClusterwideNetworkPolicy spec: %s", err))
-		}
 		cr := k8sCiliumUtils.ParseToCiliumRule(logger, clusterName, "", name, uid, r.Spec)
 		retRules = append(retRules, cr)
 	}
 	if r.Specs != nil {
 		for _, rule := range r.Specs {
-			if err := rule.Sanitize(); err != nil {
-				return nil, NewErrParse(fmt.Sprintf("Invalid CiliumClusterwideNetworkPolicy specs: %s", err))
-			}
 			cr := k8sCiliumUtils.ParseToCiliumRule(logger, clusterName, "", name, uid, rule)
 			retRules = append(retRules, cr)
 		}
 	}
 
-	return retRules, nil
+	return retRules
+}
+
+// Parse parses the CiliumClusterwideNetworkPolicy and returns a list of cilium policy rules.
+func (r *CiliumClusterwideNetworkPolicy) Parse(logger *slog.Logger, clusterName string) (api.Rules, error) {
+	if err := r.Validate(); err != nil {
+		return nil, err
+	}
+	r.Sanitize()
+	return r.ParseRules(logger, clusterName), nil
 }

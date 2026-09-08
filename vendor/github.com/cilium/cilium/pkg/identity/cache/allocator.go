@@ -9,15 +9,18 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync/atomic"
 
+	"github.com/cilium/hive/script"
 	"github.com/cilium/stream"
 	"github.com/google/renameio/v2"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/cilium/cilium/pkg/allocator"
+	cmtypes "github.com/cilium/cilium/pkg/clustermesh/types"
 	"github.com/cilium/cilium/pkg/controller"
 	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/identity/key"
@@ -41,7 +44,7 @@ import (
 var (
 	// IdentitiesPath is the path to where identities are stored in the
 	// key-value store.
-	IdentitiesPath = path.Join(kvstore.BaseKeyPrefix, "state", "identities", "v1")
+	IdentitiesPath = kvstore.JoinKey(kvstore.BaseKeyPrefix, "state", "identities", "v1")
 )
 
 // The filename for the local allocator checkpoont. This is periodically
@@ -56,6 +59,7 @@ type CachingIdentityAllocator struct {
 	// IdentityAllocator is an allocator for security identities from the
 	// kvstore.
 	IdentityAllocator *allocator.Allocator
+	clusterInfo       cmtypes.ClusterInfo
 
 	// globalIdentityAllocatorInitialized is closed whenever the global identity
 	// allocator is initialized.
@@ -106,6 +110,7 @@ type CachingIdentityAllocator struct {
 }
 
 type AllocatorConfig struct {
+	ClusterInfo              cmtypes.ClusterInfo
 	EnableOperatorManageCIDs bool
 	Timeout                  time.Duration
 	SyncInterval             time.Duration
@@ -115,6 +120,7 @@ type AllocatorConfig struct {
 // NewTestAllocatorConfig returns an AllocatorConfig initialized for testing purposes.
 func NewTestAllocatorConfig() AllocatorConfig {
 	return AllocatorConfig{
+		ClusterInfo:              cmtypes.DefaultClusterInfo,
 		EnableOperatorManageCIDs: false,
 		Timeout:                  5 * time.Second,
 		SyncInterval:             1 * time.Hour,
@@ -215,14 +221,14 @@ func (m *CachingIdentityAllocator) InitIdentityAllocator(client clientset.Interf
 
 	m.logger.Info("Initializing identity allocator")
 
-	minID := idpool.ID(identity.GetMinimalAllocationIdentity(option.Config.ClusterID))
-	maxID := idpool.ID(identity.GetMaximumAllocationIdentity(option.Config.ClusterID))
+	minID := idpool.ID(m.clusterInfo.MinimalAllocationIdentity())
+	maxID := idpool.ID(m.clusterInfo.MaximumAllocationIdentity())
 
 	m.logger.Info(
 		"Allocating identities between range",
 		logfields.Min, minID,
 		logfields.Max, maxID,
-		logfields.ClusterID, option.Config.ClusterID,
+		logfields.ClusterID, m.clusterInfo.ID,
 	)
 
 	// In the case of the allocator being closed, we need to create a new events channel
@@ -303,7 +309,7 @@ func (m *CachingIdentityAllocator) InitIdentityAllocator(client clientset.Interf
 		allocOptions := []allocator.AllocatorOption{
 			allocator.WithMax(maxID), allocator.WithMin(minID),
 			allocator.WithEvents(events), allocator.WithSyncInterval(m.syncInterval),
-			allocator.WithPrefixMask(idpool.ID(option.Config.ClusterID << identity.GetClusterIDShift())),
+			allocator.WithPrefixMask(idpool.ID(m.clusterInfo.ID << m.clusterInfo.GetClusterIDShift())),
 		}
 		if m.operatorIDManagement {
 			allocOptions = append(allocOptions, allocator.WithOperatorIDManagement())
@@ -380,6 +386,7 @@ func NewCachingIdentityAllocator(logger *slog.Logger, owner IdentityAllocatorOwn
 
 	m := &CachingIdentityAllocator{
 		logger:                             logger,
+		clusterInfo:                        config.ClusterInfo,
 		globalIdentityAllocatorInitialized: make(chan struct{}),
 		owner:                              owner,
 		identitiesPath:                     IdentitiesPath,
@@ -924,7 +931,7 @@ func (m *CachingIdentityAllocator) WatchRemoteIdentities(remoteName string, remo
 
 	prefix := m.identitiesPath
 	if cachedPrefix {
-		prefix = path.Join(kvstore.StateToCachePrefix(prefix), remoteName)
+		prefix = kvstore.JoinKey(kvstore.StateToCachePrefix(prefix), remoteName)
 	}
 
 	remoteAllocatorBackend, err := kvstoreallocator.NewKVStoreBackend(m.logger, kvstoreallocator.KVStoreBackendConfiguration{BasePath: prefix, Suffix: m.owner.GetNodeSuffix(), Typ: &key.GlobalIdentity{}, Backend: backend})
@@ -935,7 +942,7 @@ func (m *CachingIdentityAllocator) WatchRemoteIdentities(remoteName string, remo
 	remoteAlloc, err := allocator.NewAllocator(m.logger,
 		&key.GlobalIdentity{}, remoteAllocatorBackend,
 		allocator.WithEvents(m.IdentityAllocator.GetEvents()), allocator.WithoutGC(), allocator.WithoutAutostart(),
-		allocator.WithCacheValidator(clusterIDValidator(remoteID)),
+		allocator.WithCacheValidator(clusterIDValidator(m.clusterInfo, remoteID)),
 		allocator.WithCacheValidator(clusterNameValidator(remoteName)),
 	)
 	if err != nil {
@@ -1022,9 +1029,9 @@ func (m *CachingIdentityAllocator) LocalIdentityChanges() stream.Observable[Iden
 
 // clusterIDValidator returns a validator ensuring that the identity ID belongs
 // to the ClusterID range.
-func clusterIDValidator(clusterID uint32) allocator.CacheValidator {
-	min := idpool.ID(identity.GetMinimalAllocationIdentity(clusterID))
-	max := idpool.ID(identity.GetMaximumAllocationIdentity(clusterID))
+func clusterIDValidator(cinfo cmtypes.ClusterInfo, clusterID uint32) allocator.CacheValidator {
+	min := idpool.ID(cinfo.MinimalAllocationIdentityFor(clusterID))
+	max := idpool.ID(cinfo.MaximumAllocationIdentityFor(clusterID))
 
 	return func(_ allocator.AllocatorChangeKind, id idpool.ID, _ allocator.AllocatorKey) error {
 		if id < min || id > max {
@@ -1070,5 +1077,83 @@ func clusterNameValidator(clusterName string) allocator.CacheValidator {
 		}
 
 		return nil
+	}
+}
+
+func ScriptCmds(a *CachingIdentityAllocator) map[string]script.Cmd {
+	return map[string]script.Cmd{
+		"identity/list": script.Command(
+			script.CmdUsage{
+				Summary: "List all identities in the allocator",
+			},
+			func(s *script.State, args ...string) (script.WaitFunc, error) {
+				return func(s *script.State) (stdout string, stderr string, err error) {
+					var sb strings.Builder
+					models := a.GetIdentities()
+					sb.WriteRune('[')
+					for _, m := range models {
+						sb.WriteString(strconv.FormatInt(m.ID, 10))
+						sb.WriteRune(' ')
+						sb.WriteRune('{')
+						sb.WriteString(strings.Join([]string(m.Labels), ","))
+						sb.WriteRune('}')
+						sb.WriteRune(' ')
+					}
+					sb.WriteRune(']')
+					sb.WriteRune('\n')
+					return sb.String(), "", nil
+				}, nil
+			},
+		),
+		"identity/allocate": script.Command(
+			script.CmdUsage{
+				Summary: "Allocate identity from the allocator",
+				Args:    "labels",
+			},
+			func(s *script.State, args ...string) (script.WaitFunc, error) {
+				var wait script.WaitFunc
+
+				allArgs := []string(args)
+				var labelArr []labels.Label
+				for s := range strings.SplitSeq(allArgs[0], ",") {
+					labelArr = append(labelArr, labels.ParseLabel(s))
+				}
+				id, _, err := a.AllocateIdentity(s.Context(), labels.LabelArray(labelArr).Labels(), true, identity.NumericIdentity(0))
+				if err != nil {
+					return wait, fmt.Errorf("allocate: %w", err)
+				}
+				wait = func(s *script.State) (stdout string, stderr string, err error) {
+					return id.String() + "\n", "", nil
+				}
+				return wait, nil
+			},
+		),
+		"identity/release": script.Command(
+			script.CmdUsage{
+				Summary: "Release identity from the allocator",
+				Args:    "numeric-id",
+			},
+			func(s *script.State, args ...string) (script.WaitFunc, error) {
+				if len(args) != 1 {
+					return nil, fmt.Errorf("expected one arg but got %v, see usage details", len(args))
+				}
+				num, err := strconv.Atoi(args[0])
+				if err != nil {
+					return nil, fmt.Errorf("atoi: %w", err)
+				}
+				nid := identity.NumericIdentity(num)
+				id := a.LookupIdentityByID(s.Context(), nid)
+				if id == nil {
+					return nil, fmt.Errorf("identity %d not found", nid)
+				}
+				released, err := a.Release(s.Context(), id, true)
+				if err != nil {
+					return nil, fmt.Errorf("release: %w", err)
+				}
+				return func(s *script.State) (stdout string, stderr string, err error) {
+					return fmt.Sprintf("released=%v\n", released), "", nil
+				}, nil
+			},
+		),
 	}
 }

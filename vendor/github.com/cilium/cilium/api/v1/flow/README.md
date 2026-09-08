@@ -6,6 +6,7 @@
 - [flow/flow.proto](#flow_flow-proto)
     - [AgentEvent](#flow-AgentEvent)
     - [AgentEventUnknown](#flow-AgentEventUnknown)
+    - [Aggregate](#flow-Aggregate)
     - [CiliumEventType](#flow-CiliumEventType)
     - [DNS](#flow-DNS)
     - [DebugEvent](#flow-DebugEvent)
@@ -59,6 +60,7 @@
     - [IPVersion](#flow-IPVersion)
     - [L7FlowType](#flow-L7FlowType)
     - [LostEventSource](#flow-LostEventSource)
+    - [SCTPChunkType](#flow-SCTPChunkType)
     - [SocketTranslationPoint](#flow-SocketTranslationPoint)
     - [TraceObservationPoint](#flow-TraceObservationPoint)
     - [TraceReason](#flow-TraceReason)
@@ -110,6 +112,23 @@
 | ----- | ---- | ----- | ----------- |
 | type | [string](#string) |  |  |
 | notification | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="flow-Aggregate"></a>
+
+### Aggregate
+Aggregate contains flow aggregation counters
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ingress_flow_count | [uint32](#uint32) |  | ingress_flow_count is the count of flows in the ingress direction |
+| egress_flow_count | [uint32](#uint32) |  | egress_flow_count is the count of flows in the egress direction |
+| unknown_direction_flow_count | [uint32](#uint32) |  | unknown_direction_flow_count is the count of flows with unknown traffic direction |
 
 
 
@@ -207,6 +226,7 @@ Emitter identifies the source that emits a Hubble flow.
 | labels | [string](#string) | repeated | labels in `foo=bar` format. |
 | pod_name | [string](#string) |  |  |
 | workloads | [Workload](#flow-Workload) | repeated |  |
+| pod_uid | [string](#string) |  | pod_uid is the Kubernetes UID of the Pod represented by this endpoint. |
 
 
 
@@ -335,6 +355,8 @@ EventTypeFilter is a filter describing a particular event type.
 | file | [FileInfo](#flow-FileInfo) |  | Cilium datapath filename and line number. Currently only applicable when Verdict = DROPPED. |
 | ip_trace_id | [IPTraceID](#flow-IPTraceID) |  | IPTraceID relates to the trace ID in the IP options of a packet. |
 | drop_reason_desc | [DropReason](#flow-DropReason) |  | only applicable to Verdict = DROPPED. |
+| ext_error | [int32](#int32) |  | ext_error is the extended error code reported by the datapath alongside the primary drop reason (see DropNotify.ExtError in pkg/monitor). It provides additional context for the drop (for example, the BPF FIB lookup result for DROP_NO_FIB). Only applicable to Verdict = DROPPED. |
+| ext_drop_reason_desc | [string](#string) |  | ext_drop_reason_desc is the human-readable extended drop reason combining drop_reason_desc with ext_error (equivalent to the string produced by cilium monitor&#39;s DropReasonExt). Only set for drops reported via DropNotify; not populated for policy verdict denials, which carry their reason in drop_reason_desc. |
 | is_reply | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | is_reply indicates that this was a packet (L4) or message (L7) in the reply direction. May be absent (in which case it is unknown whether it is a reply or not). |
 | debug_capture_point | [DebugCapturePoint](#flow-DebugCapturePoint) |  | Only applicable to cilium debug capture events, blank for other types |
 | interface | [NetworkInterface](#flow-NetworkInterface) |  | interface is the network interface on which this flow was observed |
@@ -350,6 +372,7 @@ EventTypeFilter is a filter describing a particular event type.
 | egress_denied_by | [Policy](#flow-Policy) | repeated | The CiliumNetworkPolicies denying the egress of the flow. |
 | ingress_denied_by | [Policy](#flow-Policy) | repeated | The CiliumNetworkPolicies denying the ingress of the flow. |
 | policy_log | [string](#string) | repeated | The set of Log values for policies that matched this flow. If no matched policies have an explicit log value configured, this list is empty. Duplicate values are elided; each entry is unique. |
+| aggregate | [Aggregate](#flow-Aggregate) |  | Aggregate contains flow aggregation counters when flow aggregation is enabled. This field is only populated for aggregated flows. |
 
 
 
@@ -404,6 +427,7 @@ multiple fields are set, then all fields must match for the filter to match.
 | ip_version | [IPVersion](#flow-IPVersion) | repeated | filter based on IP version (ipv4 or ipv6) |
 | trace_id | [string](#string) | repeated | trace_id filters flows by trace ID |
 | ip_trace_id | [uint64](#uint64) | repeated | ip_trace_id filters flows by IPTraceID |
+| encrypted | [bool](#bool) | repeated | encrypted filters flows based on encryption status (WireGuard/IPsec). When set to true, only encrypted flows are returned. When set to false, only unencrypted flows are returned. |
 | experimental | [FlowFilter.Experimental](#flow-FlowFilter-Experimental) |  | experimental contains filters that are not stable yet. Support for experimental features is always optional and subject to change. |
 
 
@@ -708,6 +732,7 @@ that happened before the events were captured by Hubble.
 | ----- | ---- | ----- | ----------- |
 | source_port | [uint32](#uint32) |  |  |
 | destination_port | [uint32](#uint32) |  |  |
+| chunk_type | [SCTPChunkType](#flow-SCTPChunkType) |  |  |
 
 
 
@@ -882,6 +907,7 @@ TraceParent identifies the incoming request in a tracing system.
 | protocol | [Tunnel.Protocol](#flow-Tunnel-Protocol) |  |  |
 | IP | [IP](#flow-IP) |  |  |
 | l4 | [Layer4](#flow-Layer4) |  |  |
+| vni | [uint32](#uint32) |  |  |
 
 
 
@@ -1158,6 +1184,7 @@ here.
 | DROP_EP_NOT_READY | 203 | A BPF program wants to tail call some endpoint&#39;s policy program in cilium_call_policy, but the program is not available. |
 | DROP_NO_EGRESS_IP | 204 | An Egress Gateway node matched a packet against an Egress Gateway policy that didn&#39;t select a valid Egress IP. |
 | DROP_PUNT_PROXY | 205 | Punt packet to a user space proxy. |
+| DROP_FRAG_NOT_FOUND_WORLD | 207 | A non-first IP fragment from the world was dropped because its first fragment (carrying the L4 ports) was never seen, so host policy cannot be evaluated. Split from DROP_FRAG_NOT_FOUND to distinguish ambient external fragments from in-cluster fragment-tracking bugs. |
 
 
 
@@ -1226,6 +1253,23 @@ This enum corresponds to Cilium&#39;s L7 accesslog [FlowType](https://github.com
 | PERF_EVENT_RING_BUFFER | 1 | PERF_EVENT_RING_BUFFER indicates that events were dropped in the BPF perf event ring buffer, indicating that userspace agent did not keep up with the events produced by the datapath. |
 | OBSERVER_EVENTS_QUEUE | 2 | OBSERVER_EVENTS_QUEUE indicates that events were dropped because the Hubble events queue was full, indicating that the Hubble observer did not keep up. |
 | HUBBLE_RING_BUFFER | 3 | HUBBLE_RING_BUFFER indicates that the event was dropped because it could not be read from Hubble&#39;s ring buffer in time before being overwritten. |
+
+
+
+<a name="flow-SCTPChunkType"></a>
+
+### SCTPChunkType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNSUPPORTED | 0 |  |
+| INIT | 1 |  |
+| INIT_ACK | 2 |  |
+| SHUTDOWN | 3 |  |
+| SHUTDOWN_ACK | 4 |  |
+| SHUTDOWN_COMPLETE | 5 |  |
+| ABORT | 6 |  |
 
 
 

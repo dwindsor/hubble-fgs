@@ -15,23 +15,25 @@ import (
 // This allows watching any part of the tree (any prefix) for changes.
 type Tree[T any] struct {
 	root      *header[T]
-	rootWatch chan struct{}
+	rootWatch *watchState
 	size      int // the number of objects in the tree
 	opts      options
-	prevTxn   atomic.Pointer[Txn[T]] // the previous txn for reusing the allocation
+	prevTxn   *atomic.Pointer[Txn[T]] // the previous txn for reusing the allocation
+	nextTxnID uint64                  // the next transaction ID to use
 }
 
 // New constructs a new tree.
-func New[T any](opts ...Option) *Tree[T] {
+func New[T any](opts ...Option) Tree[T] {
 	var o options
 	for _, opt := range opts {
 		opt(&o)
 	}
-	t := &Tree[T]{
+	t := Tree[T]{
 		root:      nil,
-		rootWatch: make(chan struct{}),
+		rootWatch: newWatchState(),
 		size:      0,
 		opts:      o,
+		prevTxn:   &atomic.Pointer[Txn[T]]{},
 	}
 	return t
 }
@@ -43,17 +45,9 @@ type Option func(*options)
 // grained notifications.
 var RootOnlyWatch = (*options).setRootOnlyWatch
 
-// NoCache disables the mutated node cache
-var NoCache = (*options).setNoCache
-
 func newTxn[T any](o options) *Txn[T] {
-	txn := &Txn[T]{
-		watches: make(map[chan struct{}]struct{}),
-	}
-	if !o.noCache() {
-		txn.mutated = &nodeMutated[T]{}
-		txn.deleteParentsCache = make([]deleteParent[T], 0, 32)
-	}
+	txn := &Txn[T]{}
+	txn.deleteParentsCache = make([]deleteParent[T], 0, 32)
 	txn.opts = o
 	return txn
 }
@@ -67,8 +61,8 @@ func (t *Tree[T]) Txn() *Txn[T] {
 	// Reuse the previous txn allocation if possible
 	if prevTxn := t.prevTxn.Swap(nil); prevTxn != nil {
 		txn = prevTxn
-		txn.mutated.clear()
 		clear(txn.watches)
+		txn.watches = txn.watches[:0]
 		txn.dirty = false
 	} else {
 		txn = newTxn[T](t.opts)
@@ -78,6 +72,8 @@ func (t *Tree[T]) Txn() *Txn[T] {
 	txn.oldRoot = t.root
 	txn.rootWatch = t.rootWatch
 	txn.size = t.size
+	txn.prevTxn = t.prevTxn
+	txn.txnID = t.nextTxnID
 	return txn
 }
 
@@ -87,37 +83,48 @@ func (t *Tree[T]) Len() int {
 }
 
 // Get fetches the value associated with the given key.
-// Returns the value, a watch channel (which is closed on
-// modification to the key) and boolean which is true if
-// value was found.
-func (t *Tree[T]) Get(key []byte) (T, <-chan struct{}, bool) {
-	value, watch, ok := search(t.root, t.rootWatch, key)
-	return value, watch, ok
+func (t *Tree[T]) Get(key []byte) (T, bool) {
+	value, _, ok := search(t.root, t.rootWatch, key)
+	return value, ok
 }
 
-// Prefix returns an iterator for all objects that starts with the
-// given prefix, and a channel that closes when any objects matching
-// the given prefix are upserted or deleted.
-func (t *Tree[T]) Prefix(prefix []byte) (*Iterator[T], <-chan struct{}) {
-	return prefixSearch(t.root, t.rootWatch, prefix)
+// GetWatch fetches the value associated with the given key and returns a watch
+// channel that closes when the key is modified.
+func (t *Tree[T]) GetWatch(key []byte) (T, <-chan struct{}, bool) {
+	value, watch, ok := search(t.root, t.rootWatch, key)
+	return value, watch.channel(), ok
+}
+
+// Prefix returns an iterator for all objects that start with the given prefix.
+func (t *Tree[T]) Prefix(prefix []byte) Iterator[T] {
+	iter, _ := prefixSearch(t.root, t.rootWatch, prefix)
+	return iter
+}
+
+// PrefixWatch returns an iterator for all objects that start with the given
+// prefix and a channel that closes when any matching object is upserted or
+// deleted.
+func (t *Tree[T]) PrefixWatch(prefix []byte) (Iterator[T], <-chan struct{}) {
+	iter, watch := prefixSearch(t.root, t.rootWatch, prefix)
+	return iter, watch.channel()
 }
 
 // RootWatch returns a watch channel for the root of the tree.
 // Since this is the channel associated with the root, this closes
 // when there are any changes to the tree.
 func (t *Tree[T]) RootWatch() <-chan struct{} {
-	return t.rootWatch
+	return t.rootWatch.channel()
 }
 
 // LowerBound returns an iterator for all keys that have a value
 // equal to or higher than 'key'.
-func (t *Tree[T]) LowerBound(key []byte) *Iterator[T] {
+func (t *Tree[T]) LowerBound(key []byte) Iterator[T] {
 	return lowerbound(t.root, key)
 }
 
 // Insert inserts the key into the tree with the given value.
 // Returns the old value if it exists and a new tree.
-func (t *Tree[T]) Insert(key []byte, value T) (old T, hadOld bool, tree *Tree[T]) {
+func (t *Tree[T]) Insert(key []byte, value T) (old T, hadOld bool, tree Tree[T]) {
 	txn := t.Txn()
 	old, hadOld = txn.Insert(key, value)
 	tree = txn.CommitAndNotify()
@@ -128,16 +135,16 @@ func (t *Tree[T]) Insert(key []byte, value T) (old T, hadOld bool, tree *Tree[T]
 // function is called with the zero value for T. It is up to the
 // caller to not mutate the value in-place and to return a clone.
 // Returns the old value if it exists.
-func (t *Tree[T]) Modify(key []byte, mod func(T) T) (old T, hadOld bool, tree *Tree[T]) {
+func (t *Tree[T]) Modify(key []byte, value T, mod func(T, T) T) (old T, hadOld bool, tree Tree[T]) {
 	txn := t.Txn()
-	old, hadOld = txn.Modify(key, mod)
+	old, _, hadOld = txn.Modify(key, value, mod)
 	tree = txn.CommitAndNotify()
 	return
 }
 
 // Delete the given key from the tree.
 // Returns the old value if it exists and the new tree.
-func (t *Tree[T]) Delete(key []byte) (old T, hadOld bool, tree *Tree[T]) {
+func (t *Tree[T]) Delete(key []byte) (old T, hadOld bool, tree Tree[T]) {
 	txn := t.Txn()
 	old, hadOld = txn.Delete(key)
 	tree = txn.CommitAndNotify()
@@ -145,12 +152,17 @@ func (t *Tree[T]) Delete(key []byte) (old T, hadOld bool, tree *Tree[T]) {
 }
 
 // Iterator returns an iterator for all objects.
-func (t *Tree[T]) Iterator() *Iterator[T] {
-	return newIterator[T](t.root)
+func (t *Tree[T]) Iterator() Iterator[T] {
+	return newIterator(t.root)
+}
+
+// All iterates over all objects
+func (t *Tree[T]) All(yield func([]byte, T) bool) {
+	Iterator[T]{start: t.root}.All(yield)
 }
 
 // PrintTree to the standard output. For debugging.
 func (t *Tree[T]) PrintTree() {
-	fmt.Printf("rootWatch: %p %v\n", t.rootWatch, isClosedChan(t.rootWatch))
+	fmt.Printf("rootWatch: %p %v\n", t.rootWatch, t.rootWatch.isClosed())
 	t.root.printTree(0)
 }

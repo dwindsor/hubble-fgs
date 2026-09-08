@@ -4,11 +4,14 @@
 package manager
 
 import (
+	"context"
 	"log/slog"
 	"maps"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/cilium/hive/cell"
 
 	"github.com/cilium/cilium/pkg/cgroups"
 	v1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/api/core/v1"
@@ -61,8 +64,6 @@ type cgroupManager struct {
 	podEventsDone chan podEventStatus
 	// Cgroup path provider
 	pathProvider cgroupPathProvider
-	// Channel to shut down manager
-	shutdown chan struct{}
 	// Interface to do cgroups related operations
 	cgroupsChecker cgroup
 	// Cache indexed by cgroup id to store pod metadata
@@ -102,7 +103,12 @@ func (m *cgroupManager) OnAddPod(pod *v1.Pod) {
 }
 
 func (m *cgroupManager) OnUpdatePod(oldPod, newPod *v1.Pod) {
-	if newPod.Spec.NodeName != nodetypes.GetName() {
+	localNodeName := nodetypes.GetName()
+	if oldPod.UID != newPod.UID {
+		if oldPod.Spec.NodeName != localNodeName && newPod.Spec.NodeName != localNodeName {
+			return
+		}
+	} else if newPod.Spec.NodeName != localNodeName {
 		return
 	}
 	m.podEvents <- podEvent{
@@ -149,11 +155,6 @@ func (m *cgroupManager) DumpPodMetadata() []*FullPodMetadata {
 		allMetadataOut: allMetaOut,
 	}
 	return <-allMetaOut
-}
-
-// Close should only be called once from daemon close.
-func (m *cgroupManager) Close() {
-	close(m.shutdown)
 }
 
 type podUID = string
@@ -206,20 +207,23 @@ func newManager(logger *slog.Logger, cg cgroup, pathProvider cgroupPathProvider,
 		podMetadataById:           make(map[string]*podMetadata),
 		containerMetadataByCgrpId: make(map[uint64]*containerMetadata),
 		podEvents:                 make(chan podEvent, channelSize),
-		shutdown:                  make(chan struct{}),
 		metadataCache:             map[uint64]PodMetadata{},
 		cgroupsChecker:            cg,
 		pathProvider:              pathProvider,
 	}
 }
 
-func (m *cgroupManager) processPodEvents() {
+func (m *cgroupManager) processPodEvents(ctx context.Context, _ cell.Health) error {
 	for {
 		select {
 		case ev := <-m.podEvents:
 			switch ev.eventType {
 			case podAddEvent, podUpdateEvent:
-				m.updatePodMetadata(ev.pod, ev.oldPod)
+				if ev.oldPod != nil && ev.oldPod.UID != ev.pod.UID {
+					m.replacePodMetadata(ev.oldPod, ev.pod)
+				} else {
+					m.updatePodMetadata(ev.pod, ev.oldPod)
+				}
 				if m.podEventsDone != nil {
 					m.podEventsDone <- podEventStatus{
 						name:      ev.pod.Name,
@@ -241,11 +245,11 @@ func (m *cgroupManager) processPodEvents() {
 			case podDumpMetadataEvent:
 				m.dumpPodMetadata(ev.allMetadataOut)
 			}
-		case <-m.shutdown:
+		case <-ctx.Done():
 			if m.podEventsDone != nil {
 				close(m.podEventsDone)
 			}
-			return
+			return nil
 		}
 	}
 }
@@ -353,6 +357,16 @@ func (m *cgroupManager) updatePodMetadata(pod, oldPod *v1.Pod) {
 			}
 		}
 		m.metadataCacheLock.Unlock()
+	}
+}
+
+func (m *cgroupManager) replacePodMetadata(oldPod, newPod *v1.Pod) {
+	localNodeName := nodetypes.GetName()
+	if oldPod.Spec.NodeName == localNodeName {
+		m.deletePodMetadata(oldPod)
+	}
+	if newPod.Spec.NodeName == localNodeName {
+		m.updatePodMetadata(newPod, nil)
 	}
 }
 

@@ -7,11 +7,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//+genclient
+// Note: this type still exists in v2alpha1 until we perform a storage version
+// migration (see GH-47774), as some clusters were created with v2alpha1 as a
+// storage version. It is not allowed to remove a storage version until a migration
+// is complete.
+
 //+k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 //+kubebuilder:resource:categories={cilium}
 //+kubebuilder:object:root=true
-//+kubebuilder:deprecatedversion:warning="cilium.io/v2alpha1 CiliumNodeConfig will be deprecated in cilium v1.16; use cilium.io/v2 CiliumNodeConfig"
+//+kubebuilder:deprecatedversion:warning="cilium.io/v2alpha1 is deprecated, use cilium.io/v2 CiliumNodeConfig"
 //+deepequal-gen=false
 
 // CiliumNodeConfig is a list of configuration key-value pairs. It is applied to
@@ -23,9 +27,11 @@ type CiliumNodeConfig struct {
 	// +deepequal-gen=false
 	metav1.TypeMeta `json:",inline"`
 	// +deepequal-gen=false
+	// +kubebuilder:validation:Optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec is the desired Cilium configuration overrides for a given node
+	// +kubebuilder:validation:Required
 	Spec CiliumNodeConfigSpec `json:"spec"`
 }
 
@@ -34,12 +40,16 @@ type CiliumNodeConfigSpec struct {
 	// Defaults is treated the same as the cilium-config ConfigMap - a set
 	// of key-value pairs parsed by the agent and operator processes.
 	// Each key must be a valid config-map data field (i.e. a-z, A-Z, -, _, and .)
+	//
+	// +kubebuilder:validation:Required
 	Defaults map[string]string `json:"defaults"`
 
 	// NodeSelector is a label selector that determines to which nodes
 	// this configuration applies.
 	// If not supplied, then this config applies to no nodes. If
 	// empty, then it applies to all nodes.
+	//
+	// +kubebuilder:validation:Required
 	NodeSelector *metav1.LabelSelector `json:"nodeSelector"`
 }
 

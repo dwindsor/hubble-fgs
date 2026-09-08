@@ -4,8 +4,6 @@
 package api
 
 import (
-	"context"
-
 	"github.com/cilium/cilium/pkg/slices"
 )
 
@@ -22,21 +20,18 @@ type EgressCommonRule struct {
 	// Any endpoint with the label "role=frontend" can communicate with any
 	// endpoint carrying the label "role=backend".
 	//
+	// Note that while an empty non-nil ToEndpoints does not select anything,
+	// nil ToEndpoints is implicitly treated as a wildcard selector if ToPorts
+	// are also specified.
+	// To select everything, use one EndpointSelector without any match requirements.
+	//
 	// +kubebuilder:validation:Optional
 	ToEndpoints []EndpointSelector `json:"toEndpoints,omitempty"`
 
-	// ToRequires is a list of additional constraints which must be met
-	// in order for the selected endpoints to be able to connect to other
-	// endpoints. These additional constraints do no by itself grant access
-	// privileges and must always be accompanied with at least one matching
-	// ToEndpoints.
+	// Deprecated.
 	//
-	// Example:
-	// Any Endpoint with the label "team=A" requires any endpoint to which it
-	// communicates to also carry the label "team=A".
-	//
-	// +kubebuilder:validation:Optional
-	ToRequires []EndpointSelector `json:"toRequires,omitempty"`
+	// +kubebuilder:validation:MaxItems=0
+	ToRequires []string `json:"toRequires,omitempty"`
 
 	// ToCIDR is a list of IP blocks which the endpoint subject to the rule
 	// is allowed to initiate connections. Only connections destined for
@@ -67,11 +62,11 @@ type EgressCommonRule struct {
 	// initiate connections to 10.2.3.0/24 except from IPs in subnet 10.2.3.0/28.
 	//
 	// +kubebuilder:validation:Optional
-	ToCIDRSet CIDRRuleSlice `json:"toCIDRSet,omitempty"`
+	ToCIDRSet CIDRRuleSlice `json:"toCIDRSet,omitzero"`
 
 	// ToEntities is a list of special entities to which the endpoint subject
 	// to the rule is allowed to initiate connections. Supported entities are
-	// `world`, `cluster`, `host`, `remote-node`, `kube-apiserver`, `ingress`, `init`,
+	// `world`, `cluster`, `cluster-mesh`, `host`, `remote-node`, `kube-apiserver`, `ingress`, `init`,
 	// `health`, `unmanaged`, `none` and `all`.
 	//
 	// +kubebuilder:validation:Optional
@@ -84,9 +79,10 @@ type EgressCommonRule struct {
 	// +kubebuilder:validation:Optional
 	ToServices []Service `json:"toServices,omitempty"`
 
-	// ToGroups is a directive that allows the integration with multiple outside
-	// providers. Currently, only AWS is supported, and the rule can select by
-	// multiple sub directives:
+	// ToGroups allows policies to reference CIDRs provided by external integrations.
+	// Currently, only AWS is supported, and the rule can select by multiple sub directives.
+	// ToGroups entries are functionally equivalent to toCIDR, and have the same
+	// limitiations. They cannot select traffic originating from within the cluster.
 	//
 	// Example:
 	// toGroups:
@@ -133,9 +129,7 @@ func (in *EgressCommonRule) DeepEqual(other *EgressCommonRule) bool {
 //     member will have no effect on the rule.
 //
 //   - If multiple members of the structure are specified, then all members
-//     must match in order for the rule to take effect. The exception to this
-//     rule is the ToRequires member; the effects of any Requires field in any
-//     rule will apply to all other rules as well.
+//     must match in order for the rule to take effect.
 //
 //   - ToEndpoints, ToCIDR, ToCIDRSet, ToEntities, ToServices and ToGroups are
 //     mutually exclusive. Only one of these members may be present within an
@@ -195,9 +189,7 @@ type EgressRule struct {
 //     member will have no effect on the rule.
 //
 //   - If multiple members of the structure are specified, then all members
-//     must match in order for the rule to take effect. The exception to this
-//     rule is the ToRequires member; the effects of any Requires field in any
-//     rule will apply to all other rules as well.
+//     must match in order for the rule to take effect.
 //
 //   - ToEndpoints, ToCIDR, ToCIDRSet, ToEntities, ToServices and ToGroups are
 //     mutually exclusive. Only one of these members may be present within an
@@ -225,74 +217,4 @@ type EgressDenyRule struct {
 	//
 	// +kubebuilder:validation:Optional
 	ICMPs ICMPRules `json:"icmps,omitempty"`
-}
-
-// AllowsWildcarding returns true if wildcarding should be performed upon
-// policy evaluation for the given rule.
-func (e *EgressRule) AllowsWildcarding() bool {
-	return e.EgressCommonRule.AllowsWildcarding() && len(e.ToFQDNs) == 0
-}
-
-// AllowsWildcarding returns true if wildcarding should be performed upon
-// policy evaluation for the given rule.
-func (e *EgressCommonRule) AllowsWildcarding() bool {
-	return len(e.ToRequires)+len(e.ToServices) == 0
-}
-
-// RequiresDerivative returns true when the EgressCommonRule contains sections
-// that need a derivative policy created in order to be enforced
-// (e.g. ToGroups).
-func (e *EgressCommonRule) RequiresDerivative() bool {
-	return len(e.ToGroups) > 0
-}
-
-func (e *EgressCommonRule) IsL3() bool {
-	if e == nil {
-		return false
-	}
-	return len(e.ToEndpoints) > 0 ||
-		len(e.ToRequires) > 0 ||
-		len(e.ToCIDR) > 0 ||
-		len(e.ToCIDRSet) > 0 ||
-		len(e.ToEntities) > 0 ||
-		len(e.ToGroups) > 0 ||
-		len(e.ToNodes) > 0
-}
-
-// CreateDerivative will return a new rule based on the data gathered by the
-// rules that creates a new derivative policy.
-// In the case of ToGroups will call outside using the groups callback and this
-// function can take a bit of time.
-func (e *EgressRule) CreateDerivative(ctx context.Context) (*EgressRule, error) {
-	newRule := e.DeepCopy()
-	if !e.RequiresDerivative() {
-		return newRule, nil
-	}
-	newRule.ToCIDRSet = make(CIDRRuleSlice, 0, len(e.ToGroups))
-	cidrSet, err := ExtractCidrSet(ctx, e.ToGroups)
-	if err != nil {
-		return &EgressRule{}, err
-	}
-	newRule.ToCIDRSet = append(e.ToCIDRSet, cidrSet...)
-	newRule.ToGroups = nil
-	return newRule, nil
-}
-
-// CreateDerivative will return a new rule based on the data gathered by the
-// rules that creates a new derivative policy.
-// In the case of ToGroups will call outside using the groups callback and this
-// function can take a bit of time.
-func (e *EgressDenyRule) CreateDerivative(ctx context.Context) (*EgressDenyRule, error) {
-	newRule := e.DeepCopy()
-	if !e.RequiresDerivative() {
-		return newRule, nil
-	}
-	newRule.ToCIDRSet = make(CIDRRuleSlice, 0, len(e.ToGroups))
-	cidrSet, err := ExtractCidrSet(ctx, e.ToGroups)
-	if err != nil {
-		return &EgressDenyRule{}, err
-	}
-	newRule.ToCIDRSet = append(e.ToCIDRSet, cidrSet...)
-	newRule.ToGroups = nil
-	return newRule, nil
 }
