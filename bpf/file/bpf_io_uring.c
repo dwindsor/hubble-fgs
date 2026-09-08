@@ -310,7 +310,7 @@ int BPF_KRETPROBE(io_write_exit, long ret)
 	return 0;
 
 io_write_exit_error:
-	inc_error(hook_io_read, -err);
+	inc_error(hook_io_write, -err);
 	return 0;
 }
 
