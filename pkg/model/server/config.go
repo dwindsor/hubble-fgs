@@ -11,28 +11,17 @@
 package server
 
 import (
-	"fmt"
-	"sync"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/modelapi"
 )
 
-var (
-	confMutex  sync.Mutex
-	cfgMapName = "tg_process_tree_config_map"
-)
-
-type ConfigKey struct {
-	Zero uint32
-}
-
-func (k *ConfigKey) String() string {
-	return fmt.Sprintf("Key: %d\n", k.Zero)
-}
+var cfgMapName = "tg_process_tree_config_map"
 
 type CfgProcessModel struct {
 	Enable       bool
@@ -40,25 +29,15 @@ type CfgProcessModel struct {
 	TrackExecIds bool
 }
 
-type ConfigValue struct {
-	EnableProcessTree uint64
-	EnableBpfId       uint64
-	TrackExecIds      uint64
-}
-
-func (v *ConfigValue) String() string {
-	return fmt.Sprintf("Enable: %d EnableBpfIds: %d", v.EnableProcessTree, v.EnableBpfId)
-}
-
 func configureSettings(cfg *CfgProcessModel) error {
-	confMutex.Lock()
-	defer confMutex.Unlock()
+	modelapi.ConfigMu.Lock()
+	defer modelapi.ConfigMu.Unlock()
 
 	c := &ebpf.MapSpec{
 		Name:       cfgMapName,
 		Type:       bpf.BPF_MAP_TYPE_ARRAY,
-		KeySize:    uint32(unsafe.Sizeof(ConfigKey{})),
-		ValueSize:  uint32(unsafe.Sizeof(ConfigValue{})),
+		KeySize:    uint32(unsafe.Sizeof(modelapi.ProcessTreeConfigKey{})),
+		ValueSize:  uint32(unsafe.Sizeof(modelapi.ProcessTreeConfigValue{})),
 		MaxEntries: 1,
 		Pinning:    ebpf.PinByName,
 	}
@@ -71,11 +50,11 @@ func configureSettings(cfg *CfgProcessModel) error {
 	}
 	defer m.Close()
 
-	key := &ConfigKey{
+	key := &modelapi.ProcessTreeConfigKey{
 		Zero: uint32(0),
 	}
 
-	value := &ConfigValue{}
+	value := &modelapi.ProcessTreeConfigValue{}
 	if cfg.EnableBpfId {
 		value.EnableBpfId = 1
 	} else {
