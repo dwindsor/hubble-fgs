@@ -337,6 +337,8 @@ type TcpValue struct {
 	Deny        uint8                   `align:"deny"`
 	Pad         uint16                  `align:"pad"`
 	Stats       MsgSocketStats          `align:"stats"`
+	PolicyGen   uint32                  `align:"policy_gen"`
+	Pad2        uint32                  `align:"pad2"`
 }
 
 func (t *TcpValue) String() string {

@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/modelapi"
 	"github.com/isovalent/hubble-fgs/pkg/ebpfmap"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
@@ -49,6 +50,33 @@ func (p *BPFProgrammer) initMap() error {
 	p.recordBackend = &bpfRecordBackend{
 		dstMap: ebpfmap.NewTyped[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap),
 		lpmMap: lpmMap,
+	}
+	return nil
+}
+
+// bumpPolicyGeneration advances the generation the datapath compares per socket,
+// so any datapath record change re-resolves the cached verdict on connections
+// established before it. ConfigMu serializes this read-modify-write against the
+// enable-flag write in the model server, which touches the same map entry.
+func (p *BPFProgrammer) bumpPolicyGeneration() error {
+	modelapi.ConfigMu.Lock()
+	defer modelapi.ConfigMu.Unlock()
+
+	file := filepath.Join(bpf.MapPrefixPath(), processTreeConfigMap)
+	m, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		return fmt.Errorf("failed to load config map (%s): %w", file, err)
+	}
+	defer m.Close()
+
+	var key modelapi.ProcessTreeConfigKey
+	var val modelapi.ProcessTreeConfigValue
+	if err := m.Lookup(&key, &val); err != nil {
+		return fmt.Errorf("reading policy generation: %w", err)
+	}
+	val.PolicyGeneration++
+	if err := m.Update(&key, &val, ebpf.UpdateAny); err != nil {
+		return fmt.Errorf("bumping policy generation: %w", err)
 	}
 	return nil
 }

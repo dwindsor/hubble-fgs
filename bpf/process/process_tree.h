@@ -41,6 +41,12 @@ struct process_tree_config {
 	uint64_t enableProcessTree;
 	uint64_t bpfGenIds;
 	uint64_t track_exec_ids;
+	/* Bumped by userspace on every datapath record add or remove. A socket on an
+	 * older generation re-resolves, so a policy applied mid-connection takes
+	 * effect.
+	 */
+	uint32_t policy_generation;
+	uint32_t pad;
 };
 
 /* Read only configuration single entry array. */
@@ -992,6 +998,31 @@ static int recv(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 	return SK_PASS;
 }
 
+/* Return the policy generation, which userspace bumps on every datapath record
+ * change. The counter increases monotonically over the Tetragon agent's
+ * lifetime.
+ */
+static inline __attribute__((always_inline)) __u32 current_policy_gen(void)
+{
+	struct process_tree_config *cfg;
+	int zero = 0;
+
+	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
+	if (!cfg)
+		return 0;
+	return cfg->policy_generation;
+}
+
+/* Report whether the socket's cached verdict is from an older policy generation.
+ * The caller stamps the current generation after it writes the new verdict.
+ * Stamping here instead would let a concurrent CPU on the shared socket map read
+ * the advanced generation before v->deny is updated and use the stale verdict.
+ */
+static inline __attribute__((always_inline)) bool policy_gen_stale(struct tcpsocketmap_value *v)
+{
+	return v->policy_gen != current_policy_gen();
+}
+
 /* Stats and deny/allow decisions are made in a sequence each step
  * loosens the key searching for a higher level rule. The order of
  * this search is important and is done in the following order.
@@ -1005,7 +1036,7 @@ static int recv(struct __sk_buff *skb, int deny, struct destination_endpoint_key
  */
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	__u64 cgid, len = skb->len;
+	__u64 cgid, gen, len = skb->len;
 	int verdict, rewrite;
 
 	/* These are incomplete keys the result of process and sessions taht
@@ -1017,6 +1048,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 
 	rewrite = repair_socket_nsid(&v->dst_key, skb->sk);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
+	rewrite |= policy_gen_stale(v);
 	if (!rewrite) {
 		verdict = send(skb, v->deny, &v->dst_key, len, true);
 		if (verdict < 0)
@@ -1024,8 +1056,17 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return verdict;
 	}
 err_out:
+	/* Capture the generation before the resolve and stamp it after v->deny, so
+	 * the stamp is never newer than the verdict and a concurrent CPU sees the
+	 * verdict first. On a weakly-ordered arch (arm64) the two stores can still be
+	 * observed out of order, so a racing CPU may use the stale verdict for the
+	 * packets in flight during one re-resolve. The leak self-heals, and closing
+	 * it is out of scope here.
+	 */
+	gen = current_policy_gen();
 	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
+	v->policy_gen = gen;
 	verdict = send(skb, v->deny, &v->dst_key, len, true);
 	if (verdict < 0)
 		return SK_PASS;
@@ -1045,7 +1086,7 @@ err_out:
  */
 static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	__u64 cgid, len = skb->len;
+	__u64 cgid, gen, len = skb->len;
 	int verdict, rewrite;
 
 	/* Same as above see note in _send. */
@@ -1054,6 +1095,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 
 	rewrite = repair_socket_nsid(&v->dst_key, skb->sk);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
+	rewrite |= policy_gen_stale(v);
 	if (!rewrite) {
 		verdict = recv(skb, v->deny, &v->dst_key, len);
 		if (verdict < 0)
@@ -1061,8 +1103,11 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 		return verdict;
 	}
 err_out:
+	/* See the ordering note in process_socketmap_send. */
+	gen = current_policy_gen();
 	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(&v->key, &v->dst_key, &v->tuple, cgid);
+	v->policy_gen = gen;
 	verdict = recv(skb, v->deny, &v->dst_key, len);
 	if (verdict < 0)
 		return SK_PASS;

@@ -53,6 +53,7 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	v->stats.sk_drops = 0;
 	v->stats.zero_window = 0;
 	v->version = version;
+	v->policy_gen = 0;
 	v->closed = 0;
 	v->stats.retransbytes = 0;
 	v->stats.rtt_sum = 0;

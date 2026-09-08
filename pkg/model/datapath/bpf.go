@@ -37,6 +37,7 @@ var (
 
 const (
 	destinationEndpointMap = "destination_endpoint_map"
+	processTreeConfigMap   = "tg_process_tree_config_map"
 )
 
 var (
@@ -80,6 +81,14 @@ func (p *BPFProgrammer) AddRecords(records []record.DatapathRecord, force bool) 
 	p.recordsMu.Lock()
 	defer p.recordsMu.Unlock()
 
+	changed := false
+	defer func() {
+		if changed {
+			if err := p.bumpPolicyGeneration(); err != nil {
+				logger.GetLogger().Warn("failed to bump policy generation; mid-connection re-resolve delayed", "error", err)
+			}
+		}
+	}()
 	for _, r := range records {
 		key := r.ToKey()
 		if _, found := p.records[key]; found {
@@ -93,6 +102,7 @@ func (p *BPFProgrammer) AddRecords(records []record.DatapathRecord, force bool) 
 		}
 
 		p.records[key] = r
+		changed = true
 	}
 	return nil
 }
@@ -363,6 +373,14 @@ func (p *BPFProgrammer) RemoveRecords(records []record.DatapathRecord) error {
 	p.recordsMu.Lock()
 	defer p.recordsMu.Unlock()
 
+	changed := false
+	defer func() {
+		if changed {
+			if err := p.bumpPolicyGeneration(); err != nil {
+				logger.GetLogger().Warn("failed to bump policy generation; mid-connection re-resolve delayed", "error", err)
+			}
+		}
+	}()
 	for _, r := range records {
 		key := r.ToKey()
 		if _, found := p.records[key]; !found {
@@ -376,6 +394,7 @@ func (p *BPFProgrammer) RemoveRecords(records []record.DatapathRecord) error {
 		}
 
 		delete(p.records, key)
+		changed = true
 	}
 	return nil
 }

@@ -56,3 +56,9 @@ func (p *BPFProgrammer) initMap() error {
 func scheduleDomainMapFlush() {
 
 }
+
+// bumpPolicyGeneration does nothing on Windows. The config map is not wired for
+// the mid-connection re-resolve path there.
+func (p *BPFProgrammer) bumpPolicyGeneration() error {
+	return nil
+}

@@ -32,6 +32,11 @@ struct tcpsocketmap_value {
 	__u8 deny;
 	__u16 pad;
 	struct msg_socket_stats stats;
+	/* Policy generation the cached deny was resolved against, compared by
+	 * policy_gen_stale in process_tree.h.
+	 */
+	__u32 policy_gen;
+	__u32 pad2;
 };
 
 struct {

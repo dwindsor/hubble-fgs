@@ -11,6 +11,7 @@
 package server
 
 import (
+	"errors"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -54,7 +55,20 @@ func configureSettings(cfg *CfgProcessModel) error {
 		Zero: uint32(0),
 	}
 
+	// Carry PolicyGeneration forward instead of resetting it. This function runs
+	// again at runtime, not only at startup: applying a parser-enabled
+	// TracingPolicy re-enters NewServer through the layer3 PolicyHandler. The
+	// datapath compares each socket's stamped generation against this counter, so
+	// zeroing it can leave a stale socket's cached value matching the counter
+	// again, which skips its re-resolve and misses a policy applied mid-connection.
+	// A fresh array map reads back 0, which is fine: the first record change bumps
+	// the counter to 1, and a socket stamped 0 is stale against any nonzero value.
 	value := &modelapi.ProcessTreeConfigValue{}
+	existing := &modelapi.ProcessTreeConfigValue{}
+	if err := m.Lookup(key, existing); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+		logger.GetLogger().Warn("reading policy generation; carrying zero forward", logfields.Error, err)
+	}
+	value.PolicyGeneration = existing.PolicyGeneration
 	if cfg.EnableBpfId {
 		value.EnableBpfId = 1
 	} else {
