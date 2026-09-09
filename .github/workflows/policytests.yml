@@ -131,5 +131,6 @@ jobs:
             --tester-progs-tarball tester-progs.tar.gz \
             --policytest-extra-args debug=true \
             --cpu 4 \
-            --mem 8G
+            --mem 8G \
+            --policytest-extra-args ee-bindir=/usr/local/lib/tetragon/tester-progs/ee
         working-directory: ./modules/tetragon-oss

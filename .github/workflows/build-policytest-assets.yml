@@ -40,14 +40,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            gcc make libcap-dev libelf-dev pahole llvm netcat-traditional \
+            gcc make libaio-dev libcap-dev libelf-dev libnet1-dev liburing-dev \
+            pahole llvm netcat-traditional \
             ${{ (matrix.arch == 'arm64' && 'gcc-arm-linux-gnueabihf') || 'libc6-dev-i386' }}
 
       - name: Build the VM test harness
         run: make -C modules/tetragon-oss/tests/vmtests
 
       - name: Build the tester progs tarball
-        run: make -C modules/tetragon-oss tester-progs-tarball
+        run: |
+          make -C modules/tetragon-oss tester-progs-tarball
+          make ee-tester-progs-tarball
 
       - name: Collect assets
         run: |
@@ -55,7 +58,15 @@ jobs:
           tar -czf upload/vmtests-bins.tar.gz \
             -C modules/tetragon-oss/tests/vmtests \
             tetragon-vmtests-run tetragon-tester
-          mv modules/tetragon-oss/tester-progs.tar.gz upload/
+          tar -xzf modules/tetragon-oss/tester-progs.tar.gz \
+            -C upload
+          mkdir upload/tester-progs/ee
+          tar -xzf ee-tester-progs.tar.gz \
+            -C upload/tester-progs/ee \
+            --strip-components=1
+          tar -czf upload/tester-progs.tar.gz \
+            -C upload tester-progs
+          rm -rf upload/tester-progs
 
       - name: Save policytest assets (${{ matrix.arch }})
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
