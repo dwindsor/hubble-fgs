@@ -90,8 +90,8 @@ RUN apt-get update
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then apt-get install -y curl git llvm gcc pkg-config zlib1g-dev libelf-dev libelf-dev:arm64 libcap-dev:arm64 crossbuild-essential-$TARGETARCH; \
     else apt-get install -y curl git llvm gcc pkg-config zlib1g-dev libelf-dev libcap-dev; fi
-# v7.1.0
-ENV BPFTOOL_REV="b01941c8f7890489f09713348a7d89567538504b"
+# v7.3.0
+ENV BPFTOOL_REV="687e7f06f2ee104ed6515ec3a9816af77bfa7a17"
 RUN git clone https://github.com/libbpf/bpftool.git . && git checkout ${BPFTOOL_REV} && git submodule update --init --recursive
 # From Ubuntu 24.04 builder image, libzstd must be added at the end of LIBS and LIBS_BOOTSTRAP to compile statically
 RUN sed -i 's/\(LIBS = $(LIBBPF) -lelf -lz\)/\1 -lzstd/; s/\(LIBS_BOOTSTRAP = $(LIBBPF_BOOTSTRAP) -lelf -lz\)/\1 -lzstd/' src/Makefile
