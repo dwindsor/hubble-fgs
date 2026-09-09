@@ -407,7 +407,7 @@ github.com/cilium/statedb/reconciler
 # github.com/cilium/stream v0.0.1
 ## explicit; go 1.21.0
 github.com/cilium/stream
-# github.com/cilium/tetragon v1.8.0-pre.0.0.20260908162502-98bd502485eb => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.8.0-pre.0.0.20260909101453-be8696f6f360 => ./modules/tetragon-oss
 ## explicit; go 1.27.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
