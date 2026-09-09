@@ -188,7 +188,11 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 	if (off < 0 || off > SKB_DATA_MAX_SIZE)
 		return -DNS_ERR_ANSWER_MAX_OVERFLOW;
 
-	data = (void *)(long)skb->data + off;
+	/* Under +alu32 the range from the check above does not reach the add,
+	 * so mask the offset again. The mask is wider than SKB_DATA_MAX_SIZE,
+	 * so off is never changed.
+	 */
+	data = (void *)(long)skb->data + (off & DNS_ANSWER_OFF_MASK);
 	if (!data)
 		return -DNS_ERR_ANSWER_OFFSET_OVERFLOW;
 
@@ -433,6 +437,13 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 			error = ret;
 			goto done;
 		}
+
+		/* Same as above: the "ret < 0" range does not reach the add.
+		 * The mask is wider than any parse_dns_answer() return,
+		 * so ret is never changed.
+		 */
+		ret &= DNS_ANSWER_LEN_MASK;
+
 		// Skip the parsed answer
 		if (data + ret > data_end) {
 			error = -DNS_ERR_PARSED_ANSWER_OVERFLOW;

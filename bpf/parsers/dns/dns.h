@@ -34,6 +34,18 @@
 // can be from 20 to 60 bytes.
 #define SKB_DATA_MAX_SIZE UDP_MAX_SIZE + 60
 
+// The offsets added to a packet pointer in parse_dns_answer() and parse_dns()
+// are masked so the verifier keeps their range under +alu32. Both masks must
+// stay wider than any value that reaches them, so they never change an offset.
+#define DNS_ANSWER_OFF_MASK 0x7ff
+_Static_assert(SKB_DATA_MAX_SIZE <= DNS_ANSWER_OFF_MASK,
+	       "DNS_ANSWER_OFF_MASK would truncate a valid answer offset");
+
+// parse_dns_answer() returns at most offset (uint8_t) + data_len (__u16).
+#define DNS_ANSWER_LEN_MASK 0x1ffff
+_Static_assert(0xff + 0xffff <= DNS_ANSWER_LEN_MASK,
+	       "DNS_ANSWER_LEN_MASK would truncate a valid answer length");
+
 // A DNS name can contain MAX_NUMBER_LABEL labels. These would be of length one,
 // so 127 bytes needed to set length to 1, 127 bytes for the actual char and a
 // zero at the end.
