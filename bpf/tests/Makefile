@@ -19,8 +19,10 @@ $(OBJS): | $(OBJSDIR)
 $(OBJSDIR):
 	mkdir $(OBJSDIR)
 
+CFLAGS_dns_parser_test.o = $(BPF_ENABLE_ATOMIC_FLAGS)
+
 objs/%.o: %.c $(HEADERS)
-	$(CLANG) $(CLANG_FLAGS) -I ../ -c $< -o $@
+	$(CLANG) $(CLANG_FLAGS) $(CFLAGS_$(notdir $@)) -I ../ -c $< -o $@
 
 .PHONY: clean
 clean:

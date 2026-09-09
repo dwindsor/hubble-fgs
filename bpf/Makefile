@@ -223,6 +223,11 @@ CFLAGS_bpf_multi_uprobe_v612.o    = -D__MULTI_KPROBE
 CFLAGS_bpf_multi_usdt_v612.o      = -D__MULTI_KPROBE
 CFLAGS_bpf_generic_lsm_core.o   = -D__LARGE_BPF_PROG
 CFLAGS_bpf_generic_lsm_output.o = -D__LARGE_BPF_PROG
+CFLAGS_bpf_fd_lookup_pstree.o          = $(BPF_ENABLE_ATOMIC_FLAGS)
+CFLAGS_bpf_fd_lookup_fentry_pstree.o   = $(BPF_ENABLE_ATOMIC_FLAGS)
+CFLAGS_bpf_tcp_sockops.o               = $(BPF_ENABLE_ATOMIC_FLAGS)
+CFLAGS_bpf_cgroup_net_pstree.o         = $(BPF_ENABLE_ATOMIC_FLAGS)
+CFLAGS_bpf_cgroup_net_pstree_timer.o   = $(BPF_ENABLE_ATOMIC_FLAGS)
 
 MTARGET = $(patsubst $(DEPSDIR)%.d,$(OBJSDIR)%.o,$@)
 

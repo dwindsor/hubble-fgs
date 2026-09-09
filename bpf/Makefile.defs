@@ -33,6 +33,10 @@ L3DIR  := $(NETWORKINGDIR)/l3/
 UDPDIR := $(L3DIR)udp/
 TCPDIR := $(L3DIR)tcp/
 
+# Atomic (BPF_FETCH) instructions are not part of -mcpu=v2 since clang-21, so
+# object files that use the return value of __sync_*() must opt in explicitly.
+BPF_ENABLE_ATOMIC_FLAGS = -Xclang -target-feature -Xclang +alu32
+
 FLAGS := -I. \
 	 -Wall -Werror \
 	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
