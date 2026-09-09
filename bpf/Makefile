@@ -278,42 +278,42 @@ $(DEPSDIR)%.d: $(NOPDIR)%.c
 
 # NETWORKINGDIR
 objs/%.o: $(NETWORKINGDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
 	$(rule_d)
 
 # SOCKTRACKDIR
 objs/%.o: $(SOCKTRACKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(SOCKTRACKDIR)%.c
 	$(rule_d)
 
 # UDPDIR
 objs/%.o: $(UDPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(UDPDIR)%.c
 	$(rule_d)
 
 # TCPDIR
 objs/%.o: $(TCPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(TCPDIR)%.c
 	$(rule_d)
 
 # L2DIR
 objs/%.o: $(L2DIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(L2DIR)%.c
 	$(rule_d)
 
 # L3DIR
 objs/%.o: $(L3DIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 	@echo "Checking for the (expected) 'canary:base_build' string in BPF object: $@"
 	@if ! grep canary:base_build '$@'; then echo "Failed to find the string 'canary:base_build' in object: $@. We use this as a canary to ensure our grep works."; rm '$@'; exit 1; fi
 	@if [[ "$(LSEG)" -ne 1 ]]; then echo "Checking for the (unexpected) 'canary:lseg_build' string in BPF object: $@"; if grep canary:lseg_build '$@'; then echo "Found the string 'canary:lseg_build' in object: $@. This means LSEG code is present in a non-LSEG build."; rm '$@'; exit 1; fi; fi
@@ -323,28 +323,28 @@ $(DEPSDIR)%.d: $(L3DIR)%.c
 
 #PING
 objs/%.o: $(PINGDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(PINGDIR)%.c
 	$(rule_d)
 
 #ICMP
 objs/%.o: $(ICMPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(ICMPDIR)%.c
 	$(rule_d)
 
 #IGMP
 objs/%.o: $(IGMPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(IGMPDIR)%.c
 	$(rule_d)
 
 # RAWSOCKDIR
 objs/%.o: $(RAWSOCKDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 $(DEPSDIR)%.d: $(RAWSOCKDIR)%.c
 	$(rule_d)
@@ -354,11 +354,11 @@ $(DEPSDIR)%.d: $(TIMESTAMPDIR)%.c
 
 # PROCESSDIR
 objs/%.o: $(PROCESSDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 # CGROUPDIR
 objs/%.o: $(CGROUPDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 # bpf_exit: special case because the enterprise version is different than OSS
 # IS_KPROBE is needed for const define on old kernels (see lib/config.h)
@@ -383,13 +383,13 @@ deps/bpf_syscall.d: $(ISOPROCESS)bpf_syscall.c
 	$(rule_d)
 
 objs/bpf_procfs_walk.o: $(ISOPROCESS)bpf_procfs_walk.c $(ISOPROCESS)procfs_walk.h
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 deps/bpf_procfs_walk.d: $(ISOPROCESS)bpf_procfs_walk.c
 	$(rule_d)
 
 objs/bpf_procfs_walk_fentry.o: $(ISOPROCESS)bpf_procfs_walk_fentry.c $(ISOPROCESS)procfs_walk.h
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(rule_o)
 
 deps/bpf_procfs_walk_fentry.d: $(ISOPROCESS)bpf_procfs_walk_fentry.c
 	$(rule_d)
