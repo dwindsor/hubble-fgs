@@ -199,7 +199,9 @@ var OpCodeStrings = map[OpCode]string{
 func (op OpCode) String() string {
 	s, ok := OpCodeStrings[op]
 	if !ok {
-		logger.GetLogger().Info("Unknown OpCode. This is a bug, please report it to Tetragon developers.", "opcode", op)
+		// Log the numeric value: passing op would re-enter this Stringer
+		// while the record is formatted, recursing until the stack blows.
+		logger.GetLogger().Info("Unknown OpCode. This is a bug, please report it to Tetragon developers.", "opcode", int(op))
 		return fmt.Sprintf("Unknown(%d)", op)
 	}
 	return s
