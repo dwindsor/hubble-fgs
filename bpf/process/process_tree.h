@@ -791,6 +791,7 @@ __attribute__((noinline)) int process_socketmap_add_udp(struct udpsocketmap_valu
 }
 #endif
 
+#ifdef PROCESS_TREE
 int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct listen_endpoint_key key;
@@ -830,6 +831,7 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 	}
 	return 0;
 }
+#endif
 
 static int repair_socket_nsid(struct destination_endpoint_key *key, struct bpf_sock *sk)
 {

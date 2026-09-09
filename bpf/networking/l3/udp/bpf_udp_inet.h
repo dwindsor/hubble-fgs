@@ -27,9 +27,13 @@
 #include "bpf_tracing.h"
 #include "dns/bpf_dns.h"
 #include "bpf_udp_info.h"
-#include "parsers/dns/dns_parser.h"
 #ifndef IS_KPROBE
 #include "bpf_udp_mcast.h"
+#endif
+#include "fgs_rodata_config.h"
+
+#ifdef IN_KERNEL_DNS
+#include "parsers/dns/dns_parser.h"
 #endif
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
