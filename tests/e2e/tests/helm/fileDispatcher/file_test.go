@@ -66,7 +66,6 @@ func TestMain(m *testing.M) {
 			return ctx, fmt.Errorf("failed to load PolicyPrefixYaml: %w", err)
 		}
 		if err := grpc.WaitForTracingPolicyWithTime(ctx, "fim-prefix", 20, 3*time.Second); err != nil {
-
 			return ctx, err
 		}
 		return ctx, nil
@@ -78,7 +77,6 @@ func TestMain(m *testing.M) {
 			return ctx, fmt.Errorf("failed to load PolicySuffixYaml: %w", err)
 		}
 		if err := grpc.WaitForTracingPolicyWithTime(ctx, "fim-suffix", 20, 3*time.Second); err != nil {
-
 			return ctx, err
 		}
 		return ctx, nil

@@ -45,7 +45,6 @@ func (p *SandboxTracingPolicyNamespaced) TpDomain() string {
 }
 
 func toTracingPolicyNamespaced(namespace string, name string, spec *v1alpha1.SandboxSpec) (*SandboxTracingPolicyNamespaced, error) {
-
 	if spec == nil {
 		return nil, fmt.Errorf("sandboxpolicy spec is empty")
 	}

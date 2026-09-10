@@ -17,7 +17,6 @@ import (
 )
 
 func selAddPidFilter(pid int, selectors []v1alpha1.KProbeSelector) []v1alpha1.KProbeSelector {
-
 	pidSelector := v1alpha1.PIDSelector{
 		Operator:       "In",
 		IsNamespacePID: false,

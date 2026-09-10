@@ -22,7 +22,6 @@ var inetFamily = map[uint16]string{
 }
 
 func InetFamily(family uint16) string {
-
 	if f, ok := inetFamily[family]; ok {
 		return f
 	}

@@ -2137,7 +2137,6 @@ func writeDropInConf(_ *testing.T, _ string, fullDir string, options map[string]
 }
 
 func setupConfig(t *testing.T, testCases []testCase, testPath string, test testCase) error {
-
 	// Patch expected config-dir path with test path prefix
 	val, ok := test.expectedOptions["config-dir"]
 	if ok && val != "" {

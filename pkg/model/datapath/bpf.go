@@ -108,7 +108,6 @@ func (p *BPFProgrammer) AddRecords(records []record.DatapathRecord, force bool) 
 }
 
 func (p *bpfRecordBackend) conflictUpdateMap(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
-
 	lookupValue := &types.DestinationEndpointValue{}
 	if err := p.dstMap.Lookup(key, lookupValue); err == nil {
 		lookupAction := lookupValue.TxAction & record.PolicyMask

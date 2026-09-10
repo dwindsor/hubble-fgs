@@ -26,7 +26,6 @@ import (
 )
 
 func emitNSEvent() {
-
 	cache := nscache.GetCache()
 	values := cache.Values()
 	for _, v := range values {

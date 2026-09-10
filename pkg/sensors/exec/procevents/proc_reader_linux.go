@@ -314,7 +314,6 @@ func pushExecveEvents(p procs, inInitTreeMap map[uint32]struct{}) {
 }
 
 func updateExecveMapStats(procs int64) {
-
 	execveMapStats := base.GetExecveMapStats()
 
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), execveMapStats.Name), nil)
@@ -381,7 +380,6 @@ func writeExecveMap(procs []procs) map[uint32]struct{} {
 	}
 	inInitTree := make(map[uint32]struct{})
 	for _, p := range procs {
-
 		k, v := procToKeyValue(p, inInitTree)
 		err := m.Put(k, v)
 		if err != nil {

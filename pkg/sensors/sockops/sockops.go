@@ -96,7 +96,6 @@ func (*sockopsSensor) PolicyHandler(
 	if (parser.Tls.Enable && parser.Tls.Mode == "socket") ||
 		parser.Http.Enable ||
 		parser.Nop.Enable {
-
 		if fid != policyfilter.NoFilterID {
 			return nil, fmt.Errorf("sockops sensor does not implement policy filtering")
 		}

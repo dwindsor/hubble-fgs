@@ -64,7 +64,6 @@ func infoString(errmsg string, res *api.Attempt) string {
 
 // Print prints the attempt log
 func Print(o io.Writer, res *api.AttemptLog, cfg PrintCfg) {
-
 	if res.Failures == 0 {
 		fmt.Fprintf(o, "attempts log: (%s total attempts, no failures)\n",
 			noteColor.Sprintf("%d", res.Total),

@@ -413,7 +413,6 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		// along with the cookie version as a key into the pseudoSockets map
 		// to retrieve the list of pseudo-sockets. Then we send a stats event
 		// and a close event for each one, before deleting them from the maps.
-
 		mapFile := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 		udpMap, err := ebpf.LoadPinnedMap(mapFile, nil)
 		if err != nil {

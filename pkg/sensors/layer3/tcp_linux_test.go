@@ -323,7 +323,6 @@ func handleSes(ses net.Conn) {
 }
 
 func runTcpServer() {
-
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	conn, err := net.Listen(tcpProtocol, fmt.Sprintf("%s:%d", tcpHostname, tcpPortno))

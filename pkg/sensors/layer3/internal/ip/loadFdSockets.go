@@ -270,7 +270,6 @@ func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
 	 * This needs to happen before the sensors are loaded, as those sensors depend upon this map
 	 * being already populated.
 	 */
-
 	procSocketFds, err := getExistingSockets()
 	if err != nil {
 		logger.GetLogger().Warn("Unable to get existing sockets", logfields.Error, err)

@@ -21,7 +21,6 @@ func LoadSkProgram(
 	sockmap *program.Map,
 	verbose int,
 ) error {
-
 	fd, err := sockmap.GetFD()
 	if err != nil {
 		return err

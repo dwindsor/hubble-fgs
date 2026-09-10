@@ -284,7 +284,6 @@ func TestMatchLabelsTable(t *testing.T) {
 }
 
 func testPolicyCalculator(t *testing.T, s *PolicyState, podML, policy, check []string) {
-
 	policyMap := make(map[string]*types.TetragonNetworkPolicy)
 	// podMap := []policyfilter.PodID{}
 

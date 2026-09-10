@@ -35,7 +35,6 @@ func testCommand() *cobra.Command {
 		Long:  "test alert rule against a json file with tetragon events\nPrints a json list of results: true or false if the alert matches and null if the parsing was unsuccessful",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			yamlb, err := os.ReadFile(args[0])
 			if err != nil {
 				return fmt.Errorf("failed to read yaml file %s: %w", args[0], err)

@@ -82,7 +82,6 @@ type SyscallTester struct {
 
 //revive:disable:context-as-argument
 func StartSyscallTester(t *testing.T, ctx context.Context) (*SyscallTester, error) {
-
 	prog := testutils.RepoRootPath("contrib/tester-progs/syscall-tester")
 	cmd := exec.CommandContext(ctx, prog)
 

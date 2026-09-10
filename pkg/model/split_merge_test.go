@@ -445,7 +445,6 @@ var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
 }
 
 func TestSplitApplicationModelEvent(t *testing.T) {
-
 	option.Config.ApplicationModelSplitMaxHostProcs = 2
 	fragments := SplitApplicationModelEvent(expectedUnifiedModelEvent)
 	for _, fragment := range fragments {
@@ -504,7 +503,6 @@ func TestSplitAndMergeApplicationModelExecIDs(t *testing.T) {
 }
 
 func TestMergeApplicationModelFragments(t *testing.T) {
-
 	merged, err := MergeApplicationModelFragments(expectedSplitModelFragments)
 	assert.Nil(t, err)
 	assert.Equal(t, expectedSplitModelFragments[0].NodeLabels, merged.NodeLabels)
@@ -525,7 +523,6 @@ func TestMergeApplicationModelFragmentsUsesFirstNodeLabels(t *testing.T) {
 }
 
 func TestMergeApplicationModelFragmentsSingle(t *testing.T) {
-
 	merged, err := MergeApplicationModelFragments([]*appModelV1.ApplicationModelFragment{expectedUnifiedModelFragment})
 	assert.Nil(t, err)
 
@@ -535,7 +532,6 @@ func TestMergeApplicationModelFragmentsSingle(t *testing.T) {
 }
 
 func TestSplitEmptyApplicationModelEvent(t *testing.T) {
-
 	fragments := SplitApplicationModelEvent(emptyUnifiedModelEvent)
 
 	assert.NotNil(t, fragments)
@@ -547,7 +543,6 @@ func TestSplitEmptyApplicationModelEvent(t *testing.T) {
 }
 
 func TestMergeEmptyApplicationModelFragments(t *testing.T) {
-
 	merged, err := MergeApplicationModelFragments([]*appModelV1.ApplicationModelFragment{emptyUnifiedModelFragment})
 	assert.Nil(t, err)
 
@@ -557,13 +552,11 @@ func TestMergeEmptyApplicationModelFragments(t *testing.T) {
 }
 
 func TestMergeApplicationModelFragmentsEmptyArray(t *testing.T) {
-
 	_, err := MergeApplicationModelFragments([]*appModelV1.ApplicationModelFragment{})
 	assert.EqualError(t, err, "fragments must be non-empty")
 }
 
 func TestMergeApplicationModelFragmentsNoAppModel(t *testing.T) {
-
 	fragments := []*appModelV1.ApplicationModelFragment{
 		{
 			ClusterName: "test-cluster",
@@ -574,7 +567,6 @@ func TestMergeApplicationModelFragmentsNoAppModel(t *testing.T) {
 }
 
 func TestMergeApplicationModelFragmentsEmptyAppModelId(t *testing.T) {
-
 	fragments := []*appModelV1.ApplicationModelFragment{
 		{
 			ClusterName: "test-cluster",
@@ -588,7 +580,6 @@ func TestMergeApplicationModelFragmentsEmptyAppModelId(t *testing.T) {
 }
 
 func TestMergeApplicationModelFragmentsMismatchAppModelIds(t *testing.T) {
-
 	fragments := []*appModelV1.ApplicationModelFragment{
 		{
 			ClusterName: "test-cluster",
@@ -608,7 +599,6 @@ func TestMergeApplicationModelFragmentsMismatchAppModelIds(t *testing.T) {
 }
 
 func TestMergeApplicationModelFragmentsMismatchFragmentTotal(t *testing.T) {
-
 	fragments := []*appModelV1.ApplicationModelFragment{
 		{
 			ClusterName: "test-cluster",

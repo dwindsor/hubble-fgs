@@ -586,7 +586,6 @@ func parseAdditionalNodeLabels(values []string) (map[string]string, error) {
 }
 
 func validateConfig(config config) error {
-
 	if err := platformValidateConfig(config); err != nil {
 		return err
 	}

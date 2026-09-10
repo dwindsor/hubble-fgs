@@ -33,7 +33,6 @@ import (
 )
 
 func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetworkPolicy) ([]record.DatapathRecord, []record.DatapathRecord, error) {
-
 	subject := state.src[policy.PolicyUID]
 
 	var beforeSubjs []record.DatapathRecord
@@ -253,7 +252,6 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 
 // Create DstMatchLAbelsPolicy to add new Network Policy
 func (state *PolicyState) createDstMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
-
 	if len(policy.Destination.Labels.Equal) < 1 {
 		return
 	}
@@ -269,7 +267,6 @@ func (state *PolicyState) createDstMatchLabelsPolicy(policy *types.TetragonNetwo
 
 // Create SrcMatchLAbelsPolicy to add new Network Policy
 func (state *PolicyState) createSrcMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
-
 	ls := &matchLabels.LabelSet{
 		Labels: policy.Subject.Labels.Equal,
 		Policy: policy,
@@ -302,13 +299,11 @@ func (state *PolicyState) createMatchLabelsPolicy(policy *types.TetragonNetworkP
 
 // addServiceSelectorPolicy stores a policy with serviceSelector destination
 func (state *PolicyState) addServiceSelectorPolicy(policy *types.TetragonNetworkPolicy) {
-
 	state.serviceSelPolicies[policy.PolicyUID] = policy
 }
 
 // getServiceSelectorPolicies returns policies matching the given pod labels
 func (state *PolicyState) getServiceSelectorPolicies(podLabels map[string]string) []*types.TetragonNetworkPolicy {
-
 	var matching []*types.TetragonNetworkPolicy
 	for _, policy := range state.serviceSelPolicies {
 		if matchLabelsSubset(policy.Subject.Labels.Equal, podLabels) {
@@ -330,7 +325,6 @@ func matchLabelsSubset(policyLabels, podLabels map[string]string) bool {
 
 // removeServiceSelectorPolicy removes a policy from the serviceSelPolicies map
 func (state *PolicyState) removeServiceSelectorPolicy(policyUID types.TetragonPolicyUniqueID) {
-
 	delete(state.serviceSelPolicies, policyUID)
 }
 

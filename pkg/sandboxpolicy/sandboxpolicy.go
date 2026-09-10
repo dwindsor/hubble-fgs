@@ -81,7 +81,6 @@ func (p *SandboxTracingPolicy) Handler() eventhandler.Handler {
 // sandbox policies are translated into low-level tracing policies
 
 func toTracingPolicy(name string, spec *v1alpha1.SandboxSpec) (*SandboxTracingPolicy, error) {
-
 	if spec == nil {
 		return nil, fmt.Errorf("sandboxpolicy spec is empty")
 	}

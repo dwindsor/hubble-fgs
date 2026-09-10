@@ -29,7 +29,6 @@ func CPUUsageFromRusage(rusage *syscall.Rusage) (cpuUsage CPUUsage) {
 }
 
 func CPUUsageFromCPUAcct(containerID string) CPUUsage {
-
 	rss := int64(0)
 	memStatFilename := fmt.Sprintf("/sys/fs/cgroup/memory/docker/%s/memory.stat", containerID)
 	memStat, err := os.ReadFile(memStatFilename)

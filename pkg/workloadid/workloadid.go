@@ -172,7 +172,6 @@ func (s *State) DeleteCgroup(cgroupID CgroupID) error {
 		if wlid == workloadID {
 			// A different cgroup id points to this workload id, don't remove
 			// anything.
-
 			return nil
 		}
 	}

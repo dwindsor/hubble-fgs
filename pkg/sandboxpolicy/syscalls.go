@@ -118,7 +118,6 @@ func SyscallNamesToEntries(syscalls []string) ([]string, error) {
 //   - syscall entries to hook into for enforcement
 //   - syscall ids to check to filter
 func generateSyscalls(l []v1alpha1.SandboxSyscallItem, needBlock bool) ([]string, []uint32, error) {
-
 	// function to get entries and ids from the abicalls tables
 	// For now we add both the 32- and 64- bit ABIs. Future work might extend the
 	// SandboxSyscallItem to include ABI information.

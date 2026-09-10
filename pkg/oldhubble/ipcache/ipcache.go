@@ -60,7 +60,6 @@ func (ipc *IPCache) Upsert(
 	hostIP net.IP,
 	encryptKey uint8,
 	namespace, podName string) bool {
-
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
 
@@ -92,7 +91,6 @@ func (ipc *IPCache) UpsertChecked(
 	newHostIP, oldHostIP net.IP,
 	encryptKey uint8,
 	namespace, podName string) bool {
-
 	_, cidr, err := net.ParseCIDR(key)
 	if err != nil {
 		// key is not a valid CIDR, it cannot be a valid entry

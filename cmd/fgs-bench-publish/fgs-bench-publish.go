@@ -273,7 +273,6 @@ func valuesFromSummary(gitRev string, summary *bench.Summary) []*sheets.CellData
 }
 
 func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *bench.Summary) {
-
 	sheetId := summaryToSheetId(summary)
 	values := valuesFromSummary(gitRev, summary)
 

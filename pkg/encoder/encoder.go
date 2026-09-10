@@ -104,7 +104,6 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 	}
 
 	switch response.Event.(type) {
-
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		icmp := response.GetProcessIcmp()
 		if icmp.Process == nil {

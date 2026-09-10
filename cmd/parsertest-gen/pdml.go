@@ -177,7 +177,6 @@ func PDMLToTestCase(pdmlFile string, w io.Writer) error {
 	dstPort := uint16(0)
 
 	for pktIndex, pkt := range pdml.Packets {
-
 		for i, proto := range pkt.Protos {
 			// Seek until we find UDP or TCP proto
 			if proto.Name != "udp" && proto.Name != "tcp" {

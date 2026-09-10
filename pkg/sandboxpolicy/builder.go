@@ -71,7 +71,6 @@ func actionsHaveSignal(actions []v1alpha1.SandboxAction) bool {
 
 // NB: there can only be a single enforcer spec in a policy
 func (b *tpBuilder) enforcers() []v1alpha1.EnforcerSpec {
-
 	if len(b.enforcerEntries) == 0 {
 		return nil
 	}
@@ -87,7 +86,6 @@ func (b *tpBuilder) enforcers() []v1alpha1.EnforcerSpec {
 func (b *tpBuilder) addSyscallSpec(
 	spec *v1alpha1.SandboxSyscallsSpec,
 ) error {
-
 	var op string
 	switch spec.Op {
 	case "In":

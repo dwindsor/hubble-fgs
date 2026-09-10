@@ -101,7 +101,6 @@ func getRecordSlice() []DatapathRecord {
 }
 
 func TestDiffEmptyA(t *testing.T) {
-
 	A := []DatapathRecord{}
 	B := getRecordSlice()
 	C := Diff(A, B)

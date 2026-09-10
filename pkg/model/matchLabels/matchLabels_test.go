@@ -154,7 +154,6 @@ func TestDeletePolicy(t *testing.T) {
 }
 
 func TestManySimplePolicy(t *testing.T) {
-
 	p := &PolicyList{}
 
 	for i := range 1000 {

@@ -76,7 +76,6 @@ func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Serve
 }
 
 func (tc *TestCase) modelCheck(ctx context.Context, tb testing.TB, server *server.Server) {
-
 	model, err := server.GetModel(ctx, &v1alpha.GetModelRequest{
 		Host: true,
 	})
@@ -216,7 +215,6 @@ func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.A
 }
 
 func checkNotPresentNamespaces(tb testing.TB, checks model.Namespaces, namespaces []*v1alpha.ApplicationNamespace) bool {
-
 	ok := true
 
 	for _, namespace := range namespaces {
@@ -288,7 +286,6 @@ func checkNotPresentProcesses(tb testing.TB, checks []model.Binary, processes []
 	ok := true
 
 	for _, check := range checks {
-
 		var binary string
 		if !isContainer {
 			binary = utils.FixupBinaryPathname(check.Cmd)

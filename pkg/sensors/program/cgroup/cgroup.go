@@ -69,7 +69,6 @@ func LoadCgroupProgram(
 func CGroupAttachWithFlags(targetFD int, flags uint32) program.AttachFunc {
 	return func(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
 		prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
-
 		err := link.RawAttachProgram(link.RawAttachProgramOptions{
 			Target:  targetFD,
 			Program: prog,

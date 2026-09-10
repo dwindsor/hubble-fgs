@@ -275,7 +275,6 @@ func TestBPFMapIntegration(t *testing.T) {
 }
 
 func TestDeleteWrongCgroupID(t *testing.T) {
-
 	state := newTestState()
 	workload := nginxWorkload()
 	cgroupID := CgroupID(2817)
@@ -290,7 +289,6 @@ func TestDeleteWrongCgroupID(t *testing.T) {
 }
 
 func TestDeleteCgroupSingleWorkload(t *testing.T) {
-
 	state := newTestState()
 	workload := nginxWorkload()
 	cgroupID := CgroupID(12727)
@@ -313,7 +311,6 @@ func TestDeleteCgroupSingleWorkload(t *testing.T) {
 }
 
 func TestDeleteCgroupMultipleWorkloads(t *testing.T) {
-
 	state := newTestState()
 	workload := nginxWorkload()
 	cgroupID1 := CgroupID(575)

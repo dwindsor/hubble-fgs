@@ -382,7 +382,6 @@ func (e EventTypeError) Error() string {
 }
 
 func checkEvent(r *tetragon.GetEventsResponse, _ Logger, types ...tetragon.EventType) (fgsEvent, error) {
-
 	checkTypes := func(ty tetragon.EventType) error {
 		if slices.Contains(types, ty) {
 			return nil

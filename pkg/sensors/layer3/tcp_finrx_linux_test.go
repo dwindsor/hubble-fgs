@@ -56,7 +56,6 @@ func waitForSocket(s *bufio.Scanner) {
 func (suite *TCPFinRx) testFinRx(port uint32, serverIterations, clientIterations int,
 	serverPattern, clientPattern string, serverSignal, clientSignal syscall.Signal,
 	serverBytes, clientBytes uint64) {
-
 	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
 		suite.T().Skip("Test requires amd64 or kernel >=5.8")
 	}

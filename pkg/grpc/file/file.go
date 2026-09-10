@@ -193,7 +193,6 @@ func createMntNs(inum uint32) *tetragon.Namespace {
 }
 
 func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
-
 	fileDetails := &tetragon.FileDetails{
 		Filename: &tetragon.FileDetails_Str{Str: event.Path},
 		Inode: &tetragon.Inode{

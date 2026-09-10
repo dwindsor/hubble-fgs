@@ -25,6 +25,7 @@ linters:
       default: none
       enable:
         - err
+        - leading-whitespace
     sloglint:
       no-mixed-args: true
       kv-only: true
