@@ -345,12 +345,14 @@ GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v2.13.2@sha256:ba07dffad1307
 GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
-check: ## Run Go linters.
-	golangci-lint run
+GOLANGCILINT_BIN = golangci-lint
 else
-check:
-	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint run
+GOLANGCILINT_BIN = docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint
 endif
+
+.PHONY: check
+check: ## Run Go linters.
+	$(GOLANGCILINT_BIN) run
 
 .PHONY: copy-golangci-lint
 copy-golangci-lint:
@@ -600,7 +602,7 @@ endif
 
 .PHONY: go-format
 go-format: ## Run code formatter on Go code.
-	find . -name '*.go' -not -path './vendor/*' -not -path './api/vendor/*' -not -path './pkg/k8s/vendor/*' -not -path './modules/*' -not -path './api/v1/tetragon/*' | xargs gofmt -w
+	$(GOLANGCILINT_BIN) fmt
 
 .PHONY: format
 format: go-format clang-format ## Convenience alias for clang-format and go-format.

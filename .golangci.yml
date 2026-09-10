@@ -76,6 +76,9 @@ formatters:
     goimports:
       local-prefixes:
       - github.com/isovalent/hubble-fgs
+  exclusions:
+    paths:
+      - "modules/"
 run:
   build-tags:
     - e2e_tests
