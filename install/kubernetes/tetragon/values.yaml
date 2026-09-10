@@ -861,6 +861,10 @@ integratedGrafana:
   # -- Install Grafana with dashboards and lightweight Prometheus datasource.
   # It's intended to quickly set up Tetragon monitoring and/or get value out of
   # Tetragon without setting up a custom data pipeline.
+  # If enabled, grafana automatically creates a secret named "$release-grafana"
+  # storing "admin" user base64 encoded password.
+  # Example command to retrieve the password:
+  # kubectl get secret -n tetragon tetragon-grafana -o jsonpath='{.data.admin-password}' | base64 -d
   enabled: false
   prometheus:
     # -- Prometheus image
@@ -879,10 +883,6 @@ integratedGrafana:
         memory: 512Mi
 # Values for grafana subchart, used when integratedGrafana.enabled is true.
 grafana:
-  # Password for the admin user. Grafana subchart defaults to "admin", but then
-  # Grafana prompts you to change it on the first login because it's insecure.
-  # "tetragon" is a very secure password though, so Grafana is fine with it.
-  adminPassword: tetragon
   # @ignored
   datasources:
     datasources.yaml:
