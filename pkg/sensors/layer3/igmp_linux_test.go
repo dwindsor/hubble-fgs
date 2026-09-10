@@ -32,7 +32,6 @@ import (
 	pb "github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -41,7 +40,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	cli "github.com/isovalent/hubble-fgs/pkg/testutils/cliswitches"
+	enterprisepolicytest "github.com/isovalent/hubble-fgs/pkg/testutils/policytest"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	_ "github.com/isovalent/hubble-fgs/tests/policytests"
 )
 
 // IGMP has some characteristics that make test order important.
@@ -72,44 +73,7 @@ func TestIGMPV2(t *testing.T) {
 	if !kernels.MinKernelVersion("5.15") {
 		t.Skipf("This test requires kernel v5.15 or later, skipping")
 	}
-	suite.Run(t, new(IGMPV2))
-}
-
-type IGMPV2 struct {
-	suite.Suite
-	switches        []cli.SwitchSettings
-	doneWG, readyWG sync.WaitGroup
-	ctx             context.Context
-	cancel          context.CancelFunc
-}
-
-func (suite *IGMPV2) SetupSuite() {
-	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	var err error
-	suite.switches, err = cli.SetConfigFromSwitches([]cli.SwitchSettings{
-		{KeyPtr: &enterpriseOption.Config.Layer3CLIEnable, Value: true},
-		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
-		{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
-		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
-		{KeyPtr: &enterpriseOption.Config.EnableUserDNS, Value: true},
-		{KeyPtr: &enterpriseOption.Config.EnableIGMP, Value: true},
-	})
-	suite.Require().NoError(err)
-
-	obs := enterpriseoth.GetNoConfigObserver(suite.T(), suite.ctx, false)
-	suite.Require().NoError(layer3.StartLayer3Progs(suite.ctx, nil))
-	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
-}
-
-func (suite *IGMPV2) HandleStats(_ string, stats *suite.SuiteInformation) {
-	if stats.Passed() {
-		osstestutils.DoneWithExportFile(suite.T())
-	}
-}
-
-func (suite *IGMPV2) TearDownSuite() {
-	suite.cancel()
-	cli.RevertSwitchesConfig(suite.switches)
+	enterprisepolicytest.DoObserverTestUnfiltered(t, "layer3-igmp-v2-lifecycle", nil)
 }
 
 type IGMPV3 struct {
@@ -147,162 +111,6 @@ func (suite *IGMPV3) HandleStats(_ string, stats *suite.SuiteInformation) {
 func (suite *IGMPV3) TearDownSuite() {
 	suite.cancel()
 	cli.RevertSwitchesConfig(suite.switches)
-}
-
-func (suite *IGMPV2) TestIGMPJoin() {
-	if !kernels.MinKernelVersion("5.15.0") {
-		suite.T().Skip("Test requires kernel >=5.15")
-	}
-
-	cmd := "/usr/bin/socat"
-	groupAddr := "224.1.1.1"
-	defaultRoute, err := exec.Command("bash", "-c", "ip r | grep default").Output()
-	suite.Require().NoError(err)
-	defaultRouteFields := strings.Fields(string(defaultRoute))
-	ifName := defaultRouteFields[4]
-	ifAddr := defaultRouteFields[8]
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	socatChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(cmd)).
-		WithArguments(sm.Full(fmt.Sprintf("- UDP4-LISTEN:6858,ip-add-membership=%s:%s,fork", groupAddr, ifAddr)))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("socatExec").
-			WithProcess(socatChecker).
-			WithParent(selfChecker),
-		ec.NewProcessIgmpJoinChecker("IGMPJoin").
-			WithProcess(socatChecker).
-			WithParent(selfChecker).
-			WithInterfaceName(sm.Full(ifName)).
-			WithSourceIp(sm.Full(ifAddr)).
-			WithGroupIp(sm.Full(groupAddr)),
-	)
-
-	suite.readyWG.Wait()
-	cmdServer := exec.Command(cmd, "-", fmt.Sprintf("UDP4-LISTEN:6858,ip-add-membership=%s:%s,fork", groupAddr, ifAddr))
-	require.NoError(suite.T(), cmdServer.Start())
-	defer killAndWaitCommand(suite.T(), cmdServer)
-	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 6858, syscall.IPPROTO_UDP, syscall.AF_INET)
-	require.NoError(suite.T(), err)
-
-	err = jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
-	require.NoError(suite.T(), err)
-}
-
-func (suite *IGMPV2) TestIGMPJoinAndReport() {
-	if !kernels.MinKernelVersion("5.15.0") {
-		suite.T().Skip("Test requires kernel >=5.15")
-	}
-
-	cmd := "/usr/bin/socat"
-	groupAddr := "224.2.2.2"
-	defaultRoute, err := exec.Command("bash", "-c", "ip r | grep default").Output()
-	suite.Require().NoError(err)
-	defaultRouteFields := strings.Fields(string(defaultRoute))
-	ifName := defaultRouteFields[4]
-	ifAddr := defaultRouteFields[8]
-	igmpquery := testutils.RepoRootPath("contrib/tester-progs/net/igmpquery")
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	socatChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(cmd)).
-		WithArguments(sm.Full(fmt.Sprintf("- UDP4-LISTEN:6858,ip-add-membership=%s:%s,fork", groupAddr, ifAddr)))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("socatExec").
-			WithProcess(socatChecker).
-			WithParent(selfChecker),
-		ec.NewProcessIgmpJoinChecker("IGMPJoin").
-			WithProcess(socatChecker).
-			WithParent(selfChecker).
-			WithInterfaceName(sm.Full(ifName)).
-			WithSourceIp(sm.Full(ifAddr)).
-			WithGroupIp(sm.Full(groupAddr)),
-		ec.NewIgmpMembershipReportChecker("IGMPReport").
-			WithType(pb.IgmpMembershipReportType_IGMPV2_HOST_MEMBERSHIP_REPORT).
-			WithSourceIp(sm.Full(ifAddr)).
-			WithGroupIp(sm.Full(groupAddr)).
-			WithInterfaceName(sm.Full(ifName)),
-	)
-
-	suite.readyWG.Wait()
-	cmdServer := exec.Command(cmd, "-", fmt.Sprintf("UDP4-LISTEN:6858,ip-add-membership=%s:%s,fork", groupAddr, ifAddr))
-	require.NoError(suite.T(), cmdServer.Start())
-	defer killAndWaitCommand(suite.T(), cmdServer)
-	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 6858, syscall.IPPROTO_UDP, syscall.AF_INET)
-	require.NoError(suite.T(), err)
-
-	igmpqueryOutput, err := exec.Command(igmpquery, "2", ifName).CombinedOutput()
-	if err != nil {
-		suite.T().Logf("igmpquery output:\n%s\n", string(igmpqueryOutput))
-	}
-	require.NoError(suite.T(), err)
-
-	err = jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
-	require.NoError(suite.T(), err)
-}
-
-func (suite *IGMPV2) TestIGMPJoinAndLeave() {
-	if !kernels.MinKernelVersion("5.15.0") {
-		suite.T().Skip("Test requires kernel >=5.15")
-	}
-
-	cmd := "/usr/bin/socat"
-	groupAddr := "224.2.2.2"
-	defaultRoute, err := exec.Command("bash", "-c", "ip r | grep default").Output()
-	suite.Require().NoError(err)
-	defaultRouteFields := strings.Fields(string(defaultRoute))
-	ifName := defaultRouteFields[4]
-	ifAddr := defaultRouteFields[8]
-
-	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
-	socatChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(cmd)).
-		WithArguments(sm.Full(fmt.Sprintf("- UDP4-LISTEN:6858,ip-add-membership=%s:%s,fork", groupAddr, ifAddr)))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("selfExec").
-			WithProcess(selfChecker).
-			WithParent(ec.NewProcessChecker()),
-		ec.NewProcessExecChecker("socatExec").
-			WithProcess(socatChecker).
-			WithParent(selfChecker),
-		ec.NewProcessIgmpJoinChecker("IGMPJoin").
-			WithProcess(socatChecker).
-			WithParent(selfChecker).
-			WithInterfaceName(sm.Full(ifName)).
-			WithSourceIp(sm.Full(ifAddr)).
-			WithGroupIp(sm.Full(groupAddr)),
-		ec.NewIgmpMembershipReportChecker("IGMPReport").
-			WithType(pb.IgmpMembershipReportType_IGMP_HOST_LEAVE_MESSAGE).
-			WithSourceIp(sm.Full(ifAddr)).
-			WithGroupIp(sm.Full(groupAddr)).
-			WithInterfaceName(sm.Full(ifName)),
-	)
-
-	suite.readyWG.Wait()
-	cmdServer := exec.Command(cmd, "-", fmt.Sprintf("UDP4-LISTEN:6858,ip-add-membership=%s:%s,fork", groupAddr, ifAddr))
-	require.NoError(suite.T(), cmdServer.Start())
-	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 6858, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(suite.T(), err)
-
-	killAndWaitCommand(suite.T(), cmdServer)
-
-	err = jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
-	require.NoError(suite.T(), err)
 }
 
 func (suite *IGMPV3) TestIGMPJoinAndReport() {
