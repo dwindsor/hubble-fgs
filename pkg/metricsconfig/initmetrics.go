@@ -32,6 +32,7 @@ import (
 	processcachecleanmetrics "github.com/isovalent/hubble-fgs/pkg/metrics/processcacheclean"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/splunkhecmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
@@ -193,6 +194,14 @@ func InitAppModelMetricsForDocs(registry *prometheus.Registry) {
 	appmodelmetrics.InitMetricsForDocs(registry)
 }
 
+func initAllSplunkHECMetrics(registry *prometheus.Registry) {
+	splunkhecmetrics.InitMetrics(registry)
+}
+
+func InitSplunkHECMetricsForDocs(registry *prometheus.Registry) {
+	splunkhecmetrics.InitMetricsForDocs(registry)
+}
+
 func InitNetworkMetricsForDocs(registry *prometheus.Registry) {
 	networkmetrics.InitMetricsForDocs(registry)
 }
@@ -220,6 +229,7 @@ func InitAllEEHealthMetrics(registry *prometheus.Registry) {
 	initAllDebugDNSParserMetrics(registry)
 	initAllNetworkMetrics(registry)
 	initAllAppModelMetrics(registry)
+	initAllSplunkHECMetrics(registry)
 }
 
 func InitAllEEEventMetrics(registry *prometheus.Registry) {
