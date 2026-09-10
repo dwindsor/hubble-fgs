@@ -98,11 +98,14 @@ func DoObserverTest(t *testing.T, testpolicyName string, params map[string]any) 
 		readyWG.Wait()
 
 		scenario := s(conf)
-		if err := scenario.Trigger.Trigger(ctx); err != nil {
+		scenarioCtx, cancelScenario := context.WithCancel(ctx)
+		if err := scenario.Trigger.Trigger(scenarioCtx); err != nil {
+			cancelScenario()
 			t.Fatalf("failed to trigger scenario %s: %v", scenario.Name, err)
 		}
 
 		err = jsonchecker.JsonTestCheckExpect(t, scenario.EventChecker, scenario.ExpectCheckerFailure)
+		cancelScenario()
 		require.NoError(t, err)
 	}
 }
