@@ -17,11 +17,15 @@ package file
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 )
 
 var (
@@ -112,4 +116,98 @@ func TestWalkSingleDirNotExist(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(paths))
 	assert.Equal(t, dirPath, paths[0])
+}
+
+func inodeKeyForTest(t *testing.T, path string) fileapi.InodeKey {
+	t.Helper()
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat %s: %s", path, err)
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		t.Fatalf("stat for %s is not a syscall.Stat_t", path)
+	}
+
+	return fileapi.InodeKey{
+		Ino:      stat.Ino,
+		DevMajor: GetDevMajor(stat.Dev),
+		DevMinor: GetDevMinor(stat.Dev),
+	}
+}
+
+// TestWalkPathRawDoesNotFollowSymlinks verifies that policy load walks cannot
+// add an out-of-prefix symlink target to the inode map and exclude walks cannot
+// remove that target from the map.
+func TestWalkPathRawDoesNotFollowSymlinks(t *testing.T) {
+	root := t.TempDir()
+	watched := filepath.Join(root, "watched")
+	if err := os.Mkdir(watched, 0755); err != nil {
+		t.Fatalf("mkdir watched directory: %s", err)
+	}
+
+	regular := filepath.Join(watched, "regular")
+	createTestFile(t, regular)
+	victim := filepath.Join(root, "victim")
+	createTestFile(t, victim)
+	if err := os.Symlink(victim, filepath.Join(watched, "symlink")); err != nil {
+		t.Fatalf("create symlink: %s", err)
+	}
+
+	regularKey := inodeKeyForTest(t, regular)
+	victimKey := inodeKeyForTest(t, victim)
+	matcher := PrefixPathMatcher{Prefix: watched + "/"}
+	locationFn := func(_ *fileapi.InodeVal) {}
+
+	assert.False(t, matcher.MatchPath(victim, 0, nil))
+
+	t.Run("add", func(t *testing.T) {
+		store := InitFimHashMap(make(map[fileapi.InodeKey]fileapi.InodeVal))
+		err := WalkPathRaw(matcher, 0, store, AddToMap, FilterMatch, locationFn)
+		assert.NoError(t, err)
+		assert.Contains(t, store.M, regularKey)
+		assert.NotContains(t, store.M, victimKey)
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		store := InitFimHashMap(map[fileapi.InodeKey]fileapi.InodeVal{
+			victimKey: {},
+		})
+		err := WalkPathRaw(matcher, 0, store, RemoveFromMap, FilterIgnore, locationFn)
+		assert.NoError(t, err)
+		assert.Contains(t, store.M, victimKey)
+	})
+}
+
+// TestWalkPathRenameAddDoesNotFollowSymlinks verifies that a directory moved
+// into a watched tree cannot use a contained symlink to register an unrelated
+// target inode.
+func TestWalkPathRenameAddDoesNotFollowSymlinks(t *testing.T) {
+	root := t.TempDir()
+	moved := filepath.Join(root, "moved")
+	if err := os.Mkdir(moved, 0755); err != nil {
+		t.Fatalf("mkdir moved directory: %s", err)
+	}
+
+	regular := filepath.Join(moved, "regular")
+	createTestFile(t, regular)
+	victim := filepath.Join(root, "victim")
+	createTestFile(t, victim)
+	if err := os.Symlink(victim, filepath.Join(moved, "symlink")); err != nil {
+		t.Fatalf("create symlink: %s", err)
+	}
+
+	regularKey := inodeKeyForTest(t, regular)
+	victimKey := inodeKeyForTest(t, victim)
+	store := InitFimHashMap(make(map[fileapi.InodeKey]fileapi.InodeVal))
+	actionFn := func(_ string, _ fs.FileMode) (uint32, uint32, error) {
+		return FilterMatch, 0, nil
+	}
+	locationFn := func(_ *fileapi.InodeVal) {}
+
+	_, err := WalkPathRenameAdd(moved, store, actionFn, locationFn)
+	assert.NoError(t, err)
+	assert.Contains(t, store.M, regularKey)
+	assert.NotContains(t, store.M, victimKey)
 }
