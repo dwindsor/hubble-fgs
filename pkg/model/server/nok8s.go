@@ -16,8 +16,9 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type Server struct {

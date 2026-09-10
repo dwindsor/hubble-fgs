@@ -8,6 +8,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/watcher"
+
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"

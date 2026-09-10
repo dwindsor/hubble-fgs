@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 )

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/powershellapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/pwshproto"
