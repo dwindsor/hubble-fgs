@@ -307,6 +307,10 @@ options:
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
+    - name: enable-splunk-hec-debug
+      default_value: "false"
+      usage: |
+        Enable verbose debug logging for Splunk HEC sends and batches.
     - name: enable-syscall-tracking
       default_value: "false"
       usage: |
@@ -657,6 +661,29 @@ options:
       default_value: "32768"
       usage: |
         Set the maximum number of entries in the sleepable preload map
+    - name: splunk-hec-endpoint
+      usage: |
+        URL of the Splunk HTTP Event Collector endpoint to send telemetry to. Set to "" to disable.
+    - name: splunk-hec-flush-interval
+      default_value: 3s
+      usage: |
+        Maximum time a record waits to be batched before it is sent to the Splunk HTTP Event Collector. Must be at least 1s.
+    - name: splunk-hec-max-content-length
+      default_value: "1048576"
+      usage: |
+        Maximum size in bytes of a single request body sent to the Splunk HTTP Event Collector. Must not exceed the max_content_length configured on the Splunk server.
+    - name: splunk-hec-sourcetypes
+      default_value: |
+        [tetragon:application_model,tetragon:telemetry,tetragon:events,tetragon:alerts]
+      usage: |
+        Comma-separated list of JSON export sourcetypes to send to the Splunk HTTP Event Collector.
+    - name: splunk-hec-timeout
+      default_value: 30s
+      usage: |
+        Timeout for a single request to the Splunk HTTP Event Collector. Must be at least 10s.
+    - name: splunk-hec-token
+      usage: |
+        Authentication token for the Splunk HTTP Event Collector endpoint specified by --splunk-hec-endpoint flag.
     - name: tcp-cache-size
       default_value: "32768"
       usage: |
