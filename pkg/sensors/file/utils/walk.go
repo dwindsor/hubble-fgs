@@ -291,9 +291,13 @@ func (p PrefixPathMatcher) OverrideAction(action uint32, _ fs.FileMode) uint32 {
 	return action
 }
 
-func (p PrefixPathMatcher) MatchPath(_ string, _ fs.FileMode, _ *uint32) bool {
-	return true
+// WalkPathRaw evaluates paths through GetPrefixMatch. But this is also used in
+// WalkPathRenameAdd for directory renames. For this reason we need to use
+// strings.HasPrefix here as well.
+func (p PrefixPathMatcher) MatchPath(path string, _ fs.FileMode, _ *uint32) bool {
+	return strings.HasPrefix(path, p.Prefix)
 }
+
 func (p PrefixPathMatcher) String() string {
 	return fmt.Sprintf("prefix:[%s]", p.Prefix)
 }
@@ -426,33 +430,16 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 		}
 
 		mode := info.Mode()
-		// First check for the type of file.
-		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) && !IsBlockDevice(mode) && !IsCharDevice(mode) && !IsSocket(mode) {
-			CheckFileMode(mode, path)
+		// Do not resolve them symlinks here as a process that can create a symlink
+		// in the walked tree can make the inode map operate on an arbitrary symlink
+		// target.
+		if IsSymlink(mode) {
 			return nil
 		}
 
-		if IsSymlink(mode) {
-			link, err := filepath.EvalSymlinks(path)
-			if err != nil {
-				l.Debug("Cannot resolve symlink "+link, logfields.Error, err)
-				return nil
-			}
-			path = link
-		}
-
-		fileinfo, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-
-		mode = fileinfo.Mode()
-		// Second check for the type of file. We need that as we evaluated symbolic links before.
+		// First check for the type of file.
 		if !mode.IsRegular() && !mode.IsDir() && !IsBlockDevice(mode) && !IsCharDevice(mode) && !IsSocket(mode) {
 			CheckFileMode(mode, path)
-			return nil
-		} else if IsSymlink(mode) {
-			l.Warn("symlink evaluated to another symlink", "path", path)
 			return nil
 		}
 
@@ -462,7 +449,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 
 		action := matcher.OverrideAction(action, mode)
 
-		stat, ok := fileinfo.Sys().(*syscall.Stat_t)
+		stat, ok := info.Sys().(*syscall.Stat_t)
 		if !ok {
 			return fmt.Errorf("stat is not a syscall.Stat_t")
 		}
@@ -490,7 +477,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 			copy(val.FullPath[:], path)
 			locationFn(&val)
 			val.RuleID = rule
-			val.Mode = translateMode(fileinfo)
+			val.Mode = translateMode(info)
 			val.Source = fileapi.InodeValSrcWalk
 
 			if err := store.AddInode(key, val); err != nil {
@@ -719,20 +706,14 @@ func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.F
 			return nil
 		}
 
+		// Do not resolve them symlinks here as a process that can create a symlink
+		// in the walked tree can make the inode map operate on an arbitrary symlink
+		// target.
 		if IsSymlink(info.Mode()) {
-			link, err := filepath.EvalSymlinks(path)
-			if err != nil {
-				return nil
-			}
-			path = link
+			return nil
 		}
 
-		fileinfo, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-
-		action, ruleID, err := actionFn(path, fileinfo.Mode())
+		action, ruleID, err := actionFn(path, info.Mode())
 		if err != nil {
 			return err
 		}
@@ -741,7 +722,7 @@ func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.F
 			return nil
 		}
 
-		stat, ok := fileinfo.Sys().(*syscall.Stat_t)
+		stat, ok := info.Sys().(*syscall.Stat_t)
 		if !ok {
 			return fmt.Errorf("stat is not a syscall.Stat_t")
 		}
@@ -760,7 +741,7 @@ func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.F
 		}
 		locationFn(&val)
 
-		switch mode := fileinfo.Mode(); {
+		switch mode := info.Mode(); {
 		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()), IsSocket(mode.Type()):
 			if mode.IsDir() {
 				// We should have all directory names to end with "/"
