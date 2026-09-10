@@ -13,6 +13,7 @@ package option
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -60,6 +61,13 @@ const (
 	KeyApplicationModelExportInterval    = "application-model-export-interval"
 	KeyApplicationModelExportFilename    = "application-model-export-filename"
 	KeyTelemetryExportFilename           = "telemetry-export-filename"
+	KeySplunkHECEndpoint                 = "splunk-hec-endpoint"
+	KeySplunkHECToken                    = "splunk-hec-token"
+	KeySplunkHECMaxContentLength         = "splunk-hec-max-content-length"
+	KeySplunkHECFlushInterval            = "splunk-hec-flush-interval"
+	KeySplunkHECTimeout                  = "splunk-hec-timeout"
+	KeySplunkHECSourcetypes              = "splunk-hec-sourcetypes"
+	KeyEnableSplunkHECDebug              = "enable-splunk-hec-debug"
 	KeyConnectionLogFilename             = "connection-log-filename"
 	keyLayer3SocketMapSize               = "bpf-layer3-socket-cache-size"
 	keyTCPSocketMapSize                  = "bpf-tcp-socket-cache-size"
@@ -170,13 +178,30 @@ const (
 	EnvironmentGCloud     = "gcloud"
 	EnvironmentKubernetes = "kubernetes"
 	NetworkStatInterval   = time.Duration(10 * time.Second)
+
+	// A batch smaller than this cannot hold a single application model event.
+	splunkHECMinContentLength = 4096
+	// Flushing more often than this wastes a request per record.
+	splunkHECMinFlushInterval = 1 * time.Second
+	// A shorter timeout gives up on large batches the collector is still reading.
+	splunkHECMinTimeout = 10 * time.Second
 )
 
 var (
-	environments = []string{EnvironmentAWS, EnvironmentAzure, EnvironmentGCloud, EnvironmentKubernetes}
+	environments              = []string{EnvironmentAWS, EnvironmentAzure, EnvironmentGCloud, EnvironmentKubernetes}
+	splunkHECValidSourcetypes = []string{
+		SplunkHECSourcetypeEvents,
+		SplunkHECSourcetypeFlows,
+		SplunkHECSourcetypeOCSF,
+		SplunkHECSourcetypeApplicationModel,
+		SplunkHECSourcetypeTelemetry,
+		SplunkHECSourcetypeConnections,
+		SplunkHECSourcetypeAlerts,
+	}
 
 	redactedKeys = []string{
 		keyK8sServiceAccountAuth,
+		KeySplunkHECToken,
 	}
 )
 
@@ -252,6 +277,13 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyApplicationModelExportFragments, false, "When exporting application model to JSON, export as fragments. This circumvents message ingest size limits when the application model is large.")
 	flags.Duration(KeyApplicationModelRetentionDuration, time.Duration(24*time.Hour), "Retention period for exited processes in the application model.")
 	flags.String(KeyTelemetryExportFilename, "", "Filename for telemetry JSON export. Set to \"\" to disable. To enable telemetry export, --"+KeyEnableApplicationModel+" flag must be set to true. Telemetry export uses the export interval specified by --"+KeyApplicationModelExportInterval+" flag.")
+	flags.String(KeySplunkHECEndpoint, "", "URL of the Splunk HTTP Event Collector endpoint to send telemetry to. Set to \"\" to disable.")
+	flags.String(KeySplunkHECToken, "", "Authentication token for the Splunk HTTP Event Collector endpoint specified by --"+KeySplunkHECEndpoint+" flag.")
+	flags.Int(KeySplunkHECMaxContentLength, 1024*1024, "Maximum size in bytes of a single request body sent to the Splunk HTTP Event Collector. Must not exceed the max_content_length configured on the Splunk server.")
+	flags.Duration(KeySplunkHECFlushInterval, 3*time.Second, fmt.Sprintf("Maximum time a record waits to be batched before it is sent to the Splunk HTTP Event Collector. Must be at least %s.", splunkHECMinFlushInterval))
+	flags.Duration(KeySplunkHECTimeout, 30*time.Second, fmt.Sprintf("Timeout for a single request to the Splunk HTTP Event Collector. Must be at least %s.", splunkHECMinTimeout))
+	flags.StringSlice(KeySplunkHECSourcetypes, Config.SplunkHECSourcetypes, "Comma-separated list of JSON export sourcetypes to send to the Splunk HTTP Event Collector.")
+	flags.Bool(KeyEnableSplunkHECDebug, false, "Enable verbose debug logging for Splunk HEC sends and batches.")
 	flags.String(KeyConnectionLogFilename, "", "Filename for connection log. Set to \"\" to disable.")
 	flags.MarkHidden(KeyConnectionLogFilename)
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
@@ -410,6 +442,22 @@ func readAndSetEnterpriseFlags() error {
 	Config.ApplicationModelExportFragments = viper.GetBool(KeyApplicationModelExportFragments)
 	Config.ApplicationModelRetentionDuration = viper.GetDuration(KeyApplicationModelRetentionDuration)
 	Config.TelemetryExportFilename = viper.GetString(KeyTelemetryExportFilename)
+	endpointStr := viper.GetString(KeySplunkHECEndpoint)
+	if endpointStr == "" {
+		Config.SplunkHECEndpoint = nil
+	} else {
+		u, err := url.Parse(endpointStr)
+		if err != nil {
+			return fmt.Errorf("invalid value for --%s: %w", KeySplunkHECEndpoint, err)
+		}
+		Config.SplunkHECEndpoint = u
+	}
+	Config.SplunkHECToken = viper.GetString(KeySplunkHECToken)
+	Config.SplunkHECMaxContentLength = viper.GetInt(KeySplunkHECMaxContentLength)
+	Config.SplunkHECFlushInterval = viper.GetDuration(KeySplunkHECFlushInterval)
+	Config.SplunkHECTimeout = viper.GetDuration(KeySplunkHECTimeout)
+	Config.SplunkHECSourcetypes = viper.GetStringSlice(KeySplunkHECSourcetypes)
+	Config.EnableSplunkHECDebug = viper.GetBool(KeyEnableSplunkHECDebug)
 	Config.ConnectionLogFileName = viper.GetString(KeyConnectionLogFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
 	Config.DnsCacheSize = viper.GetInt(KeyDnsCacheSize)
@@ -592,6 +640,37 @@ func validateConfig(config config) error {
 
 	if config.Layer3CLIEnable && config.DisableLayer3 {
 		return fmt.Errorf("switch config --%s set together with a switch that enables layer3", KeyDisableLayer3)
+	}
+
+	if (config.SplunkHECEndpoint == nil) != (config.SplunkHECToken == "") {
+		return fmt.Errorf("--%s and --%s must be set together", KeySplunkHECEndpoint, KeySplunkHECToken)
+	}
+	if config.SplunkHECEndpoint != nil {
+		u := config.SplunkHECEndpoint
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return fmt.Errorf("invalid value for --%s: scheme must be http or https", KeySplunkHECEndpoint)
+		}
+		if u.Host == "" {
+			return fmt.Errorf("invalid value for --%s: missing host", KeySplunkHECEndpoint)
+		}
+	}
+
+	if config.SplunkHECMaxContentLength <= splunkHECMinContentLength {
+		return fmt.Errorf("--%s must be greater than %d bytes", KeySplunkHECMaxContentLength, splunkHECMinContentLength)
+	}
+
+	if config.SplunkHECFlushInterval < splunkHECMinFlushInterval {
+		return fmt.Errorf("--%s must be at least %s", KeySplunkHECFlushInterval, splunkHECMinFlushInterval)
+	}
+
+	if config.SplunkHECTimeout < splunkHECMinTimeout {
+		return fmt.Errorf("--%s must be at least %s", KeySplunkHECTimeout, splunkHECMinTimeout)
+	}
+
+	for _, sourcetype := range config.SplunkHECSourcetypes {
+		if !slices.Contains(splunkHECValidSourcetypes, sourcetype) {
+			return fmt.Errorf("invalid value for --%s: %q is not a valid sourcetype, valid values are %v", KeySplunkHECSourcetypes, sourcetype, splunkHECValidSourcetypes)
+		}
 	}
 
 	if !config.EnableTCP {

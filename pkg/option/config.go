@@ -11,6 +11,7 @@
 package option
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/option"
@@ -42,6 +43,15 @@ type config struct {
 
 	TelemetryExportFilename string
 	ConnectionLogFileName   string
+
+	SplunkHECEndpoint *url.URL
+	SplunkHECToken    string
+	// SplunkHECMaxContentLength is the maximum request body size in bytes.
+	SplunkHECMaxContentLength int
+	SplunkHECFlushInterval    time.Duration
+	SplunkHECTimeout          time.Duration
+	SplunkHECSourcetypes      []string
+	EnableSplunkHECDebug      bool
 
 	DnsCacheSize         int
 	ProcessTreeCacheSize int
@@ -222,7 +232,22 @@ type config struct {
 const (
 	// Needs to be in sync with TLS_MAX_PORTS from tls_map.h
 	TLS_MAX_PORTS = 512
+
+	SplunkHECSourcetypeEvents           = "tetragon:events"
+	SplunkHECSourcetypeFlows            = "tetragon:flows"
+	SplunkHECSourcetypeOCSF             = "tetragon:ocsf"
+	SplunkHECSourcetypeApplicationModel = "tetragon:application_model"
+	SplunkHECSourcetypeTelemetry        = "tetragon:telemetry"
+	SplunkHECSourcetypeConnections      = "tetragon:connections"
+	SplunkHECSourcetypeAlerts           = "tetragon:alerts"
 )
+
+var defaultSplunkHECSourcetypes = []string{
+	SplunkHECSourcetypeApplicationModel,
+	SplunkHECSourcetypeTelemetry,
+	SplunkHECSourcetypeEvents,
+	SplunkHECSourcetypeAlerts,
+}
 
 var (
 	// Config contains all the configuration used by Tetragon.
@@ -232,6 +257,11 @@ var (
 		ApplicationModelExportInterval:    0,
 		ApplicationModelExportFragments:   false,
 		ApplicationModelRetentionDuration: time.Duration(24 * time.Hour),
+		SplunkHECMaxContentLength:         1024 * 1024,
+		SplunkHECFlushInterval:            time.Duration(2) * time.Second,
+		SplunkHECTimeout:                  time.Duration(30) * time.Second,
+		SplunkHECSourcetypes:              append([]string{}, defaultSplunkHECSourcetypes...),
+		EnableSplunkHECDebug:              false,
 		DnsCacheSize:                      1024,
 		ProcessTreeCacheSize:              65000,
 		BpfEndpointCacheSize:              65000,
