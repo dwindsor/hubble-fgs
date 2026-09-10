@@ -318,7 +318,6 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 func getDerivedDataColumn(sheetsService *sheets.Service, column string) float64 {
 	resp, err := sheetsService.Spreadsheets.Values.Get(SHEET_DOC_ID,
 		fmt.Sprintf("Derived Data!%s2:%s2", column, column)).Do()
-
 	if err != nil {
 		log.Fatalf("Failed to retrieve derived data value: %s", err)
 	}
@@ -388,7 +387,6 @@ func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries ma
 			TCPRrPercent:      fmtFloat(tcpRrPercent),
 			TCPTLSRrPercent:   fmtFloat(tcpTLSRrPercent),
 		})
-
 	if err != nil {
 		log.Fatal(err)
 	}

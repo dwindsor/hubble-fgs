@@ -1105,7 +1105,6 @@ func Test_DNSParser_FromPcap(t *testing.T) {
 	defer f.Close()
 
 	handle, err := pcapgo.NewReader(f)
-
 	if err != nil {
 		t.Fatalf("failed to open pcap file %s: %s", *pcapFile, err)
 	}

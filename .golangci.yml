@@ -19,7 +19,12 @@ linters:
     - sloglint
     - staticcheck
     - unused
+    - wsl_v5
   settings:
+    wsl_v5:
+      default: none
+      enable:
+        - err
     sloglint:
       no-mixed-args: true
       kv-only: true

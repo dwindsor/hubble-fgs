@@ -305,6 +305,7 @@ func GenerateCheckerCEL(model *appModelV1.ApplicationModelEvent) (string, error)
 	// During traversal, it performs two callbacks: push and pop when visiting
 	// and leaving a node respectively. We use both callbacks in the code generator.
 	rft := model.ProtoReflect()
+
 	err := protorange.Options{}.Range(
 		rft,
 		func(p protopath.Values) error {
@@ -314,7 +315,6 @@ func GenerateCheckerCEL(model *appModelV1.ApplicationModelEvent) (string, error)
 			return gen.DoPop(p)
 		},
 	)
-
 	if err != nil {
 		return "", err
 	}

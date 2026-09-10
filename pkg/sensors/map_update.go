@@ -59,7 +59,6 @@ func UpdateStatsMap(m *ebpf.Map, val int64) error {
 		},
 		License: "GPL",
 	})
-
 	if err != nil {
 		return err
 	}

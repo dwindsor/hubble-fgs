@@ -310,8 +310,8 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	keys, endpoints := c.DebugEndpointMap()
 	tetragonEndpoints := make([]*tetragon.Endpoint, 0)
 	endptToId := make(map[uint64]*tetragon.Endpoint)
-	bpfDNSEndpoints, err := GetBPFDnsEndpoints()
 
+	bpfDNSEndpoints, err := GetBPFDnsEndpoints()
 	if err != nil {
 		logger.GetLogger().Warn("failed to collect bpf DNS endpoints", logfields.Error, err)
 		// continue and at least collect other endpoints
@@ -1354,8 +1354,8 @@ func NewServer(enableBpfId bool) (*Server, error) {
 		EnableBpfId:  enableBpfId,
 		TrackExecIds: option.Config.AppModelTrackExecIds,
 	}
-	err := configureSettings(cfg)
 
+	err := configureSettings(cfg)
 	if err != nil {
 		return nil, err
 	}

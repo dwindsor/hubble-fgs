@@ -603,6 +603,7 @@ endif
 .PHONY: go-format
 go-format: ## Run code formatter on Go code.
 	$(GOLANGCILINT_BIN) fmt
+	$(GOLANGCILINT_BIN) run --fix --enable-only wsl_v5
 
 .PHONY: format
 format: go-format clang-format ## Convenience alias for clang-format and go-format.
