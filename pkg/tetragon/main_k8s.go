@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cilium/lumberjack/v2"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/manager/events"
 	"github.com/cilium/tetragon/pkg/metrics"
@@ -153,9 +152,9 @@ func k8sPodAccessor() watcher.PodAccessor {
 }
 
 func startApplicationModelExporter(ctx context.Context, modelServer *model.Server) error {
-	var flatWriter *lumberjack.Logger
-	var writer *lumberjack.Logger
-	var connectionWriter *lumberjack.Logger
+	var flatWriter *exportWriter
+	var writer *exportWriter
+	var connectionWriter *exportWriter
 	var err error
 
 	if enterpriseOption.Config.ApplicationModelExportFilename != "" {
@@ -164,6 +163,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 			enterpriseOption.Config.ApplicationModelExportFileMaxSizeMB,
 			enterpriseOption.Config.ApplicationModelExportFileMaxBackups,
 			enterpriseOption.Config.ApplicationModelExportFileCompress,
+			enterpriseOption.SplunkHECSourcetypeApplicationModel,
 		)
 		if err != nil {
 			return err
@@ -176,6 +176,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 			enterpriseOption.Config.ApplicationModelExportFileMaxSizeMB,
 			enterpriseOption.Config.ApplicationModelExportFileMaxBackups,
 			enterpriseOption.Config.ApplicationModelExportFileCompress,
+			enterpriseOption.SplunkHECSourcetypeTelemetry,
 		)
 		if err != nil {
 			return err
@@ -187,6 +188,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 			enterpriseOption.Config.ApplicationModelExportFileMaxSizeMB,
 			enterpriseOption.Config.ApplicationModelExportFileMaxBackups,
 			enterpriseOption.Config.ApplicationModelExportFileCompress,
+			enterpriseOption.SplunkHECSourcetypeConnections,
 		)
 		if err != nil {
 			return err

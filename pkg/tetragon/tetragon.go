@@ -64,6 +64,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/rule"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/powershell"
 	eeserver "github.com/isovalent/hubble-fgs/pkg/server"
+	splunkHec "github.com/isovalent/hubble-fgs/pkg/splunk/hec"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/bugtool"
@@ -549,6 +550,16 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Probe runtime configuration and do not fail on errors
 	obs.UpdateRuntimeConf(option.Config.BpfDir)
 
+	// Must happen before any export writer is created, so that they can tee to it.
+	if err := splunkHec.Init(ctx); err != nil {
+		return err
+	}
+	if enterpriseOption.Config.SplunkHECEndpoint != nil {
+		log.Info("Exporting JSON records to the Splunk HTTP Event Collector",
+			"endpoint", enterpriseOption.Config.SplunkHECEndpoint.String(),
+			"sourcetypes", enterpriseOption.Config.SplunkHECSourcetypes)
+	}
+
 	// Initialize alert rule manager
 	alertsManager := alerts.NewRuleManager()
 
@@ -910,8 +921,24 @@ func getObserverDir() string {
 	return bpf.MapPrefixPath()
 }
 
+// exportWriter is a rotating export file that also tees every JSON record it
+// receives to the Splunk HTTP Event Collector.
+type exportWriter struct {
+	*lumberjack.Logger
+	hec io.Writer
+}
+
+func (w *exportWriter) Write(p []byte) (int, error) {
+	n, err := w.Logger.Write(p)
+	if n > 0 {
+		// Shipping to Splunk is best effort and must not fail the file write.
+		w.hec.Write(p[:n])
+	}
+	return n, err
+}
+
 // getWriter returns lumberjack logger and the absolute path to the file.
-func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*lumberjack.Logger, error) {
+func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool, sourcetype string) (*exportWriter, error) {
 	writer := &lumberjack.Logger{
 		Filename:   filename,
 		MaxSize:    maxSizeMB,
@@ -937,7 +964,7 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 	} else {
 		log.Info("Initialized export file", "filename", abspath)
 	}
-	return writer, nil
+	return &exportWriter{Logger: writer, hec: splunkHec.Writer(sourcetype, filename)}, nil
 }
 
 func getExporter(ctx context.Context, server *server.Server) (*exporter.Exporter, error) {
@@ -949,24 +976,24 @@ func getExporter(ctx context.Context, server *server.Server) (*exporter.Exporter
 	if err != nil {
 		return nil, err
 	}
-	writer, err := getWriter(option.Config.ExportFilename, option.Config.ExportFileMaxSizeMB, option.Config.ExportFileMaxBackups, option.Config.ExportFileCompress)
+	writer, err := getWriter(option.Config.ExportFilename, option.Config.ExportFileMaxSizeMB, option.Config.ExportFileMaxBackups, option.Config.ExportFileCompress, enterpriseOption.SplunkHECSourcetypeEvents)
 	if err != nil {
 		return nil, err
 	}
-	var flowWriter *lumberjack.Logger
+	var flowWriter *exportWriter
 	enableFlowExport := enterpriseOption.Config.FlowExportFilename != ""
 	if enableFlowExport {
-		flowWriter, err = getWriter(enterpriseOption.Config.FlowExportFilename, enterpriseOption.Config.FlowExportFileMaxSizeMB, enterpriseOption.Config.FlowExportFileMaxBackups, enterpriseOption.Config.FlowExportFileCompress)
+		flowWriter, err = getWriter(enterpriseOption.Config.FlowExportFilename, enterpriseOption.Config.FlowExportFileMaxSizeMB, enterpriseOption.Config.FlowExportFileMaxBackups, enterpriseOption.Config.FlowExportFileCompress, enterpriseOption.SplunkHECSourcetypeFlows)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	var ocsfWriter *lumberjack.Logger
+	var ocsfWriter *exportWriter
 	enableOCSFClient := enterpriseOption.Config.OCSFExportServer != ""
 	enableOCSFExport := enterpriseOption.Config.OCSFExportFilename != ""
 	if enableOCSFExport {
-		ocsfWriter, err = getWriter(enterpriseOption.Config.OCSFExportFilename, enterpriseOption.Config.OCSFExportFileMaxSizeMB, enterpriseOption.Config.OCSFExportFileMaxBackups, enterpriseOption.Config.OCSFExportFileCompress)
+		ocsfWriter, err = getWriter(enterpriseOption.Config.OCSFExportFilename, enterpriseOption.Config.OCSFExportFileMaxSizeMB, enterpriseOption.Config.OCSFExportFileMaxBackups, enterpriseOption.Config.OCSFExportFileCompress, enterpriseOption.SplunkHECSourcetypeOCSF)
 		if err != nil {
 			return nil, err
 		}

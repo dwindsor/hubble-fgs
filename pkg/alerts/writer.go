@@ -21,6 +21,9 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
+
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	splunkHec "github.com/isovalent/hubble-fgs/pkg/splunk/hec"
 )
 
 var getPerms = sync.OnceValue(func() os.FileMode {
@@ -36,6 +39,7 @@ var getPerms = sync.OnceValue(func() os.FileMode {
 
 type logWriter struct {
 	l                *lumberjack.Logger
+	hec              io.Writer
 	rotateTimer      *time.Timer
 	rotationInterval time.Duration
 	closed           bool
@@ -44,7 +48,12 @@ type logWriter struct {
 }
 
 func (lw *logWriter) Write(p []byte) (int, error) {
-	return lw.l.Write(p)
+	n, err := lw.l.Write(p)
+	if lw.hec != nil && n > 0 {
+		// Shipping to Splunk is best effort and must not fail the file write.
+		lw.hec.Write(p[:n])
+	}
+	return n, err
 }
 
 func (lw *logWriter) Close() error {
@@ -83,6 +92,7 @@ func newLogWriter(filename string, maxSize int, maxBackups int, compress bool, r
 			Compress:   compress,
 			FileMode:   getPerms(),
 		},
+		hec: splunkHec.Writer(enterpriseOption.SplunkHECSourcetypeAlerts, filename),
 	}
 
 	// configure periodic rotation
