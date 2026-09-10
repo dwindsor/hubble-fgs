@@ -123,6 +123,7 @@ jobs:
             --base tests/vmtests/test-data/images/base.qcow2 \
             --tetragon-tarball "${{ steps.tarball.outputs.path }}" \
             --tester-progs-tarball tester-progs.tar.gz \
+            --policytest-extra-args debug=true \
             --cpu 4 \
             --mem 8G
         working-directory: ./modules/tetragon-oss
