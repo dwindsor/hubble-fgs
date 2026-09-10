@@ -21,8 +21,8 @@ Number of Tetragon perf events that are failed to be sent from the kernel.
 | label | values |
 | ----- | ------ |
 | `error` | `E2BIG, EAGAIN, EBUSY, EINVAL, ENOENT, ENOSPC, unknown` |
-| `opcode` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
-| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle` |
+| `opcode` | `1, 10, 11, 12, 128, 129, 13, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 14, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 3, 4, 5, 6, 7, 8, 9` |
+| `opstr` | `Cgroup, Clone, Cred, DNS, Data, Execve, Exit, File, FileLink, FileOpenraw, FileRename, FileSymlink, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, HTTP, IGMPJoin, IGMPLeave, IGMPMembershipReport, IPError, Icmp, IcmpV6, InterfaceStats, KfreeSkb, Loader, NetNsExit, PowershellScriptBlock, ProcessNetworkBurst, ProcessNetworkWatermark, RawsockClose, RawsockCreate, TCPAccept, TCPBind, TCPClose, TCPConnect, TCPConnectReturn, TCPListen, TCPStats, TLS, TLSCont, Throttle, UDPClose, UDPConnect, UDPListen, UDPMulticastSample, UDPPayload, UDPSeqError, UDPStats` |
 
 ### `tetragon_build_info`
 
@@ -199,8 +199,8 @@ The total number of event handler errors. For internal use only.
 | label | values |
 | ----- | ------ |
 | `error` | `event_handler_failed, perf_empty_data, unknown_opcode` |
-| `opcode` | `0, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
-| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle, Undef` |
+| `opcode` | `0, 1, 10, 11, 12, 128, 129, 13, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 14, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 3, 4, 5, 6, 7, 8, 9` |
+| `opstr` | `Cgroup, Clone, Cred, DNS, Data, Execve, Exit, File, FileLink, FileOpenraw, FileRename, FileSymlink, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, HTTP, IGMPJoin, IGMPLeave, IGMPMembershipReport, IPError, Icmp, IcmpV6, InterfaceStats, KfreeSkb, Loader, NetNsExit, PowershellScriptBlock, ProcessNetworkBurst, ProcessNetworkWatermark, RawsockClose, RawsockCreate, TCPAccept, TCPBind, TCPClose, TCPConnect, TCPConnectReturn, TCPListen, TCPStats, TLS, TLSCont, Throttle, UDPClose, UDPConnect, UDPListen, UDPMulticastSample, UDPPayload, UDPSeqError, UDPStats, Undef` |
 
 ### `tetragon_handling_latency`
 
@@ -208,8 +208,8 @@ The latency of handling messages in us.
 
 | label | values |
 | ----- | ------ |
-| `opcode` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
-| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle` |
+| `opcode` | `1, 10, 11, 12, 128, 129, 13, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 14, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 3, 4, 5, 6, 7, 8, 9` |
+| `opstr` | `Cgroup, Clone, Cred, DNS, Data, Execve, Exit, File, FileLink, FileOpenraw, FileRename, FileSymlink, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, HTTP, IGMPJoin, IGMPLeave, IGMPMembershipReport, IPError, Icmp, IcmpV6, InterfaceStats, KfreeSkb, Loader, NetNsExit, PowershellScriptBlock, ProcessNetworkBurst, ProcessNetworkWatermark, RawsockClose, RawsockCreate, TCPAccept, TCPBind, TCPClose, TCPConnect, TCPConnectReturn, TCPListen, TCPStats, TLS, TLSCont, Throttle, UDPClose, UDPConnect, UDPListen, UDPMulticastSample, UDPPayload, UDPSeqError, UDPStats` |
 
 ### `tetragon_map_capacity`
 
@@ -267,8 +267,8 @@ The total number of times we encounter a given message opcode. For internal use 
 
 | label | values |
 | ----- | ------ |
-| `opcode` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
-| `opstr` | `Cgroup, Clone, Data, Execve, Exit, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, Loader, Throttle` |
+| `opcode` | `1, 10, 11, 12, 128, 129, 13, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 14, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 3, 4, 5, 6, 7, 8, 9` |
+| `opstr` | `Cgroup, Clone, Cred, DNS, Data, Execve, Exit, File, FileLink, FileOpenraw, FileRename, FileSymlink, GenericKprobe, GenericLSM, GenericTracepoint, GenericUSDT, GenericUprobe, HTTP, IGMPJoin, IGMPLeave, IGMPMembershipReport, IPError, Icmp, IcmpV6, InterfaceStats, KfreeSkb, Loader, NetNsExit, PowershellScriptBlock, ProcessNetworkBurst, ProcessNetworkWatermark, RawsockClose, RawsockCreate, TCPAccept, TCPBind, TCPClose, TCPConnect, TCPConnectReturn, TCPListen, TCPStats, TLS, TLSCont, Throttle, UDPClose, UDPConnect, UDPListen, UDPMulticastSample, UDPPayload, UDPSeqError, UDPStats` |
 
 ### `tetragon_notify_overflowed_events_total`
 

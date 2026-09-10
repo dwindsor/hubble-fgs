@@ -12,9 +12,10 @@ require (
 	github.com/cilium/cilium v1.21.0-pre.1
 	github.com/cilium/ebpf v0.22.0
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.8.0-pre.0.0.20260908162502-98bd502485eb
+	github.com/cilium/tetragon v1.8.0-pre.0.0.20260910141404-15c6bb9904d8
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
+	github.com/cilium/tetragon/tools v0.0.0-00010101000000-000000000000
 	github.com/containerd/containerd/v2 v2.3.4
 	github.com/containernetworking/plugins v1.9.1
 	github.com/cri-o/cri-o v1.36.5
@@ -276,6 +277,7 @@ replace (
 	github.com/cilium/tetragon/api => ./api
 	github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
 	github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
+	github.com/cilium/tetragon/tools => ./modules/tetragon-oss/tools
 	github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
 
 // due to CRI-O, otherwise it fails to build hubble-fgs
