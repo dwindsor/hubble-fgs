@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
 # - tetragon
 # - tetra
 # Using Debian golang image for cross-compilation support (needs apt-get for crossbuild-essential)
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.27.0@sha256:0ecdc2a9f6156af6451080bfe3d8382a662fcc4e209608c6f919e643453514c1 AS tetragon-builder
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.27.1@sha256:f44f6e88636cfb311f9ebace870ded69d943f227bb3cb27d32ffd84ea18c43ea AS tetragon-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
 ARG LSEG
