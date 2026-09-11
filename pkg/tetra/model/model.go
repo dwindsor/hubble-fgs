@@ -297,7 +297,7 @@ func newBrowserTreeServer(ctx context.Context, getter treeGetter) *http.Server {
 	})
 
 	return &http.Server{
-		Addr:        ":3333",
+		Addr:        "localhost:3333",
 		Handler:     mux,
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}

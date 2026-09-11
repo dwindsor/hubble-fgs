@@ -24,6 +24,9 @@ func TestNewBrowserTreeServerUsesDedicatedMux(t *testing.T) {
 	getter := &wrappedEvent{ApplicationModelEvent: &appModelV1.ApplicationModelEvent{}}
 	srv := newBrowserTreeServer(context.Background(), getter)
 
+	if srv.Addr != "localhost:3333" {
+		t.Fatalf("expected browser tree server to bind to localhost:3333, got %q", srv.Addr)
+	}
 	if srv.Handler == nil {
 		t.Fatal("browser tree server must have an explicit handler")
 	}
