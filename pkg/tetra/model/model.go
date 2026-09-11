@@ -290,6 +290,19 @@ func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 	}
 }
 
+func newBrowserTreeServer(ctx context.Context, getter treeGetter) *http.Server {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		getTreeHtml(w, r, getter)
+	})
+
+	return &http.Server{
+		Addr:        ":3333",
+		Handler:     mux,
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	}
+}
+
 func runBrowserTree(enableS3 bool, bucket string) error {
 	ctx := context.Background()
 	appModel, err := getAppModel(enableS3, bucket)
@@ -297,15 +310,7 @@ func runBrowserTree(enableS3 bool, bucket string) error {
 		return err
 	}
 	getter := &wrappedEvent{ApplicationModelEvent: appModel}
-
-	srv := &http.Server{
-		Addr:        ":3333",
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
-	}
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		getTreeHtml(w, r, getter)
-	})
+	srv := newBrowserTreeServer(ctx, getter)
 
 	fmt.Println("application model web ui is running on http://localhost:3333")
 	errChan := make(chan error)
