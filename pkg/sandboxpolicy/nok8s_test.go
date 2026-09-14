@@ -87,6 +87,44 @@ spec: {}
 				},
 			},
 		},
+		{
+			name: "unknown top-level field",
+			yaml: `
+apiVersion: cilium.io/v1alpha1
+kind: SandboxPolicy
+metadata:
+  name: unknown-top-level
+unknown: true
+spec:
+  syscalls: []
+`,
+			wantErr: "failed to unmarshal Sandboxpolicy",
+		},
+		{
+			name: "unknown metadata field",
+			yaml: `
+apiVersion: cilium.io/v1alpha1
+kind: SandboxPolicy
+metadata:
+  name: unknown-metadata
+  unknown: true
+spec:
+  syscalls: []
+`,
+			wantErr: "failed to unmarshal Sandboxpolicy",
+		},
+		{
+			name: "unknown spec field",
+			yaml: `
+apiVersion: cilium.io/v1alpha1
+kind: SandboxPolicy
+metadata:
+  name: unknown-spec
+spec:
+  syscals: []
+`,
+			wantErr: "failed to unmarshal Sandboxpolicy",
+		},
 	}
 
 	for _, tt := range tests {

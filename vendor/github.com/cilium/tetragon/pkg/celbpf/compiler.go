@@ -77,8 +77,23 @@ func (c *compiler) compileCall(expr cgAst.Expr) error {
 		}
 	case uint32Fn:
 		emitCall = func() error {
-			c.cg.emitU32(scratchRegs[0], argTypes[0])
-			return nil
+			return c.cg.emitU32(scratchRegs[0], argTypes[0])
+		}
+	case int16Fn:
+		emitCall = func() error {
+			return c.cg.emitS16(scratchRegs[0], argTypes[0])
+		}
+	case uint16Fn:
+		emitCall = func() error {
+			return c.cg.emitU16(scratchRegs[0], argTypes[0])
+		}
+	case int8Fn:
+		emitCall = func() error {
+			return c.cg.emitS8(scratchRegs[0], argTypes[0])
+		}
+	case uint8Fn:
+		emitCall = func() error {
+			return c.cg.emitU8(scratchRegs[0], argTypes[0])
 		}
 
 	case cgOperators.Add:
@@ -194,7 +209,10 @@ func (c *compiler) compileCall(expr cgAst.Expr) error {
 			op := asm.RSh
 
 			// Use Arithmetic shift to sign extend for signed types
-			if argTypes[0].TypeName() == s32Ty.TypeName() || argTypes[0].TypeName() == s64Ty.TypeName() {
+			if argTypes[0].TypeName() == s64Ty.TypeName() ||
+				argTypes[0].TypeName() == s32Ty.TypeName() ||
+				argTypes[0].TypeName() == s16Ty.TypeName() ||
+				argTypes[0].TypeName() == s8Ty.TypeName() {
 				op = asm.ArSh
 			}
 			if err := c.cg.emitArithOp(
@@ -226,14 +244,8 @@ func (c *compiler) compileCall(expr cgAst.Expr) error {
 		i := len(callArgs) - j - 1
 		ty := argTypes[i]
 		switch ty.TypeName() {
-		case "int", "uint":
+		case "bool", "int", "uint", "s32", "u32", "u16", "s16", "u8", "s8":
 			c.cg.emitPopInt64(scratchRegs[i])
-		case "bool":
-			c.cg.emitPopBool(scratchRegs[i])
-		case "s32":
-			c.cg.emitPopS32(scratchRegs[i])
-		case "u32":
-			c.cg.emitPopU32(scratchRegs[i])
 		default:
 			return fmt.Errorf("unsupported argument type: %s", ty.TypeName())
 		}
@@ -317,7 +329,7 @@ func (c *compiler) compile() (asm.Instructions, []uint16, error) {
 	if err := c.compileExpr(expr); err != nil {
 		return nil, nil, fmt.Errorf("failed to compile CEL expression: %w", err)
 	}
-	c.cg.emitPopBool(asm.R0)
+	c.cg.emitPopInt64(asm.R0)
 	c.cg.emitRaw(asm.Return())
 
 	return c.cg.instructions(), c.arg_indexes, nil

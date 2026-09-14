@@ -3,7 +3,7 @@
 package sandboxpolicy
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 
@@ -23,7 +23,7 @@ func FromYAML(data string) (any, error) {
 	switch kind {
 	case "SandboxPolicy":
 		var sp v1alpha1.SandboxPolicy
-		if err := json.Unmarshal(jsonBytes, &sp); err != nil {
+		if err := json.Unmarshal(jsonBytes, &sp, json.RejectUnknownMembers(true)); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal Sandboxpolicy: %w", err)
 		}
 		return &sp, nil

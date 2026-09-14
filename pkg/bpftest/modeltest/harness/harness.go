@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 	"unicode"
+	"uuid"
 
 	"github.com/cilium/tetragon/pkg/cgidmap"
 	"github.com/cilium/tetragon/pkg/cgroups"
@@ -29,7 +30,6 @@ import (
 	"github.com/cilium/tetragon/pkg/podhelpers"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/watcher"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"

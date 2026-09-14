@@ -84,6 +84,45 @@ spec:
 				},
 			},
 		},
+		{
+			name: "unknown top-level field",
+			yaml: `
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: unknown-top-level
+unknown: true
+spec:
+  expression: "true"
+`,
+			wantErr: "failed to unmarshal AlertRule",
+		},
+		{
+			name: "unknown metadata field",
+			yaml: `
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: unknown-metadata
+  unknown: true
+spec:
+  expression: "true"
+`,
+			wantErr: "failed to unmarshal AlertRule",
+		},
+		{
+			name: "unknown spec field",
+			yaml: `
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: unknown-spec
+spec:
+  expression: "true"
+  severty: warning
+`,
+			wantErr: "failed to unmarshal AlertRule",
+		},
 	}
 
 	for _, tt := range tests {

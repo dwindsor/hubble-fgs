@@ -13,7 +13,7 @@
 package alerts
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -29,7 +29,7 @@ func RuleFromYAML(data string) (*v1alpha1.AlertRule, error) {
 	switch kind {
 	case "AlertRule":
 		var ar v1alpha1.AlertRule
-		if err := json.Unmarshal(jsonBytes, &ar); err != nil {
+		if err := json.Unmarshal(jsonBytes, &ar, json.RejectUnknownMembers(true)); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal AlertRule: %w", err)
 		}
 		return &ar, nil
