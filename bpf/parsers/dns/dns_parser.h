@@ -21,13 +21,16 @@
 #include "lib/strncmp.h"
 
 // parse_dns_name_label parses a label in a uncompressed DNS name and write it
-// into the name heap map. If skip is true, nothing is written in the domain
-// name buffer. It returns the offset needed to advance into the data to skip
-// the label on success. You need to add one to skip the last zero byte.  The
-// length of the label is equal to the returned offset minus one, because of the
-// first length byte. On failure, it returns < 0.
+// into the name heap map. off and skb_name_off are the offsets of the label and
+// of the name start from skb->data; a packet pointer cannot be used since the
+// verifier rejects it as a global function argument in cgroup_skb programs.
+// If skip is true, nothing is written in the domain name buffer. It returns
+// the offset needed to advance into the data to skip the label on success.
+// You need to add one to skip the last zero byte. The length of the label is
+// equal to the returned offset minus one, because of the first length byte.
+// On failure, it returns < 0.
 __attribute__((noinline)) int
-parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int skip)
+parse_dns_name_label(struct __sk_buff *skb, __u16 off, __u16 skb_name_off, int skip)
 {
 	__u8 name_offset, label_length;
 	char *data, *data_end, *name;
@@ -37,13 +40,13 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 	if (off > SKB_DATA_MAX_SIZE)
 		return -DNS_ERR_LABEL_OFFSET_OVERFLOW;
 
-	data = (void *)(long)skb->data + off;
-
 	// This is the total current length of the name, check that it does not overflow
-	if (data - data_start > DNS_MAX_NAME_SIZE)
+	if (off - skb_name_off > DNS_MAX_NAME_SIZE)
 		return -DNS_ERR_LABEL_NAME_OVERFLOW;
 
-	name_offset = data - data_start;
+	name_offset = off - skb_name_off;
+
+	data = (void *)(long)skb->data + off;
 
 	if (data + 1 > data_end)
 		return -DNS_ERR_LABEL_LENGTH_OVERFLOW;
@@ -128,7 +131,7 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 	//
 	// writing 'if (ret == 0 ) break;' inside the loop increases the complexity
 	for (int i = 0; i < (MAX_NUMBER_LABEL + 1) && data + sizeof(u8) * 3 <= data_end && ret > 0; i++) {
-		ret = parse_dns_name_label(skb, offset_start, data, skip);
+		ret = parse_dns_name_label(skb, offset_start, init_offset, skip);
 		if (ret < 0)
 			return ret;
 
