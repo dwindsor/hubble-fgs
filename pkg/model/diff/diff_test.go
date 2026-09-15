@@ -950,16 +950,54 @@ func Test_getDestination(t *testing.T) {
 				Namespace:    "default",
 				Kind:         common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 				ResourceKind: common.ResourceKind_RESOURCE_KIND_SERVICE,
+				Uid:          "service-uid",
 			},
 		},
 		Port: 1234,
 	}
-	name, namespace, workloadName, workloadKind, resourceKind := getDestination(&dest)
+	name, namespace, workloadName, workloadKind, resourceKind, uid := getDestination(&dest)
 	assert.Equal(t, "default:WORKLOAD_KIND_UNSPECIFIED:kubernetes", name)
 	assert.Equal(t, dest.GetWorkload().GetNamespace(), namespace)
 	assert.Equal(t, dest.GetWorkload().GetName(), workloadName)
 	assert.Equal(t, dest.GetWorkload().GetKind(), workloadKind)
 	assert.Equal(t, dest.GetWorkload().GetResourceKind(), resourceKind)
+	assert.Equal(t, "service-uid", uid)
+}
+
+func TestNetworkFlatIncludesResourceIdentity(t *testing.T) {
+	applicationModel := &appModelV1.ApplicationModel{
+		Namespaces: []*appModelV1.ApplicationNamespace{{
+			Name: "client",
+			Workloads: []*appModelV1.ApplicationWorkload{{
+				Name: "api",
+				Uid:  "source-uid",
+				Containers: []*appModelV1.ApplicationContainer{{
+					Processes: []*appModelV1.ApplicationProcessGroup{{
+						Connections: []*appModelV1.ApplicationConnection{{
+							Destination: &appModelV1.Destination{
+								Type: &appModelV1.Destination_Workload{
+									Workload: &appModelV1.DestinationWorkload{
+										Name:      "server",
+										Namespace: "backend",
+										Uid:       "destination-uid",
+									},
+								},
+							},
+							Stats:  &appModelV1.ConnectionStats{},
+							Policy: &appModelV1.NetworkPolicy{},
+						}},
+					}},
+				}},
+			}},
+		}},
+	}
+
+	telemetry, err := ApplicationModelToNetworkFlat(
+		context.Background(), applicationModel, &local.NoopMetadataService{})
+	require.NoError(t, err)
+	require.Len(t, telemetry, 1)
+	assert.Equal(t, "source-uid", telemetry[0].KubernetesWorkloadUid)
+	assert.Equal(t, "destination-uid", telemetry[0].DestinationKubernetesResourceUid)
 }
 
 func TestTelemetryToConnection(t *testing.T) {
@@ -1077,6 +1115,7 @@ func TestTelemetryToConnection(t *testing.T) {
 				KubernetesNamespace:               "tetragon",
 				KubernetesWorkloadKind:            common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 				KubernetesWorkloadName:            "tetragon-grafana",
+				KubernetesWorkloadUid:             "source-uid",
 				DestinationName:                   "192.168.0.2",
 				DestinationType:                   appModelV1.DestinationType_DESTINATION_TYPE_KUBERNETES,
 				DestinationKubernetesResourceKind: common.ResourceKind_RESOURCE_KIND_SERVICE,
@@ -1084,6 +1123,7 @@ func TestTelemetryToConnection(t *testing.T) {
 				DestinationKubernetesResourceName: "another-service",
 				DestinationKubernetesServiceKind:  common.ServiceKind_SERVICE_KIND_CLUSTER_IP,
 				DestinationKubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+				DestinationKubernetesResourceUid:  "destination-uid",
 				DestinationPort:                   443,
 				TxBytes:                           1234,
 				ApplicationModelId:                "u-u-i-d",
@@ -1093,6 +1133,7 @@ func TestTelemetryToConnection(t *testing.T) {
 				Source: &graphV1.Vertex{
 					Family: &graphV1.Vertex_Kubernetes{
 						Kubernetes: &graphV1.VertexFamilyKubernetes{
+							Uid:                  "source-uid",
 							ResourceName:         "tetragon-grafana",
 							ResourceKind:         common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 							ClusterName:          "my-cluster",
@@ -1107,6 +1148,7 @@ func TestTelemetryToConnection(t *testing.T) {
 				Destination: &graphV1.Vertex{
 					Family: &graphV1.Vertex_Kubernetes{
 						Kubernetes: &graphV1.VertexFamilyKubernetes{
+							Uid:          "destination-uid",
 							ResourceKind: common.ResourceKind_RESOURCE_KIND_SERVICE,
 							ResourceName: "another-service",
 							ClusterName:  "my-cluster",
@@ -1305,6 +1347,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 							{
 								Name: "my-app",
 								Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+								Uid:  "deployment-uid",
 								Containers: []*appModelV1.ApplicationContainer{
 									{
 										Id:    "14a2e26a8763a",
@@ -1332,6 +1375,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					KubernetesNamespace:    "default",
 					KubernetesWorkloadName: "my-app",
 					KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+					KubernetesWorkloadUid:  "deployment-uid",
 					Container: &appModelV1.ApplicationContainer{
 						Id:    "14a2e26a8763a",
 						Name:  "my-hash-app",
@@ -1562,6 +1606,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 				assert.Equal(t, expected.KubernetesNamespace, actual.KubernetesNamespace, "kubernetes namespace mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesWorkloadName, actual.KubernetesWorkloadName, "kubernetes workload name mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesWorkloadKind, actual.KubernetesWorkloadKind, "kubernetes workload kind mismatch at index %d", i)
+				assert.Equal(t, expected.KubernetesWorkloadUid, actual.KubernetesWorkloadUid, "kubernetes workload UID mismatch at index %d", i)
 				assert.Equal(t, expected.ApplicationModelId, actual.ApplicationModelId, "application model id mismatch at index %d", i)
 
 				// Check ParentNames (the main new field we're testing)
