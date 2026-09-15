@@ -110,12 +110,12 @@ type NetworkMonitorValue struct {
 	PolicyName            string
 	TXBytes               uint64
 	RXBytes               uint64
-	AllowDefaultBytes     uint64
-	DenyDefaultBytes      uint64
+	TXDefaultAllowBytes   uint64
+	TXDefaultDropBytes    uint64
 	TXDropBytes           uint64
 	Sessions              uint64
-	AllowDefaultPackets   uint64
-	DenyDefaultPackets    uint64
+	TXDefaultAllowPackets uint64
+	TXDefaultDropPackets  uint64
 	TXDropPackets         uint64
 	RXDropBytes           uint64
 	RXDropPackets         uint64
@@ -148,11 +148,11 @@ type byteCounter interface {
 	GetRule() string
 	GetTxBytes() uint64
 	GetRxBytes() uint64
-	GetAllowDefaultBytes() uint64
-	GetDenyDefaultBytes() uint64
+	GetTxDefaultAllowBytes() uint64
+	GetTxDefaultDropBytes() uint64
 	GetTxDropBytes() uint64
-	GetAllowDefaultPackets() uint64
-	GetDenyDefaultPackets() uint64
+	GetTxDefaultAllowPackets() uint64
+	GetTxDefaultDropPackets() uint64
 	GetTxDropPackets() uint64
 	GetRxDropBytes() uint64
 	GetRxDropPackets() uint64
@@ -179,24 +179,24 @@ func (nmv NetworkMonitorValue) GetRxBytes() uint64 {
 	return nmv.RXBytes
 }
 
-func (nmv NetworkMonitorValue) GetAllowDefaultBytes() uint64 {
-	return nmv.AllowDefaultBytes
+func (nmv NetworkMonitorValue) GetTxDefaultAllowBytes() uint64 {
+	return nmv.TXDefaultAllowBytes
 }
 
-func (nmv NetworkMonitorValue) GetDenyDefaultBytes() uint64 {
-	return nmv.DenyDefaultBytes
+func (nmv NetworkMonitorValue) GetTxDefaultDropBytes() uint64 {
+	return nmv.TXDefaultDropBytes
 }
 
 func (nmv NetworkMonitorValue) GetTxDropBytes() uint64 {
 	return nmv.TXDropBytes
 }
 
-func (nmv NetworkMonitorValue) GetAllowDefaultPackets() uint64 {
-	return nmv.AllowDefaultPackets
+func (nmv NetworkMonitorValue) GetTxDefaultAllowPackets() uint64 {
+	return nmv.TXDefaultAllowPackets
 }
 
-func (nmv NetworkMonitorValue) GetDenyDefaultPackets() uint64 {
-	return nmv.DenyDefaultPackets
+func (nmv NetworkMonitorValue) GetTxDefaultDropPackets() uint64 {
+	return nmv.TXDefaultDropPackets
 }
 
 func (nmv NetworkMonitorValue) GetTxDropPackets() uint64 {
@@ -500,12 +500,12 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 					currentValue.RuleName = dst.Stats.RuleName
 					currentValue.TXBytes += dst.Stats.TxBytes
 					currentValue.RXBytes += dst.Stats.RxBytes
-					currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes
-					currentValue.DenyDefaultBytes += dst.Stats.DefaultDenyBytes
+					currentValue.TXDefaultAllowBytes += dst.Stats.DefaultAllowBytes
+					currentValue.TXDefaultDropBytes += dst.Stats.DefaultDenyBytes
 					currentValue.TXDropBytes += dst.Stats.TxDropBytes
 					currentValue.Sessions += dst.Stats.Sessions
-					currentValue.AllowDefaultPackets += dst.Stats.DefaultAllowPackets
-					currentValue.DenyDefaultPackets += dst.Stats.DefaultDenyPackets
+					currentValue.TXDefaultAllowPackets += dst.Stats.DefaultAllowPackets
+					currentValue.TXDefaultDropPackets += dst.Stats.DefaultDenyPackets
 					currentValue.TXDropPackets += dst.Stats.TxDropPackets
 					currentValue.RXDropBytes += dst.Stats.RxDropBytes
 					currentValue.RXDropPackets += dst.Stats.RxDropPackets
@@ -567,12 +567,12 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 					TXBytes:               newValue.TXBytes - currentValue.TXBytes,
 					RXBytes:               newValue.RXBytes - currentValue.RXBytes,
 					TXDropBytes:           newValue.TXDropBytes - currentValue.TXDropBytes,
-					AllowDefaultBytes:     newValue.AllowDefaultBytes - currentValue.AllowDefaultBytes,
-					DenyDefaultBytes:      newValue.DenyDefaultBytes - currentValue.DenyDefaultBytes,
+					TXDefaultAllowBytes:   newValue.TXDefaultAllowBytes - currentValue.TXDefaultAllowBytes,
+					TXDefaultDropBytes:    newValue.TXDefaultDropBytes - currentValue.TXDefaultDropBytes,
 					Sessions:              newValue.Sessions - currentValue.Sessions,
 					TXDropPackets:         newValue.TXDropPackets - currentValue.TXDropPackets,
-					AllowDefaultPackets:   newValue.AllowDefaultPackets - currentValue.AllowDefaultPackets,
-					DenyDefaultPackets:    newValue.DenyDefaultPackets - currentValue.DenyDefaultPackets,
+					TXDefaultAllowPackets: newValue.TXDefaultAllowPackets - currentValue.TXDefaultAllowPackets,
+					TXDefaultDropPackets:  newValue.TXDefaultDropPackets - currentValue.TXDefaultDropPackets,
 					RXDropBytes:           newValue.RXDropBytes - currentValue.RXDropBytes,
 					RXDropPackets:         newValue.RXDropPackets - currentValue.RXDropPackets,
 					RXDefaultDropBytes:    newValue.RXDefaultDropBytes - currentValue.RXDefaultDropBytes,
@@ -588,12 +588,12 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 				TXBytes:               newValue.TXBytes,
 				RXBytes:               newValue.RXBytes,
 				TXDropBytes:           newValue.TXDropBytes,
-				AllowDefaultBytes:     newValue.AllowDefaultBytes,
-				DenyDefaultBytes:      newValue.DenyDefaultBytes,
+				TXDefaultAllowBytes:   newValue.TXDefaultAllowBytes,
+				TXDefaultDropBytes:    newValue.TXDefaultDropBytes,
 				Sessions:              newValue.Sessions,
 				TXDropPackets:         newValue.TXDropPackets,
-				AllowDefaultPackets:   newValue.AllowDefaultPackets,
-				DenyDefaultPackets:    newValue.DenyDefaultPackets,
+				TXDefaultAllowPackets: newValue.TXDefaultAllowPackets,
+				TXDefaultDropPackets:  newValue.TXDefaultDropPackets,
 				RXDropBytes:           newValue.RXDropBytes,
 				RXDropPackets:         newValue.RXDropPackets,
 				RXDefaultDropBytes:    newValue.RXDefaultDropBytes,

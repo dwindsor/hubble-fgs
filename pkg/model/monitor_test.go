@@ -191,11 +191,11 @@ func TestDiff(t *testing.T) {
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
-			TXBytes:             100,
-			RXBytes:             200,
-			TXDropPackets:       2,
-			AllowDefaultPackets: 1,
-			DenyDefaultPackets:  2,
+			TXBytes:               100,
+			RXBytes:               200,
+			TXDropPackets:         2,
+			TXDefaultAllowPackets: 1,
+			TXDefaultDropPackets:  2,
 		},
 	}
 	newData := NetworkMonitorData{
@@ -218,11 +218,11 @@ func TestDiff(t *testing.T) {
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
-			TXBytes:             1000,
-			RXBytes:             2000,
-			TXDropPackets:       10,
-			AllowDefaultPackets: 5,
-			DenyDefaultPackets:  8,
+			TXBytes:               1000,
+			RXBytes:               2000,
+			TXDropPackets:         10,
+			TXDefaultAllowPackets: 5,
+			TXDefaultDropPackets:  8,
 		},
 		// new entry
 		NetworkKey{
@@ -247,11 +247,11 @@ func TestDiff(t *testing.T) {
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
-			TXBytes:             900,
-			RXBytes:             1800,
-			TXDropPackets:       8,
-			AllowDefaultPackets: 4,
-			DenyDefaultPackets:  6,
+			TXBytes:               900,
+			RXBytes:               1800,
+			TXDropPackets:         8,
+			TXDefaultAllowPackets: 4,
+			TXDefaultDropPackets:  6,
 		},
 		NetworkKey{
 			SourceNamespace:    "client",

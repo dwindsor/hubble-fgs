@@ -194,10 +194,10 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 			TxDrops:               v.TxDropBytes, //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
 			TxDropBytes:           v.TxDropBytes,
 			TxDropPackets:         v.TxDropPackets,
-			DefaultAllowBytes:     v.AllowDefaultBytes,
-			DefaultDenyBytes:      v.DenyDefaultBytes,
-			DefaultAllowPackets:   v.AllowDefaultPackets,
-			DefaultDenyPackets:    v.DenyDefaultPackets,
+			DefaultAllowBytes:     v.TxDefaultAllowBytes,
+			DefaultDenyBytes:      v.TxDefaultDropBytes,
+			DefaultAllowPackets:   v.TxDefaultAllowPackets,
+			DefaultDenyPackets:    v.TxDefaultDropPackets,
 			RxDropBytes:           v.RxDropBytes,
 			RxDropPackets:         v.RxDropPackets,
 			RxDefaultDropBytes:    v.RxDefaultDropBytes,
@@ -683,12 +683,12 @@ func getProcessModel(namespaces []string,
 			TxBytes:               dstVal.TxBytes,
 			RxBytes:               dstVal.RxBytes,
 			TxDropBytes:           dstVal.TxDropBytes,
-			DefaultAllowBytes:     dstVal.AllowDefaultBytes,
-			DefaultDenyBytes:      dstVal.DenyDefaultBytes,
+			DefaultAllowBytes:     dstVal.TxDefaultAllowBytes,
+			DefaultDenyBytes:      dstVal.TxDefaultDropBytes,
 			Sessions:              dstVal.Sessions,
 			TxDropPackets:         dstVal.TxDropPackets,
-			DefaultAllowPackets:   dstVal.AllowDefaultPackets,
-			DefaultDenyPackets:    dstVal.DenyDefaultPackets,
+			DefaultAllowPackets:   dstVal.TxDefaultAllowPackets,
+			DefaultDenyPackets:    dstVal.TxDefaultDropPackets,
 			RxDropBytes:           dstVal.RxDropBytes,
 			RxDropPackets:         dstVal.RxDropPackets,
 			RxDefaultDropBytes:    dstVal.RxDefaultDropBytes,
@@ -704,8 +704,8 @@ func getProcessModel(namespaces []string,
 				stats.Policy = policy
 			}
 
-			denyDefault := dstVal.DenyDefaultBytes > 0
-			allowDefault := dstVal.AllowDefaultBytes > 0
+			denyDefault := dstVal.TxDefaultDropBytes > 0
+			allowDefault := dstVal.TxDefaultAllowBytes > 0
 			rule, ok := library.GetRepository().GetRule(policy, dstVal.RuleID, denyDefault, allowDefault)
 			if !ok {
 				logger.GetLogger().Warn("unknown rule id in process model", "Policy", policy, "ruleID", dstVal.RuleID)

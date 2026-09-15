@@ -82,11 +82,11 @@ FUNC_INLINE uint64_t find_key(struct destination_endpoint_key *key, struct msg_i
 			return 0;
 
 		destvalue->tx_drop_bytes = 0;
-		destvalue->allow_default_bytes = 0;
-		destvalue->deny_default_bytes = 0;
+		destvalue->tx_default_allow_bytes = 0;
+		destvalue->tx_default_drop_bytes = 0;
 		destvalue->tx_drop_packets = 0;
-		destvalue->deny_default_packets = 0;
-		destvalue->allow_default_packets = 0;
+		destvalue->tx_default_drop_packets = 0;
+		destvalue->tx_default_allow_packets = 0;
 		destvalue->rx_drop_bytes = 0;
 		destvalue->rx_drop_packets = 0;
 		destvalue->rx_default_drop_bytes = 0;
@@ -291,8 +291,8 @@ FUNC_INLINE int resolve_key(struct destination_endpoint_key *dnskey,
 			destvalue->tx_bytes = 0;
 			destvalue->rx_bytes = 0;
 			destvalue->tx_drop_packets = 0;
-			destvalue->deny_default_packets = 0;
-			destvalue->allow_default_packets = 0;
+			destvalue->tx_default_drop_packets = 0;
+			destvalue->tx_default_allow_packets = 0;
 			destvalue->rx_drop_bytes = 0;
 			destvalue->rx_drop_packets = 0;
 			destvalue->rx_default_drop_bytes = 0;

@@ -80,8 +80,8 @@ struct destination_endpoint_key {
 
 struct destination_endpoint_value {
 	__u64 tx_drop_bytes;
-	__u64 allow_default_bytes;
-	__u64 deny_default_bytes;
+	__u64 tx_default_allow_bytes;
+	__u64 tx_default_drop_bytes;
 	__u64 deny;
 	__u64 tx_bytes;
 	__u64 rx_bytes;
@@ -95,8 +95,8 @@ struct destination_endpoint_value {
 	__u64 flags;
 	__u64 sessions;
 	__u64 tx_drop_packets;
-	__u64 deny_default_packets;
-	__u64 allow_default_packets;
+	__u64 tx_default_drop_packets;
+	__u64 tx_default_allow_packets;
 	__u64 rx_drop_bytes;
 	__u64 rx_drop_packets;
 	__u64 rx_default_drop_bytes;

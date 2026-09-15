@@ -391,11 +391,11 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 			return 0;
 
 		destvalue->tx_drop_bytes = 0;
-		destvalue->allow_default_bytes = 0;
-		destvalue->deny_default_bytes = 0;
+		destvalue->tx_default_allow_bytes = 0;
+		destvalue->tx_default_drop_bytes = 0;
 		destvalue->tx_drop_packets = 0;
-		destvalue->deny_default_packets = 0;
-		destvalue->allow_default_packets = 0;
+		destvalue->tx_default_drop_packets = 0;
+		destvalue->tx_default_allow_packets = 0;
 		destvalue->rx_drop_bytes = 0;
 		destvalue->rx_drop_packets = 0;
 		destvalue->rx_default_drop_bytes = 0;
@@ -633,11 +633,11 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->tx_bytes = destvalue->rx_bytes = 0;
 			destvalue->sessions = 0;
 			destvalue->tx_drop_bytes = 0;
-			destvalue->allow_default_bytes = 0;
-			destvalue->deny_default_bytes = 0;
+			destvalue->tx_default_allow_bytes = 0;
+			destvalue->tx_default_drop_bytes = 0;
 			destvalue->tx_drop_packets = 0;
-			destvalue->deny_default_packets = 0;
-			destvalue->allow_default_packets = 0;
+			destvalue->tx_default_drop_packets = 0;
+			destvalue->tx_default_allow_packets = 0;
 			destvalue->rx_drop_bytes = 0;
 			destvalue->rx_drop_packets = 0;
 			destvalue->rx_default_drop_bytes = 0;
@@ -963,8 +963,8 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 		__sync_fetch_and_add(&dest->tx_drop_bytes, len);
 		__sync_fetch_and_add(&dest->tx_drop_packets, segs);
 		if (deny & TNP_POLICY_FALLTHRU) {
-			__sync_fetch_and_add(&dest->deny_default_bytes, len);
-			__sync_fetch_and_add(&dest->deny_default_packets, segs);
+			__sync_fetch_and_add(&dest->tx_default_drop_bytes, len);
+			__sync_fetch_and_add(&dest->tx_default_drop_packets, segs);
 		}
 
 		// enforce flag can be removed when UDP supports enforcement
@@ -977,8 +977,8 @@ static int send(struct __sk_buff *skb, int deny, struct destination_endpoint_key
 
 		return SK_DROP;
 	} else if (deny & TNP_POLICY_FALLTHRU) {
-		__sync_fetch_and_add(&dest->allow_default_bytes, len);
-		__sync_fetch_and_add(&dest->allow_default_packets, segs);
+		__sync_fetch_and_add(&dest->tx_default_allow_bytes, len);
+		__sync_fetch_and_add(&dest->tx_default_allow_packets, segs);
 	}
 
 	__sync_fetch_and_add(&dest->tx_bytes, len);

@@ -111,13 +111,13 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 		Stats: &appModelV1.ConnectionStats{
 			TxBytes:               bc.GetTxBytes(),
 			RxBytes:               bc.GetRxBytes(),
-			DefaultAllowBytes:     bc.GetAllowDefaultBytes(),
-			DefaultDropBytes:      bc.GetDenyDefaultBytes(),
+			DefaultAllowBytes:     bc.GetTxDefaultAllowBytes(),
+			DefaultDropBytes:      bc.GetTxDefaultDropBytes(),
 			TxDrops:               bc.GetTxDropBytes(), //nolint:staticcheck // deprecated, populated for backwards compatibility with TxDropBytes
 			TxDropBytes:           bc.GetTxDropBytes(),
 			TxDropPackets:         bc.GetTxDropPackets(),
-			DefaultDropPackets:    bc.GetDenyDefaultPackets(),
-			DefaultAllowPackets:   bc.GetAllowDefaultPackets(),
+			DefaultDropPackets:    bc.GetTxDefaultDropPackets(),
+			DefaultAllowPackets:   bc.GetTxDefaultAllowPackets(),
 			RxDropBytes:           bc.GetRxDropBytes(),
 			RxDropPackets:         bc.GetRxDropPackets(),
 			RxDefaultDropBytes:    bc.GetRxDefaultDropBytes(),

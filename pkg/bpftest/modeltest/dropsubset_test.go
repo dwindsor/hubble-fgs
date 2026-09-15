@@ -70,13 +70,13 @@ spec:
 
 // checkDropSubsetCounters asserts the drop-policy-subset CEL rules ipa declares
 // on EdgeTypeNetworkTelemetry: no row may charge more default-action drops than
-// drops, in either direction (deny_default_packets <= tx_drop_packets and
+// drops, in either direction (tx_default_drop_packets <= tx_drop_packets and
 // rx_default_drop_packets <= rx_drop_packets).
 //
-// The regression this guards is recv() charging deny_default, a transmit-side
+// The regression this guards is recv() charging tx_default_drop, a transmit-side
 // field, on a receive drop. The sender and receiver are separate sockets, so the
 // ingress path keys the receiver's row on the sender's source port and the two
-// directions land on separate rows. A receive-only row that charges deny_default
+// directions land on separate rows. A receive-only row that charges tx_default_drop
 // reports a transmit policy drop against a transmit total of zero, breaking the
 // transmit subset.
 func checkDropSubsetCounters(ctx context.Context, tb testing.TB, tc *testcase.TestCase, _ *modelserver.Server, _ *harness.Harness) {
@@ -129,10 +129,10 @@ func checkDropSubsetCounters(ctx context.Context, tb testing.TB, tc *testcase.Te
 		if v.RxBytes > 0 {
 			received = true
 		}
-		if v.DenyDefaultPackets > v.TxDropPackets {
+		if v.TxDefaultDropPackets > v.TxDropPackets {
 			violations = append(violations, fmt.Sprintf(
 				"%v charges %d transmit default-action drops against %d transmit drops",
-				k, v.DenyDefaultPackets, v.TxDropPackets))
+				k, v.TxDefaultDropPackets, v.TxDropPackets))
 		}
 		if v.RxDefaultDropPackets > v.RxDropPackets {
 			violations = append(violations, fmt.Sprintf(

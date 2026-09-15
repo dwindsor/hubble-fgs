@@ -70,8 +70,8 @@ const DestFlagPolicyTemplateOnly uint64 = 0x1
 
 type DestinationEndpointValue struct {
 	TxDropBytes           uint64
-	AllowDefaultBytes     uint64
-	DenyDefaultBytes      uint64
+	TxDefaultAllowBytes   uint64
+	TxDefaultDropBytes    uint64
 	TxAction              uint64
 	TxBytes               uint64
 	RxBytes               uint64
@@ -85,8 +85,8 @@ type DestinationEndpointValue struct {
 	Flags                 uint64
 	Sessions              uint64
 	TxDropPackets         uint64
-	DenyDefaultPackets    uint64
-	AllowDefaultPackets   uint64
+	TxDefaultDropPackets  uint64
+	TxDefaultAllowPackets uint64
 	RxDropBytes           uint64
 	RxDropPackets         uint64
 	RxDefaultDropBytes    uint64
