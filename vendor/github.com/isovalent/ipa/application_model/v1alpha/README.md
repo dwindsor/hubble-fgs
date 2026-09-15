@@ -788,6 +788,7 @@ the following criteria:
 | name | [string](#string) |  |  |
 | kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  |  |
 | containers | [ApplicationContainer](#application_model-v1alpha-ApplicationContainer) | repeated | A list of containers below the workload. See ApplicationContainer. |
+| uid | [string](#string) |  | UID of the Kubernetes workload. |
 
 
 
@@ -888,6 +889,7 @@ the following criteria:
 | namespace | [string](#string) |  |  |
 | kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  |  |
 | resource_kind | [common.k8s.type.v1alpha.ResourceKind](#common-k8s-type-v1alpha-ResourceKind) |  |  |
+| uid | [string](#string) |  | UID of the Kubernetes resource. |
 
 
 
@@ -975,6 +977,8 @@ the following criteria:
 | rx_default_drop_packets | [uint64](#uint64) |  | The number of receive packets dropped by the default policy rule over the interval since the previous telemetry event. A subset of rx_drop_packets, which also counts drops an explicit deny rule decided. |
 | rx_default_allow_bytes | [uint64](#uint64) |  | The number of receive bytes allowed by the default policy rule over the interval since the previous telemetry event. |
 | rx_default_allow_packets | [uint64](#uint64) |  | The number of receive packets allowed by the default policy rule over the interval since the previous telemetry event. |
+| kubernetes_workload_uid | [string](#string) |  | UID of the Kubernetes workload from which the connection originated. |
+| destination_kubernetes_resource_uid | [string](#string) |  | UID of the destination Kubernetes resource. |
 
 
 
@@ -1042,6 +1046,7 @@ the following criteria:
 | parent_names | [string](#string) | repeated | Names of all processes that have been parents of this name/argument tuple. |
 | container | [ApplicationContainer](#application_model-v1alpha-ApplicationContainer) |  | The container in which this process is running |
 | exit_count | [uint64](#uint64) |  | The total number of times processes in this process group have exited. |
+| kubernetes_workload_uid | [string](#string) |  | UID of the Kubernetes workload in which the process is running. |
 
 
 

@@ -53,6 +53,8 @@ message ProcessTelemetry {
   ApplicationContainer container = 19;
   // The total number of times processes in this process group have exited.
   uint64 exit_count = 20;
+  // UID of the Kubernetes workload in which the process is running.
+  string kubernetes_workload_uid = 21;
 }
 
 message NetworkConnectTelemetry {
@@ -193,6 +195,10 @@ message NetworkConnectTelemetry {
   // The number of receive packets allowed by the default policy rule over the
   // interval since the previous telemetry event.
   uint64 rx_default_allow_packets = 42;
+  // UID of the Kubernetes workload from which the connection originated.
+  string kubernetes_workload_uid = 43;
+  // UID of the destination Kubernetes resource.
+  string destination_kubernetes_resource_uid = 44;
 }
 
 enum PolicyVerdict {
@@ -267,6 +273,8 @@ message ApplicationWorkload {
   common.k8s.type.v1alpha.WorkloadKind kind = 2;
   // A list of containers below the workload. See ApplicationContainer.
   repeated ApplicationContainer containers = 3;
+  // UID of the Kubernetes workload.
+  string uid = 4;
 }
 
 message ApplicationContainer {
@@ -417,6 +425,8 @@ message DestinationWorkload {
   string namespace = 2;
   common.k8s.type.v1alpha.WorkloadKind kind = 3;
   common.k8s.type.v1alpha.ResourceKind resource_kind = 4;
+  // UID of the Kubernetes resource.
+  string uid = 5;
 }
 
 message DestinationIP {

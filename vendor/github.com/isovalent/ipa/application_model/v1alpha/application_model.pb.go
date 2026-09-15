@@ -216,9 +216,11 @@ type ProcessTelemetry struct {
 	// The container in which this process is running
 	Container *ApplicationContainer `protobuf:"bytes,19,opt,name=container,proto3" json:"container,omitempty"`
 	// The total number of times processes in this process group have exited.
-	ExitCount     uint64 `protobuf:"varint,20,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ExitCount uint64 `protobuf:"varint,20,opt,name=exit_count,json=exitCount,proto3" json:"exit_count,omitempty"`
+	// UID of the Kubernetes workload in which the process is running.
+	KubernetesWorkloadUid string `protobuf:"bytes,21,opt,name=kubernetes_workload_uid,json=kubernetesWorkloadUid,proto3" json:"kubernetes_workload_uid,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ProcessTelemetry) Reset() {
@@ -391,6 +393,13 @@ func (x *ProcessTelemetry) GetExitCount() uint64 {
 	return 0
 }
 
+func (x *ProcessTelemetry) GetKubernetesWorkloadUid() string {
+	if x != nil {
+		return x.KubernetesWorkloadUid
+	}
+	return ""
+}
+
 type NetworkConnectTelemetry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An opaque identifier that is unique to this telemetry event across all the
@@ -532,8 +541,12 @@ type NetworkConnectTelemetry struct {
 	// The number of receive packets allowed by the default policy rule over the
 	// interval since the previous telemetry event.
 	RxDefaultAllowPackets uint64 `protobuf:"varint,42,opt,name=rx_default_allow_packets,json=rxDefaultAllowPackets,proto3" json:"rx_default_allow_packets,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// UID of the Kubernetes workload from which the connection originated.
+	KubernetesWorkloadUid string `protobuf:"bytes,43,opt,name=kubernetes_workload_uid,json=kubernetesWorkloadUid,proto3" json:"kubernetes_workload_uid,omitempty"`
+	// UID of the destination Kubernetes resource.
+	DestinationKubernetesResourceUid string `protobuf:"bytes,44,opt,name=destination_kubernetes_resource_uid,json=destinationKubernetesResourceUid,proto3" json:"destination_kubernetes_resource_uid,omitempty"`
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
 }
 
 func (x *NetworkConnectTelemetry) Reset() {
@@ -859,6 +872,20 @@ func (x *NetworkConnectTelemetry) GetRxDefaultAllowPackets() uint64 {
 		return x.RxDefaultAllowPackets
 	}
 	return 0
+}
+
+func (x *NetworkConnectTelemetry) GetKubernetesWorkloadUid() string {
+	if x != nil {
+		return x.KubernetesWorkloadUid
+	}
+	return ""
+}
+
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesResourceUid() string {
+	if x != nil {
+		return x.DestinationKubernetesResourceUid
+	}
+	return ""
 }
 
 type ApplicationModelEvent struct {
@@ -1205,7 +1232,9 @@ type ApplicationWorkload struct {
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Kind  v1alpha.WorkloadKind   `protobuf:"varint,2,opt,name=kind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kind,omitempty"`
 	// A list of containers below the workload. See ApplicationContainer.
-	Containers    []*ApplicationContainer `protobuf:"bytes,3,rep,name=containers,proto3" json:"containers,omitempty"`
+	Containers []*ApplicationContainer `protobuf:"bytes,3,rep,name=containers,proto3" json:"containers,omitempty"`
+	// UID of the Kubernetes workload.
+	Uid           string `protobuf:"bytes,4,opt,name=uid,proto3" json:"uid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1259,6 +1288,13 @@ func (x *ApplicationWorkload) GetContainers() []*ApplicationContainer {
 		return x.Containers
 	}
 	return nil
+}
+
+func (x *ApplicationWorkload) GetUid() string {
+	if x != nil {
+		return x.Uid
+	}
+	return ""
 }
 
 type ApplicationContainer struct {
@@ -2025,11 +2061,13 @@ func (x *DestinationDns) GetDestinationNames() []string {
 }
 
 type DestinationWorkload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Kind          v1alpha.WorkloadKind   `protobuf:"varint,3,opt,name=kind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kind,omitempty"`
-	ResourceKind  v1alpha.ResourceKind   `protobuf:"varint,4,opt,name=resource_kind,json=resourceKind,proto3,enum=common.k8s.type.v1alpha.ResourceKind" json:"resource_kind,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Name         string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Namespace    string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Kind         v1alpha.WorkloadKind   `protobuf:"varint,3,opt,name=kind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kind,omitempty"`
+	ResourceKind v1alpha.ResourceKind   `protobuf:"varint,4,opt,name=resource_kind,json=resourceKind,proto3,enum=common.k8s.type.v1alpha.ResourceKind" json:"resource_kind,omitempty"`
+	// UID of the Kubernetes resource.
+	Uid           string `protobuf:"bytes,5,opt,name=uid,proto3" json:"uid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2090,6 +2128,13 @@ func (x *DestinationWorkload) GetResourceKind() v1alpha.ResourceKind {
 		return x.ResourceKind
 	}
 	return v1alpha.ResourceKind(0)
+}
+
+func (x *DestinationWorkload) GetUid() string {
+	if x != nil {
+		return x.Uid
+	}
+	return ""
 }
 
 type DestinationIP struct {
@@ -2624,7 +2669,7 @@ var File_application_model_v1alpha_application_model_proto protoreflect.FileDesc
 
 const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\n" +
-	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xd4\b\n" +
+	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\x8c\t\n" +
 	"\x10ProcessTelemetry\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12G\n" +
@@ -2650,10 +2695,11 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\fparent_names\x18\x12 \x03(\tR\vparentNames\x12M\n" +
 	"\tcontainer\x18\x13 \x01(\v2/.application_model.v1alpha.ApplicationContainerR\tcontainer\x12\x1d\n" +
 	"\n" +
-	"exit_count\x18\x14 \x01(\x04R\texitCount\x1a=\n" +
+	"exit_count\x18\x14 \x01(\x04R\texitCount\x126\n" +
+	"\x17kubernetes_workload_uid\x18\x15 \x01(\tR\x15kubernetesWorkloadUid\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd8\x12\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xdf\x13\n" +
 	"\x17NetworkConnectTelemetry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12G\n" +
@@ -2700,7 +2746,9 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x15rx_default_drop_bytes\x18' \x01(\x04R\x12rxDefaultDropBytes\x125\n" +
 	"\x17rx_default_drop_packets\x18( \x01(\x04R\x14rxDefaultDropPackets\x123\n" +
 	"\x16rx_default_allow_bytes\x18) \x01(\x04R\x13rxDefaultAllowBytes\x127\n" +
-	"\x18rx_default_allow_packets\x18* \x01(\x04R\x15rxDefaultAllowPackets\x1a=\n" +
+	"\x18rx_default_allow_packets\x18* \x01(\x04R\x15rxDefaultAllowPackets\x126\n" +
+	"\x17kubernetes_workload_uid\x18+ \x01(\tR\x15kubernetesWorkloadUid\x12M\n" +
+	"#destination_kubernetes_resource_uid\x18, \x01(\tR destinationKubernetesResourceUid\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x83\x03\n" +
@@ -2736,13 +2784,14 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\tprocesses\x18\x01 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"x\n" +
 	"\x14ApplicationNamespace\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12L\n" +
-	"\tworkloads\x18\x02 \x03(\v2..application_model.v1alpha.ApplicationWorkloadR\tworkloads\"\xb5\x01\n" +
+	"\tworkloads\x18\x02 \x03(\v2..application_model.v1alpha.ApplicationWorkloadR\tworkloads\"\xc7\x01\n" +
 	"\x13ApplicationWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x129\n" +
 	"\x04kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\x12O\n" +
 	"\n" +
 	"containers\x18\x03 \x03(\v2/.application_model.v1alpha.ApplicationContainerR\n" +
-	"containers\"\xa2\x01\n" +
+	"containers\x12\x10\n" +
+	"\x03uid\x18\x04 \x01(\tR\x03uid\"\xa2\x01\n" +
 	"\x14ApplicationContainer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -2805,12 +2854,13 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x04port\x18\xe9\a \x01(\x04R\x04portB\x06\n" +
 	"\x04type\"=\n" +
 	"\x0eDestinationDns\x12+\n" +
-	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\"\xce\x01\n" +
+	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\"\xe0\x01\n" +
 	"\x13DestinationWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x129\n" +
 	"\x04kind\x18\x03 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\x12J\n" +
-	"\rresource_kind\x18\x04 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR\fresourceKind\"\x1f\n" +
+	"\rresource_kind\x18\x04 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR\fresourceKind\x12\x10\n" +
+	"\x03uid\x18\x05 \x01(\tR\x03uid\"\x1f\n" +
 	"\rDestinationIP\x12\x0e\n" +
 	"\x02ip\x18\x01 \x01(\tR\x02ip\"\x83\x01\n" +
 	"\x13ApplicationSyscalls\x12:\n" +
