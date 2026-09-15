@@ -37,13 +37,18 @@ type Source struct {
 	Ip string
 }
 
-type Endpoint struct {
+type endpointIdentity struct {
 	Type      tetragon.EndpointType
 	Dns       string
 	Kind      string
 	Namespace string
 	Name      string
 	CIDR      netip.Prefix
+}
+
+type Endpoint struct {
+	endpointIdentity
+	UID string
 }
 
 func (e *Endpoint) String() string {
@@ -71,7 +76,7 @@ type EndpointAdder interface {
 
 type Cache struct {
 	cache       *lru.Cache[uint64, Endpoint]
-	revCache    *lru.Cache[Endpoint, uint64]
+	revCache    *lru.Cache[endpointIdentity, uint64]
 	endpointMap *ebpf.Map
 }
 
@@ -109,7 +114,7 @@ func (c *Cache) insertEndpoint(ep Endpoint, key uint64) {
 	if c.cache.Add(key, ep) {
 		dnsmetrics.DnsCacheEvictions().Inc()
 	}
-	if c.revCache.Add(ep, key) {
+	if c.revCache.Add(ep.endpointIdentity, key) {
 		dnsmetrics.DnsCacheEvictions().Inc()
 	}
 }
@@ -132,9 +137,11 @@ func (c *Cache) insertKnownEndpoint(ep Endpoint, key uint64) {
 }
 
 func (c *Cache) AddEndpoint(ep Endpoint) (uint64, error) {
-	dstId, ok := c.revCache.Get(ep)
+	dstId, ok := c.revCache.Get(ep.endpointIdentity)
 	if !ok {
 		dstId = c.insertNewEndpoint(ep)
+	} else {
+		c.cache.Add(dstId, ep)
 	}
 	logger.GetLogger().Debug("PolicyID allocated", "id", dstId)
 	return dstId, nil
@@ -181,13 +188,15 @@ func (c *Cache) AddIpServiceMap(epService *corev1.Service) error {
 		Type:      tetragon.EndpointType_ENDPOINT_TYPE_SERVICE,
 		Namespace: epService.Namespace,
 		Name:      epService.Name,
+		UID:       string(epService.UID),
 	}
 
 	// Notice pods may reuse IPs in this case we just update the
 	// ip->id entry. However we keep the ID->EP mapping for later
 	// use either from gRPC reporting and/or future Pod mappings.
-	if idExists, ok := c.revCache.Get(ep); ok {
+	if idExists, ok := c.revCache.Get(ep.endpointIdentity); ok {
 		value.Id = idExists
+		c.cache.Add(idExists, ep)
 	} else {
 		value.Id = c.insertNewEndpoint(ep)
 	}
@@ -224,7 +233,7 @@ func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
 	// Notice pods may reuse IPs in this case we just update the
 	// ip->id entry. However we keep the ID->EP mapping for later
 	// use either from gRPC reporting and/or future Pod mappings.
-	if idExists, ok := c.revCache.Get(ep); ok {
+	if idExists, ok := c.revCache.Get(ep.endpointIdentity); ok {
 		value.Id = idExists
 	} else {
 		value.Id = c.insertNewEndpoint(ep)
@@ -298,7 +307,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 		} else {
 			// This endpoint may have a preconfigured userspace ID. In that
 			// case, preserve the existing mapping.
-			idExists, ok := c.revCache.Get(ep)
+			idExists, ok := c.revCache.Get(ep.endpointIdentity)
 			if ok {
 				value.Id = idExists
 			} else {

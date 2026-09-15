@@ -32,7 +32,7 @@ func newCache() (EndpointCache, error) {
 	if err != nil {
 		return nil, err
 	}
-	revLru, err := lru.New[Endpoint, uint64](option.Config.EndpointCacheSize)
+	revLru, err := lru.New[endpointIdentity, uint64](option.Config.EndpointCacheSize)
 	if err != nil {
 		return nil, err
 	}
