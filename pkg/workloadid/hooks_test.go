@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -48,6 +49,7 @@ func (m *mockCgroupIDResolver) GetContainersCgroupIDs(uid types.UID) ([]uint64, 
 
 func getClientBuilder() *fake.ClientBuilder {
 	scheme := runtime.NewScheme()
+	utilruntime.Must(appsv1.AddToScheme(scheme))
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	return fake.NewClientBuilder().WithScheme(scheme)
 }
@@ -152,6 +154,54 @@ func TestReconcilePodCreated(t *testing.T) {
 	assert.Equal(t, WorkloadID(1), cgidResult)
 
 	resolver.AssertExpectations(t)
+}
+
+func TestReconcileCapturesWorkloadIdentity(t *testing.T) {
+	pod := newTestPod("nginx-abc123", "default", "pod-uid", []metav1.OwnerReference{
+		newReplicaSetOwnerRef("nginx-7d8b9c"),
+	})
+	deployment := &appsv1.Deployment{
+		Name:            "nginx",
+		Namespace:       "default",
+		UID:             types.UID("deployment-uid"),
+		ResourceVersion: "42"}
+
+	state := newTestState()
+	state.Client = getClientBuilder().WithObjects(pod, deployment).Build()
+	state.cgroupIDResolver = new(mockCgroupIDResolver)
+	state.cgroupIDResolver.(*mockCgroupIDResolver).
+		On("GetPodCgroupID", types.UID("pod-uid")).Return(uint64(12345), nil).Once()
+	state.cgroupIDResolver.(*mockCgroupIDResolver).
+		On("GetContainersCgroupIDs", types.UID("pod-uid")).Return([]uint64{}, nil).Once()
+
+	_, err := state.Reconcile(context.Background(), ctrl.Request{
+		Namespace: "default", Name: pod.Name,
+	})
+	require.NoError(t, err)
+
+	metadata, ok := state.LookupMeta(WorkloadID(1))
+	require.True(t, ok, "workload metadata should be stored after reconciliation")
+	assert.Equal(t, "deployment-uid", metadata.UID, "workload UID should come from the owning Deployment")
+}
+
+func TestWorkloadResourceIdentityPrefersAPIReader(t *testing.T) {
+	pod := newTestPod("nginx-abc123", "default", "pod-uid", []metav1.OwnerReference{
+		newReplicaSetOwnerRef("nginx-7d8b9c"),
+	})
+	deployment := func(uid string) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			Name:      "nginx",
+			Namespace: "default",
+			UID:       types.UID(uid),
+		}
+	}
+
+	state := newTestState()
+	state.Client = getClientBuilder().WithObjects(deployment("41")).Build()
+	state.apiReader = getClientBuilder().WithObjects(deployment("42")).Build()
+
+	uid := state.workloadResourceIdentity(context.Background(), pod, "nginx", "Deployment")
+	assert.Equal(t, "42", uid, "the direct API reader should take precedence over the cached client")
 }
 
 func TestReconcilePodDeleted(t *testing.T) {

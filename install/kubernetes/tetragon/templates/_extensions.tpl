@@ -281,6 +281,34 @@ app.kubernetes.io/component: aggregator
 
 {{- define "clusterrole.extra" -}}
 - apiGroups:
+    - ""
+  resources:
+    - replicationcontrollers
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
+    - apps
+  resources:
+    - daemonsets
+    - deployments
+    - replicasets
+    - statefulsets
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
+    - batch
+  resources:
+    - cronjobs
+    - jobs
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
     - cilium.io
   resources:
     - podinfo

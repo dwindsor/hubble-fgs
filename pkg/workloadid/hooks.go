@@ -18,6 +18,8 @@ import (
 	"github.com/cilium/tetragon/pkg/rthooks"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -31,6 +33,7 @@ func (s *State) SetupWithManager(mgr ctrl.Manager) error {
 	s.mu.Unlock()
 
 	s.Client = mgr.GetClient()
+	s.apiReader = mgr.GetAPIReader()
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
 		Named("workloadid-pod").
@@ -56,11 +59,14 @@ func (s *State) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, e
 	}
 
 	workloadMeta, workloadType := podhelpers.GetWorkloadMetaFromPod(&pod)
+	uid := s.workloadResourceIdentity(
+		ctx, &pod, workloadMeta.Name, workloadType.Kind)
 
 	wl := WorkloadMeta{
 		Workload:  workloadMeta.Name,
 		Namespace: pod.Namespace,
 		Kind:      workloadType.Kind,
+		UID:       uid,
 	}
 
 	// BPF programs resolve cgroup IDs at the container level (not pod
@@ -82,7 +88,7 @@ func (s *State) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, e
 	return ctrl.Result{}, nil
 }
 
-func (s *State) CreateContainerHook(_ context.Context, arg *rthooks.CreateContainerArg) error {
+func (s *State) CreateContainerHook(ctx context.Context, arg *rthooks.CreateContainerArg) error {
 	if s.cgroupIDToWorkloadIDMap == nil {
 		// This means the state ID map has not been initialized yet
 		return nil
@@ -98,14 +104,62 @@ func (s *State) CreateContainerHook(_ context.Context, arg *rthooks.CreateContai
 		return fmt.Errorf("failed to get the Pod info: %w", err)
 	}
 
+	workloadMeta, workloadType := podhelpers.GetWorkloadMetaFromPod(pod)
+	uid := s.workloadResourceIdentity(
+		ctx, pod, workloadMeta.Name, workloadType.Kind)
 	err = s.Update(WorkloadMeta{
-		Workload:  pod.Name,
+		Workload:  workloadMeta.Name,
 		Namespace: pod.Namespace,
-		Kind:      pod.Kind,
+		Kind:      workloadType.Kind,
+		UID:       uid,
 	}, CgroupID(cgroupID))
 	if err != nil {
 		return fmt.Errorf("failed to add to state ID map: %w", err)
 	}
 
 	return nil
+}
+
+func (s *State) workloadResourceIdentity(
+	ctx context.Context,
+	pod *corev1.Pod,
+	workloadName, workloadKind string,
+) string {
+	if workloadKind == "Pod" {
+		return string(pod.UID)
+	}
+
+	var apiVersion string
+	switch workloadKind {
+	case "Deployment", "DaemonSet", "ReplicaSet", "StatefulSet":
+		apiVersion = "apps/v1"
+	case "CronJob", "Job":
+		apiVersion = "batch/v1"
+	case "ReplicationController":
+		apiVersion = "v1"
+	default:
+		return ""
+	}
+
+	reader := s.apiReader
+	if reader == nil {
+		reader = s.Client
+	}
+	if reader == nil {
+		return ""
+	}
+
+	object := &unstructured.Unstructured{}
+	object.SetAPIVersion(apiVersion)
+	object.SetKind(workloadKind)
+	if err := reader.Get(ctx, types.NamespacedName{
+		Namespace: pod.Namespace,
+		Name:      workloadName,
+	}, object); err != nil {
+		// The identity will be refreshed by a later pod reconcile. Keeping the
+		// name/kind mapping here is preferable to dropping process attribution.
+		return ""
+	}
+
+	return string(object.GetUID())
 }

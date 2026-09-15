@@ -57,6 +57,9 @@ type State struct {
 	// client.Client is embedded for the Reconciler to be able to watch for
 	// new Pods via the Kubernetes API.
 	client.Client
+	// apiReader bypasses the controller cache when resolving the owning
+	// workload's latest resource version.
+	apiReader client.Reader
 	// The cgroupIDResolver is used to resolve cgroup IDs from pod UIDs.
 	cgroupIDResolver fscgroupid.Resolver
 	// The reconciler is registered from the layer3 sensor in configureMaps
