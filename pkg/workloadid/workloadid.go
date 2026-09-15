@@ -27,12 +27,19 @@ const (
 	MaxWorkloadID = 1024
 )
 
-// WorkloadMeta is how we aggregate identity from the Kubernetes PoV. We want
+// WorkloadKey is how we aggregate identity from the Kubernetes PoV. We want
 // Pods' process from the same ReplicaSet to share the same identity.
-type WorkloadMeta struct {
+type WorkloadKey struct {
 	Namespace string
 	Workload  string
 	Kind      string
+}
+
+// WorkloadMeta contains additional mutable information (not used for
+// aggregation) on the resource in addition of WorkloadKey
+type WorkloadMeta struct {
+	WorkloadKey
+	UID string
 }
 
 // WorkloadID is the ID to map between the workload metadata that contains the
@@ -64,7 +71,7 @@ type State struct {
 	// idToMeta stores the link workload ID -> workload metadata
 	idToMeta map[WorkloadID]WorkloadMeta
 	// metaToID stores the link workload metadata -> workload ID
-	metaToID map[WorkloadMeta]WorkloadID
+	metaToID map[WorkloadKey]WorkloadID
 	// mu locks the above maps and the counter.
 	mu sync.RWMutex
 
@@ -76,7 +83,7 @@ func newState() *State {
 		cgroupIDResolver:  fscgroupid.New(),
 		workloadIDCounter: 1,
 		idToMeta:          map[WorkloadID]WorkloadMeta{},
-		metaToID:          map[WorkloadMeta]WorkloadID{},
+		metaToID:          map[WorkloadKey]WorkloadID{},
 	}
 }
 
@@ -106,7 +113,8 @@ func (s *State) Update(workload WorkloadMeta, cgroupID CgroupID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if workloadID, exist := s.metaToID[workload]; exist {
+	key := workload.WorkloadKey
+	if workloadID, exist := s.metaToID[key]; exist {
 		// Maybe the cgroup ID changed, consistent with previous implem in policyfilter[^1]
 		// [^1]: https://github.com/cilium/tetragon/commit/4e2c2fe66941f6afff6605f0c42d8b1371df9383
 		err := s.cgroupIDToWorkloadIDMap.Update(cgroupID, workloadID, ebpf.UpdateAny)
@@ -121,14 +129,14 @@ func (s *State) Update(workload WorkloadMeta, cgroupID CgroupID) error {
 	if err != nil {
 		return fmt.Errorf("failed to bind the cgroupID %d to workloadID %d: %w", cgroupID, s.workloadIDCounter, err)
 	}
-	s.metaToID[workload] = s.workloadIDCounter
+	s.metaToID[key] = s.workloadIDCounter
 	s.idToMeta[s.workloadIDCounter] = workload
 	s.workloadIDCounter++
 
 	return nil
 }
 
-func (s *State) LookupID(workload WorkloadMeta) (WorkloadID, bool) {
+func (s *State) LookupID(workload WorkloadKey) (WorkloadID, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if workloadID, ok := s.metaToID[workload]; ok {
@@ -182,7 +190,7 @@ func (s *State) DeleteCgroup(cgroupID CgroupID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.metaToID, s.idToMeta[workloadID])
+	delete(s.metaToID, s.idToMeta[workloadID].WorkloadKey)
 	delete(s.idToMeta, workloadID)
 
 	return nil

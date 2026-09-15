@@ -62,7 +62,7 @@ func TestUpdateNewWorkload(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, WorkloadID(2), state.workloadIDCounter, "counter should increment")
-	assert.Equal(t, WorkloadID(1), state.metaToID[workload])
+	assert.Equal(t, WorkloadID(1), state.metaToID[workload.WorkloadKey])
 	assert.Equal(t, workload, state.idToMeta[WorkloadID(1)])
 
 	var result WorkloadID
@@ -76,7 +76,7 @@ func TestUpdateExistingWorkload(t *testing.T) {
 	state.workloadIDCounter = 2
 
 	workload := nginxWorkload()
-	state.metaToID[workload] = WorkloadID(1)
+	state.metaToID[workload.WorkloadKey] = WorkloadID(1)
 	state.idToMeta[WorkloadID(1)] = workload
 
 	cgroupID := CgroupID(5678)
@@ -153,12 +153,30 @@ func TestUpdateSameWorkloadDifferentCgroupID(t *testing.T) {
 	assert.Equal(t, WorkloadID(1), result2, "both cgroup IDs should map to same workload ID")
 }
 
+func TestUpdateRefreshesResourceIdentity(t *testing.T) {
+	state := newTestState()
+	workload := WorkloadMeta{
+		Namespace: "default",
+		Workload:  "nginx",
+		Kind:      "Deployment",
+		UID:       "deployment-uid",
+	}
+	require.NoError(t, state.Update(workload, CgroupID(1234)))
+
+	require.NoError(t, state.Update(workload, CgroupID(5678)))
+
+	assert.Equal(t, WorkloadID(2), state.workloadIDCounter, "resource version update should reuse the workload ID")
+	metadata, ok := state.LookupMeta(WorkloadID(1))
+	require.True(t, ok, "updated workload metadata should be found")
+	assert.Equal(t, "deployment-uid", metadata.UID, "workload UID should be preserved")
+}
+
 func TestLookupIDExists(t *testing.T) {
 	state := newTestState()
 	workload := nginxWorkload()
-	state.metaToID[workload] = WorkloadID(1)
+	state.metaToID[workload.WorkloadKey] = WorkloadID(1)
 
-	id, ok := state.LookupID(workload)
+	id, ok := state.LookupID(workload.WorkloadKey)
 	assert.True(t, ok)
 	assert.Equal(t, WorkloadID(1), id)
 }
@@ -167,7 +185,7 @@ func TestLookupIDNotExists(t *testing.T) {
 	state := newTestState()
 	workload := nginxWorkload()
 
-	id, ok := state.LookupID(workload)
+	id, ok := state.LookupID(workload.WorkloadKey)
 	assert.False(t, ok)
 	assert.Equal(t, WorkloadID(0), id)
 }
@@ -218,7 +236,7 @@ func TestConcurrentUpdates(t *testing.T) {
 func TestConcurrentLookups(t *testing.T) {
 	state := newTestState()
 	workload := nginxWorkload()
-	state.metaToID[workload] = WorkloadID(1)
+	state.metaToID[workload.WorkloadKey] = WorkloadID(1)
 	state.idToMeta[WorkloadID(1)] = workload
 
 	done := make(chan bool)
@@ -226,7 +244,7 @@ func TestConcurrentLookups(t *testing.T) {
 
 	for range numGoroutines {
 		go func() {
-			id, ok := state.LookupID(workload)
+			id, ok := state.LookupID(workload.WorkloadKey)
 			assert.True(t, ok)
 			assert.Equal(t, WorkloadID(1), id)
 
@@ -296,14 +314,14 @@ func TestDeleteCgroupSingleWorkload(t *testing.T) {
 	err := state.Update(workload, cgroupID)
 	require.NoError(t, err)
 
-	workloadID, found := state.LookupID(workload)
+	workloadID, found := state.LookupID(workload.WorkloadKey)
 	assert.True(t, found)
 	assert.Equal(t, WorkloadID(1), workloadID)
 
 	err = state.DeleteCgroup(cgroupID)
 	require.NoError(t, err)
 
-	_, found = state.LookupID(workload)
+	_, found = state.LookupID(workload.WorkloadKey)
 	assert.False(t, found)
 
 	_, found = state.LookupMeta(workloadID)
@@ -319,21 +337,21 @@ func TestDeleteCgroupMultipleWorkloads(t *testing.T) {
 	err := state.Update(workload, cgroupID1)
 	require.NoError(t, err)
 
-	workloadID, found := state.LookupID(workload)
+	workloadID, found := state.LookupID(workload.WorkloadKey)
 	assert.True(t, found)
 	assert.Equal(t, WorkloadID(1), workloadID)
 
 	err = state.Update(workload, cgroupID2)
 	require.NoError(t, err)
 
-	workloadID2, found := state.LookupID(workload)
+	workloadID2, found := state.LookupID(workload.WorkloadKey)
 	assert.True(t, found)
 	assert.Equal(t, WorkloadID(1), workloadID2)
 
 	err = state.DeleteCgroup(cgroupID1)
 	require.NoError(t, err)
 
-	_, found = state.LookupID(workload)
+	_, found = state.LookupID(workload.WorkloadKey)
 	assert.True(t, found)
 
 	_, found = state.LookupMeta(workloadID)
@@ -342,7 +360,7 @@ func TestDeleteCgroupMultipleWorkloads(t *testing.T) {
 	err = state.DeleteCgroup(cgroupID2)
 	require.NoError(t, err)
 
-	_, found = state.LookupID(workload)
+	_, found = state.LookupID(workload.WorkloadKey)
 	assert.False(t, found)
 
 	_, found = state.LookupMeta(workloadID)

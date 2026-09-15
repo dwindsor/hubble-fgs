@@ -132,7 +132,7 @@ func TestReconcilePodCreated(t *testing.T) {
 		Kind:      "Deployment",
 	}
 
-	id, ok := state.LookupID(workload)
+	id, ok := state.LookupID(workload.WorkloadKey)
 	assert.True(t, ok, "workload should be found in metaToID map")
 	assert.Equal(t, WorkloadID(1), id)
 
@@ -187,7 +187,7 @@ func TestReconcilePodDeleted(t *testing.T) {
 	}
 
 	// Verify the workload was added
-	id, ok := state.LookupID(workload)
+	id, ok := state.LookupID(workload.WorkloadKey)
 	require.True(t, ok, "workload should be added")
 	assert.Equal(t, WorkloadID(1), id)
 
@@ -201,7 +201,7 @@ func TestReconcilePodDeleted(t *testing.T) {
 	assert.Equal(t, ctrl.Result{}, result)
 
 	// Verify the workload metadata is still preserved (not removed on deletion)
-	id, ok = state.LookupID(workload)
+	id, ok = state.LookupID(workload.WorkloadKey)
 	assert.True(t, ok, "workload should still exist after pod deletion")
 	assert.Equal(t, WorkloadID(1), id, "workload ID should remain the same")
 
@@ -311,11 +311,11 @@ func TestReconcileMultiplePods(t *testing.T) {
 	nginxWorkload := WorkloadMeta{Namespace: "default", Workload: "nginx", Kind: "Deployment"}
 	redisWorkload := WorkloadMeta{Namespace: "default", Workload: "redis", Kind: "StatefulSet"}
 
-	nginxID, ok := state.LookupID(nginxWorkload)
+	nginxID, ok := state.LookupID(nginxWorkload.WorkloadKey)
 	assert.True(t, ok)
 	assert.Equal(t, WorkloadID(1), nginxID)
 
-	redisID, ok := state.LookupID(redisWorkload)
+	redisID, ok := state.LookupID(redisWorkload.WorkloadKey)
 	assert.True(t, ok)
 	assert.Equal(t, WorkloadID(2), redisID)
 
@@ -432,7 +432,7 @@ func TestReconcileWithDifferentOwnerTypes(t *testing.T) {
 				Kind:      tt.expectedKind,
 			}
 
-			id, ok := state.LookupID(workload)
+			id, ok := state.LookupID(workload.WorkloadKey)
 			assert.True(t, ok)
 			assert.Equal(t, WorkloadID(1), id)
 

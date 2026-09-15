@@ -136,7 +136,7 @@ func (deps externalDeps) createSrcKey(namespace, wl, kind string) (*types.Proces
 	if namespace != "" {
 		var ok bool
 
-		workload := workloadid.WorkloadMeta{
+		workload := workloadid.WorkloadKey{
 			Namespace: namespace,
 			Workload:  wl,
 			Kind:      kind,
