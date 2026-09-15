@@ -39,6 +39,7 @@ type DestinationStats struct {
 type Service struct {
 	Name           string
 	Namespace      string
+	UID            string
 	SelectorLabels map[string]string
 }
 
@@ -82,6 +83,7 @@ type Pod struct {
 	Workload  string
 	// Kubernetes workload kind (e.g. "Deployment", "DaemonSet") of the Pod.
 	WorkloadKind string
+	WorkloadUID  string
 	// Contains all the annotations of the pod.
 	PodAnnotations map[string]string
 }
@@ -102,6 +104,7 @@ type Destination struct {
 type Workload struct {
 	Name string
 	Kind string
+	UID  string
 }
 
 type ProcessModel struct {

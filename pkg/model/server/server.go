@@ -749,11 +749,22 @@ func getProcessModel(namespaces []string,
 				Protocol:         dstVal.Protocol,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_POD:
+			workloadUID := ep.UID
+			if workloadID, ok := workloadid.GetState().LookupID(workloadid.WorkloadKey{
+				Namespace: ep.Namespace,
+				Workload:  ep.Name,
+				Kind:      ep.Kind,
+			}); ok {
+				if workload, ok := workloadid.GetState().LookupMeta(workloadID); ok {
+					workloadUID = workload.UID
+				}
+			}
 			d = &types.Destination{
 				DestinationPod: &types.Pod{
 					Namespace:    ep.Namespace,
 					Workload:     ep.Name,
 					WorkloadKind: ep.Kind,
+					WorkloadUID:  workloadUID,
 				},
 				Port:     dstVal.Port,
 				Stats:    stats,
@@ -774,6 +785,7 @@ func getProcessModel(namespaces []string,
 				DestinationService: &types.Service{
 					Namespace: ep.Namespace,
 					Name:      ep.Name,
+					UID:       ep.UID,
 				},
 				Port:     dstVal.Port,
 				Stats:    stats,
@@ -901,6 +913,7 @@ func getProcessModel(namespaces []string,
 			Workload: &types.Workload{
 				Name: wlPath,
 				Kind: kind,
+				UID:  wlid.UID,
 			},
 			Dest: d,
 		})
@@ -938,6 +951,7 @@ func getProcessModel(namespaces []string,
 		key             types.ProcessTreeKey
 		ns, wl          string
 		kind            string
+		uid             string
 		selfBin         string
 		selfArgs        string
 		execIDs         []string
@@ -973,7 +987,7 @@ func getProcessModel(namespaces []string,
 
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
-		var ns, wl, kind string
+		var ns, wl, kind, uid string
 		var syscalls set.Set[uint32]
 		if option.Config.EnableSyscallTracking {
 			syscalls = set.NewSet[uint32]()
@@ -1058,6 +1072,7 @@ func getProcessModel(namespaces []string,
 			ns = policyFilterNSInfo.Namespace
 			wl = policyFilterNSInfo.Workload
 			kind = policyFilterNSInfo.Kind
+			uid = policyFilterNSInfo.UID
 		} else {
 			ns = model.HostNamespace
 			wl = model.HostWorkload
@@ -1104,6 +1119,7 @@ func getProcessModel(namespaces []string,
 		procEntries = append(procEntries, processEntry{
 			key: key,
 			ns:  ns, wl: wl, kind: kind,
+			uid:     uid,
 			selfBin: selfBin, selfArgs: selfArgs,
 			execIDs: addExecIDs(key, treeExecIDs),
 			dest:    dest, inInitTree: inInitTree,
@@ -1150,6 +1166,7 @@ func getProcessModel(namespaces []string,
 			Workload: &types.Workload{
 				Name: e.wl,
 				Kind: e.kind,
+				UID:  e.uid,
 			},
 			Container:       e.container,
 			Dest:            e.dest,
