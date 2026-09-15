@@ -218,7 +218,7 @@ github.com/breml/jsondiffprinter/internal/jsonpointer
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cilium/cilium v1.21.0-pre.1
+# github.com/cilium/cilium v1.21.0-pre.2
 ## explicit; go 1.26.0
 github.com/cilium/cilium/api/v1/client
 github.com/cilium/cilium/api/v1/client/bgp
@@ -259,6 +259,7 @@ github.com/cilium/cilium/pkg/controller
 github.com/cilium/cilium/pkg/counter
 github.com/cilium/cilium/pkg/datapath/linux/config/defines
 github.com/cilium/cilium/pkg/datapath/linux/safenetlink
+github.com/cilium/cilium/pkg/datapath/tables
 github.com/cilium/cilium/pkg/datapath/tunnel
 github.com/cilium/cilium/pkg/datapath/types
 github.com/cilium/cilium/pkg/debug
