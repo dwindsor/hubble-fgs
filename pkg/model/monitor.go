@@ -55,6 +55,7 @@ type NetworkKey struct {
 	SourceWorkloadKind         v1alpha.WorkloadKind
 	SourceWorkloadResourceKind v1alpha.ResourceKind
 	SourceWorkloadName         string
+	SourceWorkloadUID          string
 	SourceContainer            types.ContainerInfo
 	SourceProcessName          string
 	SourceProcessArgs          string
@@ -69,6 +70,7 @@ type NetworkKey struct {
 	DestinationWorkloadNamespace string
 	DestinationWorkloadKind      v1alpha.WorkloadKind
 	DestinationResourceKind      v1alpha.ResourceKind
+	DestinationWorkloadUID       string
 }
 
 func DestinationName(nk *NetworkKey) string {
@@ -238,6 +240,7 @@ type ProcessKey struct {
 	Namespace    string
 	WorkloadKind v1alpha.WorkloadKind
 	WorkloadName string
+	WorkloadUID  string
 	Container    types.ContainerInfo
 	Name         string
 	Args         string
@@ -276,6 +279,7 @@ func getNetworkMonitorKey(process *types.ProcessModel, dst *types.Destination, i
 	}
 	if process.Workload != nil {
 		nwKey.SourceWorkloadName = process.Workload.Name
+		nwKey.SourceWorkloadUID = process.Workload.UID
 		nwKey.SourceWorkloadKind = translateWorkloadKind(process.Workload.Kind)
 		if nwKey.SourceWorkloadKind != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
 			nwKey.SourceWorkloadResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
@@ -311,10 +315,12 @@ func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 		nwKey.DestinationWorkloadNamespace = dst.DestinationPod.Namespace
 		nwKey.DestinationWorkloadKind = translateWorkloadKind(dst.DestinationPod.WorkloadKind)
 		nwKey.DestinationResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
+		nwKey.DestinationWorkloadUID = dst.DestinationPod.WorkloadUID
 	} else if dst.DestinationService != nil {
 		nwKey.DestinationWorkloadName = dst.DestinationService.Name
 		nwKey.DestinationWorkloadNamespace = dst.DestinationService.Namespace
 		nwKey.DestinationResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_SERVICE
+		nwKey.DestinationWorkloadUID = dst.DestinationService.UID
 	}
 
 	nwKey.DestinationIP = dst.DestinationIP
@@ -335,6 +341,7 @@ func addDestinationInfoAppModel(dst *appModelV1.Destination, protocol commonNetV
 		nwKey.DestinationWorkloadNamespace = dt.Workload.Namespace
 		nwKey.DestinationWorkloadKind = dt.Workload.Kind
 		nwKey.DestinationResourceKind = dt.Workload.ResourceKind
+		nwKey.DestinationWorkloadUID = dt.Workload.Uid
 	default:
 		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", dt))
 	}
@@ -368,6 +375,7 @@ func nwKeyToDestination(nwKey *NetworkKey) *appModelV1.Destination {
 				Namespace:    nwKey.DestinationWorkloadNamespace,
 				Kind:         nwKey.DestinationWorkloadKind,
 				ResourceKind: nwKey.DestinationResourceKind,
+				Uid:          nwKey.DestinationWorkloadUID,
 			},
 		}
 	}
@@ -378,16 +386,19 @@ func nwKeyToDestination(nwKey *NetworkKey) *appModelV1.Destination {
 func getProcessMonitorKey(process *types.ProcessModel) ProcessKey {
 	var workloadName string
 	var workloadKind v1alpha.WorkloadKind
+	var workloadUID string
 
 	if process.Workload != nil {
 		workloadName = process.Workload.Name
 		workloadKind = translateWorkloadKind(process.Workload.Kind)
+		workloadUID = process.Workload.UID
 	}
 
 	pmKey := ProcessKey{
 		Namespace:    process.Namespace,
 		WorkloadName: workloadName,
 		WorkloadKind: workloadKind,
+		WorkloadUID:  workloadUID,
 		Name:         process.Binary,
 		Args:         process.BinaryArgs,
 	}

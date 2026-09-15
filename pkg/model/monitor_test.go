@@ -86,13 +86,18 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 		{
 			Binary:    "wget",
 			Namespace: "client",
-			Workload:  &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Workload: &types.Workload{
+				Kind: "Deployment",
+				Name: "my-app",
+				UID:  "source-uid",
+			},
 			Dest: []*types.Destination{
 				{
 					DestinationPod: &types.Pod{
 						Namespace:    "server",
 						WorkloadKind: "Deployment",
 						Workload:     "nginx",
+						WorkloadUID:  "destination-uid",
 					},
 					Port:  8080,
 					Stats: &types.DestinationStats{TxBytes: 200, RxBytes: 400},
@@ -102,12 +107,17 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 		{
 			Binary:    "wget",
 			Namespace: "client",
-			Workload:  &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Workload: &types.Workload{
+				Kind: "Deployment",
+				Name: "my-app",
+				UID:  "source-uid",
+			},
 			Dest: []*types.Destination{
 				{
 					DestinationService: &types.Service{
 						Namespace: "default",
 						Name:      "kubernetes",
+						UID:       "service-uid",
 					},
 					Port:  443,
 					Stats: &types.DestinationStats{TxBytes: 300, RxBytes: 500},
@@ -146,10 +156,12 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadResourceKind:   common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			SourceWorkloadName:           "my-app",
+			SourceWorkloadUID:            "source-uid",
 			DestinationWorkloadName:      "kubernetes",
 			DestinationWorkloadNamespace: "default",
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_SERVICE,
+			DestinationWorkloadUID:       "service-uid",
 			DestinationPort:              443,
 		}: NetworkMonitorValue{
 			TXBytes: 300,
@@ -159,10 +171,12 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadResourceKind:   common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			SourceWorkloadName:           "my-app",
+			SourceWorkloadUID:            "source-uid",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_WORKLOAD,
+			DestinationWorkloadUID:       "destination-uid",
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
 			TXBytes: 200,

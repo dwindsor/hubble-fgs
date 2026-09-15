@@ -520,6 +520,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 						Namespace:    ns.GetName(),
 						WorkloadKind: wl.GetKind(),
 						WorkloadName: wl.GetName(),
+						WorkloadUID:  wl.GetUid(),
 						Container: types.ContainerInfo{
 							Id:    cont.GetId(),
 							Name:  cont.GetName(),
