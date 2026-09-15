@@ -47,6 +47,7 @@ type namespaceKey struct {
 type workloadKey struct {
 	name string
 	kind v1alpha.WorkloadKind
+	uid  string
 }
 
 type containerKey struct {
@@ -88,7 +89,11 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 		return
 	}
 	nsKey := namespaceKey{name: nk.SourceNamespace}
-	wlkey := workloadKey{name: nk.SourceWorkloadName, kind: nk.SourceWorkloadKind}
+	wlkey := workloadKey{
+		name: nk.SourceWorkloadName,
+		kind: nk.SourceWorkloadKind,
+		uid:  nk.SourceWorkloadUID,
+	}
 	contKey := containerKey{cont: nk.SourceContainer}
 	pskey := processKey{name: nk.SourceProcessName, arguments: nk.SourceProcessArgs}
 	connKey := connectionKey{destination: nwKeyToDestination(&nk)}
@@ -154,7 +159,11 @@ func processGroupHash(name, arguments string) string {
 
 func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 	nsKey := namespaceKey{name: pk.Namespace}
-	wlkey := workloadKey{name: pk.WorkloadName, kind: pk.WorkloadKind}
+	wlkey := workloadKey{
+		name: pk.WorkloadName,
+		kind: pk.WorkloadKind,
+		uid:  pk.WorkloadUID,
+	}
 	contKey := containerKey{cont: pk.Container}
 	pskey := processKey{name: pk.Name, arguments: pk.Args}
 	if _, ok := nsMap[nsKey]; !ok {
@@ -253,6 +262,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 				wl := &appModelV1.ApplicationWorkload{
 					Name: wlkey.name,
 					Kind: wlkey.kind,
+					Uid:  wlkey.uid,
 				}
 				for contkey, contval := range wlval {
 					cont := &appModelV1.ApplicationContainer{
@@ -353,6 +363,7 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 								{
 									Name:       wl.GetName(),
 									Kind:       wl.GetKind(),
+									Uid:        wl.GetUid(),
 									Containers: wl.GetContainers(),
 								},
 							},

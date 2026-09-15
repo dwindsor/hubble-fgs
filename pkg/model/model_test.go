@@ -314,7 +314,11 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 			Parent:     "systemd",
 			Parents:    []string{"systemd"},
 			Namespace:  "default",
-			Workload:   &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Workload: &types.Workload{
+				Kind: "Deployment",
+				Name: "my-app",
+				UID:  "deployment-uid",
+			},
 			Container: &types.ContainerInfo{
 				Id:    "354f9d014f814",
 				Name:  "test-container",
@@ -327,7 +331,11 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 			Parent:     "init",
 			Parents:    []string{"init"},
 			Namespace:  "default",
-			Workload:   &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Workload: &types.Workload{
+				Kind: "Deployment",
+				Name: "my-app",
+				UID:  "deployment-uid",
+			},
 			Container: &types.ContainerInfo{
 				Id:    "354f9d014f814",
 				Name:  "test-container",
@@ -348,6 +356,7 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 	workload := result.ApplicationModel.Namespaces[0].Workloads[0]
 	require.Equal(t, "my-app", workload.Name)
 	require.Equal(t, common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT, workload.Kind)
+	require.Equal(t, "deployment-uid", workload.Uid)
 	require.Len(t, workload.Containers, 1)
 
 	container := result.ApplicationModel.Namespaces[0].Workloads[0].Containers[0]
@@ -367,6 +376,7 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 		Namespace:    "default",
 		WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 		WorkloadName: "my-app",
+		WorkloadUID:  "deployment-uid",
 		Container: types.ContainerInfo{
 			Id:    "354f9d014f814",
 			Name:  "test-container",

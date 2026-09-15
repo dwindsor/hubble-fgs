@@ -561,6 +561,22 @@ func TestWorkloadDiff(t *testing.T) {
 	assert.Equal(t, uint64(1), network[0].Containers[1].Processes[0].Connections[1].Stats.TxBytes)
 }
 
+func TestWorkloadDiffDistinguishesRecreatedWorkload(t *testing.T) {
+	current := []*appModelV1.ApplicationWorkload{{
+		Name: "api",
+		Uid:  "new-uid",
+	}}
+	previous := []*appModelV1.ApplicationWorkload{{
+		Name: "api",
+		Uid:  "old-uid",
+	}}
+
+	_, process, err := WorkloadDiff(current, previous)
+	require.NoError(t, err)
+	require.Len(t, process, 1)
+	assert.Equal(t, "new-uid", process[0].Uid)
+}
+
 func TestWorkloadNetProcDiff(t *testing.T) {
 	aSet := workloads()
 	bSet := workloads()

@@ -269,6 +269,7 @@ func wlFilterConns(wl *appModelV1.ApplicationWorkload) *appModelV1.ApplicationWo
 	diff := &appModelV1.ApplicationWorkload{
 		Name: wl.Name,
 		Kind: wl.Kind,
+		Uid:  wl.Uid,
 	}
 
 	for _, cont := range wl.Containers {
@@ -308,11 +309,11 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 	connDiff := make([]*appModelV1.ApplicationWorkload, 0)
 	wlB := make(map[string]*appModelV1.ApplicationWorkload, len(b))
 	for _, wl := range b {
-		wlB[wl.Name] = wl
+		wlB[workloadIdentity(wl)] = wl
 	}
 
 	for _, wl := range a {
-		b, ok := wlB[wl.Name]
+		b, ok := wlB[workloadIdentity(wl)]
 		if !ok {
 			wlDiff = append(wlDiff, wl)
 
@@ -325,6 +326,7 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 		d := &appModelV1.ApplicationWorkload{
 			Name: wl.Name,
 			Kind: wl.Kind,
+			Uid:  wl.Uid,
 		}
 		connWlDiff, contDiff, err := ContainerDiff(wl.Containers, b.Containers)
 		if err != nil {
@@ -340,6 +342,13 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 		}
 	}
 	return connDiff, wlDiff, nil
+}
+
+func workloadIdentity(workload *appModelV1.ApplicationWorkload) string {
+	if workload.Uid != "" {
+		return workload.Uid
+	}
+	return workload.Name
 }
 
 func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.ApplicationModel) (*appModelV1.ApplicationModel, *appModelV1.ApplicationModel, error) {
