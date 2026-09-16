@@ -244,6 +244,15 @@ func (harness *Harness) PodExec(ctx context.Context, namespace, podName, contain
 	return stdout.String(), stderr.String(), err
 }
 
+func (harness *Harness) GetPod(ctx context.Context, tb testing.TB, namespace, podName string) *corev1.Pod {
+	tb.Helper()
+
+	pod := &corev1.Pod{}
+	err := harness.client.Resources().Get(ctx, podName, namespace, pod)
+	require.NoError(tb, err)
+	return pod
+}
+
 func (harness *Harness) DeletePod(ctx context.Context, tb testing.TB, namespace, podName string) {
 	tb.Helper()
 
@@ -386,6 +395,7 @@ func (harness *Harness) addPodState(tb testing.TB, podInfo *corev1.Pod) {
 	for _, ip := range podInfo.Status.PodIPs {
 		podIPs = append(podIPs, v1alpha1.PodIP(ip))
 	}
+	workloadMeta, workloadType := podhelpers.GetWorkloadMetaFromPod(podInfo)
 
 	endpoint.MustGet().AddIpPodMap(&v1alpha1.PodInfo{
 		TypeMeta:   podInfo.TypeMeta,
@@ -398,8 +408,8 @@ func (harness *Harness) addPodState(tb testing.TB, podInfo *corev1.Pod) {
 			PodIP:  podInfo.Status.PodIP,
 			PodIPs: podIPs,
 		},
-		WorkloadType:   podInfo.TypeMeta,
-		WorkloadObject: v1alpha1.WorkloadObjectMeta{},
+		WorkloadType:   workloadType,
+		WorkloadObject: workloadMeta,
 	})
 
 	containerIDs := podhelpers.PodContainersIDs(podInfo)
@@ -436,6 +446,7 @@ func (harness *Harness) addCgroupIDForPodAndContainer(tb testing.TB, podInfo *co
 		Workload:  workloadMeta.Name,
 		Namespace: podInfo.Namespace,
 		Kind:      workloadType.Kind,
+		UID:       string(podInfo.UID),
 	}, workloadid.CgroupID(cgid))
 	require.NoError(tb, err)
 }

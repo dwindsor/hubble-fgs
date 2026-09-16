@@ -34,7 +34,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/testcase"
+	modeldiff "github.com/isovalent/hubble-fgs/pkg/model/diff"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -888,6 +890,77 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				// it here and model.Check() will fail depending on the order of
 				// the containers in the model.
 				delete(tc.Namespaces["default"], "restarting-nc")
+			},
+		},
+	},
+
+	"ResourceIdentityVertices": {
+		Namespaces: model.Namespaces{
+			"default": {
+				"identity-source": {
+					Containers: model.Containers{
+						"source": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd:       "/bin/sleep",
+								Args:      []string{"infinity"},
+								LongLived: true,
+							},
+						},
+					},
+				},
+				"identity-destination": {
+					Containers: model.Containers{
+						"destination": {
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
+							Cmd: model.Binary{
+								Cmd: "/bin/nc",
+								// We use -lk with -e for persistent server so that it's long lived
+								Args:      []string{"-lk", "-p", "9183", "-e", "/bin/cat"},
+								LongLived: true,
+							},
+						},
+					},
+				},
+			},
+		},
+		Steps: []func(ctx context.Context, tb testing.TB, tc *testcase.TestCase, server *modelserver.Server, harness *harness.Harness){
+			func(ctx context.Context, tb testing.TB, _ *testcase.TestCase, server *modelserver.Server, harness *harness.Harness) {
+				sourcePod := harness.GetPod(ctx, tb, "default", "identity-source")
+				destinationPod := harness.GetPod(ctx, tb, "default", "identity-destination")
+
+				_, _, err := harness.PodExec(ctx, "default", "identity-source", "source", []string{
+					"/bin/nc", destinationPod.Status.PodIP, "9183", "-w", "1",
+				}, 5*time.Second)
+				require.NoError(tb, err)
+
+				response, err := server.GetModel(ctx, &v1alpha.GetModelRequest{Host: false})
+				require.NoError(tb, err)
+
+				telemetry, err := modeldiff.ApplicationModelToNetworkFlat(
+					ctx, response.GetModel().GetApplicationModel(), &local.NoopMetadataService{})
+				require.NoError(tb, err)
+
+				for _, event := range telemetry {
+					if event.GetKubernetesWorkloadName() != sourcePod.Name ||
+						event.GetDestinationKubernetesResourceName() != destinationPod.Name {
+						continue
+					}
+
+					connection := modeldiff.TelemetryToConnection(event)
+					require.NotNil(tb, connection, "expected telemetry to produce a graph connection")
+
+					source := connection.GetSource().GetKubernetes()
+					require.NotNil(tb, source, "expected a Kubernetes source vertex")
+					assert.Equal(tb, string(sourcePod.UID), source.GetUid(), "source vertex UID should match the source Pod")
+
+					destination := connection.GetDestination().GetKubernetes()
+					require.NotNil(tb, destination, "expected a Kubernetes destination vertex")
+					assert.Equal(tb, string(destinationPod.UID), destination.GetUid(), "destination vertex UID should match the destination Pod")
+					return
+				}
+
+				require.Fail(tb, "Kubernetes connection not found", "expected a connection from %s to %s", sourcePod.Name, destinationPod.Name)
 			},
 		},
 	},
