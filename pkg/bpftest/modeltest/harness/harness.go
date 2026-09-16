@@ -445,6 +445,7 @@ func (harness *Harness) clearPodState(tb testing.TB, podInfo *corev1.Pod) {
 	require.NoError(tb, err)
 
 	harness.cgmap.Update(podID, []string{})
+	harness.cgmap.UpdatePodSandbox(podID, "")
 
 	harness.fakeK8sWatcher.RemovePod(podInfo)
 }
