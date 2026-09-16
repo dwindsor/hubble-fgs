@@ -94,7 +94,6 @@ int submit_read_request(char *file_path, struct io_uring *ring)
 	}
 	off_t file_sz = get_file_size(file_fd);
 	off_t bytes_remaining = file_sz;
-	off_t offset = 0;
 	int current_block = 0;
 	int blocks = (int)file_sz / BLOCK_SZ;
 	if (file_sz % BLOCK_SZ)
@@ -118,7 +117,6 @@ int submit_read_request(char *file_path, struct io_uring *ring)
 		if (bytes_to_read > BLOCK_SZ)
 			bytes_to_read = BLOCK_SZ;
 
-		offset += bytes_to_read;
 		fi->iovecs[current_block].iov_len = bytes_to_read;
 		void *buf;
 		if (posix_memalign(&buf, BLOCK_SZ, BLOCK_SZ)) {
