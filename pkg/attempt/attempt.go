@@ -139,12 +139,6 @@ func (a *InprAttempt) logAttempt(c Attempt) {
 	}
 }
 
-func RunAttemptVal[V any](att *InprAttempt, fn func() (V, error)) (V, error) {
-	val, err := fn()
-	att.Complete(err)
-	return val, err
-}
-
 func RunAttempt(att *InprAttempt, fn func() error) error {
 	err := fn()
 	att.Complete(err)
