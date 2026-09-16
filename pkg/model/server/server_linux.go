@@ -25,6 +25,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
+const podSandboxImageName = "Pod-Sandbox-Image"
+const podSandboxName = "Pod-Sandbox"
+
 // newKtimeConverter reads CLOCK_BOOTTIME once and records the offset.
 // Falls back to a zero-value converter (all conversions return nil) on error.
 func newKtimeConverter() ktimeConverter {
@@ -58,26 +61,35 @@ func getContainerInfo(cgroupid uint64, cgroupIdToContainerInfoCache *lru.Cache[u
 		return containerInfo
 	}
 
-	cid, ok := cgmap.Get(cgroupid)
-	if !ok || cid == "" {
-		logger.GetLogger().Debug("No container info found for process", "cgroupid", cgroupid)
-		appmodelmetrics.RecordLookupError(appmodelmetrics.LookupContainer)
-		return nil
-	}
-
 	containerInfo = &types.ContainerInfo{}
-	logger.GetLogger().Debug("Found container id for cgroupid", "cgroupid", cgroupid, "cid", cid)
-	containerInfo.Id = cid
 
-	podInfo := process.GetPodInfo(containerInfo.Id, "", "", 0)
-	if podInfo == nil {
-		logger.GetLogger().Error("No pod info found", "containerInfo.Id", containerInfo.Id)
-		appmodelmetrics.RecordLookupError(appmodelmetrics.LookupPod)
-		return nil
+	cid, ok := cgmap.Get(cgroupid)
+	if ok && cid != "" {
+		logger.GetLogger().Debug("Found container id for cgroupid", "cgroupid", cgroupid, "cid", cid)
+		containerInfo.Id = cid
+
+		podInfo := process.GetPodInfo(containerInfo.Id, "", "", 0)
+		if podInfo == nil {
+			logger.GetLogger().Error("No pod info found", "containerInfo.Id", containerInfo.Id)
+			appmodelmetrics.RecordLookupError(appmodelmetrics.LookupPod)
+			return nil
+		}
+
+		containerInfo.Name = podInfo.Container.Name
+		containerInfo.Image = podInfo.Container.Image.Name
+	} else {
+		sandboxId, ok := cgmap.GetPodSandbox(cgroupid)
+		if ok && sandboxId != "" {
+			logger.GetLogger().Debug("Found sandbox id for cgroupid", "cgroupid", cgroupid, "sandboxId", sandboxId)
+			containerInfo.Id = sandboxId
+			containerInfo.Name = podSandboxName
+			containerInfo.Image = podSandboxImageName
+		} else {
+			logger.GetLogger().Info("No container info found for process", "cgroupid", cgroupid)
+			appmodelmetrics.RecordLookupError(appmodelmetrics.LookupContainer)
+			return nil
+		}
 	}
-
-	containerInfo.Name = podInfo.Container.Name
-	containerInfo.Image = podInfo.Container.Image.Name
 
 	cgroupIdToContainerInfoCache.Add(cgroupid, containerInfo)
 
