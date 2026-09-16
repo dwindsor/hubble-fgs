@@ -84,7 +84,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	memcpy(msg->path.str, file_val->path, 256);
+	__bpf_memcpy_builtin(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
 	if (file_val->location_flags == CONTAINER_FILE)

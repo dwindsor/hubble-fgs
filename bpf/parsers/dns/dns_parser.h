@@ -121,7 +121,7 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 		if (unlikely(!name))
 			return -DNS_ERR_ZERO_ELEM_NULL;
 
-		memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
+		__bpf_memset_builtin((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
 	}
 
 	// Conditions: maximum of 127 labels plus the last zero: 128 iterations. The

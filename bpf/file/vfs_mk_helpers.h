@@ -14,7 +14,7 @@ fill_mk_retprobe_map(struct pt_regs *ctx, struct dentry *dentry, struct msg_file
 		return -FILE_ERR_MKDIR_INFO_HEAP_HEAP;
 
 	value->dentry = dentry;
-	memcpy(&value->msg, msg, sizeof(struct msg_file_ops));
+	__bpf_memcpy_builtin(&value->msg, msg, sizeof(struct msg_file_ops));
 	value->action = action;
 	value->operation = op;
 	value->mode = mode;
@@ -122,7 +122,7 @@ kprobe_vfs_mk(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry, __u
 		return -FILE_ERR_GET_TRIE_HEAP;
 
 	key->prefixlen = msg->path.size * 8;
-	memcpy(key->data, msg->path.str, 256); // need the rest to be zero-ed
+	__bpf_memcpy_builtin(key->data, msg->path.str, 256); // need the rest to be zero-ed
 
 	action = filter_match(key, &rule_id);
 	if (action == FILTER_NOTFOUND) // we don't care
@@ -200,7 +200,7 @@ handle_retprobe_vfs_mk(struct pt_regs *ctx, bool success, __u32 hook, __u16 sour
 	dentry = val->dentry;
 	action = val->action;
 	mode = val->mode;
-	memcpy(msg, &val->msg, sizeof(struct msg_file_ops));
+	__bpf_memcpy_builtin(msg, &val->msg, sizeof(struct msg_file_ops));
 	operation = val->operation;
 
 	// we are done with 'val' so we can delete than entry
@@ -298,7 +298,7 @@ static inline __attribute__((always_inline)) int security_inode_mk(void *ctx, st
 		if (!msg)
 			return -FILE_ERR_GET_MSG_HEAP;
 
-		memcpy(msg, &val->msg, sizeof(struct msg_file_ops));
+		__bpf_memcpy_builtin(msg, &val->msg, sizeof(struct msg_file_ops));
 		if (map_delete_elem(&mk_retprobe_map, &rkey) < 0)
 			return -FILE_ERR_DELETE_MKDIR_RETPROBE_MAP;
 

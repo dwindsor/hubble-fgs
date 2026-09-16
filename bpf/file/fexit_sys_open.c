@@ -34,7 +34,7 @@ static struct msg_file_openraw_ops *get_msg_openraw_init()
 	if (!msg)
 		return 0;
 
-	memset(msg, 0, sizeof(struct msg_file_openraw_ops));
+	__bpf_memset_builtin(msg, 0, sizeof(struct msg_file_openraw_ops));
 
 	msg->common.op = ISO_MSG_OP_FILE_OPENRAW;
 	msg->common.size = sizeof(struct msg_file_openraw_ops);

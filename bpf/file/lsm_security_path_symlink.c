@@ -24,7 +24,7 @@ static struct msg_file_symlink_ops *get_msg_symlink_init()
 	if (!msg)
 		return 0;
 
-	memset(msg, 0, sizeof(struct msg_file_symlink_ops));
+	__bpf_memset_builtin(msg, 0, sizeof(struct msg_file_symlink_ops));
 
 	msg->common.op = ISO_MSG_OP_FILE_SYMLINK;
 	msg->common.size = sizeof(struct msg_file_symlink_ops);

@@ -249,8 +249,8 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 			old->maybe_missing_nsid = 1;
 		}
 		if (buid_scratch) {
-			memcpy(old->binary, buid_scratch->binary, BINARY_PATH_MAX_LEN);
-			memcpy(old->args, buid_scratch->args, MAXARGLENGTH);
+			__bpf_memcpy_builtin(old->binary, buid_scratch->binary, BINARY_PATH_MAX_LEN);
+			__bpf_memcpy_builtin(old->args, buid_scratch->args, MAXARGLENGTH);
 		}
 		map_update_elem(&process_tree_map, k, old, 0);
 	} else {

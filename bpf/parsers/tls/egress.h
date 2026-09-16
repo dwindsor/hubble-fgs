@@ -90,7 +90,7 @@ bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie, int payload_off)
 	if (!event)
 		return;
 
-	memset(event, 0, sizeof(*event));
+	__bpf_memset_builtin(event, 0, sizeof(*event));
 	clienthello = &event->clienthello;
 
 	switch (bpf_parse_tls(bottle, clienthello)) {

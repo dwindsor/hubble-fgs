@@ -156,7 +156,7 @@ static inline __attribute__((always_inline)) int handle_dispatcher(void *ctx)
 	}
 
 	// reset everything in dis_ctx
-	memset(dis_ctx, 0, sizeof(struct dis_ctrl));
+	__bpf_memset_builtin(dis_ctx, 0, sizeof(struct dis_ctrl));
 
 	for_each_map_elem(policy_map, &dispatcher_cb, 0, 0);
 

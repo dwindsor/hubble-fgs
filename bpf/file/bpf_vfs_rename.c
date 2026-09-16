@@ -41,7 +41,7 @@ resolve_missed_paths(struct vfs_rename_info *val, struct file_config_map_value *
 
 	struct msg_file_split_path *path =
 		val->need_old ? &val->msg.src.path : &val->msg.dst.path;
-	memcpy(path->dir, buf, 256);
+	__bpf_memcpy_builtin(path->dir, buf, 256);
 	path->dir_size = buflen;
 	path->flags = error;
 }
@@ -154,7 +154,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		if (fval == 0) { // we care for the path not for the action
 			v->need_old = 1;
 		} else {
-			memcpy(v->msg.src.path.dir, fval->path, 256);
+			__bpf_memcpy_builtin(v->msg.src.path.dir, fval->path, 256);
 			v->msg.src.path.dir_size = fval->size;
 			v->msg.src.path.flags = 0;
 			if (fval->location_flags == CONTAINER_FILE) {
@@ -185,7 +185,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 		if (fval == 0) { // we care for the path not for the action
 			v->need_new = 1;
 		} else {
-			memcpy(v->msg.dst.path.dir, fval->path, 256);
+			__bpf_memcpy_builtin(v->msg.dst.path.dir, fval->path, 256);
 			v->msg.dst.path.dir_size = fval->size;
 			v->msg.dst.path.flags = 0;
 			if (fval->location_flags == CONTAINER_FILE) {
@@ -599,8 +599,8 @@ vfs_rename_exit_out:
 	msg->action = val->msg.action;
 	msg->hook = val->msg.hook;
 	msg->ktime = val->msg.ktime;
-	memcpy(&(msg->src), &(val->msg.src), sizeof(struct msg_rename_elem));
-	memcpy(&(msg->dst), &(val->msg.dst), sizeof(struct msg_rename_elem));
+	__bpf_memcpy_builtin(&msg->src, &val->msg.src, sizeof(struct msg_rename_elem));
+	__bpf_memcpy_builtin(&msg->dst, &val->msg.dst, sizeof(struct msg_rename_elem));
 	msg->mnt_ns = val->msg.mnt_ns;
 	msg->flags = val->msg.flags;
 	msg->tp_id = get_tp_id();
@@ -662,8 +662,8 @@ static inline __attribute__((always_inline)) int security_inode_rename(void *ctx
 		       sizeof(struct msg_execve_key));
 		msg->action = val->msg.action;
 		msg->ktime = val->msg.ktime;
-		memcpy(&(msg->src), &(val->msg.src), sizeof(struct msg_rename_elem));
-		memcpy(&(msg->dst), &(val->msg.dst), sizeof(struct msg_rename_elem));
+		__bpf_memcpy_builtin(&msg->src, &val->msg.src, sizeof(struct msg_rename_elem));
+		__bpf_memcpy_builtin(&msg->dst, &val->msg.dst, sizeof(struct msg_rename_elem));
 		msg->mnt_ns = val->msg.mnt_ns;
 		msg->flags = val->msg.flags;
 		msg->tp_id = get_tp_id();

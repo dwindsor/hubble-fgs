@@ -44,7 +44,7 @@ uint64_t lpm_ipkey_lookup(struct ip_addr *ip_key)
 		struct addr6_lpm_trie key = { 0 };
 
 		key.prefix = 128;
-		memcpy(key.addr, ip_key->addr, sizeof(key.addr));
+		__bpf_memcpy_builtin(key.addr, ip_key->addr, sizeof(key.addr));
 		val = map_lookup_elem(&addr6lpm_map, &key);
 	} else {
 		struct addr4_lpm_trie key;

@@ -250,7 +250,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 		}
 
 		post->clienthello = *event;
-		memset(&post->serverhello, 0, sizeof(post->serverhello));
+		__bpf_memset_builtin(&post->serverhello, 0, sizeof(post->serverhello));
 
 		next = bpf_parse_tls(bottle, &post->serverhello);
 		if (next < 0)

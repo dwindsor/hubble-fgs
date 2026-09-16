@@ -92,7 +92,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	memcpy(msg->path.str, file_val->path, 256);
+	__bpf_memcpy_builtin(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
 	if (file_val->location_flags == CONTAINER_FILE)

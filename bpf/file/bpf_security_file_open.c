@@ -75,7 +75,7 @@ file_open(void *ctx, struct file *file)
 	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR) // we don't care for anything inside this directory
 		return 0;
 
-	memcpy(msg->path.str, file_val->path, 256);
+	__bpf_memcpy_builtin(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
 	if (file_val->location_flags == CONTAINER_FILE)

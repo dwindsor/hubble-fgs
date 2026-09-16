@@ -715,7 +715,7 @@ static inline __attribute__((always_inline)) int check_match_binaries(__u32 seli
 			if (!path_map)
 				return 0;
 			// prepare the key on the stack to perform lookup in the LPM_TRIE
-			memset(prefix_key, 0, sizeof(struct string_prefix_lpm_trie));
+			__bpf_memset_builtin(prefix_key, 0, sizeof(struct string_prefix_lpm_trie));
 			prefix_key->prefixlen = current->bin.path_length * 8; // prefixlen is in bits
 			ret = probe_read_kernel(prefix_key->data, current->bin.path_length & (STRING_PREFIX_MAX_LENGTH - 1), current->bin.path);
 			if (ret < 0)
@@ -1088,7 +1088,7 @@ static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_
 			return 0;
 
 		len &= (MAX_FILEPATH_SIZE - 1);
-		memset(tmp_path->path, 0, MAX_FILEPATH_SIZE);
+		__bpf_memset_builtin(tmp_path->path, 0, MAX_FILEPATH_SIZE);
 		probe_read_kernel(tmp_path->path, len, path);
 
 		path_map = map_lookup_elem(&filename_path_map, &sel);
@@ -1589,7 +1589,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 		return 0;
 	}
 
-	memset(msg, 0, sizeof(struct msg_file_ops));
+	__bpf_memset_builtin(msg, 0, sizeof(struct msg_file_ops));
 
 	msg->common.op = ISO_MSG_OP_FILE;
 	msg->common.flags = 0;
@@ -1772,7 +1772,7 @@ static inline __attribute__((always_inline)) int path_prefix_matcher(char *path,
 		return -FILE_ERR_GET_TRIE_HEAP;
 
 	key->prefixlen = size * 8;
-	memcpy(key->data, path, 256);
+	__bpf_memcpy_builtin(key->data, path, 256);
 
 	return filter_match(key, rule_id);
 }

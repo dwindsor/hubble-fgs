@@ -69,7 +69,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	if (!(operation & FILE_OP_POST))
 		goto ignore_unlink;
 
-	memcpy(msg->path.str, file_val->path, 256);
+	__bpf_memcpy_builtin(msg->path.str, file_val->path, 256);
 	msg->path.size = file_val->size;
 	msg->path.flags = 0;
 	if (file_val->location_flags == CONTAINER_FILE)
