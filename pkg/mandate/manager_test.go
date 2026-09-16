@@ -62,7 +62,7 @@ func TestManager(t *testing.T) {
 		require.Nil(t, status.Mandate)
 
 		// NB: let time pass so that the refresh timeout is triggered
-		time.Sleep(time.Second * 2)
+		synctest.Sleep(time.Second * 2)
 		status = mgr.Status()
 		require.Greater(t, status.Log.Total, 2)
 		require.Greater(t, status.Log.Failures, 2)
