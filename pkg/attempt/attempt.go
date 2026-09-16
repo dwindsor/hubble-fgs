@@ -19,6 +19,8 @@ package attempt
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -69,16 +71,22 @@ type InprAttempt struct {
 	op   string
 	time time.Time
 
-	info   []InfoEntry
-	logger Logger
+	logger  Logger
+	canNest bool
 
 	inProgress atomic.Int32
-	attempts   []Attempt
-	errCnt     int
-	canNest    bool
+
+	// mu protects the fields below. Sub-attempts may be completed
+	// concurrently from multiple goroutines, which appends to attempts.
+	mu       sync.Mutex
+	info     []InfoEntry
+	attempts []Attempt
+	errCnt   int
 }
 
 func (a *InprAttempt) WithInfo(k, v string) *InprAttempt {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.info = append(a.info, InfoEntry{Key: k, Val: v})
 	return a
 }
@@ -101,13 +109,17 @@ func (a *InprAttempt) Complete(err error) error {
 	}
 
 	a.inProgress.Store(-1)
+	a.mu.Lock()
+	info := slices.Clone(a.info)
+	attempts := slices.Clone(a.attempts)
+	a.mu.Unlock()
 	a.logger.logAttempt(Attempt{
 		Op:       a.op,
-		Info:     a.info,
+		Info:     info,
 		Time:     a.time,
 		Duration: time.Since(a.time),
 		Result:   result,
-		Attempts: a.attempts,
+		Attempts: attempts,
 	})
 	return nil
 }
@@ -127,6 +139,8 @@ func (a *InprAttempt) NewAttempt(op string) *InprAttempt {
 }
 
 func (a *InprAttempt) logAttempt(c Attempt) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if a.inProgress.Load() > 0 {
 		a.inProgress.Add(-1)
 	} else {
