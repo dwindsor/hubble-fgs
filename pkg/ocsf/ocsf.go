@@ -13,12 +13,12 @@ package ocsf
 import (
 	"runtime"
 	"time"
+	"uuid"
 
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/version"
-	"github.com/google/uuid"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -166,7 +166,7 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 	statusId := v1alpha.BaseEventStatusID_BASE_EVENT_STATUS_ID_SUCCESS
 	typeId := int64(classId) + int64(activityId)
 
-	id, _ := uuid.NewV7()
+	id := uuid.NewV7()
 	ext := linuxExtension()
 	prod := tetragonProduct()
 	profile := linuxProfile()

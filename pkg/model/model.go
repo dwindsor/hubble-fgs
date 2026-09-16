@@ -19,8 +19,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -206,9 +206,7 @@ func translateWorkloadKind(kind string) v1alpha.WorkloadKind {
 func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
 	result := &appModelV1.ApplicationModelEvent{}
 	result.ApplicationModel = &appModelV1.ApplicationModel{}
-	if id, err := uuid.NewV7(); err == nil {
-		result.ApplicationModel.Id = id.String()
-	}
+	result.ApplicationModel.Id = uuid.NewV7().String()
 	result.ApplicationModel.Host = &appModelV1.ApplicationHost{}
 	result.NodeName = node.GetNodeNameForExport()
 	result.ClusterName = option.Config.ClusterName

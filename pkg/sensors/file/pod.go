@@ -17,6 +17,7 @@ import (
 	"fmt"
 	mapHelpers "maps"
 	"sync"
+	"uuid"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -24,7 +25,6 @@ import (
 	"github.com/cilium/tetragon/pkg/manager/events"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"

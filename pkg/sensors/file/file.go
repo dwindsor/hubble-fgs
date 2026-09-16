@@ -30,6 +30,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"uuid"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -66,8 +67,6 @@ import (
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-
-	"github.com/google/uuid"
 )
 
 type Mode uint32
@@ -951,14 +950,9 @@ func init() {
 }
 
 func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
-	uuid_str := "<failed to parse uuid>"
-	u, err := uuid.FromBytes(fs.SUuid[:])
-	if err == nil {
-		if u == uuid.Nil {
-			uuid_str = "" // avoid printing UUID full of 0s
-		} else {
-			uuid_str = u.String()
-		}
+	uuid_str := "" // avoid printing UUID full of 0s
+	if u := uuid.UUID(fs.SUuid); u != uuid.Nil() {
+		uuid_str = u.String()
 	}
 	sidIndex := bytes.IndexByte(fs.SId[:], 0)
 	snameIndex := bytes.IndexByte(fs.SName[:], 0)

@@ -14,8 +14,8 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"uuid"
 
-	"github.com/google/uuid"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	k8sTypes "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
@@ -481,7 +481,7 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 					}
 
 					entry := &appModelV1.ProcessTelemetry{
-						Id:          uuid.NewString(),
+						Id:          uuid.New().String(),
 						ClusterName: cluster,
 						Container: &appModelV1.ApplicationContainer{
 							Id:    cont.Id,
@@ -529,7 +529,7 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 			}
 
 			entry := &appModelV1.ProcessTelemetry{
-				Id:                 uuid.NewString(),
+				Id:                 uuid.New().String(),
 				ClusterName:        cluster,
 				NodeName:           node,
 				NodeLabels:         labels,
@@ -596,7 +596,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							verdict = policyVerdict(c.Stats)
 						}
 						entry := &appModelV1.NetworkConnectTelemetry{
-							Id:          uuid.NewString(),
+							Id:          uuid.New().String(),
 							ClusterName: cluster,
 							Container: &appModelV1.ApplicationContainer{
 								Id:    cont.Id,
@@ -654,7 +654,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 				}
 
 				entry := &appModelV1.NetworkConnectTelemetry{
-					Id:                                uuid.NewString(),
+					Id:                                uuid.New().String(),
 					ClusterName:                       cluster,
 					NodeName:                          node,
 					EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,

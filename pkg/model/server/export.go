@@ -19,8 +19,8 @@ import (
 	"io"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	commonV1 "github.com/isovalent/ipa/common/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
@@ -104,7 +104,7 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 
 	if connection != nil && len(conns) > 0 {
 		log := graphV1.ConnectionLog{
-			Uuid: uuid.NewString(),
+			Uuid: uuid.New().String(),
 			Emitter: &commonV1.Emitter{
 				Name:    "Tetragon",
 				Version: strings.TrimPrefix(version.Version, "v"),
