@@ -72,7 +72,7 @@ jobs:
           echo "tag=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
           branch="$(echo ${GITHUB_REF##*/} | cut -d. -f-2)"
           # If the branch doesn't exist, use the master branch
-          if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+          if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
             branch=master
           fi
           echo "branch=$branch" >> $GITHUB_OUTPUT
@@ -93,7 +93,6 @@ jobs:
         with:
           path: digests/
           pattern: image-digest-*
-          merge-multiple: true
 
       - name: Update ClusterServiceVersion
         env:
@@ -108,11 +107,11 @@ jobs:
           lower_tag="${lower_tag,,}"
           git checkout ${{ steps.tag.outputs.branch }}
           git checkout -b pr/release-wf/${{ steps.tag.outputs.tag }}
-          tetragon_img="$(cat digests/tetragon.txt | grep isovalent)"
+          tetragon_img="$(cat digests/image-digest-tetragon-ci/tetragon.txt | grep isovalent)"
           echo "tetragon image: ${tetragon_img}"
-          tetragon_aggregator_img="$(cat digests/tetragon-aggregator.txt | grep isovalent)"
+          tetragon_aggregator_img="$(cat digests/image-digest-tetragon-aggregator-ci/tetragon-aggregator.txt | grep isovalent)"
           echo "tetragon-aggregator image: ${tetragon_aggregator_img}"
-          tetragon_operator_img="$(cat digests/tetragon-operator.txt | grep isovalent)"
+          tetragon_operator_img="$(cat digests/image-digest-tetragon-operator-ci/tetragon-operator.txt | grep isovalent)"
           echo "tetragon-operator image: ${tetragon_operator_img}"
           hubble_enterprise_metadata_repo="${ARTIFACTORY_HOST}/${ARTIFACTORY_ORGANIZATION_PROD}/hubble-enterprise-metadata"
           hubble_enterprise_metadata_digest="$(
@@ -121,7 +120,7 @@ jobs:
           )"
           hubble_enterprise_metadata_img="${hubble_enterprise_metadata_repo}:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}"
           echo "hubble-enterprise-metadata image: ${hubble_enterprise_metadata_img}"
-          tetragon_rthooks_img="$(cat digests/tetragon-rthooks.txt | grep isovalent)"
+          tetragon_rthooks_img="$(cat digests/image-digest-tetragon-rthooks-ci/tetragon-rthooks.txt | grep isovalent)"
           echo "tetragon-rthooks image: ${tetragon_rthooks_img}"
           docker run -i --rm \
             -e TETRAGON_IMG="${tetragon_img}" \
