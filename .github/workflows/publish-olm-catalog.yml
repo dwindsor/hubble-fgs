@@ -12,6 +12,7 @@ env:
 
 jobs:
   build-and-push-catalog:
+    name: Build and push OLM catalog to ${{ vars.ARTIFACTORY_HOST }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -37,4 +38,4 @@ jobs:
       - name: Build and push
         shell: bash
         run: |
-          DOCKER_DEV_ACCOUNT="${{ vars.ARTIFACTORY_HOST }}/${ARTIFACTORY_ORGANIZATION_PROD}" make olm-index-build olm-index-push
+          IMAGE_REPOSITORY="${{ vars.ARTIFACTORY_HOST }}/${ARTIFACTORY_ORGANIZATION_PROD}" make olm-index-build olm-index-push

@@ -8,9 +8,8 @@ on Kubernetes clusters, where OLM is available. OLM comes preinstalled with Open
 
 Set the variables according to your container repository and image version:
 ```bash
-export DOCKER_DEV_ACCOUNT=<your-account>
+export IMAGE_REPOSITORY=<your-registry>/<your-account>
 export DOCKER_IMAGE_TAG=latest
-export DOCKER_REGISTRY=quay.io
 ```
 
 And call the make targets at the root of the git repository:
@@ -32,6 +31,6 @@ Prerequisites:
 
 ```bash
 kubectl create ns tetragon
-operator-sdk run bundle $DOCKER_REGISTRY/$DOCKER_DEV_ACCOUNT/tetragon-operator-bundle:$DOCKER_IMAGE_TAG -n tetragon
+operator-sdk run bundle $IMAGE_REPOSITORY/tetragon-operator-bundle:$DOCKER_IMAGE_TAG -n tetragon
 ```
 

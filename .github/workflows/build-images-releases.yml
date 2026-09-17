@@ -195,7 +195,7 @@ jobs:
           git checkout master
           git checkout -b pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
           export DOCKER_IMAGE_TAG=${{ steps.tag.outputs.tag }}
-          export DOCKER_DEV_ACCOUNT="${{ vars.ARTIFACTORY_HOST }}/${ARTIFACTORY_ORGANIZATION_PROD}"
+          export IMAGE_REPOSITORY="${{ vars.ARTIFACTORY_HOST }}/${ARTIFACTORY_ORGANIZATION_PROD}"
           make olm-index-add
           git add install/olm/catalog/index.yaml
           git commit -m "chore: Update the OLM catalog with the latest bundle: ${{ steps.tag.outputs.tag }}"

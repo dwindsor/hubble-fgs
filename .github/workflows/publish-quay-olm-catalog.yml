@@ -34,4 +34,4 @@ jobs:
       - name: Build and push
         shell: bash
         run: |
-          DOCKER_DEV_ACCOUNT="quay.io/isovalent" INDEX_DIR="quay-catalog" make olm-index-build olm-index-push
+          IMAGE_REPOSITORY="quay.io/isovalent" INDEX_DIR="quay-catalog" make olm-index-build olm-index-push

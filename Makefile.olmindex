@@ -1,14 +1,6 @@
-DOCKER_DEV_ACCOUNT ?= isovalent
 DOCKER_IMAGE_TAG ?= latest
-DOCKER_REGISTRY ?= quay.io
 INDEX_DIR ?= catalog
-
-ifeq ($(findstring /,$(DOCKER_DEV_ACCOUNT)),/)
-	# DOCKER_DEV_ACCOUNT already contains '/', assume it specifies a registry
-	IMAGE_REPOSITORY := $(DOCKER_DEV_ACCOUNT)
-else
-	IMAGE_REPOSITORY := $(DOCKER_REGISTRY)/$(DOCKER_DEV_ACCOUNT)
-endif
+IMAGE_REPOSITORY ?= quay.io/isovalent
 
 ##@ OLM index
 
