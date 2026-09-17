@@ -285,12 +285,18 @@ The `emitter` field carries both the emitter and the observer:
   firmware and its version, and `observer.identifier` uniquely identifies the
   specific observer instance.
 
-Emitters SHOULD populate `emitter.observer`. When `observer` is entirely unset,
-consumers treat the emitter as its own observer: `observer.name` and
-`observer.version` are taken from `emitter.name` and `emitter.version`. When
-`observer` is set, its fields describe the observer and are used as-is. This lets
-a self-observing agent set only `observer.identifier` while a converter sets the
-full `observer` to describe the entity it observed on behalf of.
+Emitters SHOULD populate `emitter.observer`. When the emitter observed the
+traffic itself (for example a Cilium agent, which both sees the traffic and
+writes the connection log), it may leave `observer` entirely unset: consumers
+are expected to read `emitter.name` and `emitter.version` as the observer's name
+and version. When the two differ (for example Hubble CLC turning a switch's
+IPFIX flows into connection logs), set `observer` to describe the switch rather
+than the converter.
+
+That fallback applies to `observer` as a whole, not to its individual fields.
+Once `observer` is set, an empty `observer.name` or `observer.version` stays
+empty instead of inheriting the emitter's, so setting only `observer.identifier`
+leaves the observer unnamed.
 
 `observer.identifier` distinguishes multiple observers of the same kind so that
 consumers can attribute each `ConnectionLog` to a specific instance and
@@ -1025,6 +1031,5 @@ This section documents all the mandatory (MUST/MUST NOT) and recommended
   `observer.identifier`, so consumers can attribute events to a specific
   observer instance and deduplicate. This matters when multiple observers run
   concurrently (e.g., one Cilium agent per node, or a fleet of smart switches).
-  For a self-observing agent, `observer.name`/`observer.version` fall back to
-  the emitter's; a converter MUST set them to the observer's own values (e.g.
-  the switch NOS and firmware version).
+  An emitter that sets `observer` SHOULD set all of its fields: only an entirely
+  unset `observer` falls back to the emitter's name and version.
