@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/tetra/network"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/record"
 	"github.com/isovalent/hubble-fgs/pkg/tetra/rules"
+	"github.com/isovalent/hubble-fgs/pkg/tetra/splunk"
 )
 
 // addBaseCommands adds commands that build and make sense on all platform:
@@ -38,6 +39,7 @@ func addBaseCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(getalerts.New())
 	rootCmd.AddCommand(network.New())
 	rootCmd.AddCommand(rules.New())
+	rootCmd.AddCommand(splunk.New())
 	rootCmd.AddCommand(info.New())
 	rootCmd.AddCommand(eventlog.New())
 
