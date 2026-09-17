@@ -20,7 +20,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -32,10 +31,6 @@ import (
 
 	// Required for base sensors
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-)
-
-const (
-	testMapDir = "testObserver"
 )
 
 var (
@@ -128,7 +123,6 @@ func (skSkbParser *skSkbParserSensor) LoadProbe(_ sensors.LoadProbeArgs) error {
 }
 
 func init() {
-	bpf.SetMapPrefix(testMapDir)
 	AddNop()
 }
 
