@@ -158,6 +158,11 @@ jobs:
         shell: bash
         run: make oss-sync
 
+      - name: Set sync branch
+        id: sync-branch
+        shell: bash
+        run: echo "name=pr/oss-sync/${{ matrix.branch }}-$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
       - name: Check for changes
         id: check-changes
         shell: bash
@@ -167,7 +172,7 @@ jobs:
             echo "commit_body<<EOF" >> $GITHUB_OUTPUT
             echo "$COMMIT_BODY" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
-            git push origin HEAD:refs/heads/pr/oss-sync/${{ matrix.branch }} --force-with-lease
+            git push origin HEAD:refs/heads/${{ steps.sync-branch.outputs.name }} --force-with-lease
             echo "result=true" >> $GITHUB_OUTPUT
           else
             echo "result=false" >> $GITHUB_OUTPUT
@@ -183,7 +188,7 @@ jobs:
             const owner = '${{ github.repository_owner }}';
             const repo = '${{ github.event.repository.name }}';
             const base = '${{ matrix.branch }}';
-            const head = `pr/oss-sync/${base}`;
+            const head = '${{ steps.sync-branch.outputs.name }}';
             const headWithOwner = `${owner}:${head}`;
 
             const existingPulls = await github.rest.pulls.list({
