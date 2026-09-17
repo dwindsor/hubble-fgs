@@ -1,6 +1,7 @@
 DOCKER_DEV_ACCOUNT ?= isovalent
 DOCKER_IMAGE_TAG ?= latest
 DOCKER_REGISTRY ?= quay.io
+INDEX_DIR ?= catalog
 
 ifeq ($(findstring /,$(DOCKER_DEV_ACCOUNT)),/)
 	# DOCKER_DEV_ACCOUNT already contains '/', assume it specifies a registry
@@ -13,7 +14,7 @@ endif
 
 .PHONY: olm-index-build
 olm-index-build: ## Build the OLM catalog index image.
-	$(CONTAINER_ENGINE) build -f ./install/olm/catalog.Dockerfile -t $(IMAGE_REPOSITORY)/tetragon-operator-index:v0.0.1 ./install/olm
+	$(CONTAINER_ENGINE) build -f ./install/olm/catalog.Dockerfile -t $(IMAGE_REPOSITORY)/tetragon-operator-index:v0.0.1 --build-arg INDEX_DIR=$(INDEX_DIR) ./install/olm
 
 .PHONY: olm-index-push
 olm-index-push: ## Push the OLM catalog index image.
@@ -21,4 +22,4 @@ olm-index-push: ## Push the OLM catalog index image.
 
 .PHONY: olm-index-add
 olm-index-add: ## Add a bundle to the OLM catalog index image.
-	DOCKER_IMAGE_TAG=$(DOCKER_IMAGE_TAG) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) ./install/olm/catalog-add.sh
+	DOCKER_IMAGE_TAG=$(DOCKER_IMAGE_TAG) IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) INDEX_DIR=$(INDEX_DIR) ./install/olm/catalog-add.sh

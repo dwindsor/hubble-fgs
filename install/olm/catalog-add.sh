@@ -11,7 +11,7 @@ bundle_major=${bundle_major#v}
 bundle_minor=$(echo "$DOCKER_IMAGE_TAG" | cut -d \. -f 2)
 bundle_zversion=$(echo "$DOCKER_IMAGE_TAG" | cut -d \. -f 3-)
 bundle_zversion="${bundle_zversion,,}"
-index_file=install/olm/catalog/index.yaml
+index_file="install/olm/${INDEX_DIR:-catalog}/index.yaml"
 
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
 
@@ -82,4 +82,4 @@ else
     docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.package\").defaultChannel = \"v${bundle_major}.${bundle_minor}\"" /workdir/${index_file}
 fi
 
-docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir -v /etc/containers:/etc/containers --user "$(id -u):$(id -g)" quay.io/operator-framework/opm:${opm_version} validate /workdir/install/olm/catalog
+docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir -v /etc/containers:/etc/containers --user "$(id -u):$(id -g)" quay.io/operator-framework/opm:${opm_version} validate /workdir/install/olm/${INDEX_DIR:-catalog}
