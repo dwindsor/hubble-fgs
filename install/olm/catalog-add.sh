@@ -23,7 +23,7 @@ then
 fi
 
 # Add bundle to index
-docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir -v /etc/containers:/etc/containers quay.io/operator-framework/opm:${opm_version} render ${IMAGE_REPOSITORY}/tetragon-operator-bundle:${DOCKER_IMAGE_TAG} --output=yaml >> ${index_file}
+docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir -v $HOME/.docker/:/.docker/ -v /etc/containers:/etc/containers --user "$(id -u):$(id -g)" quay.io/operator-framework/opm:${opm_version} render ${IMAGE_REPOSITORY}/tetragon-operator-bundle:${DOCKER_IMAGE_TAG} --output=yaml >> ${index_file}
 
 # Add bundle to channel
 entries=$(docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir mikefarah/yq:${yq_version} ". | select (.schema == \"olm.channel\" and .name == \"v${bundle_major}.${bundle_minor}\") | .entries[]" /workdir/${index_file})
@@ -82,4 +82,4 @@ else
     docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir --user "$(id -u):$(id -g)" mikefarah/yq:${yq_version} e -i "select(.schema == \"olm.package\").defaultChannel = \"v${bundle_major}.${bundle_minor}\"" /workdir/${index_file}
 fi
 
-docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir -v /etc/containers:/etc/containers --user "$(id -u):$(id -g)" quay.io/operator-framework/opm:${opm_version} validate /workdir/install/olm/${INDEX_DIR:-catalog}
+docker run --rm -v "$(git rev-parse --show-toplevel)":/workdir -v $HOME/.docker/:/.docker/ -v /etc/containers:/etc/containers --user "$(id -u):$(id -g)" quay.io/operator-framework/opm:${opm_version} validate /workdir/install/olm/${INDEX_DIR:-catalog}
