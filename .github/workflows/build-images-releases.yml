@@ -58,6 +58,9 @@ jobs:
   bundle-build-and-push:
     needs: build-and-push
     runs-on: ubuntu-24.04
+    environment:
+      name: release
+      deployment: false
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,25 +97,22 @@ jobs:
           path: digests/
           pattern: image-digest-*
 
-      - name: Update ClusterServiceVersion
+      # This is with the verified assumption that images are mirrored with the same digest
+      # between devhub and containers.isovalent.com
+      - name: Get Image references
+        id: image-refs
         env:
-          # renovate: datasource=github-releases depName=mikefarah/yq
-          yq_version: 4.53.6
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACTORY_HOST: ${{ vars.ARTIFACTORY_HOST }}
         run: |
-          csv_file=install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
-          yq_image="mikefarah/yq:${yq_version}"
-          lower_tag="${{ steps.tag.outputs.tag }}"
-          lower_tag="${lower_tag,,}"
-          git checkout ${{ steps.tag.outputs.branch }}
-          git checkout -b pr/release-wf/${{ steps.tag.outputs.tag }}
           tetragon_img="$(cat digests/image-digest-tetragon-ci/tetragon.txt | grep isovalent)"
           echo "tetragon image: ${tetragon_img}"
+          echo "tetragon_img=$tetragon_img" >> $GITHUB_OUTPUT
           tetragon_aggregator_img="$(cat digests/image-digest-tetragon-aggregator-ci/tetragon-aggregator.txt | grep isovalent)"
           echo "tetragon-aggregator image: ${tetragon_aggregator_img}"
+          echo "tetragon_aggregator_img=$tetragon_aggregator_img" >> $GITHUB_OUTPUT
           tetragon_operator_img="$(cat digests/image-digest-tetragon-operator-ci/tetragon-operator.txt | grep isovalent)"
           echo "tetragon-operator image: ${tetragon_operator_img}"
+          echo "tetragon_operator_img=$tetragon_operator_img" >> $GITHUB_OUTPUT
           hubble_enterprise_metadata_repo="${ARTIFACTORY_HOST}/${ARTIFACTORY_ORGANIZATION_PROD}/hubble-enterprise-metadata"
           hubble_enterprise_metadata_digest="$(
             set -o pipefail
@@ -120,7 +120,110 @@ jobs:
           )"
           hubble_enterprise_metadata_img="${hubble_enterprise_metadata_repo}:${{ steps.tag.outputs.tag }}@${hubble_enterprise_metadata_digest}"
           echo "hubble-enterprise-metadata image: ${hubble_enterprise_metadata_img}"
+          echo "hubble_enterprise_metadata_img=$hubble_enterprise_metadata_img" >> $GITHUB_OUTPUT
           tetragon_rthooks_img="$(cat digests/image-digest-tetragon-rthooks-ci/tetragon-rthooks.txt | grep isovalent)"
+          echo "tetragon-rthooks image: ${tetragon_rthooks_img}"
+          echo "tetragon_rthooks_img=$tetragon_rthooks_img" >> $GITHUB_OUTPUT
+
+
+      - name: Update ClusterServiceVersion internal registry
+        env:
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          yq_version: 4.53.6
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          csv_file=install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          yq_image="mikefarah/yq:${yq_version}"
+          lower_tag="${{ steps.tag.outputs.tag }}"
+          lower_tag="${lower_tag,,}"
+          git checkout ${{ steps.tag.outputs.branch }}
+          git checkout -b pr/release-wf/${{ steps.tag.outputs.tag }}
+          docker run -i --rm \
+            -e TETRAGON_IMG="${{ steps.image-refs.outputs.tetragon_img }}" \
+            -e TETRAGON_AGGREGATOR_IMG="${{ steps.image-refs.outputs.tetragon_aggregator_img }}" \
+            -e TETRAGON_OPERATOR_IMG="${{ steps.image-refs.outputs.tetragon_operator_img }}" \
+            -e TETRAGON_RTHOOKS_IMG="${{ steps.image-refs.outputs.tetragon_rthooks_img }}" \
+            -e HUBBLE_ENTERPRISE_METADATA_IMG="${{ steps.image-refs.outputs.hubble_enterprise_metadata_img }}" \
+            -v "${PWD}":/workdir \
+            -u "$(id -u)" \
+            "${yq_image}" e -i '
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_IMAGE") | .value) = strenv(TETRAGON_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_AGGREGATOR_IMAGE") | .value) = strenv(TETRAGON_AGGREGATOR_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_RTHOOKS_IMAGE") | .value) = strenv(TETRAGON_RTHOOKS_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .env[] | select(.name == "TETRAGON_METADATA_IMAGE") | .value) = strenv(HUBBLE_ENTERPRISE_METADATA_IMG) |
+              (.spec.install.spec.deployments[] | select(.name == "tetragon-operator") | .spec.template.spec.containers[] | select(.name == "tetragon-operator") | .image) = strenv(TETRAGON_OPERATOR_IMG)
+            ' "/workdir/${csv_file}"
+          # TODO: the value in the olm.skipRange annotation may need to be replaced when the annotation has been added.
+          name_of_previous_csv=$(docker run -i --rm -v "${PWD}":/workdir -u "$(id -u)" "${yq_image}" '.metadata.name' "/workdir/${csv_file}")
+          docker run -i --rm -v "${PWD}":/workdir -u "$(id -u)" "${yq_image}" e -i ".spec.replaces = \"${name_of_previous_csv}\"" "/workdir/${csv_file}"
+          version="${lower_tag:1}"
+          sed -i "s/^[ ]*name: tetragon-operator\.v.*$/  name: tetragon-operator.${lower_tag}/" "${csv_file}"
+          sed -i "s/^[ ]*version: .*$/  version: ${version}/" "${csv_file}"
+          git add "${csv_file}"
+          git config --global user.email "isovalent-bot@isovalent.com"
+          git config --global user.name "isovalent-bot"
+          git remote set-url origin https://isovalent-bot:${GITHUB_TOKEN}@github.com/isovalent/hubble-fgs.git
+          git commit -m "chore: Update CSV images to ${{ steps.tag.outputs.tag }}"
+          # The CSV for the internal registry does not get pushed into GitHub, it is only used for creating the bundle
+
+      - name: Bundle build internal Artifactory
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./install/olm
+          file: ./install/olm/bundle.Dockerfile
+          push: true
+          tags: |
+            ${{ vars.ARTIFACTORY_HOST }}/${{ env.ARTIFACTORY_ORGANIZATION_PROD }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
+
+      - name: Configure JFrog CLI for OIDC Auth
+        id: setup-isovalent-registry
+        uses: jfrog/setup-jfrog-cli@deda456d982fc5e9a7a020b63eb0d2968aedd33e # v5.1.0
+        env:
+          JF_URL: ${{ vars.ISOVALENT_ARTIFACTORY_URL }}
+        with:
+          oidc-provider-name: ${{ vars.ISOVALENT_ARTIFACTORY_PROVIDER_NAME }}
+          oidc-audience: ${{ vars.ISOVALENT_ARTIFACTORY_OIDC_AUDIENCE }}
+          custom-server-id: isovalent-registry
+
+      - name: Login to Isovalent Registry
+        id: login-isovalent-registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ vars.ISOVALENT_ARTIFACTORY_HOST }}
+          username: ${{ steps.setup-isovalent-registry.outputs.oidc-user }}
+          password: ${{ steps.setup-isovalent-registry.outputs.oidc-token }}
+
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+
+      - name: Update ClusterServiceVersion customer facing registry
+        env:
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          yq_version: 4.53.6
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACTORY_HOST: ${{ vars.ISOVALENT_ARTIFACTORY_HOST }}
+        run: |
+          csv_file=install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          yq_image="mikefarah/yq:${yq_version}"
+          lower_tag="${{ steps.tag.outputs.tag }}"
+          lower_tag="${lower_tag,,}"
+          git checkout ${{ steps.tag.outputs.branch }}
+          git checkout -b pr/release-wf/isovalent-${{ steps.tag.outputs.tag }}
+          tetragon_img=${{ steps.image-refs.outputs.tetragon_img }}
+          tetragon_img="${ARTIFACTORY_HOST}/tetragon:${tetragon_img#*:}"
+          echo "tetragon image: ${tetragon_img}"
+          tetragon_aggregator_img=${{ steps.image-refs.outputs.tetragon_aggregator_img }}
+          tetragon_aggregator_img="${ARTIFACTORY_HOST}/tetragon-aggregator:${tetragon_aggregator_img#*:}"
+          echo "tetragon-aggregator image: ${tetragon_aggregator_img}"
+          tetragon_operator_img=${{ steps.image-refs.outputs.tetragon_operator_img }}
+          tetragon_operator_img="${ARTIFACTORY_HOST}/tetragon-operator:${tetragon_operator_img#*:}"
+          echo "tetragon-operator image: ${tetragon_operator_img}"
+          hubble_enterprise_metadata_img=${{ steps.image-refs.outputs.hubble_enterprise_metadata_img }}
+          hubble_enterprise_metadata_img="${ARTIFACTORY_HOST}/hubble-enterprise-metadata:${hubble_enterprise_metadata_img#*:}"
+          echo "hubble-enterprise-metadata image: ${hubble_enterprise_metadata_img}"
+          tetragon_rthooks_img=${{ steps.image-refs.outputs.tetragon_rthooks_img }}
+          tetragon_rthooks_img="${ARTIFACTORY_HOST}/tetragon-rthooks:${tetragon_rthooks_img#*:}"
           echo "tetragon-rthooks image: ${tetragon_rthooks_img}"
           docker run -i --rm \
             -e TETRAGON_IMG="${tetragon_img}" \
@@ -148,19 +251,18 @@ jobs:
           git config --global user.name "isovalent-bot"
           git remote set-url origin https://isovalent-bot:${GITHUB_TOKEN}@github.com/isovalent/hubble-fgs.git
           git commit -m "chore: Update CSV images to ${{ steps.tag.outputs.tag }}"
-          git push --set-upstream origin pr/release-wf/${{ steps.tag.outputs.tag }}
+          git push --set-upstream origin pr/release-wf/isovalent-${{ steps.tag.outputs.tag }}
           # Create a PR with the updated ClusterServiceVersion against the release branch
           gh pr create -B ${{ steps.tag.outputs.branch }} --title "chore: Update CSV images to ${{ steps.tag.outputs.tag }}" --body 'Created by GitHub action: Image CI Releases.'
 
-      - name: Bundle build
+      - name: Bundle build customer facing Artifactory
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        id: bundle_build
         with:
           context: ./install/olm
           file: ./install/olm/bundle.Dockerfile
           push: true
           tags: |
-            ${{ vars.ARTIFACTORY_HOST }}/${{ env.ARTIFACTORY_ORGANIZATION_PROD }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
+            ${{ vars.ISOVALENT_ARTIFACTORY_HOST }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
 
       - name: Get Readonly Github App Credentials
         uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4
@@ -189,7 +291,7 @@ jobs:
                url."https://x-access-token::${READONLY_GH_TOKEN}@github.com/isovalent".insteadOf \
                "https://github.com/isovalent"
 
-      - name: Catalog update PR
+      - name: Internal catalog update PR
         run: |
           git checkout master
           git checkout -b pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
@@ -197,12 +299,28 @@ jobs:
           export IMAGE_REPOSITORY="${{ vars.ARTIFACTORY_HOST }}/${ARTIFACTORY_ORGANIZATION_PROD}"
           make olm-index-add
           git add install/olm/catalog/index.yaml
-          git commit -m "chore: Update the OLM catalog with the latest bundle: ${{ steps.tag.outputs.tag }}"
+          git commit -m "chore: Update the OLM catalog with: ${{ steps.tag.outputs.tag }}"
           git push --set-upstream origin pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
-          # Create a PR with the updated ClusterServiceVersion against the release branch
           body="Created by GitHub action: Image CI Releases.
             DON'T MERGE RELEASE CANDIDATES INTO THE CATALOG!"
-          gh pr create -B master --title "chore: Add bundle ${{ steps.tag.outputs.tag }} to the OLM catalog" --body "${body}"
+          gh pr create -B master --title "chore: Add bundle ${{ steps.tag.outputs.tag }} to the internal OLM catalog" --body "${body}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Customer facing catalog update PR
+        run: |
+          git checkout master
+          git checkout -b pr/release-wf/isovalent-catalog-${{ steps.tag.outputs.tag }}
+          export DOCKER_IMAGE_TAG=${{ steps.tag.outputs.tag }}
+          export IMAGE_REPOSITORY="${{ vars.ISOVALENT_ARTIFACTORY_HOST }}"
+          export INDEX_DIR="isovalent-catalog"
+          make olm-index-add
+          git add install/olm/${INDEX_DIR}/index.yaml
+          git commit -m "chore: Update the Isovalent OLM catalog with: ${{ steps.tag.outputs.tag }}"
+          git push --set-upstream origin pr/release-wf/isovalent-catalog-${{ steps.tag.outputs.tag }}
+          body="Created by GitHub action: Image CI Releases.
+            DON'T MERGE RELEASE CANDIDATES INTO THE CATALOG!"
+          gh pr create -B master --title "chore: Add bundle ${{ steps.tag.outputs.tag }} to the Customer facing OLM catalog" --body "${body}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
