@@ -47,6 +47,8 @@ import (
 	// sensor init
 	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
 
+	splunkV1 "github.com/isovalent/ipa/splunk/v1alpha"
+
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
@@ -1046,6 +1048,10 @@ func getExporter(ctx context.Context, server *server.Server) (*exporter.Exporter
 	return exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 }
 
+func registerSplunkServiceServer(s *grpc.Server) {
+	splunkV1.RegisterSplunkServiceServer(s, splunkHec.NewSplunkService())
+}
+
 func Serve(
 	ctx context.Context, listenAddr string,
 	srv tetragon.FineGuidanceSensorsServer, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server, eventlogSrv *eventlog.Server,
@@ -1060,6 +1066,7 @@ func Serve(
 		tetragon.RegisterRuleServiceServer(s, rule)
 		tetragon.RegisterNetworkPolicyServiceServer(s, netpol)
 		tetragon.RegisterEventLogServiceServer(s, eventlogSrv)
+		registerSplunkServiceServer(s)
 
 		if model != nil {
 			registerApplicationModelServiceServer(s, model)
