@@ -18,7 +18,7 @@ require (
 	github.com/cilium/tetragon/tools v0.0.0-00010101000000-000000000000
 	github.com/containerd/containerd/v2 v2.3.5
 	github.com/containernetworking/plugins v1.9.1
-	github.com/cri-o/cri-o v1.36.5
+	github.com/cri-o/cri-o v1.36.6
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.19.0
 	github.com/gdamore/tcell/v2 v2.13.10
