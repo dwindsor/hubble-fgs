@@ -5,7 +5,7 @@ ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v1
 FROM ${BASE_IMAGE}
 USER root
 
-RUN apk add --no-cache clang-18-extras
+RUN apk add --no-cache clang-22-extras
 
 USER 65532:65532
 WORKDIR /fgs
