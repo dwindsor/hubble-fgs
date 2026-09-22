@@ -62,7 +62,9 @@ cp modules/tetragon-oss/pkg/k8s/apis/cilium.io/v1alpha1/types.go pkg/k8s/apis/ci
 rm -rf pkg/k8s/slim pkg/k8s/versioncheck
 cp -R modules/tetragon-oss/pkg/k8s/slim pkg/k8s/slim
 cp -R modules/tetragon-oss/pkg/k8s/versioncheck pkg/k8s/versioncheck
-make generate && make codegen && make vendor
+make generate
+make codegen
+make vendor
 git add go.mod go.sum vendor pkg/k8s modules/tetragon-oss api
 
 # Generate Helm chart
