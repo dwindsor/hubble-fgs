@@ -27,7 +27,6 @@ import (
 	"github.com/cilium/ebpf"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 
-	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -66,6 +65,26 @@ const (
 	defaultNodeLabelsInterval  = time.Minute
 )
 
+func decodeArgs(s string) string {
+	var args strings.Builder
+
+	for a := range strings.SplitSeq(strings.TrimRight(s, "\x00"), "\x00") {
+		if strings.Contains(a, " ") {
+			args.WriteByte(' ')
+			args.WriteByte('"')
+			args.WriteString(a)
+			args.WriteByte('"')
+		} else if args.Len() == 0 {
+			args.WriteString(a)
+		} else {
+			args.WriteByte(' ')
+			args.WriteString(a)
+		}
+	}
+
+	return args.String()
+}
+
 // decodeBinaryArgs extracts the null-terminated binary path and
 // double-null-terminated args string from a ProcessTreeValue.
 func decodeBinaryArgs(val *types.ProcessTreeValue) (bin, args string) {
@@ -79,7 +98,7 @@ func decodeBinaryArgs(val *types.ProcessTreeValue) (bin, args string) {
 		ma = len(val.Args)
 	}
 	args = string(val.Args[:ma])
-	args, _ = process.ArgsDecoder(args, api.EventNoCWDSupport)
+	args = decodeArgs(args)
 	args = protoutils.SanitizeString(args)
 	return bin, args
 }

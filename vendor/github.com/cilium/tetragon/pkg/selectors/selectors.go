@@ -42,6 +42,10 @@ const (
 	MaxStringMapsSize         = 4096 + 2
 	StringPrefixMaxLength     = 256
 	StringPostfixMaxLength    = 128
+	// StringPostfixMaxMatchLengthSmall is the postfix match length that the
+	// BPF programs support on kernels without large BPF program support. Keep
+	// in sync with STRING_POSTFIX_MAX_MATCH_LENGTH in bpf/process/string_maps.h.
+	StringPostfixMaxMatchLengthSmall = 88
 
 	// Maps with key string length <256 only require a single byte
 	// to store string length. Maps with key string length >=256
@@ -99,6 +103,8 @@ type KernelSelectorMaps struct {
 	stringPrefixMaps []map[KernelLPMTrieStringPrefix]struct{}
 	// stringPostfixMaps are used to populate string and char buf postfix matches
 	stringPostfixMaps []map[KernelLPMTrieStringPostfix]struct{}
+	// subStrs are shared by selectors loaded into the same substring map
+	subStrs []string
 }
 
 type MatchBinariesSelectorOptions struct {
@@ -140,8 +146,6 @@ type KernelSelectorState struct {
 	overrideActionIPDelta int64
 
 	regs map[int][]processapi.RegAssignment
-
-	subStrs []string
 
 	celExprFunctions *CelExprFunctions
 
@@ -258,7 +262,7 @@ func (k *KernelSelectorState) Regs() map[int][]processapi.RegAssignment {
 }
 
 func (k *KernelSelectorState) SubStrings() []string {
-	return k.subStrs
+	return k.maps.subStrs
 }
 
 // ValueMapsMaxEntries returns the maximum entries over all maps

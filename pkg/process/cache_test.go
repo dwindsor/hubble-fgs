@@ -31,7 +31,7 @@ func createFakeProcess(pid uint32) *processapi.MsgExecveEventUnix {
 			PID: pid,
 			TID: pid,
 		},
-		Msg: &processapi.MsgExecveEvent{
+		Msg: processapi.MsgExecveEvent{
 			CleanupProcess: processapi.MsgExecveKey{
 				Ktime: 1,
 			},

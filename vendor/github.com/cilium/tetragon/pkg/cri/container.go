@@ -7,12 +7,12 @@ package cri
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	"github.com/tidwall/gjson"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
@@ -85,29 +85,48 @@ func ParseCgroupsPath(cgroupPath string) (string, error) {
 }
 
 func CgroupPath(ctx context.Context, cli criapi.RuntimeServiceClient, containerID string) (string, error) {
+	var info map[string]string
+
 	req := criapi.ContainerStatusRequest{
 		ContainerId: containerID,
 		Verbose:     true,
 	}
 	res, err := cli.ContainerStatus(ctx, &req)
-	if err != nil {
-		return "", err
-	}
-
-	info := res.GetInfo()
-	if info == nil {
-		return "", errors.New("no container info")
-	}
-
-	var path, json string
-	if infoJson, ok := info["info"]; ok {
-		json = infoJson
-		path = "runtimeSpec.linux.cgroupsPath"
+	if err == nil {
+		info = res.GetInfo()
 	} else {
+		sbReq := criapi.PodSandboxStatusRequest{
+			PodSandboxId: containerID,
+			Verbose:      true,
+		}
+		sbRes, sbErr := cli.PodSandboxStatus(ctx, &sbReq)
+		if sbErr != nil {
+			return "", errors.Join(err, sbErr)
+		}
+		info = sbRes.GetInfo()
+	}
+
+	if info == nil {
+		return "", errors.New("no container or pod sandbox info")
+	}
+
+	infoJSON, ok := info["info"]
+	if !ok {
 		return "", errors.New("could not find info")
 	}
 
-	ret := gjson.Get(json, path).String()
+	var spec struct {
+		RuntimeSpec struct {
+			Linux struct {
+				CgroupsPath string `json:"cgroupsPath"`
+			} `json:"linux"`
+		} `json:"runtimeSpec"`
+	}
+	if err := json.Unmarshal([]byte(infoJSON), &spec); err != nil {
+		return "", fmt.Errorf("failed to parse info: %w", err)
+	}
+
+	ret := spec.RuntimeSpec.Linux.CgroupsPath
 	if ret == "" {
 		return "", errors.New("failed to find cgroupsPath in json")
 	}

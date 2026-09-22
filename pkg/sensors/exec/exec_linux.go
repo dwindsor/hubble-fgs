@@ -41,7 +41,7 @@ import (
 func msgToExecveUnix(m *processapi.MsgExecveEvent) *exec.MsgExecveEventUnix {
 	unix := &exec.MsgExecveEventUnix{}
 	unix.Unix = &processapi.MsgExecveEventUnix{}
-	unix.Unix.Msg = m
+	unix.Unix.Msg = *m
 	return unix
 }
 

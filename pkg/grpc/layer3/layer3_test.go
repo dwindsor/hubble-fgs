@@ -181,7 +181,7 @@ func TestGrpcL3InOrder(t *testing.T) {
 
 func createExecEvent(Pid uint32, Ktime uint64, ParentPid uint32, ParentKtime uint64, Filename string) *exec.MsgExecveEventUnix {
 	tmpEv := tetragonAPI.MsgExecveEventUnix{
-		Msg: &tetragonAPI.MsgExecveEvent{
+		Msg: tetragonAPI.MsgExecveEvent{
 			Common: tetragonAPI.MsgCommon{
 				Op:    ops.MSG_OP_EXECVE,
 				Flags: 0,
