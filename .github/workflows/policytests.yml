@@ -134,3 +134,31 @@ jobs:
             --mem 8G \
             --policytest-extra-args ee-bindir=/usr/local/lib/tetragon/tester-progs/ee
         working-directory: ./modules/tetragon-oss
+
+      - name: Collect tetragon logs
+        if: failure() || cancelled()
+        run: |
+          outdir="$PWD/policytests-logs"
+          mkdir -p "$outdir"
+
+          # the VM is powered off at this point, so pull its logs out of the image
+          img=tests/vmtests/test-data/images/tetragon.qcow2
+          if [ -f "$img" ]; then
+            sudo virt-copy-out -a "$img" /var/log "$outdir" || \
+              echo "failed to copy /var/log out of $img"
+          fi
+          if compgen -G "$outdir/log/journal/*/*.journal" > /dev/null; then
+            sudo journalctl --no-pager -o short-precise \
+              --file "$outdir/log/journal/*/*.journal" > "$outdir/journal.log" || true
+          fi
+
+          sudo chmod -R go+rX "$outdir"
+        working-directory: ./modules/tetragon-oss
+
+      - name: Upload tetragon logs
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: policytests-logs-${{ matrix.arch }}-${{ matrix.kernel }}
+          path: ./modules/tetragon-oss/policytests-logs
+          retention-days: 5
