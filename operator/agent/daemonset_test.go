@@ -228,6 +228,7 @@ func TestDaemonSet(t *testing.T) {
 	dsVolumeDefaultMode := int32(420)
 	privileged := true
 	livenessProbeService := "liveness"
+	startupProbeService := "startup"
 
 	testCases := []struct {
 		name      string
@@ -370,6 +371,13 @@ func TestDaemonSet(t *testing.T) {
 										GRPC: &corev1.GRPCAction{
 											Port:    6789,
 											Service: &livenessProbeService,
+										},
+									},
+									StartupProbe: &corev1.Probe{
+										TimeoutSeconds: int32(60),
+										GRPC: &corev1.GRPCAction{
+											Port:    6789,
+											Service: &startupProbeService,
 										},
 									},
 									SecurityContext: &corev1.SecurityContext{Privileged: &privileged},
@@ -843,6 +851,13 @@ tls:
 											Service: &livenessProbeService,
 										},
 									},
+									StartupProbe: &corev1.Probe{
+										TimeoutSeconds: int32(60),
+										GRPC: &corev1.GRPCAction{
+											Port:    1234,
+											Service: &startupProbeService,
+										},
+									},
 									SecurityContext: &corev1.SecurityContext{Privileged: new(false)},
 									Resources: corev1.ResourceRequirements{
 										Requests: map[corev1.ResourceName]resource.Quantity{
@@ -1173,6 +1188,7 @@ func TestDaemonSetContainers(t *testing.T) {
 	privileged := true
 	bidirectionalMount := corev1.MountPropagationBidirectional
 	livenessProbeService := "liveness"
+	startupProbeService := "startup"
 
 	testCases := []struct {
 		name       string
@@ -1235,6 +1251,13 @@ tetragonHealthGrpcPort: 6789`,
 						Service: &livenessProbeService,
 					},
 				},
+				StartupProbe: &corev1.Probe{
+					TimeoutSeconds: int32(60),
+					GRPC: &corev1.GRPCAction{
+						Port:    6789,
+						Service: &startupProbeService,
+					},
+				},
 			}},
 		},
 		{
@@ -1287,6 +1310,13 @@ tetragonHealthGrpcPort: 6789`,
 						GRPC: &corev1.GRPCAction{
 							Port:    6789,
 							Service: &livenessProbeService,
+						},
+					},
+					StartupProbe: &corev1.Probe{
+						TimeoutSeconds: int32(60),
+						GRPC: &corev1.GRPCAction{
+							Port:    6789,
+							Service: &startupProbeService,
 						},
 					},
 				},
@@ -1461,6 +1491,13 @@ commandOverride: |
 						GRPC: &corev1.GRPCAction{
 							Port:    1234,
 							Service: &livenessProbeService,
+						},
+					},
+					StartupProbe: &corev1.Probe{
+						TimeoutSeconds: int32(60),
+						GRPC: &corev1.GRPCAction{
+							Port:    1234,
+							Service: &startupProbeService,
 						},
 					},
 				},

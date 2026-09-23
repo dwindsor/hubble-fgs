@@ -89,6 +89,10 @@ tetragonSecurityContext: |
 #tetragonLivenessProbe: |
 #  grpc:
 #    port: 54321
+# Overrides the default startupProbe for the tetragon container.
+#tetragonStartupProbe: |
+#  grpc:
+#    port: 54321
 # Whether to enable health gRPC server.
 tetragonHealthGrpcEnabled: true
 # The port at which to expose health gRPC.

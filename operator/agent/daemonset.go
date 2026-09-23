@@ -478,6 +478,23 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			}
 		}
 
+		var startupProbe *corev1.Probe
+		startupProbeStr := configValue(log, cmFields, "tetragonStartupProbe", "")
+		if startupProbeStr != "" {
+			if err := yaml.Unmarshal([]byte(startupProbeStr), &startupProbe); err != nil {
+				log.WithValues("value", startupProbeStr).Error(err, "could not unmarshal the tetragonStartupProbe, skipped")
+			}
+		} else if configValue(log, cmFields, "tetragonHealthGrpcEnabled", false) {
+			healthGrpcPort := configValueInt(log, cmFields, "tetragonHealthGrpcPort", 32, 6789)
+			startupProbe = &corev1.Probe{
+				TimeoutSeconds: int32(60),
+				GRPC: &corev1.GRPCAction{
+					Port:    int32(healthGrpcPort),
+					Service: new("startup"),
+				},
+			}
+		}
+
 		containers = append(containers, corev1.Container{
 			Name:                     "tetragon",
 			SecurityContext:          &securityContext,
@@ -490,6 +507,7 @@ func daemonSetContainers(log logr.Logger, cmFields map[string]any) []corev1.Cont
 			Env:                      env,
 			Resources:                resources,
 			LivenessProbe:            livenessProbe,
+			StartupProbe:             startupProbe,
 			Ports:                    ports,
 		})
 	}
