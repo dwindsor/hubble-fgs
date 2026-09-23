@@ -4,7 +4,7 @@ on:
 
 env:
   # Maximum size in MiB for tetragon-slim tarball
-  TETRAGON_SLIM_MAX_SIZE: 94
+  TETRAGON_SLIM_MAX_SIZE: 85
 
 jobs:
   check-tarball-size:
