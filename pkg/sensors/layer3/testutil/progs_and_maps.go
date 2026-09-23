@@ -124,6 +124,22 @@ func sockopsSensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorProgs []
 	bottlesMap := SensorMapByProgName(sensorProgs, "tg_bottles", []string{tcpSockopsProg, securitySkFreeProg})
 	bottlesMapStats := SensorMapByProgName(sensorProgs, "tg_bottle_map_stats", []string{tcpSockopsProg, securitySkFreeProg})
 
+	if !utils.SupportCGroupSKBProbeRead() { // <=5.4 special snowflake
+		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
+		})...)
+		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
+		})...)
+		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
+		})...)
+		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpSendCheck4Prog, tcpSendCheck6Prog,
+		})...)
+		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{tcpSendCheck4Prog, tcpSendCheck6Prog})...)
+	}
+
 	if withRTT {
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpRttProg,
@@ -184,7 +200,7 @@ func sockopsSensorMaps(withRTT bool, withIcmp bool, withRaw bool, sensorProgs []
 		cgroupEgressProg, cgroupIngressProg, udpBindProg,
 	})...)
 
-	if withIcmp {
+	if withIcmp && utils.CGroupSKBAvailable() {
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			pingInitSockProg, icmp4RcvProg, icmp6RcvProg,
 		})...)
@@ -535,8 +551,13 @@ func sockopsSensorProgs(withRTT bool, withIcmp bool, withRaw bool) ([]tus.Sensor
 		{Name: tcpSockopsProg, Type: ebpf.SockOps},
 		{Name: cgroupEgressProg, Type: ebpf.CGroupSKB},
 		{Name: cgroupIngressProg, Type: ebpf.CGroupSKB},
-		{Name: udpBindDummy4Prog, Type: ebpf.CGroupSock},
-		{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
+	}
+
+	if utils.CGroupSKBAvailable() && utils.UDPBindNeedsDummies() { // 5.13+
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: udpBindDummy4Prog, Type: ebpf.CGroupSock},
+			{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
+		}...)
 	}
 
 	if utils.SupportFentry() {
@@ -565,13 +586,20 @@ func sockopsSensorProgs(withRTT bool, withIcmp bool, withRaw bool) ([]tus.Sensor
 		}
 	}
 
+	if !utils.SupportCGroupSKBProbeRead() { // <=5.4 special snowflake
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: tcpSendCheck4Prog, Type: ebpf.Kprobe},
+			{Name: tcpSendCheck6Prog, Type: ebpf.Kprobe},
+		}...)
+	}
+
 	if utils.SupportFentry() {
 		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Tracing})
 	} else {
 		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpBindProg, Type: ebpf.Kprobe})
 	}
 
-	if withIcmp {
+	if withIcmp && utils.CGroupSKBAvailable() {
 		if utils.SupportFentry() {
 			sensorProgs = append(sensorProgs, []tus.SensorProg{
 				{Name: pingInitSockProg, Type: ebpf.Tracing},
