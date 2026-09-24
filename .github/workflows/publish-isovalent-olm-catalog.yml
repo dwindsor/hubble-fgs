@@ -11,6 +11,9 @@ jobs:
   build-and-push-catalog:
     name: Build and push OLM catalog to Isovalent registry
     runs-on: ubuntu-24.04
+    environment:
+      name: release
+      deployment: false
     permissions:
       contents: read
       id-token: write
