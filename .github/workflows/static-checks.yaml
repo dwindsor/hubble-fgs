@@ -81,7 +81,7 @@ jobs:
 
         with:
           # renovate: datasource=docker depName=docker.io/golangci/golangci-lint
-          version: v2.13.2
+          version: v2.14.0
           args: --config=.golangci.yml --verbose
 
   format:
