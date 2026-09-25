@@ -50,7 +50,7 @@ Helm chart for Tetragon Enterprise
 | imagePullPolicy | string | `"IfNotPresent"` |  |
 | imagePullSecrets | list | `[]` |  |
 | integratedGrafana.enabled | bool | `false` | Install Grafana with dashboards and lightweight Prometheus datasource. It's intended to quickly set up Tetragon monitoring and/or get value out of Tetragon without setting up a custom data pipeline. If enabled, grafana automatically creates a secret named "$release-grafana" storing "admin" user base64 encoded password. Example command to retrieve the password: kubectl get secret -n tetragon tetragon-grafana -o jsonpath='{.data.admin-password}' | base64 -d |
-| integratedGrafana.prometheus.image | object | `{"pullPolicy":"IfNotPresent","registry":"quay.io","repository":"prometheus/prometheus","sha":null,"tag":"v3.14.0"}` | Prometheus image |
+| integratedGrafana.prometheus.image | object | `{"pullPolicy":"IfNotPresent","registry":"quay.io","repository":"prometheus/prometheus","sha":null,"tag":"v3.15.0"}` | Prometheus image |
 | integratedGrafana.prometheus.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"200m","memory":"512Mi"}}` | Resources for the Prometheus container. |
 | kube-state-metrics.resources | object | `{"limits":{"memory":"64Mi"},"requests":{"cpu":"10m","memory":"32Mi"}}` | Resources for the kube-state-metrics container. |
 | nodeSelector | object | `{}` |  |
