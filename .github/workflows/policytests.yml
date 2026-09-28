@@ -26,29 +26,29 @@ jobs:
         arch: [amd64, arm64]
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - 'rhel8.10-20260921.012558'
+          - 'rhel8.10-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - 'bpf-next-20260921.012558'
+          - 'bpf-next-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '6.18-20260921.012558'
+          - '6.18-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '6.12-20260921.012558'
+          - '6.12-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '6.6-20260921.012558'
+          - '6.6-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '6.1-20260921.012558'
+          - '6.1-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '5.15-20260921.012558'
+          - '5.15-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '5.10-20260921.012558'
+          - '5.10-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '5.4-20260921.012558'
+          - '5.4-20260928.013030'
           # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-          - '4.19-20260921.012558'
+          - '4.19-20260928.013030'
         exclude:
           - arch: arm64
             # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
-            kernel: 'rhel8.10-20260921.012558'
+            kernel: 'rhel8.10-20260928.013030'
 
     steps:
       - name: Remove slow Azure apt mirrors
