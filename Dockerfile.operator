@@ -3,7 +3,7 @@
 
 # Chainguard static image for runtime (replaces scratch)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static
-ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static:latest-2026.09.12
+ARG BASE_IMAGE=artifactory.devhub-cloud.cisco.com/sto-cg-docker/static:latest-2026.09.24
 
 # Chainguard go-dev image (includes shell, make, git via wolfi packages)
 # renovate: datasource=docker depName=artifactory.devhub-cloud.cisco.com/sto-cg-docker/go
