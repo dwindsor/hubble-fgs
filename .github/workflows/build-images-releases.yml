@@ -57,7 +57,7 @@ jobs:
   # produced during these builds. The bundle is platform-independent, so it does not need a multi-arch build.
   bundle-build-and-push:
     needs: build-and-push
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment:
       name: release
       deployment: false
@@ -329,7 +329,7 @@ jobs:
     needs: build-tarballs
     if: github.repository == 'isovalent/hubble-fgs' && (!contains(github.ref_name, '-') || contains(github.ref_name, '-pre') || contains(github.ref_name, '-rc'))
     environment: release
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -388,7 +388,7 @@ jobs:
     needs: build-tarballs
     if: github.repository == 'isovalent/hubble-fgs' && (!contains(github.ref_name, '-') || contains(github.ref_name, '-pre') || contains(github.ref_name, '-rc'))
     environment: release
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Setup access to Artifactory
         uses: jfrog/setup-jfrog-cli@68c0efdc951dd2359bbbfa15c48bc67b3ae8e4d6 # v5.2.0

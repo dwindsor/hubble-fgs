@@ -176,7 +176,7 @@ jobs:
 
   image-digests:
     name: Display Digests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: build-and-push
     permissions:
       actions: read
@@ -229,7 +229,7 @@ jobs:
   chart-metadata:
     if: ${{ success() }}
     name: Resolve Helm Chart Metadata
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     needs: build-and-push

@@ -118,7 +118,7 @@ jobs:
   # This job ensures that the plain vanilla "go test" command passes without any
   # external dependencies. It's a wonderful thing.
   unit-test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     timeout-minutes: 10

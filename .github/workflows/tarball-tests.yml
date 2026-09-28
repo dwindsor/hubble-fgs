@@ -52,7 +52,7 @@ jobs:
 
   post-test:
     name: Cleanup
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [packages-e2e-tests, vmpolicytests-ee, vmpolicytests-slim]
     if: ${{ needs.packages-e2e-tests.result == 'success' && needs.vmpolicytests.result == 'success' }}
     permissions:
