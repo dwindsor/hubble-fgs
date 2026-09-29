@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/cel-go/cel"
+	"cel.dev/cel-go/cel"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/cilium/tetragon/pkg/filters"

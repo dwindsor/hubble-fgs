@@ -17,5 +17,5 @@ const (
 	// The major and minor version of the CRD schema should correspond to Tetragon release number
 	// (but not the patch version).
 	// Developers: Bump patch for each change in the CRD schema.
-	CustomResourceDefinitionSchemaVersion = "1.20.23"
+	CustomResourceDefinitionSchemaVersion = "1.20.24"
 )

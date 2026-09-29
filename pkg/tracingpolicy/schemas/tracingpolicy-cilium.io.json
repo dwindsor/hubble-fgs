@@ -556,7 +556,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -1158,7 +1158,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -2967,7 +2967,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -3569,7 +3569,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -4197,7 +4197,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -4799,7 +4799,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -6049,7 +6049,7 @@
                     },
                     "argValue": {
                       "description": "An arg value for the set action",
-                      "format": "int32",
+                      "format": "int64",
                       "type": "integer"
                     },
                     "imaHash": {
@@ -6651,7 +6651,7 @@
                     },
                     "argValue": {
                       "description": "An arg value for the set action",
-                      "format": "int32",
+                      "format": "int64",
                       "type": "integer"
                     },
                     "imaHash": {
@@ -7211,7 +7211,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -7813,7 +7813,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -8670,7 +8670,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -9272,7 +9272,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -9873,7 +9873,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {
@@ -10475,7 +10475,7 @@
                           },
                           "argValue": {
                             "description": "An arg value for the set action",
-                            "format": "int32",
+                            "format": "int64",
                             "type": "integer"
                           },
                           "imaHash": {

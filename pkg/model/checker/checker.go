@@ -17,16 +17,15 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/decls"
-	"github.com/google/cel-go/common/types"
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/decls"
+	"cel.dev/cel-go/common/types"
 
-	"github.com/google/cel-go/ext"
+	"cel.dev/cel-go/ext"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
-	celk8s "k8s.io/apiserver/pkg/cel/library"
 )
 
 type ApplicationCheckerResult interface {
@@ -119,9 +118,8 @@ func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 			&appModelV1.ApplicationWorkload{},
 			&appModelV1.ApplicationContainer{},
 		),
-		celk8s.IP(),
-		celk8s.CIDR(),
-		celk8s.Lists(),
+		ext.Network(),
+		ext.Lists(),
 		ext.Sets(),
 	}
 

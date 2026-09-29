@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"github.com/vishvananda/netns"
-	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 )
 
@@ -330,11 +329,13 @@ func (src goHTTPRRSource) Run(ctx context.Context, sinkPort int, args SourceArgs
 type goHTTP2RRSource struct{}
 
 func (src goHTTP2RRSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
+	var protocols http.Protocols
+	protocols.SetUnencryptedHTTP2(true)
 	client := http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
+		Transport: &http.Transport{
+			Protocols: &protocols,
 			// Fake a TLS connection so the Go HTTP client uses HTTP/2.
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				var d net.Dialer
 				conn, err := d.DialContext(ctx, network, addr)
 				if err != nil {

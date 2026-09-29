@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
+	"cel.dev/cel-go/cel"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/server/eventlog"
-	"github.com/google/cel-go/cel"
 	"golang.org/x/time/rate"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
