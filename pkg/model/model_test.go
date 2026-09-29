@@ -43,6 +43,44 @@ func TestMerge(t *testing.T) {
 	assert.JSONEq(t, expected, string(merged))
 }
 
+func TestMergeFoldsUnspecifiedObservationPoint(t *testing.T) {
+	appModel := func(op appModelV1.ObservationPoint, txBytes uint64) *appModelV1.ApplicationModel {
+		return &appModelV1.ApplicationModel{
+			Host: &appModelV1.ApplicationHost{
+				Processes: []*appModelV1.ApplicationProcessGroup{
+					{
+						Name: "curl",
+						Connections: []*appModelV1.ApplicationConnection{
+							{
+								Destination: &appModelV1.Destination{
+									Type: &appModelV1.Destination_Dns{
+										Dns: &appModelV1.DestinationDns{
+											DestinationNames: []string{"dest1"},
+										},
+									},
+									Port: 443,
+								},
+								Stats:            &appModelV1.ConnectionStats{TxBytes: txBytes},
+								ObservationPoint: op,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	older := appModel(appModelV1.ObservationPoint_OBSERVATION_POINT_UNSPECIFIED, 100)
+	newer := appModel(appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE, 200)
+
+	res := Merge(older, newer)
+	require.Len(t, res.GetHost().GetProcesses(), 1)
+	conns := res.GetHost().GetProcesses()[0].GetConnections()
+	require.Len(t, conns, 1)
+	assert.Equal(t, appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE, conns[0].GetObservationPoint())
+	assert.Equal(t, uint64(200), conns[0].GetStats().GetTxBytes())
+}
+
 func TestMergeArgs(t *testing.T) {
 	m1 := appModelV1.ApplicationModel{
 		Namespaces: nil,

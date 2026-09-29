@@ -281,6 +281,45 @@ func TestConnectionDiffDistinguishesProtocol(t *testing.T) {
 	assert.Equal(t, uint64(180), byProtocol[commonNetV1.IPProtocol_IP_PROTOCOL_UDP].Stats.TxBytes)
 }
 
+func TestConnectionDiffDistinguishesObservationPoint(t *testing.T) {
+	// Use distinct baseline stats for each observation point so that pairing a
+	// connection with its opposite-direction twin produces wrong diff values.
+	srcOld := &appModelV1.ConnectionStats{TxBytes: 10}
+	dstOld := &appModelV1.ConnectionStats{TxBytes: 20}
+	srcNew := &appModelV1.ConnectionStats{TxBytes: 100}
+	dstNew := &appModelV1.ConnectionStats{TxBytes: 200}
+
+	udp := commonNetV1.IPProtocol_IP_PROTOCOL_UDP
+	source := appModelV1.ObservationPoint_OBSERVATION_POINT_SOURCE
+	destination := appModelV1.ObservationPoint_OBSERVATION_POINT_DESTINATION
+
+	a := []*appModelV1.ApplicationConnection{
+		{Destination: destA(), Stats: srcNew, Policy: policy(), Protocol: udp, ObservationPoint: source},
+		{Destination: destA(), Stats: dstNew, Policy: policy(), Protocol: udp, ObservationPoint: destination},
+	}
+	b := []*appModelV1.ApplicationConnection{
+		{Destination: destA(), Stats: srcOld, Policy: policy(), Protocol: udp, ObservationPoint: source},
+		{Destination: destA(), Stats: dstOld, Policy: policy(), Protocol: udp, ObservationPoint: destination},
+	}
+
+	d, err := ConnectionDiff(a, b)
+	require.NoError(t, err)
+	require.Len(t, d, 2)
+
+	byObservationPoint := make(map[appModelV1.ObservationPoint]*appModelV1.ApplicationConnection)
+	for _, conn := range d {
+		byObservationPoint[conn.ObservationPoint] = conn
+	}
+	require.Contains(t, byObservationPoint, source)
+	require.Contains(t, byObservationPoint, destination)
+
+	// SOURCE must diff against the SOURCE baseline (100-10=90).
+	assert.Equal(t, uint64(90), byObservationPoint[source].Stats.TxBytes)
+	// DESTINATION must diff against the DESTINATION baseline (200-20=180),
+	// not SOURCE (200-10=190).
+	assert.Equal(t, uint64(180), byObservationPoint[destination].Stats.TxBytes)
+}
+
 func TestConnectionDiffPreservesObservationPoint(t *testing.T) {
 	// A connection observed at the destination on tick one must still report
 	// that on tick two, when it is found in both models rather than freshly
