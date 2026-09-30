@@ -1,6 +1,11 @@
 # buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2
 ## explicit; go 1.23
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate
+# buf.build/go/protovalidate v1.4.0
+## explicit; go 1.26.0
+buf.build/go/protovalidate
+buf.build/go/protovalidate/cel
+buf.build/go/protovalidate/internal/rules
 # cel.dev/cel-go v0.32.0
 ## explicit; go 1.23.0
 cel.dev/cel-go/cel
@@ -1106,6 +1111,7 @@ github.com/isovalent/ipa/common/net/v1alpha
 github.com/isovalent/ipa/common/v1alpha
 github.com/isovalent/ipa/graph/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
+github.com/isovalent/ipa/splunk/v1alpha
 # github.com/isovalent/ipa/k8s v1.19.3
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s

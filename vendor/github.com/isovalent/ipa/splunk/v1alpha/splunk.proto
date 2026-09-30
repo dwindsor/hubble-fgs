@@ -1,0 +1,73 @@
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
+syntax = "proto3";
+
+package splunk.v1alpha;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/isovalent/ipa/splunk/v1alpha";
+
+// Get hec settings takes no parameters
+message GetHecSettingsRequest {}
+
+// Response contains endpoint, token, and source types
+message GetHecSettingsResponse {
+  // The HEC endpoint currently in use. If empty, HEC export is not enabled.
+  string endpoint = 1;
+  // The HEC token currently in use.
+  string token = 2;
+  // The set of source types currently enabled.
+  repeated string source_types = 3;
+}
+
+// Set endpoint to empty to disable sending to splunk
+message SetHecSettingsRequest {
+  option (buf.validate.message).cel = {
+    id: "token_required_with_endpoint"
+    message: "token must be provided when endpoint is set"
+    expression: "this.endpoint == '' || this.token != ''"
+  };
+  // The HEC endpoint to use. If empty, disables HEC message forwarding.
+  string endpoint = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uri = true
+  ];
+  // The HEC token to use. If endpoint is provided, token must be provided.
+  string token = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+  ];
+  // The set of source types to use. May be empty when endpoint is provided.
+  repeated string source_types = 3 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "tetragon:events",
+      "tetragon:flows",
+      "tetragon:ocsf",
+      "tetragon:application_model",
+      "tetragon:telemetry",
+      "tetragon:connections",
+      "tetragon:alerts"
+    ]
+  }];
+}
+
+// The response is empty. All validation occurs client side so the settings
+// change always succeeds.
+message SetHecSettingsResponse {}
+
+// This service is for interfacing with Splunk-related capabilities
+// within tetragon.
+service SplunkService {
+  // Get current settings for Splunk HEC Export.
+  rpc GetHecSettings(GetHecSettingsRequest) returns (GetHecSettingsResponse) {}
+
+  // Update settings for Splunk HEC Export.
+  rpc SetHecSettings(SetHecSettingsRequest) returns (SetHecSettingsResponse) {}
+}

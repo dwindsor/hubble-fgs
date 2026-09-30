@@ -3,6 +3,7 @@ module github.com/isovalent/hubble-fgs
 go 1.27.0
 
 require (
+	buf.build/go/protovalidate v1.4.0
 	cel.dev/cel-go v0.32.0
 	cloud.google.com/go/compute/metadata v0.9.1
 	github.com/aws/aws-sdk-go-v2 v1.44.0
