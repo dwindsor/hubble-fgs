@@ -1,0 +1,18 @@
+# Template only: replace both base64 values with full .class file contents.
+# The replacement and rollback classes must have the same binary class name,
+# fields, methods, and hierarchy as the currently loaded class.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: java-runtime-patch
+spec:
+  java:
+    executables:
+      - /opt/jdk/bin/java
+    # Every listed fragment must appear in an argument token.
+    processArgsContains:
+      - com.example.Application
+    patches:
+      - signature: Lcom/example/RequestHandler;
+        replacement: REPLACE_WITH_BASE64_FIXED_CLASS
+        rollback: REPLACE_WITH_BASE64_ORIGINAL_CLASS
