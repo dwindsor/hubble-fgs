@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	api "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -33,6 +34,7 @@ const (
 	manifestMagic   = "TGJVP1\x00"
 	maxClassFile    = 16 << 20
 	maxPatchClasses = 32
+	processScanRate = time.Second
 )
 
 type javaSensor struct {
@@ -42,6 +44,10 @@ type javaSensor struct {
 	patches     []api.JavaClassPatch
 	targets     []processIdentity
 	manifests   map[int]manifestPair
+	applyData   []byte
+	revertData  []byte
+	watchStop   chan struct{}
+	watchDone   chan struct{}
 }
 
 type manifestPair struct {
@@ -158,24 +164,15 @@ func (s *javaSensor) Load(_ string) error {
 	if err != nil {
 		return err
 	}
+	s.applyData = apply
+	s.revertData = revert
 	pids, err := matchingPIDs(s.executables, s.argsContain)
 	if err != nil {
 		return err
 	}
-	if len(pids) == 0 {
-		return errors.New("java policy found no running JVM with a configured executable")
-	}
-	s.manifests = make(map[int]manifestPair, len(pids))
+	s.manifests = make(map[int]manifestPair)
 	for _, target := range pids {
-		pid := target.pid
-		paths, err := stageProcessFiles(target, apply, revert)
-		if err != nil {
-			s.removeManifests()
-			return fmt.Errorf("stage patch for JVM %d: %w", pid, err)
-		}
-		s.manifests[pid] = paths
-		s.targets = append(s.targets, target)
-		if err := javaattach.LoadNativeAgent(pid, paths.agentTarget, paths.applyTarget); err != nil {
+		if err := s.patchTarget(target); err != nil {
 			rollbackErr := s.rollbackTargets(s.targets)
 			if rollbackErr == nil {
 				s.targets = nil
@@ -185,14 +182,105 @@ func (s *javaSensor) Load(_ string) error {
 				// destroy path can retry restoration instead of orphaning a patch.
 				s.Loaded = true
 			}
-			return errors.Join(fmt.Errorf("apply Java patch to pid %d: %w", pid, err), rollbackErr)
-		}
-		for _, patch := range s.patches {
-			logger.GetLogger().Info("Java class redefined through JVM Attach", "pid", pid, "class", patch.Signature, "policy", s.Policy)
+			return errors.Join(err, rollbackErr)
 		}
 	}
 	s.Loaded = true
+	s.watchStop = make(chan struct{})
+	s.watchDone = make(chan struct{})
+	go s.watchProcesses(s.watchStop, s.watchDone)
 	return nil
+}
+
+func (s *javaSensor) patchTarget(target processIdentity) error {
+	paths, err := stageProcessFiles(target, s.applyData, s.revertData)
+	if err != nil {
+		return fmt.Errorf("stage patch for JVM %d: %w", target.pid, err)
+	}
+	if err := javaattach.LoadNativeAgent(target.pid, paths.agentTarget, paths.applyTarget); err != nil {
+		_ = os.RemoveAll(paths.dirHost)
+		return fmt.Errorf("apply Java patch to pid %d: %w", target.pid, err)
+	}
+	s.manifests[target.pid] = paths
+	s.targets = append(s.targets, target)
+	for _, patch := range s.patches {
+		logger.GetLogger().Info("Java class redefined through JVM Attach", "pid", target.pid, "class", patch.Signature, "policy", s.Policy)
+	}
+	return nil
+}
+
+func (s *javaSensor) watchProcesses(stop <-chan struct{}, done chan<- struct{}) {
+	defer close(done)
+	ticker := time.NewTicker(processScanRate)
+	defer ticker.Stop()
+	loggedFailures := make(map[int]processIdentity)
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+		}
+
+		matched, err := matchingPIDs(s.executables, s.argsContain)
+		if err != nil {
+			logger.GetLogger().Warn("failed to scan processes for Java policy", "policy", s.Policy, "error", err)
+			continue
+		}
+		current := make(map[int]processIdentity, len(matched))
+		for _, target := range matched {
+			current[target.pid] = target
+		}
+		for _, target := range append([]processIdentity(nil), s.targets...) {
+			identity, err := readProcessIdentity(target.pid)
+			if err != nil || identity.startTicks != target.startTicks || identity.executable != target.executable {
+				s.forgetTarget(target.pid)
+				delete(loggedFailures, target.pid)
+			}
+		}
+		for _, target := range matched {
+			if _, ok := s.manifests[target.pid]; ok {
+				alreadyPatched := false
+				for _, existing := range s.targets {
+					if existing.pid == target.pid && existing.startTicks == target.startTicks && existing.executable == target.executable {
+						alreadyPatched = true
+						break
+					}
+				}
+				if alreadyPatched {
+					continue
+				}
+				s.forgetTarget(target.pid)
+			}
+			if err := s.patchTarget(target); err != nil {
+				previous, logged := loggedFailures[target.pid]
+				if !logged || previous.startTicks != target.startTicks || previous.executable != target.executable {
+					logger.GetLogger().Warn("failed to patch matching JVM; will retry", "pid", target.pid, "policy", s.Policy, "error", err)
+					loggedFailures[target.pid] = target
+				}
+			} else {
+				delete(loggedFailures, target.pid)
+			}
+		}
+		for pid, failed := range loggedFailures {
+			if target, ok := current[pid]; !ok || target.startTicks != failed.startTicks || target.executable != failed.executable {
+				delete(loggedFailures, pid)
+			}
+		}
+	}
+}
+
+func (s *javaSensor) forgetTarget(pid int) {
+	if paths, ok := s.manifests[pid]; ok {
+		_ = os.RemoveAll(paths.dirHost)
+		delete(s.manifests, pid)
+	}
+	kept := s.targets[:0]
+	for _, target := range s.targets {
+		if target.pid != pid {
+			kept = append(kept, target)
+		}
+	}
+	s.targets = kept
 }
 
 func matchingPIDs(executables, argsContain []string) ([]processIdentity, error) {
@@ -440,6 +528,12 @@ func (s *javaSensor) rollbackTargets(targets []processIdentity) error {
 func (s *javaSensor) Unload(unpin bool) error {
 	if !s.Loaded {
 		return fmt.Errorf("unload of Java sensor %s failed: sensor not loaded", s.Name)
+	}
+	if s.watchStop != nil {
+		close(s.watchStop)
+		<-s.watchDone
+		s.watchStop = nil
+		s.watchDone = nil
 	}
 	err := s.rollbackTargets(s.targets)
 	if err == nil {

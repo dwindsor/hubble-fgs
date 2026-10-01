@@ -40,8 +40,10 @@ JVMTI class redefinition support, and the Tetragon process must have permission
 to create the Attach trigger and connect to the target. A missing Attach
 listener is started using HotSpot's namespace-local `.attach_pid` trigger and
 `SIGQUIT` flow.
-The policy load fails if no configured executable is running or any class
-redefinition fails. New JVMs started after policy load are not yet covered by
-this first implementation.
+After load, the sensor scans `/proc` once per second and applies the patch to
+new matching JVMs. It retries failed attaches while a process remains alive,
+which lets the target application finish loading the selected class. Policy
+unload stops reconciliation, restores every still-running patched JVM, and
+removes its staged files.
 
 See `examples/tracingpolicy/java-patch-template.yaml` for the policy shape.
