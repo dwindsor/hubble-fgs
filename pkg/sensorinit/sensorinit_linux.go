@@ -14,4 +14,5 @@ package sensorinit
 import (
 	// Import sensor handlers
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/file"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/java"
 )
