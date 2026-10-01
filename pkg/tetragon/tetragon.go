@@ -470,6 +470,12 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err != nil {
 		return fmt.Errorf("failed to move old tetragon base directory: %w", err)
 	}
+	// getOldBpfDir moves an existing pin directory out of the way. Recreate the
+	// active root before loading the initial sensor, since map pinning does not
+	// consistently create this parent directory itself.
+	if err := os.MkdirAll(bpf.MapPrefixPath(), 0755); err != nil {
+		return fmt.Errorf("failed to create tetragon BPF map directory: %w", err)
+	}
 
 	// Raise memory resource
 	bpf.ConfigureResourceLimits()
