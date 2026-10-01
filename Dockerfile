@@ -36,8 +36,8 @@ ARG TARGETARCH BUILDARCH
 ARG LSEG
 RUN apt-get update
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
-    then apt-get install -y libelf-dev zlib1g-dev crossbuild-essential-$TARGETARCH; \
-    else apt-get install -y libelf-dev zlib1g-dev; fi
+    then apt-get install -y libelf-dev zlib1g-dev openjdk-17-jdk-headless crossbuild-essential-$TARGETARCH; \
+    else apt-get install -y libelf-dev zlib1g-dev openjdk-17-jdk-headless; fi
 RUN ldconfig /usr/local/
 COPY . ./
 RUN --mount=type=cache,target=/go/pkg/mod \ 
@@ -125,6 +125,7 @@ RUN apk add --no-cache --no-commit-hooks --root /rootfs \
 # Almost final step runs on target platform (might need emulation) and
 # retrieves (cross-)compiled binaries from builders
 FROM scratch AS base-build
+ARG TARGETARCH
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 USER root
@@ -142,6 +143,7 @@ COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/* /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/tetragon-fs-scanner /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/tetragon-runner /var/lib/tetragon/
+COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/build/${TARGETARCH}/libtetragon-jvm-patch.so /var/lib/tetragon/
 ENTRYPOINT ["/usr/bin/tetragon"]
 
 # This target only builds with the `--target release` option and reduces the

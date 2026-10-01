@@ -51,6 +51,7 @@ ifeq ($(filter $(UNAME_M),aarch64 arm64),$(UNAME_M))
 	TARGET_ARCH ?= arm64
 endif
 TARGET_ARCH ?= amd64
+JAVA_HOME ?= /usr/lib/jvm/default-java
 
 # Set GOARCH to TARGET_ARCH only if it's not set so that we can still use both
 # GOARCH and TARGET_ARCH (make sense for pure Go program like tetragon-operator)
@@ -142,11 +143,11 @@ clean: tarball-clean
 ##@ Build and install
 
 .PHONY: tetragon
-tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
+tetragon: tetragon-fs-scanner tetragon-java-patch-agent ## Compile the Tetragon agent.
 	$(GO_BUILD) $(TETRAGON_TAGS_ARG) ./cmd/tetragon
 
 .PHONY: tetragon-nok8s
-tetragon-nok8s: tetragon-fs-scanner ## Compile the Tetragon agent (nok8s build).
+tetragon-nok8s: tetragon-fs-scanner tetragon-java-patch-agent ## Compile the Tetragon agent (nok8s build).
 	$(GO_BUILD_NOK8S) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetragon
 
 .PHONY: tetragon-aggregator
@@ -166,13 +167,21 @@ tetra-nok8s: ## Compile the Tetragon gRPC client (nok8s build)
 	$(GO_BUILD_NOK8S) -o $@ $(TETRAGON_NOK8S_TAGS_ARG) ./cmd/tetra
 
 .PHONY: tetrabox
-tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
+tetrabox: tetragon-runner tetragon-java-patch-agent ## Compile single multi-call tetragon binary
 	$(GO_BUILD_SLIM) -o $@ $(TETRAGON_SLIM_TAGS_ARG) ./cmd/tetrabox
 	# set up symlinks so that things work
 	rm -f tetra tetragon $(FS_SCANNER_BIN)
 	ln -s tetrabox tetra
 	ln -s tetrabox tetragon
 	ln -s `dirname $(FS_SCANNER_BIN) | sed -e 's:[^/]\+:..:g'`/tetrabox $(FS_SCANNER_BIN)
+
+.PHONY: tetragon-java-patch-agent
+tetragon-java-patch-agent: ## Compile the native JVMTI library used by Java tracing policies.
+	$(INSTALL) -d $(BUILD_PKG_DIR)
+	$(CC) -O2 -fPIC -Wall -Wextra -Werror \
+		-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux \
+		-shared -o $(BUILD_PKG_DIR)/libtetragon-jvm-patch.so \
+		pkg/sensors/java/agent/jvm_patch.c
 
 .PHONY: tetrabox-k8s
 tetrabox-k8s: tetragon-runner ## Compile single multi-call tetragon binary
